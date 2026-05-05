@@ -1,6 +1,27 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import { fontAwesome, roseberry } from "./fonts";
+import "./styles/globals.css";
+import "./styles/htbbootstrap.css";
+import "./styles/font-awesome.css";
+import "./styles/htmega-animation.css";
+import "./styles/htmega-keyframes.css";
+import "./styles/htmega-global-style.css";
+import "./styles/custom-frontend.css";
+import "./styles/widget-image.css";
+import "./styles/custom-pro-widget-mega-menu.css";
+import "./styles/widget-heading.css";
+import "./styles/widget-social-icons.css";
+import "./styles/custom-apple-webkit.css";
+import "./styles/custom-widget-icon-list.css";
+import "./styles/widget-form.css";
+import "./styles/swiper.css";
+import "./styles/e-swiper.css";
+import "./styles/post-8.css";
+import "./styles/popup.css";
+import "./styles/post-1944.css";
+import "./styles/post-1627.css";
+import "./styles/post-25.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,9 +45,9 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${roseberry.variable} ${fontAwesome.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="home wp-singular page-template-default page page-id-1944 wp-theme-astra ast-desktop ast-page-builder-template ast-no-sidebar astra-4.8.8 ast-single-post ast-inherit-site-logo-transparent ast-hfb-header elementor-default elementor-kit-8 elementor-page elementor-page-1944">{children}</body>
     </html>
   );
 }
