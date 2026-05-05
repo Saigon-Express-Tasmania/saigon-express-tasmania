@@ -1,0 +1,12 @@
+{
+  "HomePage": {
+    "title": "To get started, edit the page.tsx file.",
+    "descriptionPrefix": "Looking for a starting point or more instructions? Head over to",
+    "descriptionTemplates": "Templates",
+    "descriptionOr": "or the",
+    "descriptionLearning": "Learning",
+    "descriptionSuffix": "center.",
+    "deploy": "Deploy Now",
+    "docs": "Documentation"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "HomePage": {
+    "title": "De bat dau, hay chinh sua tep page.tsx.",
+    "descriptionPrefix": "Can diem bat dau hoac huong dan them? Truy cap",
+    "descriptionTemplates": "Templates",
+    "descriptionOr": "hoac trung tam",
+    "descriptionLearning": "Learning",
+    "descriptionSuffix": ".",
+    "deploy": "Trien khai ngay",
+    "docs": "Tai lieu"
+  }
+}
