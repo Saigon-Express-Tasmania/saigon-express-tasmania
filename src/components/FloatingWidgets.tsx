@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState, useRef, useEffect } from "react";
 import { X, Send, ChevronDown, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -149,7 +150,7 @@ export function FloatingWidgets() {
           >
             {/* Header */}
             <div className="p-4 flex items-center gap-3 shrink-0" style={{ background: "oklch(40% 0.18 25)" }}>
-              <img loading="eager" src={LOGO_URL} alt="Saigon Express" className="h-9 w-auto object-contain" />
+              <AppImage src={LOGO_URL} alt="Saigon Express" width={180} height={40} priority className="h-9 w-auto object-contain" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-white text-sm">Saigon Express Tasmania</div>
                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -168,7 +169,7 @@ export function FloatingWidgets() {
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
                   {msg.role === "assistant" && (
                     <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 overflow-hidden" style={{ background: "oklch(40% 0.18 25)" }}>
-                      <img src={LOGO_URL} alt="SE" className="w-6 h-6 object-contain" />
+                      <AppImage src={LOGO_URL} alt="SE" width={24} height={24} className="w-6 h-6 object-contain" />
                     </div>
                   )}
                   <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
@@ -183,7 +184,7 @@ export function FloatingWidgets() {
               {isTyping && (
                 <div className="flex justify-start gap-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ background: "oklch(40% 0.18 25)" }}>
-                    <img src={LOGO_URL} alt="SE" className="w-6 h-6 object-contain" />
+                    <AppImage src={LOGO_URL} alt="SE" width={24} height={24} className="w-6 h-6 object-contain" />
                   </div>
                   <div className="bg-white border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
                     <div className="flex gap-1 items-center">

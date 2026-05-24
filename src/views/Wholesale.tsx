@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
@@ -84,7 +85,7 @@ export default function Wholesale() {
       <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/">
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain cursor-pointer" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain cursor-pointer" />
           </Link>
           <nav className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map(l => (
@@ -332,7 +333,7 @@ export default function Wholesale() {
       <footer className="bg-brand-dark text-white py-12">
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 pb-8 border-b border-white/10">
-            <img loading="lazy" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-12 w-auto object-contain" style={{ filter: "brightness(0) invert(1) opacity(0.85)" }} />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={200} height={48} className="h-12 w-auto object-contain" style={{ filter: "brightness(0) invert(1) opacity(0.85)" }} />
             <div className="flex flex-wrap gap-6 text-sm text-white/50">
               {NAV_LINKS.map(l => (
                 <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>

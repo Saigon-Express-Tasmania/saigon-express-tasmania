@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "@/components/link";
@@ -413,7 +414,7 @@ export default function Careers() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50 shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" />
           </Link>
           <nav className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map(l => (
@@ -652,7 +653,7 @@ export default function Careers() {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
             <div className="md:col-span-1">
-              <img loading="lazy" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-12 w-auto object-contain mb-4" />
+              <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={200} height={48} className="h-12 w-auto object-contain mb-4" />
               <p className="text-white/40 text-sm leading-relaxed">Fresh. Healthy. Vietnamese. Proudly Tasmanian.</p>
             </div>
             <div>

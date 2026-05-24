@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
@@ -116,7 +117,7 @@ export default function Catering() {
       <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/">
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain cursor-pointer" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain cursor-pointer" />
           </Link>
           <nav className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map(l => (
@@ -216,7 +217,7 @@ export default function Catering() {
             {PACKS.map((pack, i) => (
               <div key={i} className="bg-white overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="relative aspect-[16/7] overflow-hidden">
-                  <img loading="lazy" src={pack.img} alt={pack.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  <AppImage src={pack.img} alt={pack.name} fill className="object-cover hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-brand-dark/25" />
                   <span className={`absolute top-4 left-4 ${pack.tagBg} text-white text-[10px] font-bold px-3 py-1 tracking-widest uppercase`}>
                     {pack.tag}
@@ -331,7 +332,7 @@ export default function Catering() {
             ].map((item, i) => (
               <div key={i} className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full">
                 <div className="relative aspect-square overflow-hidden">
-                  <img loading="lazy" src={item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <AppImage src={item.img} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 right-3 bg-brand-red text-white text-sm font-bold px-3 py-1">
                     {item.price}
                   </div>
@@ -412,7 +413,7 @@ export default function Catering() {
             ].map((item, i) => (
               <div key={i} className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full">
                 <div className="relative aspect-square overflow-hidden">
-                  <img loading="lazy" src={item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <AppImage src={item.img} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                 </div>
                 <div className="p-5 flex flex-col flex-1">
                   <h4 className="font-serif text-brand-dark text-xl mb-1">{item.name}</h4>
@@ -546,7 +547,7 @@ export default function Catering() {
       <footer className="bg-brand-dark text-white py-12">
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 pb-8 border-b border-white/10">
-            <img loading="lazy" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-12 w-auto object-contain" style={{ filter: "brightness(0) invert(1) opacity(0.85)" }} />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={200} height={48} className="h-12 w-auto object-contain" style={{ filter: "brightness(0) invert(1) opacity(0.85)" }} />
             <div className="flex flex-wrap gap-6 text-sm text-white/50">
               {NAV_LINKS.map(l => (
                 <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>

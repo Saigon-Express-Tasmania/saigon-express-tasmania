@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { ComponentProps } from "react";
+import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,7 @@ function PromotionCard({ promo }: { promo: {
   ctaHref: string | null;
   expiresAt: Date | null;
 } }) {
+  const [imageSrc, setImageSrc] = useState(promo.imageUrl ?? FALLBACK_IMG);
   const isExternal = promo.ctaHref?.startsWith("http");
   const expiresLabel = promo.expiresAt
     ? `Expires ${new Date(promo.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
@@ -44,12 +47,12 @@ function PromotionCard({ promo }: { promo: {
   return (
     <Card id={slug} className="overflow-hidden border-0 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors group">
       <div className="relative h-48 overflow-hidden">
-        <img
-          src={promo.imageUrl ?? FALLBACK_IMG}
+        <AppImage
+          src={imageSrc}
           alt={promo.title}
-          loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMG; }}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={() => setImageSrc(FALLBACK_IMG)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         {promo.discountLabel && (
@@ -134,11 +137,13 @@ export default function Promotions() {
             Fresh deals, loyalty rewards, and app-exclusive offers — updated regularly.
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
-            <img
+            <AppImage
               src={LOGO_URL}
               alt="Saigon Express"
-              loading="eager"
-              className="h-10 object-contain opacity-80"
+              width={180}
+              height={40}
+              priority
+              className="h-10 w-auto object-contain opacity-80"
             />
           </div>
         </div>

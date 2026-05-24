@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import AppImage from "@/components/AppImage";
 
 interface LazyImageProps {
   src: string;
@@ -10,6 +11,7 @@ interface LazyImageProps {
   /** Aspect ratio wrapper class, e.g. "aspect-[4/3]" */
   wrapperClassName?: string;
   eager?: boolean;
+  sizes?: string;
 }
 
 /**
@@ -24,6 +26,7 @@ export default function LazyImage({
   className = "",
   wrapperClassName = "",
   eager = false,
+  sizes,
 }: LazyImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [inView, setInView] = useState(eager);
@@ -41,7 +44,7 @@ export default function LazyImage({
           observer.disconnect();
         }
       },
-      { rootMargin: "200px" } // start loading 200px before entering viewport
+      { rootMargin: "200px" }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -49,25 +52,23 @@ export default function LazyImage({
 
   return (
     <div ref={ref} className={`relative overflow-hidden bg-gray-100 ${wrapperClassName}`}>
-      {/* Skeleton shimmer — shown until image loads */}
       {!loaded && !error && (
         <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-[shimmer_1.4s_infinite]" />
       )}
 
-      {/* Actual image — only rendered once in viewport */}
       {inView && !error && (
-        <img
+        <AppImage
           src={src}
           alt={alt}
-          loading={eager ? "eager" : "lazy"}
-          decoding="async"
+          fill
+          priority={eager}
+          sizes={sizes}
           onLoad={() => setLoaded(true)}
           onError={() => setError(true)}
-          className={`w-full h-full object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"} ${className}`}
+          className={`transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"} ${className}`}
         />
       )}
 
-      {/* Error fallback */}
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <span className="text-gray-400 text-xs">No image</span>

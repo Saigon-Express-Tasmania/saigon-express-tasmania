@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState, useRef, useEffect } from "react";
 import Link from "@/components/link";
 import { ChevronRight, MapPin, Users, Heart, Star, Award, Leaf, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
@@ -185,10 +186,11 @@ function InteractiveTimeline() {
                 i === activeIdx ? "opacity-100" : "opacity-0"
               }`}
             >
-              <img
+              <AppImage
                 src={item.image}
                 alt={item.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               {/* Stat badge */}
@@ -295,10 +297,11 @@ function InteractiveTimeline() {
               i === activeIdx ? "ring-2 ring-red-600 ring-offset-2" : ""
             }`}
           >
-            <img
+            <AppImage
               src={item.image}
               alt={item.title}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -376,11 +379,12 @@ export default function OurStory() {
               </p>
             </div>
             <div className="relative">
-              <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl">
-                <img
+              <div className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl">
+                <AppImage
                   src="/manus-storage/dr_tien_ho_portrait_4d605389.png"
                   alt="Dr. Tien Ho, Founder of Saigon Express Tasmania"
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
               <div className="absolute -bottom-6 -left-6 bg-red-600 text-white rounded-xl p-5 shadow-xl">
@@ -433,7 +437,7 @@ export default function OurStory() {
             {DISHES.map((dish) => (
               <div key={dish.name} className="group rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="aspect-video overflow-hidden">
-                  <img src={dish.image} alt={dish.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <AppImage src={dish.image} alt={dish.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{dish.name}</h3>
@@ -484,13 +488,13 @@ export default function OurStory() {
           <div className="grid lg:grid-cols-2 gap-16 items-center max-w-5xl mx-auto">
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl overflow-hidden aspect-square shadow-md">
-                <img src="/manus-storage/saigo_express__Vietnamese_Roasted_pork_baguette_Native_81be063f.jpg" alt="Bánh mì" className="w-full h-full object-cover" />
+                <AppImage src="/manus-storage/saigo_express__Vietnamese_Roasted_pork_baguette_Native_81be063f.jpg" alt="Bánh mì" fill className="object-cover" />
               </div>
               <div className="rounded-2xl overflow-hidden aspect-square shadow-md mt-8">
-                <img src="/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_d710816c.png" alt="Rice paper rolls" className="w-full h-full object-cover" />
+                <AppImage src="/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_d710816c.png" alt="Rice paper rolls" fill className="object-cover" />
               </div>
               <div className="rounded-2xl overflow-hidden aspect-square shadow-md col-span-2">
-                <img src="/manus-storage/_Q7A0084addedcontrastandsat_4c8d6b63.jpg" alt="Community" className="w-full h-full object-cover" />
+                <AppImage src="/manus-storage/_Q7A0084addedcontrastandsat_4c8d6b63.jpg" alt="Community" fill className="object-cover" />
               </div>
             </div>
             <div>

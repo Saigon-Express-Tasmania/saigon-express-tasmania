@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Share2, Facebook, Twitter, MessageCircle, Link2, Check } from "lucide-react";
+import { FacebookIcon, XIcon } from "@/components/icons/brand-icons";
+import { Share2, MessageCircle, Link2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -33,13 +34,13 @@ export function ShareDealButton({ title, description, url }: ShareDealButtonProp
   const channels = [
     {
       label: "Facebook",
-      icon: <Facebook className="w-4 h-4" />,
+      icon: <FacebookIcon className="w-4 h-4" />,
       color: "hover:bg-blue-600/20 hover:text-blue-400",
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
     },
     {
       label: "X (Twitter)",
-      icon: <Twitter className="w-4 h-4" />,
+      icon: <XIcon className="w-4 h-4" />,
       color: "hover:bg-sky-500/20 hover:text-sky-400",
       href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
     },

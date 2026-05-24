@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState, useCallback } from "react";
 import Link from "@/components/link";
 import { MapPin, Clock, Phone, ExternalLink, ArrowLeft, ChevronRight } from "lucide-react";
@@ -158,7 +159,7 @@ export default function StoreFinder() {
           <Link href="/" className="flex items-center gap-1.5 text-brand-dark/50 hover:text-brand-red transition-colors text-sm font-medium">
             <ArrowLeft size={15} /> Back to Home
           </Link>
-          <Link href="/"><img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain" /></Link>
+          <Link href="/"><AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" /></Link>
           <Link href="/menu">
             <span className="bg-brand-red text-white text-sm font-semibold px-4 py-2 hover:bg-brand-red/90 transition-colors cursor-pointer">
               Order Online

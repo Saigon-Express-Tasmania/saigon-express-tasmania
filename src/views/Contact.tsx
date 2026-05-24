@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import Link from "@/components/link";
 import { ArrowLeft, Phone, Mail, MapPin, Clock, Send, CheckCircle } from "lucide-react";
@@ -74,7 +75,7 @@ export default function Contact() {
             <ArrowLeft size={15} /> Back to Home
           </Link>
           <Link href="/">
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" />
           </Link>
           <Link href="/menu">
             <Button className="bg-brand-red hover:bg-brand-red/90 text-white text-sm font-semibold px-4 py-2">

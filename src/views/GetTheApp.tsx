@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { motion } from "framer-motion";
 import Link from "@/components/link";
 import { Smartphone, Zap, Star, MapPin, Share2, Copy, Check } from "lucide-react";
@@ -113,7 +114,7 @@ export default function GetTheApp() {
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" />
           </Link>
           <div className="hidden md:flex items-center gap-6">
             {NAV_LINKS.map(l => (
@@ -130,7 +131,7 @@ export default function GetTheApp() {
       <section className="py-20 text-center" style={{ background: "oklch(13% 0.008 30)" }}>
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-16 w-auto object-contain mx-auto mb-6" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={220} height={64} priority className="h-16 w-auto object-contain mx-auto mb-6" />
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/20 text-xs font-semibold text-white/60 mb-6">
               <Smartphone className="w-3.5 h-3.5" /> Free · No App Store Needed
             </div>
@@ -242,7 +243,7 @@ export default function GetTheApp() {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
             <div className="md:col-span-2">
-              <img loading="lazy" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-12 w-auto object-contain mb-4" />
+              <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={200} height={48} className="h-12 w-auto object-contain mb-4" />
               <p className="text-white/45 text-sm leading-relaxed max-w-xs">Tasmania's most loved Vietnamese food. Fresh bánh mì, pho, and catering across 8 locations.</p>
               <div className="mt-4 space-y-1">
                 <div className="text-white/40 text-xs">info@saigonexpress.com.au</div>

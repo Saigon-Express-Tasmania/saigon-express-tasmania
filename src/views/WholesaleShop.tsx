@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { motion } from "framer-motion";
 import { ChevronRight, Search, MapPin, Lock, ShoppingCart, Package, CheckCircle, Mail } from "lucide-react";
 import Link from "@/components/link";
@@ -99,7 +100,7 @@ export default function WholesaleShop() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50 shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" />
           </Link>
           <nav className="hidden md:flex items-center gap-8">
             {NAV_LINKS.map(l => (
@@ -260,7 +261,7 @@ export default function WholesaleShop() {
                 className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                 <div className="relative h-44 overflow-hidden bg-muted">
                   {img ? (
-                    <img loading="lazy" src={img} alt={p.name as string} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <AppImage src={img} alt={p.name as string} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center group-hover:scale-105 transition-transform duration-500`}>
                       <span className="text-5xl opacity-80">{catIcon}</span>
@@ -362,7 +363,7 @@ export default function WholesaleShop() {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
             <div className="md:col-span-2">
-              <img loading="lazy" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-12 w-auto object-contain mb-4" />
+              <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={200} height={48} className="h-12 w-auto object-contain mb-4" />
               <p className="text-white/45 text-sm leading-relaxed max-w-xs">
                 Tasmania's most loved Vietnamese food. Fresh bánh mì, spring rolls, and catering across 8 locations.
               </p>

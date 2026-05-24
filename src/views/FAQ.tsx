@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import Link from "@/components/link";
 import { ChevronDown, ChevronUp, MessageCircle, Phone, Mail, MapPin, Send, CheckCircle2 } from "lucide-react";
@@ -263,7 +264,7 @@ export default function FAQ() {
       <nav className="sticky top-0 z-50 bg-white border-b border-stone-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
           <Link href="/">
-            <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" />
           </Link>
           <div className="hidden md:flex items-center gap-7">
             {NAV_LINKS.map((l) => (
@@ -380,7 +381,7 @@ export default function FAQ() {
       <footer className="bg-[#111] text-white py-12 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
-            <img loading="lazy" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain mb-3" />
+            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} className="h-10 w-auto object-contain mb-3" />
             <p className="text-stone-500 text-sm">© {new Date().getFullYear()} TTH Enterprises Pty Ltd. ABN 60 650 289 991</p>
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-stone-400">

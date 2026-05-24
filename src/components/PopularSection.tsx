@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
 import { Star, Plus, Minus, ShoppingCart } from "lucide-react";
@@ -88,12 +89,7 @@ export default function PopularSection() {
               >
                 {/* Image */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                  <img
-                    loading="eager"
-                    src={item.imageUrl ?? CATEGORY_IMGS[item.category] ?? DEFAULT_IMG}
-                    alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+                  <AppImage src={item.imageUrl ?? CATEGORY_IMGS[item.category] ?? DEFAULT_IMG} alt={item.name} priority fill className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   {/* Popular badge */}
                   <div className="absolute top-2 left-2 z-10">
                     <span className="bg-brand-red text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 flex items-center gap-1 shadow-md">

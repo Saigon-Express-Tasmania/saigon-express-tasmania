@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useEffect, useRef, useState } from "react";
 import { X, Plus, ShoppingBag, Check } from "lucide-react";
 
@@ -111,10 +112,11 @@ export default function AddOnSuggestionModal({
               >
                 {/* Image with checkmark overlay during animation */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-gray-200">
-                  <img
+                  <AppImage
                     src={item.imageUrl ?? CATEGORY_IMGS[item.category] ?? DEFAULT_IMG}
                     alt={item.name}
-                    className={`w-full h-full object-cover transition-all duration-300 ${
+                    fill
+                    className={`object-cover transition-all duration-300 ${
                       isAnimating ? "brightness-75 scale-105" : ""
                     }`}
                   />

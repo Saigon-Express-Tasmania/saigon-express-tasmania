@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import Link from "@/components/link";
 import { useCart } from "@/contexts/CartContext";
@@ -30,7 +31,7 @@ export default function MainHeader() {
     <header className="sticky-header-scroll-shadow sticky top-0 z-50 bg-white">
       <div className="max-w-[1280px] mx-auto px-4 h-16 flex items-center justify-between gap-6">
         <Link href="/" className="flex-shrink-0">
-          <img loading="eager" src={LOGO_URL} alt="Saigon Express Tasmania" className="h-10 w-auto object-contain" />
+          <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-7">

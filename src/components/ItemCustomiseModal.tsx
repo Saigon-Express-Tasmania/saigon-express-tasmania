@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/AppImage";
 import React, { useState, useMemo } from "react";
 import { X, Plus, Minus, ChevronDown, ChevronUp, MessageSquare, Flame, Leaf, ShoppingCart } from "lucide-react";
 import { MenuItem } from "@/contexts/CartContext";
@@ -215,11 +216,7 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
         {/* Header */}
         <div className="flex items-start gap-3 p-4 border-b border-gray-100 bg-white sticky top-0 z-10">
           {item.imageUrl && (
-            <img
-              src={item.imageUrl}
-              alt={item.name}
-              className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
-            />
+            <AppImage src={item.imageUrl} alt={item.name} width={64} height={64} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
           )}
           <div className="flex-1 min-w-0">
             <h2 className="font-bold text-gray-900 text-lg leading-tight">{item.name}</h2>
