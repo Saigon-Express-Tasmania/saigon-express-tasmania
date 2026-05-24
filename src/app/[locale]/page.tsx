@@ -1,5 +1,9 @@
-import { HomePage } from "@/features/home/home-page";
+"use client";
 
-export default function Home() {
-  return <HomePage />;
+import { trpc } from "@/lib/trpc";
+import Home from "@/views/Home";
+
+export default function LocaleHomePage() {
+  const { data: menuItems } = trpc.public.menu.useQuery();
+  return <Home menuItems={menuItems ?? []} />;
 }
