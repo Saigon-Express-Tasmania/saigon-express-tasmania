@@ -12,6 +12,21 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          "**/node_modules/**",
+          "**/admin/**",
+          "**/scripts/**",
+          "**/supabase/**",
+          "**/refs/**",
+        ],
+      };
+    }
+    return config;
+  },
 };
 
 export default withNextIntl(nextConfig);
