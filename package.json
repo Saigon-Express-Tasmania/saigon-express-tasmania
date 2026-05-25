@@ -10,7 +10,9 @@
     "admin:dev": "npm exec -- vite admin",
     "admin:build": "npm exec -- tsc -b admin/tsconfig.json && npm exec -- vite build admin",
     "admin:lint": "eslint admin",
-    "admin:preview": "npm exec -- vite preview admin"
+    "admin:preview": "npm exec -- vite preview admin",
+    "supabase:push": "node scripts/push-supabase-migrations.mjs",
+    "generate:featured-reviews-seed": "node scripts/generate-featured-reviews-seed.mjs"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans": "^5.2.10",

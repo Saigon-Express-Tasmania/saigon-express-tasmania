@@ -6,6 +6,7 @@ import MainHeader, { PORTAL_LINKS } from "@/components/MainHeader";
 import Newsletter from "@/components/Newsletter";
 import ReviewsSection from "@/components/ReviewsSection";
 import type { MenuItem } from "@/contexts/CartContext";
+import type { FeaturedReview } from "@/types";
 import { LOGO_URL } from "@/lib/site-images";
 import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { ChevronRight, MapPin, ShoppingCart } from "lucide-react";
@@ -45,9 +46,10 @@ const NEWS = [
 
 type HomeProps = {
   menuItems: MenuItem[];
+  featuredReviews: FeaturedReview[];
 };
 
-export default function Home({ menuItems }: HomeProps) {
+export default function Home({ menuItems, featuredReviews }: HomeProps) {
   const bestSellers = menuItems
     .filter((m) => Boolean(m.isAvailable) && Boolean(m.isPopular))
     .slice(0, 4);
@@ -397,7 +399,7 @@ export default function Home({ menuItems }: HomeProps) {
       <GetApp />
 
       {/* ── CUSTOMER REVIEWS ────────────────────────────────────────────── */}
-      <ReviewsSection />
+      <ReviewsSection reviews={featuredReviews} />
 
       {/* ── FOOTER ──────────────────────────────────────────────────────── */}
       <footer className="bg-brand-dark text-white/70">

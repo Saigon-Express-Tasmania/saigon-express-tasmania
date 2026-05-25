@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  FEATURED_REVIEWS,
   MENU_ITEMS,
   PROMOTIONS,
   STORE_LOCATIONS,
@@ -71,8 +70,6 @@ function resolveQuery(path: string[], input?: unknown): unknown {
       return MENU_ITEMS;
     case "public.popularItems":
       return MENU_ITEMS.filter((item) => item.isPopular);
-    case "public.featuredReviews":
-      return FEATURED_REVIEWS;
     case "public.wholesaleProducts": {
       const category = (input as { category?: string } | undefined)?.category;
       if (category && category !== "All") {

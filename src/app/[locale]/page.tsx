@@ -1,9 +1,7 @@
-"use client";
+import HomePageClient from "@/components/HomePageClient";
+import { getFeaturedReviews } from "@/lib/supabase/featured-reviews";
 
-import { trpc } from "@/lib/trpc";
-import Home from "@/views/Home";
-
-export default function LocaleHomePage() {
-  const { data: menuItems } = trpc.public.menu.useQuery();
-  return <Home menuItems={menuItems ?? []} />;
+export default async function LocaleHomePage() {
+  const featuredReviews = await getFeaturedReviews();
+  return <HomePageClient featuredReviews={featuredReviews} />;
 }

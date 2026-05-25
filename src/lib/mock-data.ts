@@ -158,36 +158,6 @@ export const MENU_ITEMS = [
   },
 ];
 
-export const FEATURED_REVIEWS = [
-  {
-    id: 1,
-    reviewerName: "Sarah M.",
-    rating: 5,
-    reviewText: "Best pho in Tasmania! The broth is rich and the herbs are always fresh.",
-    location: "Hobart, TAS",
-    isFeatured: true,
-    createdAt: new Date("2024-11-12"),
-  },
-  {
-    id: 2,
-    reviewerName: "James T.",
-    rating: 5,
-    reviewText: "Amazing bánh mì — crispy bread, generous fillings, and great value.",
-    location: "Sandy Bay, TAS",
-    isFeatured: true,
-    createdAt: new Date("2024-10-05"),
-  },
-  {
-    id: 3,
-    reviewerName: "Linh N.",
-    rating: 5,
-    reviewText: "Tastes just like home. The rice paper rolls are my go-to lunch every week.",
-    location: "Kingston, TAS",
-    isFeatured: true,
-    createdAt: new Date("2025-01-20"),
-  },
-];
-
 export const PROMOTIONS = [
   {
     id: 1,

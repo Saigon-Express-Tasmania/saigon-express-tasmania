@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { trpc } from "@/lib/trpc";
+import type { FeaturedReview } from "@/types";
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
@@ -97,8 +97,11 @@ function ReviewCard({ reviewerName, rating, reviewText, location }: ReviewCardPr
 }
 
 // ─── Reviews Section ──────────────────────────────────────────────────────────
-export default function ReviewsSection() {
-  const { data: reviews, isLoading } = trpc.public.featuredReviews.useQuery();
+type ReviewsSectionProps = {
+  reviews: FeaturedReview[];
+};
+
+export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const posRef = useRef<number>(0);
@@ -158,16 +161,7 @@ export default function ReviewsSection() {
       </div>
 
       {/* Scrolling carousel */}
-      {isLoading ? (
-        <div className="flex gap-6 px-8 overflow-hidden">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex-shrink-0 w-80 h-52 bg-stone-900 rounded-2xl animate-pulse mx-3"
-            />
-          ))}
-        </div>
-      ) : displayReviews.length > 0 ? (
+      {displayReviews.length > 0 ? (
         <div
           className="relative"
           onMouseEnter={() => setIsPaused(true)}
