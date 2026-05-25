@@ -3,6 +3,7 @@ import {
   Home,
   Languages,
   Settings,
+  Star,
   type LucideIcon
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -23,6 +24,11 @@ const navItems: NavItem[] = [
     title: "Localization",
     href: "/localization",
     icon: Languages,
+  },
+  {
+    title: "Featured Reviews",
+    href: "/featured-reviews",
+    icon: Star,
   },
   {
     title: "Settings",

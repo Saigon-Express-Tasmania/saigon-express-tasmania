@@ -8,6 +8,7 @@ import {
   Routes,
 } from 'react-router-dom';
 import { useSupabaseAuth } from './hooks/useSupabaseAuth';
+import { FeaturedReviewsPage } from './pages/FeaturedReviewsPage';
 import { LocalizationPage } from './pages/LocalizationPage';
 import { UserProfile } from './pages/UserProfile';
 
@@ -32,6 +33,7 @@ export function App() {
           <>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/localization" element={<LocalizationPage />} />
+            <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
