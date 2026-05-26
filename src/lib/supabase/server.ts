@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { FeaturedReviewRow, MenuItemRow } from "@/types";
+import type { FeaturedReviewRow, MenuItemRow, StoreLocationRow, PromotionRow } from "@/types";
 
 let serverClient: SupabaseClient | null = null;
 
@@ -60,4 +60,39 @@ export async function fetchMenuItemRows(): Promise<MenuItemRow[]> {
   }
 
   return (data ?? []) as MenuItemRow[];
+}
+
+export async function fetchStoreLocationRows(): Promise<StoreLocationRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("store_locations")
+    .select(
+      "id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url",
+    )
+    .eq("is_active", true)
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`store_locations: ${error.message}`);
+  }
+
+  return (data ?? []) as StoreLocationRow[];
+}
+
+export async function fetchPromotionRows(): Promise<PromotionRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("promotions")
+    .select(
+      "id, title, description, badge, discount_label, image_url, cta_label, cta_href, starts_at, expires_at, is_active, sort_order, created_at, updated_at",
+    )
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`promotions: ${error.message}`);
+  }
+
+  return (data ?? []) as PromotionRow[];
 }

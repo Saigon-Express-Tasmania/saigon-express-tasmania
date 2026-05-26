@@ -2,22 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { X, MapPin, Search, ChevronRight } from "lucide-react";
-import { trpc } from "@/lib/trpc";
 import { useCart } from "@/contexts/CartContext";
-
-export type StoreLocation = {
-  id: number;
-  name: string;
-  address: string;
-  suburb: string | null;
-  hours: string | null;
-  phone: string | null;
-};
+import type { StoreLocation } from "@/types";
 
 interface PickLocationModalProps {
   open: boolean;
   onClose: () => void;
   onSelect: (store: StoreLocation) => void;
+  stores: StoreLocation[];
 }
 
 /** Parse hours JSON and return today's hours string */
@@ -48,7 +40,8 @@ function isOpenNow(hoursJson: string | null): boolean {
 
     const parseTime = (t: string) => {
       const [time, period] = t.trim().split(/\s+/);
-      let [h, m] = time.split(":").map(Number);
+      const [h0, m] = time.split(":").map(Number);
+      let h = h0;
       if (period?.toUpperCase() === "PM" && h !== 12) h += 12;
       if (period?.toUpperCase() === "AM" && h === 12) h = 0;
       return h * 60 + m;
@@ -62,25 +55,20 @@ function isOpenNow(hoursJson: string | null): boolean {
   }
 }
 
-export default function PickLocationModal({ open, onClose, onSelect }: PickLocationModalProps) {
+export default function PickLocationModal({ open, onClose, onSelect, stores }: PickLocationModalProps) {
   const [search, setSearch] = useState("");
   const { cartCount, cartTotal } = useCart();
 
-  const storesQuery = trpc.public.storeLocations.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const stores = useMemo(() => {
-    const all = (storesQuery.data ?? []) as StoreLocation[];
-    if (!search.trim()) return all;
+  const storesFiltered = useMemo(() => {
+    if (!search.trim()) return stores;
     const q = search.toLowerCase();
-    return all.filter(
+    return stores.filter(
       s =>
         s.name.toLowerCase().includes(q) ||
         s.address.toLowerCase().includes(q) ||
-        (s.suburb ?? "").toLowerCase().includes(q)
+        (s.suburb ?? "").toLowerCase().includes(q),
     );
-  }, [storesQuery.data, search]);
+  }, [stores, search]);
 
   if (!open) return null;
 
@@ -124,19 +112,13 @@ export default function PickLocationModal({ open, onClose, onSelect }: PickLocat
 
         {/* Store list */}
         <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-2">
-          {storesQuery.isLoading ? (
-            <div className="space-y-2 pt-2">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
-              ))}
-            </div>
-          ) : stores.length === 0 ? (
+          {storesFiltered.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
               <MapPin size={32} className="mx-auto mb-2 opacity-30" />
               <p className="text-sm">No locations match your search</p>
             </div>
           ) : (
-            stores.map(store => {
+            storesFiltered.map(store => {
               const open = isOpenNow(store.hours);
               const todayHours = getTodayHours(store.hours);
               return (

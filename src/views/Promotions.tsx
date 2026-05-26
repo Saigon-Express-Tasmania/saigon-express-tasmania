@@ -1,32 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import type { ComponentProps } from "react";
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
-import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tag, Clock, ChevronRight, Sparkles } from "lucide-react";
 import { ShareDealButton } from "@/components/ShareDealButton";
 import { SITE_ORIGIN } from "@/lib/site-origin";
+import type { Promotion } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
 const FALLBACK_IMG = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
 
-function PromotionCard({ promo }: { promo: {
-  id: number;
-  title: string;
-  description: string | null;
-  badge: string | null;
-  discountLabel: string | null;
-  imageUrl: string | null;
-  ctaLabel: string | null;
-  ctaHref: string | null;
-  expiresAt: Date | null;
-} }) {
+function PromotionCard({ promo }: { promo: Promotion }) {
   const [imageSrc, setImageSrc] = useState(promo.imageUrl ?? FALLBACK_IMG);
   const isExternal = promo.ctaHref?.startsWith("http");
   const expiresLabel = promo.expiresAt
@@ -97,22 +85,7 @@ function PromotionCard({ promo }: { promo: {
   );
 }
 
-function PromotionSkeleton() {
-  return (
-    <Card className="overflow-hidden border-0 bg-white/5">
-      <Skeleton className="h-48 w-full rounded-none bg-white/10" />
-      <CardContent className="p-5 space-y-3">
-        <Skeleton className="h-5 w-3/4 bg-white/10" />
-        <Skeleton className="h-4 w-full bg-white/10" />
-        <Skeleton className="h-4 w-2/3 bg-white/10" />
-        <Skeleton className="h-9 w-28 bg-white/10 mt-2" />
-      </CardContent>
-    </Card>
-  );
-}
-
-export default function Promotions() {
-  const { data: promos, isLoading, isError } = trpc.promotions.list.useQuery();
+export default function Promotions({ promotions }: { promotions: Promotion[] }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#6b1010] via-[#4a0c0c] to-[#2d0808]">
@@ -151,19 +124,7 @@ export default function Promotions() {
 
       {/* Promotions grid */}
       <section className="max-w-6xl mx-auto px-4 pb-20">
-        {isError && (
-          <div className="text-center py-16 text-white/60">
-            <p className="text-lg">Unable to load promotions right now. Please try again later.</p>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => <PromotionSkeleton key={i} />)}
-          </div>
-        )}
-
-        {!isLoading && !isError && promos && promos.length === 0 && (
+        {promotions.length === 0 && (
           <div className="text-center py-20 text-white/60">
             <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-40" />
             <p className="text-xl font-semibold text-white/80">No active promotions right now</p>
@@ -176,9 +137,9 @@ export default function Promotions() {
           </div>
         )}
 
-        {!isLoading && !isError && promos && promos.length > 0 && (
+        {promotions.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {promos.map((promo: ComponentProps<typeof PromotionCard>["promo"]) => (
+            {promotions.map((promo) => (
               <PromotionCard key={promo.id} promo={promo} />
             ))}
           </div>

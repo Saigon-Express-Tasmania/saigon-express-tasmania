@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  PROMOTIONS,
-  STORE_LOCATIONS,
-  WHOLESALE_PRODUCTS,
-} from "./mock-data";
+import { WHOLESALE_PRODUCTS } from "./mock-data";
 
 type QueryResult<T> = {
   data: T;
@@ -63,8 +59,6 @@ function resolveQuery(path: string[], input?: unknown): unknown {
   const key = path.join(".");
 
   switch (key) {
-    case "public.storeLocations":
-      return STORE_LOCATIONS;
     case "public.wholesaleProducts": {
       const category = (input as { category?: string } | undefined)?.category;
       if (category && category !== "All") {
@@ -73,7 +67,7 @@ function resolveQuery(path: string[], input?: unknown): unknown {
       return WHOLESALE_PRODUCTS;
     }
     case "promotions.list":
-      return PROMOTIONS;
+      return [];
     case "public.chat":
       return { role: "assistant", content: "Thanks for your message! Our team will be in touch soon." };
     default:

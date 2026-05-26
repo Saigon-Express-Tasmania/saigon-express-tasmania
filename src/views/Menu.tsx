@@ -10,6 +10,7 @@ import { ItemCustomiseModal, type ItemCustomisation } from "@/components/ItemCus
 import { useCart, type MenuItem } from "@/contexts/CartContext";
 import PickLocationModal from "@/components/PickLocationModal";
 import LazyImage from "@/components/LazyImage";
+import type { StoreLocation } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
@@ -61,9 +62,10 @@ function getSuggestions(item: MenuItem, allItems: MenuItem[]): SuggestedItem[] {
 
 type MenuProps = {
   menuItems: MenuItem[];
+  storeLocations: StoreLocation[];
 };
 
-export default function Menu({ menuItems }: MenuProps) {
+export default function Menu({ menuItems, storeLocations }: MenuProps) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [addonTrigger, setAddonTrigger] = useState<{
@@ -332,6 +334,7 @@ export default function Menu({ menuItems }: MenuProps) {
       <PickLocationModal
         open={pickLocationOpen}
         onClose={() => setPickLocationOpen(false)}
+        stores={storeLocations}
         onSelect={(store) => {
           setPickLocationOpen(false);
           // Navigate to checkout with pre-selected store

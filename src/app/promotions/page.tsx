@@ -1,4 +1,7 @@
-import { createPage } from "@/lib/create-page";
 import Promotions from "@/views/Promotions";
+import { getPromotions } from "@/lib/supabase/promotions";
 
-export default createPage(Promotions);
+export default async function PromotionsPage() {
+  const promotions = await getPromotions();
+  return <Promotions promotions={promotions} />;
+}

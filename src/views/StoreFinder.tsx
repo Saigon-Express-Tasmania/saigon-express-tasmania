@@ -5,10 +5,7 @@ import { useState, useCallback } from "react";
 import Link from "@/components/link";
 import { MapPin, Clock, Phone, ExternalLink, ArrowLeft, ChevronRight } from "lucide-react";
 import { MapView } from "@/components/Map";
-import { trpc } from "@/lib/trpc";
-import { STORE_LOCATIONS } from "@/lib/mock-data";
-
-type StoreLocation = (typeof STORE_LOCATIONS)[number];
+import type { StoreLocation } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
 
@@ -32,7 +29,8 @@ function isOpenNow(hoursJson: string | null | undefined): boolean {
     if (!match) return false;
     const parse = (t: string) => {
       const [time, period] = t.trim().split(/\s+/);
-      let [h, m] = time.split(":").map(Number);
+      const [h0, m] = time.split(":").map(Number);
+      let h = h0;
       if (period.toUpperCase() === "PM" && h !== 12) h += 12;
       if (period.toUpperCase() === "AM" && h === 12) h = 0;
       return h * 60 + m;
@@ -45,14 +43,15 @@ function isOpenNow(hoursJson: string | null | undefined): boolean {
   }
 }
 
-export default function StoreFinder() {
-  const { data: stores = [], isLoading } = trpc.public.storeLocations.useQuery();
+type StoreFinderProps = {
+  stores: StoreLocation[];
+};
+
+export default function StoreFinder({ stores }: StoreFinderProps) {
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [markersAdded, setMarkersAdded] = useState(false);
-
-  const selectedStore = stores.find((s: StoreLocation) => s.id === selectedId) ?? null;
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
     setMapInstance(map);
@@ -104,7 +103,7 @@ export default function StoreFinder() {
                  style="font-size:12px;color:#C41E3A;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">
                 Get Directions ↗
               </a>
-              ${(store as any).deliveryUrl ? `<a href="${(store as any).deliveryUrl}" target="_blank"
+              ${store.deliveryUrl ? `<a href="${store.deliveryUrl}" target="_blank"
                  style="font-size:11px;background:#C41E3A;color:#fff;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:4px;display:inline-block;">
                 🚗 Order Delivery
               </a>` : ''}
@@ -184,18 +183,10 @@ export default function StoreFinder() {
 
           {/* Store list */}
           <div className="lg:col-span-2 space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
-            {isLoading && (
-              <div className="space-y-2">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="p-4 bg-white border border-gray-200 animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                    <div className="h-3 bg-gray-100 rounded w-full mb-1" />
-                    <div className="h-3 bg-gray-100 rounded w-1/2" />
-                  </div>
-                ))}
-              </div>
-            )}
-            {stores.map((store: StoreLocation) => {
+            {stores.length === 0 ? (
+              <div className="p-6 bg-white border border-gray-200 rounded">No active store locations available.</div>
+            ) : (
+              stores.map((store: StoreLocation) => {
               const hours = formatHours(store.hours);
               const open = isOpenNow(store.hours);
               const isSelected = selectedId === store.id;
@@ -273,9 +264,9 @@ export default function StoreFinder() {
                         >
                           Get Directions <ExternalLink size={11} />
                         </a>
-                        {(store as any).deliveryUrl && (
+                        {store.deliveryUrl && (
                           <a
-                            href={(store as any).deliveryUrl}
+                            href={store.deliveryUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
@@ -294,7 +285,8 @@ export default function StoreFinder() {
                   )}
                 </div>
               );
-            })}
+              })
+            )}
           </div>
 
           {/* Map */}
@@ -309,8 +301,8 @@ export default function StoreFinder() {
       <div className="bg-brand-dark text-white py-8 mt-8">
         <div className="max-w-[1280px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
-            <p className="font-serif text-xl mb-1">Can't find a store near you?</p>
-            <p className="text-white/50 text-sm">We're expanding across Tasmania. Enquire about franchise opportunities.</p>
+            <p className="font-serif text-xl mb-1">Can&apos;t find a store near you?</p>
+            <p className="text-white/50 text-sm">We&apos;re expanding across Tasmania. Enquire about franchise opportunities.</p>
           </div>
           <Link href="/franchise">
             <span className="inline-flex items-center gap-2 bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors cursor-pointer">
