@@ -30,7 +30,7 @@ export default function Newsletter() {
             0416 036 016 (SMS only)
           </a>
         </li>
-        <li className="text-white/45 text-xs leading-relaxed">
+        <li className="text-white/60 text-xs leading-relaxed">
           Level 2, 86 Collins St
           <br />
           Hobart TAS 7000

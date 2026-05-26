@@ -1,15 +1,17 @@
 import AppImage from '@/components/AppImage';
-import GetApp from '@/components/GetApp';
 import LazyImage from '@/components/LazyImage';
 import Link from '@/components/link';
 import MainHeader, { PORTAL_LINKS } from '@/components/MainHeader';
-import Newsletter from '@/components/Newsletter';
-import ReviewsSection from '@/components/ReviewsSection';
+import dynamic from 'next/dynamic';
 import type { MenuItem } from '@/contexts/CartContext';
 import type { FeaturedReview } from '@/types';
 import { LOGO_URL } from '@/lib/site-images';
 import { FacebookIcon, InstagramIcon } from '@/components/icons/brand-icons';
 import { ChevronRight, MapPin, ShoppingCart } from 'lucide-react';
+
+const GetApp = dynamic(() => import('@/components/GetApp'));
+const Newsletter = dynamic(() => import('@/components/Newsletter'));
+const ReviewsSection = dynamic(() => import('@/components/ReviewsSection'));
 
 // ── Uploaded food photography ─────────────────────────────────────────────────
 const IMGS = {
@@ -129,7 +131,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
 
             <div className="relative z-10 h-full flex flex-col justify-end pb-16 px-6 md:px-12 lg:px-20 max-w-[1280px] mx-auto">
-               <span className="inline-block mb-4 text-xs font-bold tracking-[0.18em] uppercase text-white/80 bg-brand-red px-3 py-1.5 rounded-sm w-fit">
+               <span className="inline-block mb-4 text-xs font-bold tracking-[0.18em] uppercase text-white bg-brand-red px-3 py-1.5 rounded-sm w-fit">
                   MADE FRESH DAILY · TASMANIA
                </span>
                <h1 className="font-serif text-white text-5xl md:text-6xl lg:text-7xl leading-[1.05] max-w-2xl mb-5">
@@ -575,6 +577,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                            href="https://facebook.com"
                            target="_blank"
                            rel="noreferrer"
+                           aria-label="Facebook"
                            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
                         >
                            <FacebookIcon size={15} />
@@ -583,6 +586,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                            href="https://instagram.com"
                            target="_blank"
                            rel="noreferrer"
+                           aria-label="Instagram"
                            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
                         >
                            <InstagramIcon size={15} />
@@ -592,7 +596,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
 
                   {/* Quick links */}
                   <div>
-                     <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Quick Links</h4>
+                     <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Quick Links</h3>
                      <ul className="space-y-2.5 text-sm">
                         {[
                            { href: '/menu', label: 'Our Food' },
@@ -614,7 +618,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
 
                   {/* Portals */}
                   <div>
-                     <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Portals</h4>
+                     <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Portals</h3>
                      <ul className="space-y-2.5 text-sm">
                         {PORTAL_LINKS.map((p) => (
                            <li key={p.href}>
@@ -640,7 +644,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                </div>
 
                {/* Bottom bar */}
-               <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/35">
+               <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/60">
                   <p>
                      © {new Date().getFullYear()} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60
                      650 289 991
