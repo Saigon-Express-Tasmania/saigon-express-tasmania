@@ -2,8 +2,12 @@ import { cn } from "@/lib/utils";
 import {
   Home,
   Languages,
+  MapPin,
+  Megaphone,
+  Package,
   Settings,
   Star,
+  Utensils,
   type LucideIcon
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -24,6 +28,26 @@ const navItems: NavItem[] = [
     title: "Localization",
     href: "/localization",
     icon: Languages,
+  },
+  {
+    title: "Menu",
+    href: "/menu",
+    icon: Utensils,
+  },
+  {
+    title: "Promotions",
+    href: "/promotions",
+    icon: Megaphone,
+  },
+  {
+    title: "Store Locations",
+    href: "/store-locations",
+    icon: MapPin,
+  },
+  {
+    title: "Wholesale Products",
+    href: "/wholesale-products",
+    icon: Package,
   },
   {
     title: "Featured Reviews",

@@ -1,6 +1,10 @@
 import { Dashboard } from '@/pages/Dashboard';
 import { Settings } from '@/pages/Settings';
 import { SignIn } from '@/pages/SignIn';
+import { Menu } from '@/pages/Menu';
+import { Promotions } from '@/pages/Promotions';
+import { StoreLocations } from '@/pages/StoreLocations';
+import { WholesaleProducts } from '@/pages/WholesaleProducts';
 import {
   Navigate,
   Route,
@@ -33,6 +37,10 @@ export function App() {
           <>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/localization" element={<LocalizationPage />} />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/promotions" element={<Promotions />} />
+            <Route path="/store-locations" element={<StoreLocations />} />
+            <Route path="/wholesale-products" element={<WholesaleProducts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<UserProfile />} />
