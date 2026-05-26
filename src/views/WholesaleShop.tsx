@@ -2,10 +2,10 @@
 
 import AppImage from "@/components/AppImage";
 import { motion } from "framer-motion";
-import { ChevronRight, Search, MapPin, Lock, ShoppingCart, Package, CheckCircle, Mail } from "lucide-react";
+import { ChevronRight, Search, Lock, Package, CheckCircle, Mail } from "lucide-react";
 import Link from "@/components/link";
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import type { WholesaleProduct } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
@@ -22,8 +22,6 @@ const PORTAL_LINKS = [
   { href: "/portals/wholesale", label: "Wholesale Portal" },
   { href: "/portals/warehouse", label: "Warehouse Portal" },
 ];
-
-const PRODUCTS: never[] = [];
 
 const PRICING_TIERS = [
   { label: "Standard", min: "1–9 units", discount: "0%", color: "from-white/5 to-white/10" },
@@ -70,19 +68,21 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Pastry": "🥐",
 };
 
-export default function WholesaleShop() {
+export default function WholesaleShop({ products }: { products: WholesaleProduct[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [showPinModal, setShowPinModal] = useState(false);
-
-  const { data: dbProducts, isLoading: productsLoading } = trpc.public.wholesaleProducts.useQuery({ category: selectedCategory });
 
   const allCategories = ["All", "Dough", "Dried Foods", "Equipment", "Fresh Food", "Frozen Food", "Frozen Marinated Meat", "Packaging", "Sauce"];
 
-  const displayProducts = (dbProducts && dbProducts.length > 0 ? dbProducts : PRODUCTS).filter((p: { name: string; description?: string | null; desc?: string }) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    ((p.description ?? (p as { desc?: string }).desc) ?? "").toLowerCase().includes(search.toLowerCase())
+  const normalizedSearch = search.trim().toLowerCase();
+  const displayProducts = (selectedCategory === "All"
+    ? products
+    : products.filter((p) => p.category === selectedCategory)
+  ).filter(
+    (p) =>
+      p.name.toLowerCase().includes(normalizedSearch) ||
+      (p.description ?? "").toLowerCase().includes(normalizedSearch),
   );
 
   const filtered = displayProducts;
@@ -241,27 +241,27 @@ export default function WholesaleShop() {
 
           {/* Product grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map((product: Record<string, unknown>, i: number) => {
-              // Normalize display fields — handles both DB products and static fallback
-              const p = product as Record<string, unknown>;
-              const rawImg = (p.imageUrl as string) || (p.img as string);
-              const img = rawImg && rawImg.trim() !== '' ? rawImg : null;
-              const gradientClass = CATEGORY_COLORS[p.category as string] ?? "from-gray-800 to-gray-600";
-              const catIcon = CATEGORY_ICONS[p.category as string] ?? "📦";
-              const desc = (p.desc as string) ?? (p.description as string) ?? "";
-              const badge = (p.badge as string | null) ?? null;
-              const specs: [string, string][] = (p.specs as [string, string][]) ?? [
-                ["Unit", (p.unit as string) ?? ""],
-                ["Price (ex GST)", (p.unitPrice ?? p.unit_price ?? p.priceExGst) ? `$${Number(p.unitPrice ?? p.unit_price ?? p.priceExGst).toFixed(2)}` : "Members only"],
-                ...(p.minOrderQty ? [["Min Order", `${p.minOrderQty} units`] as [string, string]] : []),
+            {filtered.map((p, i) => {
+              const img = p.imageUrl && p.imageUrl.trim() !== "" ? p.imageUrl : null;
+              const gradientClass = CATEGORY_COLORS[p.category] ?? "from-gray-800 to-gray-600";
+              const catIcon = CATEGORY_ICONS[p.category] ?? "📦";
+              const desc = p.description ?? "";
+              const badge: string | null = null;
+              const specs: [string, string][] = [
+                ["Unit", p.unit],
+                [
+                  "Price (ex GST)",
+                  p.unitPrice ? `$${Number(p.unitPrice).toFixed(2)}` : "Members only",
+                ],
+                ...(p.minOrderQty ? ([["Min Order", `${p.minOrderQty} units`]] as [string, string][]) : []),
               ];
               return (
-              <motion.div key={p.id as number}
+              <motion.div key={p.id}
                 initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 4) * 0.07 }}
                 className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                 <div className="relative h-44 overflow-hidden bg-muted">
                   {img ? (
-                    <AppImage src={img} alt={p.name as string} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <AppImage src={img} alt={p.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center group-hover:scale-105 transition-transform duration-500`}>
                       <span className="text-5xl opacity-80">{catIcon}</span>
@@ -273,11 +273,11 @@ export default function WholesaleShop() {
                     </div>
                   )}
                   <div className="absolute top-3 right-3 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-black/60 text-white backdrop-blur-sm">
-                    {p.category as string}
+                    {p.category}
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-foreground text-sm mb-2 leading-snug">{p.name as string}</h3>
+                  <h3 className="font-semibold text-foreground text-sm mb-2 leading-snug">{p.name}</h3>
                   <p className="text-xs text-muted-foreground mb-3 leading-relaxed line-clamp-2">{desc}</p>
 
                   {/* Specs table */}

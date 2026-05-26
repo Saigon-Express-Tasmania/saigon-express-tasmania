@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { FeaturedReviewRow, MenuItemRow, StoreLocationRow, PromotionRow } from "@/types";
+import type { FeaturedReviewRow, MenuItemRow, StoreLocationRow, PromotionRow, WholesaleProductRow } from "@/types";
 
 let serverClient: SupabaseClient | null = null;
 
@@ -95,4 +95,22 @@ export async function fetchPromotionRows(): Promise<PromotionRow[]> {
   }
 
   return (data ?? []) as PromotionRow[];
+}
+
+export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("wholesale_products")
+    .select(
+      "id, name, sku, category, description, unit, unit_price, stock_qty, is_available, min_order_qty, image_url, created_at, updated_at",
+    )
+    .eq("is_available", true)
+    .order("category", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`wholesale_products: ${error.message}`);
+  }
+
+  return (data ?? []) as WholesaleProductRow[];
 }

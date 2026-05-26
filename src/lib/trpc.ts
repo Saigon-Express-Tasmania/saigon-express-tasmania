@@ -1,7 +1,5 @@
 "use client";
 
-import { WHOLESALE_PRODUCTS } from "./mock-data";
-
 type QueryResult<T> = {
   data: T;
   isLoading: false;
@@ -59,13 +57,6 @@ function resolveQuery(path: string[], input?: unknown): unknown {
   const key = path.join(".");
 
   switch (key) {
-    case "public.wholesaleProducts": {
-      const category = (input as { category?: string } | undefined)?.category;
-      if (category && category !== "All") {
-        return WHOLESALE_PRODUCTS.filter((p) => p.category === category);
-      }
-      return WHOLESALE_PRODUCTS;
-    }
     case "promotions.list":
       return [];
     case "public.chat":
