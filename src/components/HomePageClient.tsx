@@ -1,15 +1,15 @@
 "use client";
 
-import { trpc } from "@/lib/trpc";
 import type { FeaturedReview } from "@/types";
+import type { MenuItem } from "@/contexts/CartContext";
 import Home from "@/views/Home";
 
 type HomePageClientProps = {
   featuredReviews: FeaturedReview[];
+  menuItems: MenuItem[];
 };
 
-export default function HomePageClient({ featuredReviews }: HomePageClientProps) {
-  const { data: menuItems } = trpc.public.menu.useQuery();
+export default function HomePageClient({ featuredReviews, menuItems }: HomePageClientProps) {
   return (
     <Home menuItems={menuItems ?? []} featuredReviews={featuredReviews} />
   );

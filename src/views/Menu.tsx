@@ -3,7 +3,6 @@
 import AppImage from "@/components/AppImage";
 import { useState, useCallback } from "react";
 import Link from "@/components/link";
-import { trpc } from "@/lib/trpc";
 import { ShoppingCart, Plus, Minus, AlertCircle, MapPin, ChevronRight, ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import AddOnSuggestionModal, { type SuggestedItem } from "@/components/AddOnSuggestionModal";
@@ -60,7 +59,11 @@ function getSuggestions(item: MenuItem, allItems: MenuItem[]): SuggestedItem[] {
   return suggestions.slice(0, 3);
 }
 
-export default function Menu() {
+type MenuProps = {
+  menuItems: MenuItem[];
+};
+
+export default function Menu({ menuItems }: MenuProps) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [addonTrigger, setAddonTrigger] = useState<{
@@ -74,12 +77,10 @@ export default function Menu() {
   // ─── Shared cart ─────────────────────────────────────────────────────────
   const { cart, cartCount, cartTotal, setCartOpen, addToCart: ctxAddToCart, removeFromCart, updateQty } = useCart();
 
-  const { data: menuItems, isLoading } = trpc.public.menu.useQuery();
-
   // Build category sort order from sortOrder field on items (set in DB)
   const catOrderMap = new Map<string, number>();
   (menuItems ?? []).forEach((m: MenuItem) => {
-    if (!catOrderMap.has(m.category)) catOrderMap.set(m.category, (m as any).sortOrder ?? 99);
+    if (!catOrderMap.has(m.category)) catOrderMap.set(m.category, m.sortOrder ?? 99);
   });
   const rawCats = Array.from(new Set((menuItems ?? []).map((m: MenuItem) => m.category))) as string[];
   const sortedCats = [...rawCats].sort((a: string, b: string) => (catOrderMap.get(a) ?? 99) - (catOrderMap.get(b) ?? 99));
@@ -208,19 +209,7 @@ export default function Menu() {
             <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-dark/40 hover:text-brand-dark transition-colors text-xs">✕ Clear</button>
           )}
         </div>
-        {isLoading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white overflow-hidden animate-pulse">
-                <div className="aspect-[4/3] bg-gray-200" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded w-full" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="text-center py-24 text-brand-dark/40">
             <p className="font-serif text-2xl mb-2">{search ? `No results for "${search}"` : "No items in this category"}</p>
             <p className="text-sm">{search ? "Try a different keyword or clear the search." : "Try selecting a different category above."}</p>

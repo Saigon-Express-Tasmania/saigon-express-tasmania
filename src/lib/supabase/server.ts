@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { FeaturedReviewRow } from "@/types";
+import type { FeaturedReviewRow, MenuItemRow } from "@/types";
 
 let serverClient: SupabaseClient | null = null;
 
@@ -42,4 +42,22 @@ export async function fetchFeaturedReviewRows(): Promise<FeaturedReviewRow[]> {
   }
 
   return (data ?? []) as FeaturedReviewRow[];
+}
+
+export async function fetchMenuItemRows(): Promise<MenuItemRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("menu")
+    .select(
+      "id, name, description, price, wholesale_price, category, image_url, is_available, is_popular, sort_order, ingredients",
+    )
+    .eq("is_available", true)
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`menu: ${error.message}`);
+  }
+
+  return (data ?? []) as MenuItemRow[];
 }

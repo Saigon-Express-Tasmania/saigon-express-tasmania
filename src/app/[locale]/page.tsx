@@ -1,7 +1,9 @@
 import HomePageClient from "@/components/HomePageClient";
 import { getFeaturedReviews } from "@/lib/supabase/featured-reviews";
+import { getMenuItems } from "@/lib/supabase/menu";
 
 export default async function LocaleHomePage() {
   const featuredReviews = await getFeaturedReviews();
-  return <HomePageClient featuredReviews={featuredReviews} />;
+  const menuItems = await getMenuItems();
+  return <HomePageClient featuredReviews={featuredReviews} menuItems={menuItems} />;
 }

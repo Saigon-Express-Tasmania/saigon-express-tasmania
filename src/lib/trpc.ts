@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  MENU_ITEMS,
   PROMOTIONS,
   STORE_LOCATIONS,
   WHOLESALE_PRODUCTS,
@@ -66,10 +65,6 @@ function resolveQuery(path: string[], input?: unknown): unknown {
   switch (key) {
     case "public.storeLocations":
       return STORE_LOCATIONS;
-    case "public.menu":
-      return MENU_ITEMS;
-    case "public.popularItems":
-      return MENU_ITEMS.filter((item) => item.isPopular);
     case "public.wholesaleProducts": {
       const category = (input as { category?: string } | undefined)?.category;
       if (category && category !== "All") {

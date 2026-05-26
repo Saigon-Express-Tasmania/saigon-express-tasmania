@@ -12,7 +12,8 @@
     "admin:lint": "eslint admin",
     "admin:preview": "npm exec -- vite preview admin",
     "supabase:push": "node scripts/push-supabase-migrations.mjs",
-    "generate:featured-reviews-seed": "node scripts/generate-featured-reviews-seed.mjs"
+    "generate:featured-reviews-seed": "node scripts/generate-featured-reviews-seed.mjs",
+    "generate:menu-seed": "node scripts/generate-menu-seed.mjs"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans": "^5.2.10",
