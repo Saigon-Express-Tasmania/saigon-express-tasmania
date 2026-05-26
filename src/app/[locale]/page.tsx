@@ -3,7 +3,9 @@ import { getFeaturedReviews } from "@/lib/supabase/featured-reviews";
 import { getMenuItems } from "@/lib/supabase/menu";
 
 export default async function LocaleHomePage() {
-  const featuredReviews = await getFeaturedReviews();
-  const menuItems = await getMenuItems();
+  const [featuredReviews, menuItems] = await Promise.all([
+    getFeaturedReviews(),
+    getMenuItems(),
+  ]);
   return <HomePageClient featuredReviews={featuredReviews} menuItems={menuItems} />;
 }

@@ -1,10 +1,10 @@
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_SECONDS } from "@/config";
 import type { StoreLocation } from "@/types";
 import { mapStoreLocationRow } from "@/types";
 import { fetchStoreLocationRows } from "./server";
 
-const CACHE_TAG = "store-locations";
-const REVALIDATE_SECONDS = 60 * 60; // 1 hour
+const CACHE_TAG = CACHE_TAGS.storeLocations;
 
 async function loadStoreLocations(): Promise<StoreLocation[]> {
   const rows = await fetchStoreLocationRows();

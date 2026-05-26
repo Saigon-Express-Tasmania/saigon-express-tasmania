@@ -1,9 +1,9 @@
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_SECONDS } from "@/config";
 import { mapWholesaleProductRow, type WholesaleProduct } from "@/types";
 import { fetchWholesaleProductRows } from "./server";
 
-const CACHE_TAG = "wholesale-products";
-const REVALIDATE_SECONDS = 60 * 60; // 1 hour
+const CACHE_TAG = CACHE_TAGS.wholesaleProducts;
 
 async function loadWholesaleProducts(): Promise<WholesaleProduct[]> {
   const rows = await fetchWholesaleProductRows();

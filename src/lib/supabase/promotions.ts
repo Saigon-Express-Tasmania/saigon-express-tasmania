@@ -1,9 +1,9 @@
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_SECONDS } from "@/config";
 import { mapPromotionRow, type Promotion } from "@/types";
 import { fetchPromotionRows } from "./server";
 
-const CACHE_TAG = "promotions";
-const REVALIDATE_SECONDS = 60 * 60; // 1 hour
+const CACHE_TAG = CACHE_TAGS.promotions;
 
 async function loadPromotions(): Promise<Promotion[]> {
   const rows = await fetchPromotionRows();

@@ -1,10 +1,10 @@
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS, REVALIDATE_SECONDS } from "@/config";
 import { mapMenuItemRow } from "@/types";
 import type { MenuItem } from "@/contexts/CartContext";
 import { fetchMenuItemRows } from "./server";
 
-const CACHE_TAG = "menu";
-const REVALIDATE_SECONDS = 60 * 60; // 1 hour
+const CACHE_TAG = CACHE_TAGS.menu;
 
 async function loadMenuItems(): Promise<MenuItem[]> {
   const rows = await fetchMenuItemRows();
