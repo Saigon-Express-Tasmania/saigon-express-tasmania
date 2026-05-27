@@ -1,6 +1,8 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext } from "react";
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { toast } from "sonner";
 import type { ItemCustomisation } from "@/components/ItemCustomiseModal";
 
@@ -24,7 +26,54 @@ export type CartItem = {
   customisation?: ItemCustomisation;
 };
 
-// ─── Context shape ────────────────────────────────────────────────────────────
+// ─── Zustand store ────────────────────────────────────────────────────────────
+type CartStore = {
+  cart: CartItem[];
+  cartOpen: boolean;
+  setCartOpen: (open: boolean) => void;
+  addToCart: (item: MenuItem, customisation?: ItemCustomisation, qty?: number, silent?: boolean) => void;
+  removeFromCart: (cartLineId: string) => void;
+  updateQty: (cartLineId: string, delta: number) => void;
+  clearCart: () => void;
+};
+
+function generateLineId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const useCartStore = create<CartStore>()(
+  persist(
+    (set) => ({
+      cart: [],
+      cartOpen: false,
+      setCartOpen: (open) => set({ cartOpen: open }),
+      addToCart: (item, customisation, qty = 1, silent = false) => {
+        if (!item.isAvailable) return;
+        set((state) => ({
+          cart: [...state.cart, { cartLineId: generateLineId(), item, qty, customisation }],
+        }));
+        if (!silent) toast.success(`${item.name} added to cart`);
+      },
+      removeFromCart: (cartLineId) =>
+        set((state) => ({ cart: state.cart.filter((c) => c.cartLineId !== cartLineId) })),
+      updateQty: (cartLineId, delta) =>
+        set((state) => ({
+          cart: state.cart.map((c) =>
+            c.cartLineId === cartLineId ? { ...c, qty: Math.max(1, c.qty + delta) } : c
+          ),
+        })),
+      clearCart: () => set({ cart: [] }),
+    }),
+    {
+      name: "saigon-cart",
+      storage: createJSONStorage(() => localStorage),
+      // Only persist the cart items, not the open/close UI state
+      partialize: (state) => ({ cart: state.cart }),
+    }
+  )
+);
+
+// ─── Context shape (kept for backward compatibility) ──────────────────────────
 type CartContextValue = {
   cart: CartItem[];
   cartCount: number;
@@ -39,41 +88,9 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function generateLineId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
-
-  const addToCart = useCallback(
-    (item: MenuItem, customisation?: ItemCustomisation, qty = 1, silent = false) => {
-      if (!item.isAvailable) return;
-      setCart(prev => [
-        ...prev,
-        { cartLineId: generateLineId(), item, qty, customisation },
-      ]);
-      if (!silent) toast.success(`${item.name} added to cart`);
-    },
-    []
-  );
-
-  const removeFromCart = useCallback((cartLineId: string) => {
-    setCart(prev => prev.filter(c => c.cartLineId !== cartLineId));
-  }, []);
-
-  const updateQty = useCallback((cartLineId: string, delta: number) => {
-    setCart(prev =>
-      prev.map(c =>
-        c.cartLineId === cartLineId
-          ? { ...c, qty: Math.max(1, c.qty + delta) }
-          : c
-      )
-    );
-  }, []);
-
-  const clearCart = useCallback(() => setCart([]), []);
+  const { cart, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart } =
+    useCartStore();
 
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
   const cartTotal = cart.reduce((s, c) => {
@@ -82,7 +99,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, 0);
 
   return (
-    <CartContext.Provider value={{ cart, cartCount, cartTotal, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart }}>
+    <CartContext.Provider
+      value={{ cart, cartCount, cartTotal, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart }}
+    >
       {children}
     </CartContext.Provider>
   );
