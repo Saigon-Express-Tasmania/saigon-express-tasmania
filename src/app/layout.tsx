@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { getSiteContentSnapshot } from "@/lib/supabase/site-content";
 
 export const metadata: Metadata = {
   title: "Saigon Express Tasmania | Authentic Vietnamese Food",
@@ -8,11 +9,13 @@ export const metadata: Metadata = {
     "Fresh Vietnamese bánh mì, phở, bún bowls & catering across 8 Tasmania locations. Order online for pickup today.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const siteContent = await getSiteContentSnapshot();
+
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>        
@@ -30,7 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-background text-foreground">
-        <Providers>{children}</Providers>
+        <Providers siteContent={siteContent}>{children}</Providers>
       </body>
     </html>
   );

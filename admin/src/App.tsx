@@ -1,5 +1,5 @@
 import { Dashboard } from '@/pages/Dashboard';
-import { Settings } from '@/pages/Settings';
+import { Settings } from '@/pages/Settings/index';
 import { SignIn } from '@/pages/SignIn';
 import { Menu } from '@/pages/Menu';
 import { Promotions } from '@/pages/Promotions';

@@ -15,7 +15,6 @@ import {
   STORAGE_BUCKET,
 } from '@/constants';
 import type { LanguageKey } from '@/types';
-import { MasterDataContext } from '@/contexts/MasterDataContext';
 import { usePageState } from '@/hooks/usePageState';
 import {
   mergeColumnWidths,
@@ -26,16 +25,13 @@ import type { LocalizationTranslationType } from '@/types/Localization';
 import Handsontable from 'handsontable';
 import {
   AlertCircle,
-  ArrowUpWideNarrow,
   Loader2,
   Plus,
   Save,
 } from 'lucide-react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-function makeFilePath(version: number) {
-  return `${LOCALIZATION_FILE_NAME}-${version}.json`;
-}
+const LOCALIZATION_FILE_PATH = `${LOCALIZATION_FILE_NAME}.json`;
 
 const LOCALIZATION_DEFAULT_COLUMN_WIDTHS: readonly number[] = [
   80,
@@ -82,11 +78,6 @@ interface LocalizationTableUiState {
 export function LocalizationPage() {
   const hotTableRef = useRef(null);
   const hotInstanceRef = useRef<any>(null);
-  const {
-    manifest,
-    refetch: refetchManifest,
-    updateManifest,
-  } = useContext(MasterDataContext);
 
   const [translations, setTranslations] = useState<
     LocalizationTranslationType[]
@@ -100,31 +91,19 @@ export function LocalizationPage() {
     {},
   );
 
-  // Load translations when manifest changes
+  // Load translations on mount
   useEffect(() => {
-    if (manifest) {
-      loadTranslations();
-    } else {
-      setLoading(true);
-    }
-  }, [manifest]);
+    void loadTranslations();
+  }, []);
 
   const loadTranslations = async () => {
     try {
-      if (!manifest) {
-        setLoading(false);
-        setError(null);
-        return;
-      }
-
       setLoading(true);
       setError(null);
-      const version = manifest.localization.version || 1;
-      const fileName = makeFilePath(version);
 
       const { data, error: downloadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .download(fileName);
+        .download(LOCALIZATION_FILE_PATH);
 
       if (
         downloadError &&
@@ -165,60 +144,22 @@ export function LocalizationPage() {
     return data.map((row: unknown[]) => rowToTranslation(row));
   };
 
-  const versionUpPoems = async () => {
-    try {
-      if (!manifest) return;
-
-      setLoading(true);
-
-      const currentTranslations = getTranslationsFromTable();
-
-      // Update manifest
-      const updatedManifest = {
-        ...manifest,
-        localization: {
-          lastUpdated: new Date().toISOString(),
-          version: (manifest.localization.version || 1) + 1,
-        },
-      };
-
-      const version = updatedManifest.localization.version || 1;
-      const fileName = makeFilePath(version);
-
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(fileName, JSON.stringify(currentTranslations, null, 2), {
-          upsert: true,
-          contentType: 'application/json',
-        });
-
-      if (uploadError) throw uploadError;
-
-      updateManifest(updatedManifest);
-    } catch (err: any) {
-      setError(`Failed to save translations: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const saveTranslations = async () => {
     try {
-      if (!manifest) return;
-
       setLoading(true);
 
       const currentTranslations = getTranslationsFromTable();
 
-      const version = manifest.localization.version || 1;
-      const fileName = makeFilePath(version);
-
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(fileName, JSON.stringify(currentTranslations, null, 2), {
+        .upload(
+          LOCALIZATION_FILE_PATH,
+          JSON.stringify(currentTranslations, null, 2),
+          {
           upsert: true,
           contentType: 'application/json',
-        });
+          },
+        );
 
       if (uploadError) throw uploadError;
     } catch (err: any) {
@@ -257,8 +198,6 @@ export function LocalizationPage() {
 
   // Initialize Handsontable on mount
   useEffect(() => {
-    refetchManifest();
-
     if (!hotTableRef.current) return;
 
     const container = hotTableRef.current as HTMLElement;
@@ -337,24 +276,10 @@ export function LocalizationPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle></CardTitle>
-                <CardDescription>
-                  Version: {manifest?.localization.version || 1}
-                </CardDescription>
+                <CardDescription>`localization.json`</CardDescription>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Button onClick={versionUpPoems} disabled={loading} size="sm">
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      </>
-                    ) : (
-                      <>
-                        <ArrowUpWideNarrow className="mr-2 h-4 w-4" />
-                      </>
-                    )}
-                    Version Up
-                  </Button>
                   <Button
                     onClick={addRow}
                     disabled={loading}

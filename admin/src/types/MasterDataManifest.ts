@@ -3,4 +3,8 @@ export interface MasterDataManifest {
     lastUpdated: string;
     version: number;
   };
+  settings: {
+    lastUpdated: string;
+    version: number;
+  };
 }

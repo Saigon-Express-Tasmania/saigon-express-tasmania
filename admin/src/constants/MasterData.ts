@@ -5,4 +5,8 @@ export const DEFAULT_MASTER_DATA_MANIFEST: MasterDataManifest = {
     lastUpdated: new Date().toISOString(),
     version: 0,
   },
+  settings: {
+    lastUpdated: new Date().toISOString(),
+    version: 0,
+  },
 };

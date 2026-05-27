@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { CACHE_TAGS, REVALIDATE_SECONDS } from "@/config";
+import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapPromotionRow, type Promotion } from "@/types";
 import { fetchPromotionRows } from "./server";
 
@@ -14,7 +14,7 @@ async function loadPromotions(): Promise<Promotion[]> {
  * Promotions for the public site, cached for at least one hour.
  */
 export const getPromotions = unstable_cache(loadPromotions, [CACHE_TAG], {
-  revalidate: REVALIDATE_SECONDS,
+  revalidate: SHORT_REVALIDATE_SECONDS,
   tags: [CACHE_TAG],
 });
 

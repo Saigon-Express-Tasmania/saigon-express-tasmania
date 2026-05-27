@@ -6,18 +6,27 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import { FloatingWidgets } from "@/components/FloatingWidgets";
+import { SiteContentProvider } from "@/contexts/SiteContentContext";
+import type { SiteContentSnapshot } from "@/types";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  siteContent: SiteContentSnapshot;
+}
+
+export function Providers({ children, siteContent }: ProvidersProps) {
   return (
-    <ThemeProvider defaultTheme="light">
-      <CartProvider>
-        <TooltipProvider>
-          {children}
-          <CartDrawer />
-          <FloatingWidgets />
-          <Toaster />
-        </TooltipProvider>
-      </CartProvider>
-    </ThemeProvider>
+    <SiteContentProvider initialData={siteContent}>
+      <ThemeProvider defaultTheme="light">
+        <CartProvider>
+          <TooltipProvider>
+            {children}
+            <CartDrawer />
+            <FloatingWidgets />
+            <Toaster />
+          </TooltipProvider>
+        </CartProvider>
+      </ThemeProvider>
+    </SiteContentProvider>
   );
 }

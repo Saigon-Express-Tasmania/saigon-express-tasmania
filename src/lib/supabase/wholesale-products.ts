@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { CACHE_TAGS, REVALIDATE_SECONDS } from "@/config";
+import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapWholesaleProductRow, type WholesaleProduct } from "@/types";
 import { fetchWholesaleProductRows } from "./server";
 
@@ -16,6 +16,6 @@ async function loadWholesaleProducts(): Promise<WholesaleProduct[]> {
 export const getWholesaleProducts = unstable_cache(
   loadWholesaleProducts,
   [CACHE_TAG],
-  { revalidate: REVALIDATE_SECONDS, tags: [CACHE_TAG] },
+  { revalidate: SHORT_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 );
 

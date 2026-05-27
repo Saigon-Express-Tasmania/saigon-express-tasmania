@@ -6,7 +6,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { type ReactNode } from 'react';
-import heroBg from '../../../../public/manus-storage/saigo_express__hero_Native_5d9afb69.jpg?url';
+
+import heroBg from '@/assets/background.webp';
 
 interface AuthLayoutProps {
   title: string;

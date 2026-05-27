@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { CACHE_TAGS, REVALIDATE_SECONDS } from "@/config";
+import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import type { StoreLocation } from "@/types";
 import { mapStoreLocationRow } from "@/types";
 import { fetchStoreLocationRows } from "./server";
@@ -15,7 +15,7 @@ async function loadStoreLocations(): Promise<StoreLocation[]> {
  * Store locations for the public site, cached for at least one hour.
  */
 export const getStoreLocations = unstable_cache(loadStoreLocations, [CACHE_TAG], {
-  revalidate: REVALIDATE_SECONDS,
+  revalidate: SHORT_REVALIDATE_SECONDS,
   tags: [CACHE_TAG],
 });
 
