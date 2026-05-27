@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "d2xsxph8kpxj0f.cloudfront.net",
       },
+      {
+        protocol: "https",
+        hostname: "**.storage.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "saigonexpresstasmania.com",
+        pathname: "/manus-storage/**",
+      },
     ],
   },
   webpack: (config, { dev }) => {

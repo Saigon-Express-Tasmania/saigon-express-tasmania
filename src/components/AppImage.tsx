@@ -12,7 +12,7 @@ type AppImageProps = Omit<ImageProps, "src" | "alt"> & {
 const DEFAULT_SIZES =
   "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw";
 
-/** Next.js Image wrapper for local /manus-storage assets and configured remotes. */
+/** Next.js Image wrapper for local assets and remotes allowed in next.config.ts (e.g. Supabase Storage). */
 export default function AppImage({
   src,
   alt,

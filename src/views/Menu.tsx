@@ -231,7 +231,7 @@ export default function Menu({ menuItems, storeLocations }: MenuProps) {
                     <LazyImage
                       src={item.imageUrl ?? CATEGORY_IMGS[item.category] ?? DEFAULT_IMG}
                       alt={item.name}
-                      wrapperClassName="absolute inset-0"
+                      wrapperClassName="size-full"
                       className="group-hover:scale-105 transition-transform duration-500"
                     />
                     {item.isPopular ? (

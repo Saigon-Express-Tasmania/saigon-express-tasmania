@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
-      <head>
+      <head>        
         <link
           rel="preload"
           href="/manus-storage/saigo_express__video_cover.webp"
