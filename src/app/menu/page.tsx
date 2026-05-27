@@ -1,7 +1,6 @@
 import Menu from "@/views/Menu";
 import { getMenuItems } from "@/lib/supabase/menu";
 import { getStoreLocations } from "@/lib/supabase/store-locations";
-import { usePathname } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
