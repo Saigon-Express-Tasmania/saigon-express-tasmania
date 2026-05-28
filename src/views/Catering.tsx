@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, Users, Clock, Star, ChevronRight, MapPin, Phone } from "lucide-react";
 import type { CateringPack } from "@/lib/supabase/catering-packs";
+import type { CateringBox } from "@/lib/supabase/catering-boxes";
 
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
@@ -30,9 +31,10 @@ const WHY_US = [
 
 type CateringProps = {
   packs: CateringPack[];
+  boxes: CateringBox[];
 };
 
-export default function Catering({ packs }: CateringProps) {
+export default function Catering({ packs, boxes }: CateringProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
@@ -65,6 +67,19 @@ export default function Catering({ packs }: CateringProps) {
       message: `CATERING ENQUIRY\nEvent Date: ${form.eventDate}\nGuest Count: ${form.guestCount}\n\n${form.message}`,
     });
   };
+
+  const boxGroups = boxes.reduce<Array<{ category: string; items: CateringBox[] }>>(
+    (groups, item) => {
+      const existingGroup = groups.find((group) => group.category === item.category);
+      if (existingGroup) {
+        existingGroup.items.push(item);
+      } else {
+        groups.push({ category: item.category, items: [item] });
+      }
+      return groups;
+    },
+    [],
+  );
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
@@ -226,176 +241,65 @@ export default function Catering({ packs }: CateringProps) {
             <p className="text-brand-dark/55 mt-3 max-w-2xl mx-auto text-sm">All boxes are freshly prepared on the day of your event. Please provide at least 24 hours' notice. Contact <a href="mailto:catering@saigonexpress.com.au" className="text-brand-red underline">catering@saigonexpress.com.au</a> to customise your order.</p>
           </div>
 
-          {/* Menu Page 1 — Boxes */}
-          <div className="mb-4">
-            <h3 className="font-serif text-brand-dark text-2xl mb-6 pb-2 border-b border-brand-cream">Catering Boxes</h3>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {[
-              {
-                name: "Saigon Feast Box",
-                price: "$160",
-                serves: "8–10 People",
-                includes: ["8 x Mini Bowls", "8 x Fresh Rice Paper Rolls cut in half", "6 x Mini Banh Mi", "4 x Bao Buns"],
-                img: "/manus-storage/SaigonFeastBox_6c26a5d8.jpg",
-              },
-              {
-                name: "Rice Paper Roll Box",
-                price: "$130",
-                serves: "8–10 People",
-                includes: ["28 x Standard Saigon RPR served with a variety of delicious sauces"],
-                img: "/manus-storage/Ricepaperrollplatter_b21700d4.jpg",
-              },
-              {
-                name: "Spring Roll Box",
-                price: "$115",
-                serves: "6–8 People",
-                includes: ["20 x Vegan Spring Roll", "30 x Seafood Spring Roll"],
-                img: "/manus-storage/Springrollplatter_c7f62c18.jpg",
-              },
-              {
-                name: "Mixed Entrée Box",
-                price: "$115",
-                serves: "6–8 People",
-                includes: ["10 x Vegan Spring Roll", "10 x Seafood Spring Roll", "10 x Prawn Toast", "10 x Fried Pork and Chive Dumpling"],
-                img: "/manus-storage/MixedEntreePlatter_983d3d92.jpg",
-              },
-              {
-                name: "Saigon Lunch Box",
-                price: "$140",
-                serves: "6–8 People",
-                includes: ["10 x Mixed Mini Bowls", "10 x Mixed Mini Banh Mi"],
-                img: "/manus-storage/BowlsBox_575d600e.jpg",
-              },
-              {
-                name: "Steamed Bao Bun Box",
-                price: "$130",
-                serves: "6–8 People",
-                includes: ["20 x Mixed Bao Buns", "Available in a variety of flavours"],
-                img: "/manus-storage/SteamedBaoBunPlatter_3c06d7a4.jpg",
-              },
-              {
-                name: "Saigon Bánh Mì Box",
-                price: "$150",
-                serves: "6–8 People",
-                includes: ["30 x Mini Bánh Mì Baguettes", "Available in a variety of flavours"],
-                img: "/manus-storage/SaigonBanhMiBox_94e826fc.jpg",
-              },
-              {
-                name: "Saigon Street Box",
-                price: "$140",
-                serves: "6–8 People",
-                includes: ["15 x Mixed Mini Bánh Mì", "20 x Mixed Saigon Rolls"],
-                img: "/manus-storage/BanhMi&FreshrollsBox_ca58276a.jpg",
-              },
-              {
-                name: "Mini Bowls Box",
-                price: "$130",
-                serves: "8–10 People",
-                includes: ["20 x Mini Bowls", "A mix of Gỏi (Viet Salad), Bún (Noodle Salad) and Cơm (Rice)"],
-                img: "/manus-storage/MiniBanhMiBox_5a74c97a.jpg",
-              },
-            ].map((item, i) => (
-              <div key={i} className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full">
-                <div className="relative aspect-square overflow-hidden">
-                  <AppImage src={item.img} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute top-3 right-3 bg-brand-red text-white text-sm font-bold px-3 py-1">
-                    {item.price}
-                  </div>
+          {boxGroups.length === 0 ? (
+            <div className="text-center text-sm text-brand-dark/55 py-6">
+              No catering menu items available right now.
+            </div>
+          ) : (
+            boxGroups.map((group, groupIndex) => (
+              <div key={group.category}>
+                <div className="mb-4">
+                  <h3 className="font-serif text-brand-dark text-2xl mb-6 pb-2 border-b border-brand-cream">{group.category}</h3>
                 </div>
-                <div className="p-5 flex flex-col flex-1">
-                  <h4 className="font-serif text-brand-dark text-xl mb-1">{item.name}</h4>
-                  <p className="text-xs text-brand-red font-semibold mb-3 flex items-center gap-1"><Users size={11} /> Caters {item.serves}</p>
-                  <ul className="space-y-1 mb-4 flex-1">
-                    {item.includes.map((inc, j) => (
-                      <li key={j} className="text-xs text-brand-dark/65 flex items-start gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-brand-red mt-1.5 flex-shrink-0" />{inc}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => handleEnquireBox(item.name, item.price)}
-                    className="w-full bg-brand-red text-white text-xs font-bold py-2.5 px-4 hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-1.5 mt-auto"
-                  >
-                    Enquire Now <ChevronRight size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Menu Page 2 — Hot Dishes */}
-          <div className="mb-4">
-            <h3 className="font-serif text-brand-dark text-2xl mb-6 pb-2 border-b border-brand-cream">Hot Dishes & Platters</h3>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {[
-              {
-                name: "Saigon Fried Rice",
-                prices: [{ size: "Small", price: "$65", serves: "5–7 People" }, { size: "Medium", price: "$95", serves: "8–12 People" }, { size: "Large", price: "$125", serves: "15–20 People" }],
-                img: "/manus-storage/SaigonFriedRice_48676d3d.jpg",
-              },
-              {
-                name: "Vietnamese Salad",
-                prices: [{ size: "Small", price: "$35", serves: "5–7 People" }, { size: "Medium", price: "$55", serves: "8–12 People" }, { size: "Large", price: "$75", serves: "15–20 People" }],
-                img: "/manus-storage/VietnameseSalad_cb8a745b.jpg",
-              },
-              {
-                name: "Steamed Jasmine Rice",
-                prices: [{ size: "Small", price: "$28", serves: "5–7 People" }, { size: "Medium", price: "$42", serves: "8–12 People" }, { size: "Large", price: "$55", serves: "15–20 People" }],
-                img: "/manus-storage/SteamedJasmineRice_f5e40e3e.jpg",
-              },
-              {
-                name: "Roast Pork Platter",
-                prices: [{ size: "Small", price: "$65", serves: "5–7 People" }, { size: "Medium", price: "$95", serves: "8–12 People" }, { size: "Large", price: "$125", serves: "15–20 People" }],
-                img: "/manus-storage/RoastPorkPlatter_d7881898.jpg",
-              },
-              {
-                name: "Roast Pork & Roast Duck Platter",
-                prices: [{ size: "Small", price: "$95", serves: "5–7 People" }, { size: "Medium", price: "$138", serves: "8–12 People" }, { size: "Large", price: "$180", serves: "15–20 People" }],
-                img: "/manus-storage/RoastPorkDuckPlatter_739f3dd1.jpg",
-              },
-              {
-                name: "Roast Pork & BBQ Pork Platter",
-                prices: [{ size: "Small", price: "$80", serves: "5–7 People" }, { size: "Medium", price: "$118", serves: "8–12 People" }, { size: "Large", price: "$155", serves: "15–20 People" }],
-                img: "/manus-storage/RoastPorkBBQPorkPlatter_8d0da620.jpg",
-              },
-              {
-                name: "Stir-Fried Noodles",
-                note: "Choice of: Singapore Noodles · Soft Egg Noodles · Flat Rice Noodles",
-                prices: [{ size: "Small", price: "$82", serves: "5–7 People" }, { size: "Medium", price: "$120", serves: "8–12 People" }, { size: "Large", price: "$158", serves: "15–20 People" }],
-                img: "/manus-storage/StirFriedNoodles_23279f91.jpg",
-              },
-              {
-                name: "Stir-Fried Hot Dish",
-                prices: [{ size: "Small", price: "$82", serves: "5–7 People" }, { size: "Medium", price: "$120", serves: "8–12 People" }, { size: "Large", price: "$158", serves: "15–20 People" }],
-                img: "/manus-storage/StirFriedHotDish_16c653d6.jpg",
-              },
-              {
-                name: "Stir-Fried Mixed Vegetables with Tofu",
-                prices: [{ size: "Small", price: "$60", serves: "5–7 People" }, { size: "Medium", price: "$88", serves: "8–12 People" }, { size: "Large", price: "$115", serves: "15–20 People" }],
-                img: "/manus-storage/StirFriedVegTofu_5daed2ed.jpg",
-              },
-            ].map((item, i) => (
-              <div key={i} className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full">
-                <div className="relative aspect-square overflow-hidden">
-                  <AppImage src={item.img} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-                <div className="p-5 flex flex-col flex-1">
-                  <h4 className="font-serif text-brand-dark text-xl mb-1">{item.name}</h4>
-                  {'note' in item && item.note && <p className="text-xs text-brand-dark/50 italic mb-2">{item.note}</p>}
-                  <div className="space-y-1 mt-2 flex-1">
-                    {'prices' in item && item.prices.map((p, j) => (
-                      <div key={j} className="flex items-center justify-between text-sm">
-                        <span className="text-brand-dark/60">{p.size} <span className="text-xs text-brand-dark/40">({p.serves})</span></span>
-                        <span className="font-bold text-brand-red">{p.price}</span>
+                <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${groupIndex === boxGroups.length - 1 ? "mb-10" : "mb-12"}`}>
+                  {group.items.map((item) => (
+                    <div key={item.id} className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full">
+                      <div className="relative aspect-square overflow-hidden">
+                        <AppImage src={item.img ?? "/placeholder.svg"} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                        {item.price && (
+                          <div className="absolute top-3 right-3 bg-brand-red text-white text-sm font-bold px-3 py-1">
+                            {item.price}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                      <div className="p-5 flex flex-col flex-1">
+                        <h4 className="font-serif text-brand-dark text-xl mb-1">{item.name}</h4>
+                        {item.serves && (
+                          <p className="text-xs text-brand-red font-semibold mb-3 flex items-center gap-1"><Users size={11} /> Caters {item.serves}</p>
+                        )}
+                        {item.note && <p className="text-xs text-brand-dark/50 italic mb-2">{item.note}</p>}
+                        {item.includes.length > 0 && (
+                          <ul className="space-y-1 mb-4">
+                            {item.includes.map((inc, j) => (
+                              <li key={j} className="text-xs text-brand-dark/65 flex items-start gap-1.5">
+                                <span className="w-1 h-1 rounded-full bg-brand-red mt-1.5 flex-shrink-0" />{inc}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {item.prices.length > 0 && (
+                          <div className="space-y-1 mt-2 mb-4">
+                            {item.prices.map((p, j) => (
+                              <div key={j} className="flex items-center justify-between text-sm">
+                                <span className="text-brand-dark/60">{p.size} <span className="text-xs text-brand-dark/40">({p.serves})</span></span>
+                                <span className="font-bold text-brand-red">{p.price}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleEnquireBox(item.name, item.price ?? item.prices[0]?.price ?? "Custom price")}
+                          className="w-full bg-brand-red text-white text-xs font-bold py-2.5 px-4 hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-1.5 mt-auto"
+                        >
+                          Enquire Now <ChevronRight size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            ))
+          )}
 
           {/* Protein note */}
           <div className="bg-brand-dark text-white p-6 text-center">

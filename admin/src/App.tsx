@@ -4,6 +4,7 @@ import { SignIn } from '@/pages/SignIn';
 import { Menu } from '@/pages/Menu';
 import { Promotions } from '@/pages/Promotions';
 import { CateringPacks } from '@/pages/CateringPacks';
+import { CateringBoxes } from '@/pages/CateringBoxes';
 import { StoreLocations } from '@/pages/StoreLocations';
 import { WholesaleProducts } from '@/pages/WholesaleProducts';
 import { Categories } from '@/pages/Categories';
@@ -43,6 +44,7 @@ export function App() {
             <Route path="/categories" element={<Categories />} />
             <Route path="/promotions" element={<Promotions />} />
             <Route path="/catering-packs" element={<CateringPacks />} />
+            <Route path="/catering-boxes" element={<CateringBoxes />} />
             <Route path="/store-locations" element={<StoreLocations />} />
             <Route path="/wholesale-products" element={<WholesaleProducts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />

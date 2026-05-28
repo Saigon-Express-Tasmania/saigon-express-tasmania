@@ -51,6 +51,11 @@ const navItems: NavItem[] = [
     icon: Package,
   },
   {
+    title: "Catering Boxes",
+    href: "/catering-boxes",
+    icon: Package,
+  },
+  {
     title: "Store Locations",
     href: "/store-locations",
     icon: MapPin,
