@@ -46,6 +46,11 @@ const navItems: NavItem[] = [
     icon: Megaphone,
   },
   {
+    title: "Catering Packs",
+    href: "/catering-packs",
+    icon: Package,
+  },
+  {
     title: "Store Locations",
     href: "/store-locations",
     icon: MapPin,

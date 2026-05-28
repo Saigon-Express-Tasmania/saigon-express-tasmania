@@ -9,19 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import type { StoreLocation } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
-
-const LOCATIONS = [
-  { name: "Hobart CBD", address: "Shop 4, 123 Elizabeth St, Hobart TAS 7000", phone: "0416 036 016" },
-  { name: "Launceston", address: "45 Brisbane St, Launceston TAS 7250", phone: "0416 036 016" },
-  { name: "Glenorchy", address: "12 Main Rd, Glenorchy TAS 7010", phone: "0416 036 016" },
-  { name: "Devonport", address: "78 Rooke St, Devonport TAS 7310", phone: "0416 036 016" },
-  { name: "Burnie", address: "34 Wilson St, Burnie TAS 7320", phone: "0416 036 016" },
-  { name: "Sandy Bay", address: "99 Sandy Bay Rd, Sandy Bay TAS 7005", phone: "0416 036 016" },
-  { name: "Moonah", address: "56 Main Rd, Moonah TAS 7009", phone: "0416 036 016" },
-  { name: "Kingston", address: "22 Channel Hwy, Kingston TAS 7050", phone: "0416 036 016" },
-];
 
 const HOURS = [
   { day: "Monday – Friday", hours: "10:00 am – 8:00 pm" },
@@ -30,7 +20,11 @@ const HOURS = [
   { day: "Public Holidays", hours: "11:00 am – 6:00 pm" },
 ];
 
-export default function Contact() {
+type ContactProps = {
+  storeLocations: StoreLocation[];
+};
+
+export default function Contact({ storeLocations }: ContactProps) {
   const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
 
@@ -129,7 +123,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">Locations</p>
-                  <p className="text-brand-dark font-semibold">8 stores across Tasmania</p>
+                  <p className="text-brand-dark font-semibold">{storeLocations.length} stores across Tasmania</p>
                 </div>
               </div>
             </div>
@@ -154,8 +148,8 @@ export default function Contact() {
           <div>
             <h2 className="font-serif text-brand-dark text-2xl mb-5">Our Locations</h2>
             <div className="grid sm:grid-cols-2 gap-3">
-              {LOCATIONS.map(loc => (
-                <div key={loc.name} className="bg-white rounded-xl border border-gray-100 p-4">
+              {storeLocations.map((loc) => (
+                <div key={loc.id} className="bg-white rounded-xl border border-gray-100 p-4">
                   <p className="font-bold text-brand-dark text-sm mb-1">{loc.name}</p>
                   <p className="text-brand-dark/50 text-xs leading-relaxed">{loc.address}</p>
                 </div>

@@ -17,6 +17,7 @@ export const CACHE_TAGS = {
   menu: "menu",
   categories: "categories",
   promotions: "promotions",
+  cateringPacks: "catering-packs",
   storeLocations: "store-locations",
   wholesaleProducts: "wholesale-products",
   settings: "settings",

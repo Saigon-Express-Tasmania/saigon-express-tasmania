@@ -6,6 +6,7 @@ import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, Users, Clock, Star, ChevronRight, MapPin, Phone } from "lucide-react";
+import type { CateringPack } from "@/lib/supabase/catering-packs";
 
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
@@ -18,49 +19,6 @@ const NAV_LINKS = [
   { href: "/careers", label: "Careers" },
 ];
 
-const PACKS = [
-  {
-    name: "Office Starter Pack",
-    serves: "10–20 guests",
-    price: "From $8.50/person",
-    description: "A selection of our signature bánh mì, fresh spring rolls, and homemade drinks — perfect for team lunches and morning meetings.",
-    includes: ["Choice of 3 bánh mì varieties", "Fresh rice paper rolls", "Homemade lemongrass drinks", "Napkins & serving trays"],
-    tag: "MOST POPULAR",
-    tagBg: "bg-brand-red",
-    img: "/manus-storage/banh-mi-1_9ba4dcf0.jpg",
-  },
-  {
-    name: "Event Feast Pack",
-    serves: "30–60 guests",
-    price: "From $12/person",
-    description: "A full Vietnamese spread with bánh mì, phở, bún bowls, and entrée platters — ideal for corporate events, birthdays, and celebrations.",
-    includes: ["Full bánh mì bar (5 varieties)", "Phở or bún bowl station", "Entrée platters", "Dessert rice paper rolls", "Full service setup"],
-    tag: "BEST VALUE",
-    tagBg: "bg-brand-amber",
-    img: "/manus-storage/pho-1_92a9985e.jpg",
-  },
-  {
-    name: "Corporate Catering",
-    serves: "50–200 guests",
-    price: "Custom quote",
-    description: "Tailored menus for large corporate functions, conferences, and gala dinners. Includes dedicated staff, full setup, and branded presentation.",
-    includes: ["Fully customised menu", "Dedicated catering staff", "Premium branded presentation", "Dietary accommodations", "Post-event cleanup"],
-    tag: "PREMIUM",
-    tagBg: "bg-brand-dark",
-    img: "/manus-storage/bun-bowl-1_3b12ea6c.jpg",
-  },
-  {
-    name: "Custom Pack",
-    serves: "Any size",
-    price: "Get a quote",
-    description: "Have something specific in mind? We'll build a package around your event, dietary needs, and budget. No event is too big or too small.",
-    includes: ["Fully flexible menu", "Any dietary requirement", "Any event size", "Delivery or pick-up", "Personal consultation"],
-    tag: "FLEXIBLE",
-    tagBg: "bg-brand-dark/70",
-    img: "/manus-storage/spring-rolls-1_02f22814.jpg",
-  },
-];
-
 const WHY_US = [
   { emoji: "🌿", title: "Fresh Daily", desc: "Every item prepared fresh on the day of your event — never frozen, never pre-packaged." },
   { emoji: "🏆", title: "Award-Winning Recipes", desc: "Authentic Vietnamese recipes refined over decades, brought to your event." },
@@ -70,7 +28,11 @@ const WHY_US = [
   { emoji: "📋", title: "Hassle-Free Planning", desc: "One point of contact from enquiry to clean-up. We handle everything." },
 ];
 
-export default function Catering() {
+type CateringProps = {
+  packs: CateringPack[];
+};
+
+export default function Catering({ packs }: CateringProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
@@ -214,10 +176,14 @@ export default function Catering() {
             <p className="text-brand-dark/55 mt-3 max-w-xl mx-auto text-sm">All packs include fresh preparation on the day, eco-friendly packaging, and delivery to your venue.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            {PACKS.map((pack, i) => (
-              <div key={i} className="bg-white overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            {packs.length === 0 ? (
+              <div className="md:col-span-2 text-center text-sm text-brand-dark/55 py-8">
+                No catering packs available right now.
+              </div>
+            ) : packs.map((pack) => (
+              <div key={pack.id} className="bg-white overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="relative aspect-[16/7] overflow-hidden">
-                  <AppImage src={pack.img} alt={pack.name} fill className="object-cover hover:scale-105 transition-transform duration-500" />
+                  <AppImage src={pack.img ?? "/placeholder.svg"} alt={pack.name} fill className="object-cover hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-brand-dark/25" />
                   <span className={`absolute top-4 left-4 ${pack.tagBg} text-white text-[10px] font-bold px-3 py-1 tracking-widest uppercase`}>
                     {pack.tag}

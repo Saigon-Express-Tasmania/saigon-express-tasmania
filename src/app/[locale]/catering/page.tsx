@@ -1,5 +1,8 @@
-import { createPage } from "@/lib/create-page";
 import Catering from "@/views/Catering";
+import { getCateringPacks } from "@/lib/supabase/catering-packs";
 
-export default createPage(Catering);
+export default async function LocalizedCateringPage() {
+  const packs = await getCateringPacks();
+  return <Catering packs={packs} />;
+}
 

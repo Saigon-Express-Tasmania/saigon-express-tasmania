@@ -1,4 +1,7 @@
-import { createPage } from "@/lib/create-page";
 import Contact from "@/views/Contact";
+import { getStoreLocations } from "@/lib/supabase/store-locations";
 
-export default createPage(Contact);
+export default async function ContactPage() {
+  const storeLocations = await getStoreLocations();
+  return <Contact storeLocations={storeLocations} />;
+}
