@@ -5,6 +5,7 @@ import { Menu } from '@/pages/Menu';
 import { Promotions } from '@/pages/Promotions';
 import { StoreLocations } from '@/pages/StoreLocations';
 import { WholesaleProducts } from '@/pages/WholesaleProducts';
+import { Categories } from '@/pages/Categories';
 import {
   Navigate,
   Route,
@@ -38,6 +39,7 @@ export function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/localization" element={<LocalizationPage />} />
             <Route path="/menu" element={<Menu />} />
+            <Route path="/categories" element={<Categories />} />
             <Route path="/promotions" element={<Promotions />} />
             <Route path="/store-locations" element={<StoreLocations />} />
             <Route path="/wholesale-products" element={<WholesaleProducts />} />

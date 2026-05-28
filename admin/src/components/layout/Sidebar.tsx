@@ -7,6 +7,7 @@ import {
   Package,
   Settings,
   Star,
+  Tags,
   Utensils,
   type LucideIcon
 } from "lucide-react";
@@ -33,6 +34,11 @@ const navItems: NavItem[] = [
     title: "Menu",
     href: "/menu",
     icon: Utensils,
+  },
+  {
+    title: "Categories",
+    href: "/categories",
+    icon: Tags,
   },
   {
     title: "Promotions",

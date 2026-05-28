@@ -15,6 +15,7 @@ export const LONG_REVALIDATE_SECONDS = 24 * 60 * 60;
  */
 export const CACHE_TAGS = {
   menu: "menu",
+  categories: "categories",
   promotions: "promotions",
   storeLocations: "store-locations",
   wholesaleProducts: "wholesale-products",

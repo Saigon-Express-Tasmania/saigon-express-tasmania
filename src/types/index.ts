@@ -9,3 +9,4 @@ export { mapStoreLocationRow } from "./StoreLocation";
 export type { WholesaleProduct, WholesaleProductRow } from "./WholesaleProduct";
 export { mapWholesaleProductRow } from "./WholesaleProduct";
 export type { SiteContentSnapshot, LocalizationValue } from "./SiteContent";
+export type { SiteCategory } from "./Category";

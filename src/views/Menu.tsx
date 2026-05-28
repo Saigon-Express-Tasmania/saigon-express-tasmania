@@ -1,7 +1,7 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "@/components/link";
 import { ShoppingCart, Plus, Minus, AlertCircle, MapPin, ChevronRight, ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
@@ -10,46 +10,17 @@ import { ItemCustomiseModal, type ItemCustomisation } from "@/components/ItemCus
 import { useCart, type MenuItem } from "@/contexts/CartContext";
 import PickLocationModal from "@/components/PickLocationModal";
 import LazyImage from "@/components/LazyImage";
-import type { StoreLocation } from "@/types";
+import type { SiteCategory, StoreLocation } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
-
-const CATEGORY_IMGS: Record<string, string> = {
-  "Entrée":                  "/manus-storage/entree-seafood-spring-rolls_f060f6bd.jpg",
-  "Bánh Mì":               "/manus-storage/crispyroastporkbanhmi_ce355122.jpg",
-  "Rice Paper Rolls":        "/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_5da191dd.png",
-  "Pho":                     "/manus-storage/pho-1_92a9985e.jpg",
-  "Noodle Soup":             "/manus-storage/pho-2_4fc44f9f.jpg",
-  "Bun Bowl":                "/manus-storage/bun-bowl-1_3b12ea6c.jpg",
-  "Rice Dishes":             "/manus-storage/banh-mi-2_7d02846f.jpg",
-  "Grill Signatures":        "/manus-storage/banh-mi-1_9ba4dcf0.jpg",
-  "Bao Buns":                "/manus-storage/banh-mi-3_465cb7d1.jpg",
-  "Omelette":                "/manus-storage/bun-bowl-1_3b12ea6c.jpg",
-  "Burgers & Chicken":       "/manus-storage/banh-mi-2_7d02846f.jpg",
-  "Meal Deals":              "/manus-storage/banh-mi-3_465cb7d1.jpg",
-  "Drinks":                  "/manus-storage/spring-rolls-2_f1e40ae6.jpg",
-};
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
 
-// ─── Add-on pairing rules ────────────────────────────────────────────────────
-const ADD_ON_CATEGORIES: Record<string, string[]> = {
-  "Bánh Mì":          ["Drinks", "Entrée"],
-  "Pho":              ["Drinks", "Entrée"],
-  "Noodle Soup":      ["Drinks", "Entrée"],
-  "Bun Bowl":         ["Drinks", "Entrée"],
-  "Rice Dishes":      ["Drinks", "Entrée"],
-  "Omelette":         ["Drinks", "Entrée"],
-  "Bao Buns":         ["Drinks", "Entrée"],
-  "Grill Signatures": ["Drinks", "Rice Paper Rolls"],
-  "Burgers & Chicken":["Drinks", "Entrée"],
-  "Meal Deals":       ["Drinks", "Entrée"],
-  "Entrée":           [],
-  "Drinks":           [],
-  "Rice Paper Rolls": [],
-};
-
-function getSuggestions(item: MenuItem, allItems: MenuItem[]): SuggestedItem[] {
-  const targetCats = ADD_ON_CATEGORIES[item.category];
+function getSuggestions(
+  item: MenuItem,
+  allItems: MenuItem[],
+  addOnCategories: Record<string, string[]>,
+): SuggestedItem[] {
+  const targetCats = addOnCategories[item.category];
   if (!targetCats || targetCats.length === 0) return [];
   const suggestions: SuggestedItem[] = [];
   for (const cat of targetCats) {
@@ -63,9 +34,10 @@ function getSuggestions(item: MenuItem, allItems: MenuItem[]): SuggestedItem[] {
 type MenuProps = {
   menuItems: MenuItem[];
   storeLocations: StoreLocation[];
+  categoriesContent: SiteCategory[];
 };
 
-export default function Menu({ menuItems, storeLocations }: MenuProps) {
+export default function Menu({ menuItems, storeLocations, categoriesContent }: MenuProps) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [addonTrigger, setAddonTrigger] = useState<{
@@ -78,6 +50,24 @@ export default function Menu({ menuItems, storeLocations }: MenuProps) {
 
   // ─── Shared cart ─────────────────────────────────────────────────────────
   const { cart, cartCount, cartTotal, setCartOpen, addToCart: ctxAddToCart, removeFromCart, updateQty } = useCart();
+
+  const categoryImageMap = useMemo<Record<string, string>>(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        if (category.imageUrl) acc[category.alias] = category.imageUrl;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const addOnCategoriesMap = useMemo<Record<string, string[]>>(
+    () =>
+      categoriesContent.reduce<Record<string, string[]>>((acc, category) => {
+        acc[category.alias] = category.addon ?? [];
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
 
   // Build category sort order from sortOrder field on items (set in DB)
   const catOrderMap = new Map<string, number>();
@@ -108,11 +98,15 @@ export default function Menu({ menuItems, storeLocations }: MenuProps) {
     setCartOpen(true);
     // Add-on suggestions
     const all = menuItems ?? [];
-    const suggestions = getSuggestions(customiseItem, all as MenuItem[]);
+    const suggestions = getSuggestions(
+      customiseItem,
+      all as MenuItem[],
+      addOnCategoriesMap,
+    );
     if (suggestions.length > 0) {
       setAddonTrigger({ item: customiseItem as SuggestedItem, suggestions });
     }
-  }, [customiseItem, menuItems, ctxAddToCart, setCartOpen]);
+  }, [customiseItem, menuItems, ctxAddToCart, setCartOpen, addOnCategoriesMap]);
 
   // Quick +1 for items already in cart (adds a new line with no customisation)
   const handleQuickAdd = useCallback((item: MenuItem) => {
@@ -229,7 +223,7 @@ export default function Menu({ menuItems, storeLocations }: MenuProps) {
                 <div key={item.id} className={`group bg-white overflow-hidden card-lift ${!item.isAvailable ? "opacity-60" : ""}`}>
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                     <LazyImage
-                      src={item.imageUrl ?? CATEGORY_IMGS[item.category] ?? DEFAULT_IMG}
+                      src={item.imageUrl ?? categoryImageMap[item.category] ?? DEFAULT_IMG}
                       alt={item.name}
                       wrapperClassName="size-full"
                       className="group-hover:scale-105 transition-transform duration-500"
