@@ -11,9 +11,17 @@ function getEnv(key: RequiredEnvKey): string {
   return value;
 }
 
+// Lazy getters so importing other @/config modules does not require env at module load
+// (e.g. middleware/proxy edge bundling on Netlify).
 export const ENV = {
-  appUrl: getEnv("APP_URL"),
-  defaultLocale: getEnv("DEFAULT_LOCALE"),
-  supportedLocales: getEnv("SUPPORTED_LOCALES").split(","),
+  get appUrl() {
+    return getEnv("APP_URL");
+  },
+  get defaultLocale() {
+    return getEnv("DEFAULT_LOCALE");
+  },
+  get supportedLocales() {
+    return getEnv("SUPPORTED_LOCALES").split(",");
+  },
 } as const;
 

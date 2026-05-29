@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prebuild:netlify": "node scripts/ensure-parcel-watcher.mjs",
+    "build:netlify": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "admin:dev": "npm exec -- vite admin",
@@ -14,7 +16,8 @@
     "supabase:push": "node scripts/push-supabase-migrations.mjs",
     "generate:featured-reviews-seed": "node scripts/generate-featured-reviews-seed.mjs",
     "generate:menu-seed": "node scripts/generate-menu-seed.mjs",
-    "sync:image-urls": "node scripts/sync-image-urls-to-supabase.mjs --apply"
+    "deploy:netlify": "node scripts/deploy-netlify.mjs",
+    "deploy:netlify:draft": "node scripts/deploy-netlify.mjs --draft"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans": "^5.2.10",
@@ -81,6 +84,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.11",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "vitest": "^4.1.7"
