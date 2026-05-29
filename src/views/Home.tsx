@@ -8,6 +8,7 @@ import type { MenuItem } from '@/contexts/CartContext';
 import type { FeaturedReview } from '@/types';
 import { LOGO_URL } from '@/lib/site-images';
 import { FacebookIcon, InstagramIcon } from '@/components/icons/brand-icons';
+import { getTranslations } from 'next-intl/server';
 import { ChevronRight, MapPin, ShoppingCart } from 'lucide-react';
 
 const GetApp = dynamic(() => import('@/components/GetApp'));
@@ -36,52 +37,41 @@ const IMGS = {
    news3: '/manus-storage/sorell_store_food_36779d67.jpg',
 };
 
-const MARQUEE_ITEMS = [
-   'VIETNAMESE BAGUETTE',
-   'BEEF PHO',
-   'HUE NOODLE SOUP',
-   'FRESH RICE PAPER ROLLS',
-   'BROKEN RICE',
-   'CRISPY PANCAKE',
-   'STIR FRIED NOODLES',
-   'FRIED RICE',
-   'CRISPY FRIED CHICKEN',
-   'CATERING BOXES',
-];
+const CATEGORY_IMAGES = [
+   '/manus-storage/hero-stir-fried-noodles_84d4beca.jpg',
+   '/manus-storage/saigo_express__Hot_plate_chicken_lemongrass_and_chilli_NativeLarge_421583fc.png',
+   '/manus-storage/saigo_express__Roasted_pork_and_roasted_duck_NativeLarge_aff2e8e9.png',
+] as const;
 
-const NEWS = [
-   {
-      date: '1 Jun 2016',
-      tag: 'OUR STORY',
-      title: 'How It All Began: Opening Our First Store at 335 Elizabeth St, North Hobart',
-      img: IMGS.news1,
-      excerpt:
-         'In 2016, Dr. Tien had one dream — to bring the authentic flavours of Vietnamese street food to Tasmania. Starting from a small shopfront at 335 Elizabeth Street, North Hobart, he wanted every Hobartian to experience the warmth of Vietnamese culture through fresh, healthy, and affordable food. That first store became the heart of what Saigon Express is today.',
-   },
-   {
-      date: '15 Mar 2024',
-      tag: 'TEAM',
-      title: 'The People Behind Every Bowl: Meet the Saigon Express Family',
-      img: IMGS.news2,
-      excerpt:
-         'Behind every steaming bowl of pho and every freshly baked bánh mì is a dedicated team who treat every customer like family. Our staff bring passion, culture, and care to every single dish — every single day.',
-   },
-   {
-      date: '10 Apr 2025',
-      tag: 'NEW STORE',
-      title: 'Saigon Express Sorell — Our 8th Store Is Now Open!',
-      img: IMGS.news3,
-      excerpt:
-         "We're thrilled to announce the opening of Saigon Express Sorell, our 8th store in Tasmania! Bringing fresh, healthy Vietnamese food to the Sorell community — because great food should be accessible to everyone across the island.",
-   },
-];
+const NEWS_IMAGES = [IMGS.news1, IMGS.news2, IMGS.news3] as const;
 
 type HomeProps = {
    menuItems: MenuItem[];
    featuredReviews: FeaturedReview[];
 };
 
-export default function Home({ menuItems, featuredReviews }: HomeProps) {
+export default async function Home({ menuItems, featuredReviews }: HomeProps) {
+   const t = await getTranslations('Home');
+   const marqueeItems = t.raw('marquee.items') as string[];
+   const ourFoodTags = t.raw('ourFood.tags') as string[];
+   const cateringTags = t.raw('catering.tags') as string[];
+   const wholesaleTags = t.raw('wholesale.tags') as string[];
+   const categoryItems = t.raw('categories.items') as Array<{ title: string; desc: string }>;
+   const newsItems = t.raw('news.items') as Array<{
+      date: string;
+      tag: string;
+      title: string;
+      excerpt: string;
+   }>;
+   const footerQuickLinks = [
+      { href: '/menu', label: t('footer.quickLinks.ourFood') },
+      { href: '/our-story', label: t('footer.quickLinks.ourStory') },
+      { href: '/catering', label: t('footer.quickLinks.catering') },
+      { href: '/wholesale-shop', label: t('footer.quickLinks.wholesaleShop') },
+      { href: '/franchise', label: t('footer.quickLinks.franchise') },
+      { href: '/careers', label: t('footer.quickLinks.careers') },
+      { href: '/faq', label: t('footer.quickLinks.faq') },
+   ] as const;
    const bestSellers = menuItems.filter((m) => Boolean(m.isAvailable) && Boolean(m.isPopular)).slice(0, 4);
 
    return (
@@ -97,7 +87,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                         className="flex items-center gap-1.5 text-white/70 hover:text-white transition-colors whitespace-nowrap text-xs font-medium"
                      >
                         <span>{p.icon}</span>
-                        {p.label}
+                        {t(`portals.${p.id}`)}
                      </Link>
                   ))}
                </div>
@@ -133,26 +123,25 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
 
             <div className="relative z-10 h-full flex flex-col justify-end pb-16 px-6 md:px-12 lg:px-20 max-w-[1280px] mx-auto">
                <span className="inline-block mb-4 text-xs font-bold tracking-[0.18em] uppercase text-white bg-brand-red px-3 py-1.5 rounded-sm w-fit">
-                  MADE FRESH DAILY · TASMANIA
+                  {t('hero.badge')}
                </span>
                <h1 className="font-serif text-white text-5xl md:text-6xl lg:text-7xl leading-[1.05] max-w-2xl mb-5">
-                  Authentic Vietnamese.
+                  {t('hero.titleLine1')}
                   <br />
-                  <span className="italic">Every Single Day.</span>
+                  <span className="italic">{t('hero.titleLine2')}</span>
                </h1>
                <p className="text-white/75 text-base md:text-lg max-w-lg mb-8 font-sans font-light">
-                  Tasmania's home for fresh bánh mì, pho, bún bowls, and Vietnamese street food — crafted from scratch
-                  at 8 locations across the island.
+                  {t('hero.description')}
                </p>
                <div className="flex flex-wrap gap-3">
                   <Link href="/menu" className="btn-red">
-                     <ShoppingCart size={16} /> Order Online
+                     <ShoppingCart size={16} /> {t('hero.orderOnline')}
                   </Link>
                   <Link href="/catering" className="btn-outline-white">
-                     🍱 Catering
+                     {t('hero.catering')}
                   </Link>
                   <Link href="/stores" className="btn-outline-white">
-                     <MapPin size={16} /> Find Us
+                     <MapPin size={16} /> {t('hero.findUs')}
                   </Link>
                </div>
             </div>
@@ -161,7 +150,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
          {/* ── MARQUEE TICKER ──────────────────────────────────────────────── */}
          <div className="bg-brand-red py-3 overflow-hidden">
             <div className="flex animate-marquee whitespace-nowrap">
-               {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+               {[...marqueeItems, ...marqueeItems].map((item, i) => (
                   <span
                      key={i}
                      className="flex items-center gap-3 mx-4 text-white text-sm font-semibold tracking-wider uppercase"
@@ -190,12 +179,12 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
             {/* Section header — full width above the split */}
             <div className="max-w-[1280px] mx-auto px-4 mb-12 reveal">
                <span className="inline-block text-xs font-bold tracking-[0.2em] uppercase text-brand-red/80 mb-3">
-                  OUR FOOD
+                  {t('ourFood.label')}
                </span>
                <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl text-white leading-tight">
-                  Lighten Up Your Lunch.
+                  {t('ourFood.titleLine1')}
                   <br />
-                  <span className="text-brand-red italic">Fresh Vietnamese.</span>
+                  <span className="text-brand-red italic">{t('ourFood.titleLine2')}</span>
                </h2>
             </div>
 
@@ -208,26 +197,22 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                         aspectRatio: '64/51',
                      }}
                   >
-                     <AppImage src={IMGS.ourFood} alt="Our Vietnamese food" fill className="object-cover" />
+                     <AppImage src={IMGS.ourFood} alt={t('ourFood.imageAlt')} fill className="object-cover" />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm rounded-sm px-4 py-3 shadow-lg">
                      <p className="text-xs font-bold tracking-widest uppercase text-brand-red mb-0.5">
-                        HANDCRAFTED DAILY
+                        {t('ourFood.badgeTitle')}
                      </p>
-                     <p className="text-sm font-medium text-brand-dark">Every dish made with care, every time.</p>
+                     <p className="text-sm font-medium text-brand-dark">{t('ourFood.badgeSubtitle')}</p>
                   </div>
                </div>
 
                {/* Text right */}
                <div className="reveal" style={{ animationDelay: '0.15s' }}>
-                  <p className="text-white/70 text-base leading-relaxed mb-6">
-                     Fresh Vietnamese food perfect for meetings, gatherings, and everyday meals. Our bánh mì are baked
-                     fresh throughout the day — crispy baguette, house-made pâté, and vibrant fillings that keep you
-                     coming back.
-                  </p>
+                  <p className="text-white/70 text-base leading-relaxed mb-6">{t('ourFood.description')}</p>
                   <div className="flex flex-wrap gap-3 mb-8">
-                     {['Bánh Mì', 'Pho', 'Bún Bowls', 'Spring Rolls', 'Rice Paper Rolls', 'Broken Rice'].map((tag) => (
+                     {ourFoodTags.map((tag) => (
                         <span
                            key={tag}
                            className="px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase text-white border border-white/20 bg-white/10"
@@ -237,7 +222,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                      ))}
                   </div>
                   <Link href="/menu" className="btn-red">
-                     Want to Try Our Food? <ChevronRight size={16} />
+                     {t('ourFood.cta')} <ChevronRight size={16} />
                   </Link>
                </div>
             </div>
@@ -249,7 +234,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                      <div key={i} className="overflow-hidden rounded-sm aspect-[4/3]">
                         <LazyImage
                            src={src}
-                           alt="Saigon Express food"
+                           alt={t('ourFood.mosaicAlt')}
                            wrapperClassName="w-full h-full"
                            className="hover:scale-105 transition-transform duration-500"
                         />
@@ -267,7 +252,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                   <div className="relative w-full h-[480px] rounded-sm overflow-hidden">
                      <AppImage
                         src={IMGS.catering}
-                        alt="Saigon Express catering"
+                        alt={t('catering.imageAlt')}
                         fill
                         className="object-cover rounded-sm"
                      />
@@ -276,37 +261,34 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                   <div className="absolute bottom-6 right-6 bg-white rounded-sm shadow-xl p-4 max-w-[180px]">
                      <AppImage
                         src={IMGS.cateringBox}
-                        alt="Catering box"
+                        alt={t('catering.boxImageAlt')}
                         width={320}
                         height={96}
                         className="w-full h-24 object-cover rounded-sm mb-2"
                      />
-                     <p className="text-xs font-bold text-brand-dark">Mixed Catering Box</p>
-                     <p className="text-xs text-brand-dark/60">Bánh Mì + Spring Rolls</p>
+                     <p className="text-xs font-bold text-brand-dark">{t('catering.boxTitle')}</p>
+                     <p className="text-xs text-brand-dark/60">{t('catering.boxSubtitle')}</p>
                   </div>
                </div>
 
                {/* Text right */}
                <div className="reveal" style={{ animationDelay: '0.15s' }}>
-                  <span className="section-label">CATERING</span>
+                  <span className="section-label">{t('catering.label')}</span>
                   <h2 className="font-serif text-4xl md:text-5xl text-brand-dark mt-3 mb-5">
-                     Feed the Whole Crew.
+                     {t('catering.titleLine1')}
                      <br />
-                     <span className="text-brand-red italic">We've Got You Covered.</span>
+                     <span className="text-brand-red italic">{t('catering.titleLine2')}</span>
                   </h2>
-                  <p className="text-brand-dark/70 text-base leading-relaxed mb-6">
-                     From office lunches to large events — our catering boxes are packed fresh with bánh mì, spring
-                     rolls, and more. Minimum 10 rolls, delivered or pick-up. Available across Tasmania.
-                  </p>
+                  <p className="text-brand-dark/70 text-base leading-relaxed mb-6">{t('catering.description')}</p>
                   <div className="flex flex-wrap gap-2 mb-8">
-                     {['Office Catering', 'Events & Parties', 'Corporate Orders', 'Same-Day Available'].map((tag) => (
+                     {cateringTags.map((tag) => (
                         <span key={tag} className="pill-tag">
                            {tag}
                         </span>
                      ))}
                   </div>
                   <Link href="/catering" className="btn-red">
-                     Order Catering <ChevronRight size={16} />
+                     {t('catering.cta')} <ChevronRight size={16} />
                   </Link>
                </div>
             </div>
@@ -316,23 +298,21 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
          <section className="relative py-28 overflow-hidden">
             <AppImage
                src="/manus-storage/IMG_4152Large_d9da7044.png"
-               alt="Saigon Express food spread"
+               alt={t('signature.imageAlt')}
                fill
                className="object-cover"
             />
             <div className="absolute inset-0 bg-black/70" />
             <div className="relative z-10 max-w-[1280px] mx-auto px-4 text-center">
-               <span className="section-label text-white/60 mb-4 block">SIGNATURE</span>
+               <span className="section-label text-white/60 mb-4 block">{t('signature.label')}</span>
                <h2 className="font-serif text-white text-5xl md:text-6xl lg:text-7xl mb-5">
-                  The Original.
+                  {t('signature.titleLine1')}
                   <br />
-                  <span className="italic">The Iconic.</span>
+                  <span className="italic">{t('signature.titleLine2')}</span>
                </h2>
-               <p className="text-white/70 text-lg max-w-xl mx-auto mb-8">
-                  This is what bánh mì is meant to taste like.
-               </p>
+               <p className="text-white/70 text-lg max-w-xl mx-auto mb-8">{t('signature.description')}</p>
                <Link href="/menu" className="btn-outline-white">
-                  See Our Menu <ChevronRight size={16} />
+                  {t('signature.cta')} <ChevronRight size={16} />
                </Link>
             </div>
          </section>
@@ -341,27 +321,11 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
          <section className="py-20 lg:py-28 bg-brand-cream">
             <div className="max-w-[1280px] mx-auto px-4">
                <div className="text-center mb-12 reveal">
-                  <span className="section-label">MORE THAN BÁNH MÌ</span>
-                  <h2 className="font-serif text-4xl md:text-5xl text-brand-dark mt-3">Something for Everyone</h2>
+                  <span className="section-label">{t('categories.label')}</span>
+                  <h2 className="font-serif text-4xl md:text-5xl text-brand-dark mt-3">{t('categories.title')}</h2>
                </div>
                <div className="grid md:grid-cols-3 gap-6">
-                  {[
-                     {
-                        img: '/manus-storage/hero-stir-fried-noodles_84d4beca.jpg',
-                        title: 'Stir Fry Noodles',
-                        desc: 'Wok-tossed over high flame until perfectly charred — silky egg noodles with your choice of beef, chicken, prawn or tofu, tossed with fresh vegetables in our signature savoury sauce. Every plate is made to order, every time.',
-                     },
-                     {
-                        img: '/manus-storage/saigo_express__Hot_plate_chicken_lemongrass_and_chilli_NativeLarge_421583fc.png',
-                        title: 'Hot Plate',
-                        desc: 'Sizzling on a scorching iron plate — tender chicken stir-fried with fresh lemongrass, chilli, capsicum and fragrant herbs in a bold Vietnamese sauce. The aroma hits before it even reaches your table. A Saigon Express signature.',
-                     },
-                     {
-                        img: '/manus-storage/saigo_express__Roasted_pork_and_roasted_duck_NativeLarge_aff2e8e9.png',
-                        title: 'Crackling Pork & Roast Duck',
-                        desc: "Two of Vietnam's most celebrated roasts on one plate. Crispy crackling pork belly with shatteringly crunchy skin alongside golden roast duck — both slow-roasted in-house and served with pickled vegetables and our house-made soy dipping sauce.",
-                     },
-                  ].map((cat, i) => (
+                  {categoryItems.map((cat, i) => (
                      <Link
                         key={i}
                         href="/menu"
@@ -370,7 +334,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                      >
                         <div className="overflow-hidden aspect-[4/3]">
                            <LazyImage
-                              src={cat.img}
+                              src={CATEGORY_IMAGES[i]}
                               alt={cat.title}
                               wrapperClassName="w-full h-full"
                               className="group-hover:scale-105 transition-transform duration-500"
@@ -392,14 +356,14 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                <div className="max-w-[1280px] mx-auto px-4">
                   <div className="flex items-end justify-between mb-10 reveal">
                      <div>
-                        <span className="section-label">CUSTOMER FAVOURITES</span>
-                        <h2 className="font-serif text-4xl text-brand-dark mt-2">Best Sellers</h2>
+                        <span className="section-label">{t('bestSellers.label')}</span>
+                        <h2 className="font-serif text-4xl text-brand-dark mt-2">{t('bestSellers.title')}</h2>
                      </div>
                      <Link
                         href="/menu"
                         className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1"
                      >
-                        See Full Menu <ChevronRight size={14} />
+                        {t('bestSellers.seeFullMenu')} <ChevronRight size={14} />
                      </Link>
                   </div>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -426,7 +390,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                               <p className="text-sm text-brand-dark/60 line-clamp-2 mb-3">{item.description}</p>
                               <div className="flex items-center justify-between">
                                  <span className="font-bold text-brand-dark">${Number(item.price).toFixed(2)}</span>
-                                 <span className="text-xs text-brand-red font-semibold">Order →</span>
+                                 <span className="text-xs text-brand-red font-semibold">{t('bestSellers.order')}</span>
                               </div>
                            </div>
                         </Link>
@@ -441,23 +405,19 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
             <div className="max-w-[1280px] mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
                <div className="reveal">
                   <div className="relative w-full h-[400px] rounded-sm overflow-hidden">
-                     <AppImage src={IMGS.wholesale} alt="Wholesale supply" fill className="object-cover rounded-sm" />
+                     <AppImage src={IMGS.wholesale} alt={t('wholesale.imageAlt')} fill className="object-cover rounded-sm" />
                   </div>
                </div>
                <div className="reveal" style={{ animationDelay: '0.15s' }}>
-                  <span className="section-label text-white/50">WHOLESALE</span>
+                  <span className="section-label text-white/50">{t('wholesale.label')}</span>
                   <h2 className="font-serif text-white text-4xl md:text-5xl mt-3 mb-5">
-                     Supply Your Café
+                     {t('wholesale.titleLine1')}
                      <br />
-                     <span className="text-brand-red italic">or Restaurant.</span>
+                     <span className="text-brand-red italic">{t('wholesale.titleLine2')}</span>
                   </h2>
-                  <p className="text-white/65 text-base leading-relaxed mb-6">
-                     Partner with Saigon Express Tasmania for wholesale Vietnamese food supply across the island. Bulk
-                     pricing, consistent quality, and reliable weekly delivery for cafés, grocery stores, and food
-                     service businesses.
-                  </p>
+                  <p className="text-white/65 text-base leading-relaxed mb-6">{t('wholesale.description')}</p>
                   <div className="flex flex-wrap gap-3 mb-8">
-                     {['Bulk Pricing', 'Weekly Delivery', 'Consistent Quality', 'Tasmanian Business'].map((tag) => (
+                     {wholesaleTags.map((tag) => (
                         <span
                            key={tag}
                            className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/20 text-white/70 text-xs font-medium"
@@ -467,7 +427,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                      ))}
                   </div>
                   <Link href="/wholesale-shop" className="btn-red">
-                     Wholesale Shop <ChevronRight size={16} />
+                     {t('wholesale.cta')} <ChevronRight size={16} />
                   </Link>
                </div>
             </div>
@@ -477,14 +437,12 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
          <section className="py-16 bg-brand-cream border-b border-gray-100">
             <div className="max-w-[1280px] mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 reveal">
                <div>
-                  <span className="section-label">QUICK ACCESS</span>
-                  <h2 className="font-serif text-3xl text-brand-dark mt-2">Add to Your Home Screen</h2>
-                  <p className="text-brand-dark/60 text-sm mt-2">
-                     Get instant access to our menu, store finder, and order online — right from your phone.
-                  </p>
+                  <span className="section-label">{t('getApp.label')}</span>
+                  <h2 className="font-serif text-3xl text-brand-dark mt-2">{t('getApp.title')}</h2>
+                  <p className="text-brand-dark/60 text-sm mt-2">{t('getApp.description')}</p>
                </div>
                <Link href="/get-the-app" className="btn-red flex-shrink-0">
-                  📱 Get the App — Free <ChevronRight size={16} />
+                  {t('getApp.cta')} <ChevronRight size={16} />
                </Link>
             </div>
          </section>
@@ -494,15 +452,15 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
             <div className="max-w-[1280px] mx-auto px-4">
                <div className="flex items-end justify-between mb-10 reveal">
                   <div>
-                     <span className="section-label">LATEST FROM US</span>
-                     <h2 className="font-serif text-4xl text-brand-dark mt-2">News & Updates</h2>
+                     <span className="section-label">{t('news.label')}</span>
+                     <h2 className="font-serif text-4xl text-brand-dark mt-2">{t('news.title')}</h2>
                   </div>
                   <button className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1">
-                     View all <ChevronRight size={14} />
+                     {t('news.viewAll')} <ChevronRight size={14} />
                   </button>
                </div>
                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {NEWS.map((n, i) => (
+                  {newsItems.map((n, i) => (
                      <article
                         key={i}
                         className="group block overflow-hidden rounded-sm card-lift reveal"
@@ -510,7 +468,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                      >
                         <div className="overflow-hidden aspect-[4/3]">
                            <LazyImage
-                              src={n.img}
+                              src={NEWS_IMAGES[i]}
                               alt={n.title}
                               wrapperClassName="w-full h-full"
                               className="group-hover:scale-105 transition-transform duration-500"
@@ -533,20 +491,17 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
          {/* ── BECOME A PARTNER CTA ────────────────────────────────────────── */}
          <section className="py-16 bg-brand-red">
             <div className="max-w-[1280px] mx-auto px-4 text-center reveal">
-               <h2 className="font-serif text-white text-4xl md:text-5xl mb-4">🤝 Become a Partner</h2>
-               <p className="text-white/80 text-base max-w-xl mx-auto mb-8">
-                  Join our growing network of wholesale partners, franchise owners, and catering clients across
-                  Tasmania.
-               </p>
+               <h2 className="font-serif text-white text-4xl md:text-5xl mb-4">{t('partner.title')}</h2>
+               <p className="text-white/80 text-base max-w-xl mx-auto mb-8">{t('partner.description')}</p>
                <div className="flex flex-wrap gap-4 justify-center">
                   <Link href="/wholesale-shop" className="btn-outline-white">
-                     Wholesale Partner
+                     {t('partner.wholesale')}
                   </Link>
                   <Link href="/franchise" className="btn-outline-white">
-                     Franchise Opportunity
+                     {t('partner.franchise')}
                   </Link>
                   <Link href="/catering" className="btn-outline-white">
-                     Catering Partner
+                     {t('partner.catering')}
                   </Link>
                </div>
             </div>
@@ -570,9 +525,7 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
                         height={48}
                         className="h-12 w-auto object-contain mb-5"
                      />
-                     <p className="text-sm leading-relaxed text-white/55 mb-5 max-w-xs">
-                        Fresh — Healthy — Vietnamese. Tasmania's home for authentic Vietnamese street food since 2016.
-                     </p>
+                     <p className="text-sm leading-relaxed text-white/55 mb-5 max-w-xs">{t('footer.brandDescription')}</p>
                      <div className="flex gap-3">
                         <a
                            href="https://facebook.com"
@@ -597,17 +550,11 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
 
                   {/* Quick links */}
                   <div>
-                     <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Quick Links</h3>
+                     <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">
+                        {t('footer.quickLinksTitle')}
+                     </h3>
                      <ul className="space-y-2.5 text-sm">
-                        {[
-                           { href: '/menu', label: 'Our Food' },
-                           { href: '/our-story', label: 'Our Story' },
-                           { href: '/catering', label: 'Catering' },
-                           { href: '/wholesale-shop', label: 'Wholesale Shop' },
-                           { href: '/franchise', label: 'Franchise' },
-                           { href: '/careers', label: 'Careers' },
-                           { href: '/faq', label: 'FAQ' },
-                        ].map((l) => (
+                        {footerQuickLinks.map((l) => (
                            <li key={l.href}>
                               <Link href={l.href} className="hover:text-white transition-colors">
                                  {l.label}
@@ -619,23 +566,25 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
 
                   {/* Portals */}
                   <div>
-                     <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">Portals</h3>
+                     <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">
+                        {t('footer.portalsTitle')}
+                     </h3>
                      <ul className="space-y-2.5 text-sm">
                         {PORTAL_LINKS.map((p) => (
                            <li key={p.href}>
                               <Link href={p.href} className="hover:text-white transition-colors">
-                                 {p.label}
+                                 {t(`portals.${p.id}`)}
                               </Link>
                            </li>
                         ))}
                         <li>
                            <Link href="/admin" className="hover:text-white transition-colors">
-                              Admin Dashboard
+                              {t('footer.adminDashboard')}
                            </Link>
                         </li>
                         <li>
                            <Link href="/get-the-app" className="hover:text-white transition-colors">
-                              Get the App
+                              {t('footer.getTheApp')}
                            </Link>
                         </li>
                      </ul>
@@ -646,19 +595,16 @@ export default function Home({ menuItems, featuredReviews }: HomeProps) {
 
                {/* Bottom bar */}
                <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/60">
-                  <p>
-                     © {new Date().getFullYear()} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60
-                     650 289 991
-                  </p>
+                  <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
                   <div className="flex gap-4">
                      <a href="/stores" className="hover:text-white transition-colors">
-                        Find a Store
+                        {t('footer.findStore')}
                      </a>
                      <a href="/careers" className="hover:text-white transition-colors">
-                        Careers
+                        {t('footer.careers')}
                      </a>
                      <a href="/faq" className="hover:text-white transition-colors">
-                        FAQ
+                        {t('footer.faq')}
                      </a>
                   </div>
                </div>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -132,12 +132,12 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'DM Serif Display', Georgia, serif;
+    font-family: var(--font-serif), Georgia, serif;
     letter-spacing: -0.02em;
     line-height: 1.15;
   }
   body {
-    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'DM Sans', var(--font-sans-fallback), ui-sans-serif, system-ui, sans-serif;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -176,10 +176,10 @@
   }
 
   .font-serif {
-    font-family: 'DM Serif Display', Georgia, serif;
+    font-family: var(--font-serif), Georgia, serif;
   }
   .font-sans {
-    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'DM Sans', var(--font-sans-fallback), ui-sans-serif, system-ui, sans-serif;
   }
   .portal-glass {
     background: rgba(255, 255, 255, 0.08);
@@ -350,7 +350,7 @@
   /* Section label — small red caps like DR */
   .section-label {
     display: inline-block;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', var(--font-sans-fallback), sans-serif;
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.14em;
@@ -376,7 +376,7 @@
     padding: 0.75rem 1.75rem;
     background: #C8102E;
     color: #fff;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', var(--font-sans-fallback), sans-serif;
     font-size: 0.9rem;
     font-weight: 600;
     border-radius: 4px;
@@ -396,7 +396,7 @@
     padding: 0.7rem 1.6rem;
     background: transparent;
     color: #1A1A1A;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', var(--font-sans-fallback), sans-serif;
     font-size: 0.9rem;
     font-weight: 600;
     border-radius: 4px;
@@ -416,7 +416,7 @@
     padding: 0.7rem 1.6rem;
     background: transparent;
     color: #fff;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', var(--font-sans-fallback), sans-serif;
     font-size: 0.9rem;
     font-weight: 600;
     border-radius: 4px;

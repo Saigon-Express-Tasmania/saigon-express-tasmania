@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
+import { notoSans, notoSerif } from "@/app/fonts";
 import { Providers } from "@/components/providers";
 import { getSiteContentSnapshot } from "@/lib/supabase/site-content";
 
@@ -14,10 +17,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const siteContent = await getSiteContentSnapshot();
+  const [siteContent, locale, messages] = await Promise.all([
+    getSiteContentSnapshot(),
+    getLocale(),
+    getMessages(),
+  ]);
 
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={`${notoSerif.variable} ${notoSans.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <head>        
         <link
           rel="preload"
@@ -33,7 +44,9 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-full bg-background text-foreground">
-        <Providers siteContent={siteContent}>{children}</Providers>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <Providers siteContent={siteContent}>{children}</Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

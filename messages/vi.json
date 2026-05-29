@@ -1,12 +1,155 @@
 {
-  "HomePage": {
-    "title": "De bat dau, hay chinh sua tep page.tsx.",
-    "descriptionPrefix": "Can diem bat dau hoac huong dan them? Truy cap",
-    "descriptionTemplates": "Templates",
-    "descriptionOr": "hoac trung tam",
-    "descriptionLearning": "Learning",
-    "descriptionSuffix": ".",
-    "deploy": "Trien khai ngay",
-    "docs": "Tai lieu"
+  "Home": {
+    "portals": {
+      "franchise": "Cổng Nhượng Quyền",
+      "wholesale": "Cổng Bán Buôn",
+      "warehouse": "Cổng Kho Hàng"
+    },
+    "hero": {
+      "badge": "LÀM TƯƠI MỖI NGÀY · TASMANIA",
+      "titleLine1": "Ẩm Thực Việt Chính Gốc.",
+      "titleLine2": "Mỗi Ngày Một Hương Vị.",
+      "description": "Ngôi nhà của Tasmania dành cho bánh mì, phở, bún và ẩm thực đường phố Việt Nam tươi ngon — được chế biến từ đầu tại 8 chi nhánh trên khắp đảo.",
+      "orderOnline": "Đặt Hàng Online",
+      "catering": "🍱 Tiệc & Sự Kiện",
+      "findUs": "Tìm Cửa Hàng"
+    },
+    "marquee": {
+      "items": [
+        "BÁNH MÌ VIỆT NAM",
+        "PHỞ BÒ",
+        "BÚN BÒ HUẾ",
+        "GỎI CUỐN TƯƠI",
+        "CƠM TẤM",
+        "BÁNH XÈO GIÒN",
+        "MÌ XÀO",
+        "CƠM CHIÊN",
+        "GÀ RÁN GIÒN",
+        "HỘP TIỆC"
+      ]
+    },
+    "ourFood": {
+      "label": "MÓN ĂN CỦA CHÚNG TÔI",
+      "titleLine1": "Bữa Trưa Nhẹ Nhàng Hơn.",
+      "titleLine2": "Ẩm Thực Việt Tươi.",
+      "imageAlt": "Món ăn Việt Nam của chúng tôi",
+      "badgeTitle": "LÀM THỦ CÔNG MỖI NGÀY",
+      "badgeSubtitle": "Mỗi món ăn đều được chế biến tận tâm, mỗi lần.",
+      "description": "Ẩm thực Việt tươi phù hợp cho họp mặt, tiệc tùng và bữa ăn hàng ngày. Bánh mì của chúng tôi được nướng tươi suốt cả ngày — vỏ giòn, pate nhà làm và nhân tươi khiến bạn muốn quay lại.",
+      "tags": ["Bánh Mì", "Phở", "Bún", "Chả Giò", "Gỏi Cuốn", "Cơm Tấm"],
+      "cta": "Muốn Thử Món Ăn Của Chúng Tôi?",
+      "mosaicAlt": "Món ăn Saigon Express"
+    },
+    "catering": {
+      "label": "TIỆC & SỰ KIỆN",
+      "titleLine1": "Nuôi Cả Đoàn.",
+      "titleLine2": "Chúng Tôi Lo Phần Còn Lại.",
+      "imageAlt": "Dịch vụ tiệc Saigon Express",
+      "boxImageAlt": "Hộp tiệc",
+      "boxTitle": "Hộp Tiệc Hỗn Hợp",
+      "boxSubtitle": "Bánh Mì + Chả Giò",
+      "description": "Từ bữa trưa văn phòng đến sự kiện lớn — hộp tiệc của chúng tôi được đóng gói tươi với bánh mì, chả giò và nhiều món khác. Tối thiểu 10 ổ, giao hàng hoặc tự đến lấy. Có mặt khắp Tasmania.",
+      "tags": ["Tiệc Văn Phòng", "Sự Kiện & Tiệc Tùng", "Đơn Hàng Doanh Nghiệp", "Có Trong Ngày"],
+      "cta": "Đặt Tiệc"
+    },
+    "signature": {
+      "label": "ĐẶC TRƯNG",
+      "titleLine1": "Bản Gốc.",
+      "titleLine2": "Biểu Tượng.",
+      "description": "Đây mới là hương vị bánh mì đích thực.",
+      "imageAlt": "Món ăn Saigon Express",
+      "cta": "Xem Thực Đơn"
+    },
+    "categories": {
+      "label": "HƠN CẢ BÁNH MÌ",
+      "title": "Có Món Cho Mọi Người",
+      "items": [
+        {
+          "title": "Mì Xào",
+          "desc": "Xào trên lửa lớn đến khi thơm đậm — mì trứng mềm mại với bò, gà, tôm hoặc đậu phụ tùy chọn, xào cùng rau tươi trong nước sốt đặc trưng của chúng tôi. Mỗi dĩa đều làm theo đơn hàng."
+        },
+        {
+          "title": "Bò Né",
+          "desc": "Nóng hổi trên đĩa gang — gà xào với sả, ớt, ớt chuông và thảo mộc thơm trong nước sốt Việt đậm đà. Mùi thơm đến trước cả khi món ra bàn. Đặc trưng của Saigon Express."
+        },
+        {
+          "title": "Heo Quay & Vịt Quay",
+          "desc": "Hai món quay nổi tiếng nhất Việt Nam trên một dĩa. Ba rọi heo quay giòn tan bên cạnh vịt quay vàng óng — cả hai đều quay chậm tại chỗ, kèm dưa chua và nước tương nhà làm."
+        }
+      ]
+    },
+    "bestSellers": {
+      "label": "KHÁCH HÀNG YÊU THÍCH",
+      "title": "Bán Chạy Nhất",
+      "seeFullMenu": "Xem Toàn Bộ Thực Đơn",
+      "order": "Đặt →"
+    },
+    "wholesale": {
+      "label": "BÁN BUÔN",
+      "titleLine1": "Cung Cấp Cho Quán Cà Phê",
+      "titleLine2": "hoặc Nhà Hàng.",
+      "imageAlt": "Cung cấp bán buôn",
+      "description": "Hợp tác với Saigon Express Tasmania để cung cấp thực phẩm Việt Nam bán buôn trên khắp đảo. Giá sỉ, chất lượng ổn định và giao hàng hàng tuần đáng tin cậy cho quán cà phê, cửa hàng tạp hóa và doanh nghiệp dịch vụ ăn uống.",
+      "tags": ["Giá Sỉ", "Giao Hàng Hàng Tuần", "Chất Lượng Ổn Định", "Doanh Nghiệp Tasmania"],
+      "cta": "Cửa Hàng Bán Buôn"
+    },
+    "getApp": {
+      "label": "TRUY CẬP NHANH",
+      "title": "Thêm Vào Màn Hình Chính",
+      "description": "Truy cập ngay thực đơn, tìm cửa hàng và đặt hàng online — ngay trên điện thoại của bạn.",
+      "cta": "📱 Tải Ứng Dụng — Miễn Phí"
+    },
+    "news": {
+      "label": "TIN MỚI NHẤT",
+      "title": "Tin Tức & Cập Nhật",
+      "viewAll": "Xem tất cả",
+      "items": [
+        {
+          "date": "1 Thg 6 2016",
+          "tag": "CÂU CHUYỆN",
+          "title": "Khởi Đầu: Mở Cửa Hàng Đầu Tiên Tại 335 Elizabeth St, North Hobart",
+          "excerpt": "Năm 2016, Tiến sĩ Tien có một ước mơ — mang hương vị ẩm thực đường phố Việt Nam chính gốc đến Tasmania. Từ một cửa hàng nhỏ tại 335 Elizabeth Street, North Hobart, ông muốn mọi người Hobart cảm nhận sự ấm áp của văn hóa Việt qua thức ăn tươi, lành mạnh và giá phải chăng. Cửa hàng đầu tiên đó trở thành trái tim của Saigon Express ngày nay."
+        },
+        {
+          "date": "15 Thg 3 2024",
+          "tag": "ĐỘI NGŨ",
+          "title": "Những Người Đằng Sau Mỗi Tô: Gặp Gia Đình Saigon Express",
+          "excerpt": "Đằng sau mỗi tô phở nóng hổi và mỗi ổ bánh mì nướng tươi là đội ngũ tận tâm coi mỗi khách như người thân. Nhân viên của chúng tôi mang đam mê, văn hóa và sự chăm sóc vào từng món — mỗi ngày."
+        },
+        {
+          "date": "10 Thg 4 2025",
+          "tag": "CỬA HÀNG MỚI",
+          "title": "Saigon Express Sorell — Cửa Hàng Thứ 8 Đã Khai Trương!",
+          "excerpt": "Chúng tôi vui mừng thông báo khai trương Saigon Express Sorell, cửa hàng thứ 8 tại Tasmania! Mang ẩm thực Việt tươi, lành mạnh đến cộng đồng Sorell — vì thức ăn ngon nên có mặt cho mọi người trên khắp đảo."
+        }
+      ]
+    },
+    "partner": {
+      "title": "🤝 Trở Thành Đối Tác",
+      "description": "Tham gia mạng lưới đối tác bán buôn, chủ nhượng quyền và khách hàng tiệc đang phát triển của chúng tôi khắp Tasmania.",
+      "wholesale": "Đối Tác Bán Buôn",
+      "franchise": "Cơ Hội Nhượng Quyền",
+      "catering": "Đối Tác Tiệc"
+    },
+    "footer": {
+      "brandDescription": "Tươi — Lành Mạnh — Việt Nam. Ngôi nhà của Tasmania cho ẩm thực đường phố Việt chính gốc từ năm 2016.",
+      "quickLinksTitle": "Liên Kết Nhanh",
+      "quickLinks": {
+        "ourFood": "Món Ăn",
+        "ourStory": "Câu Chuyện",
+        "catering": "Tiệc & Sự Kiện",
+        "wholesaleShop": "Cửa Hàng Bán Buôn",
+        "franchise": "Nhượng Quyền",
+        "careers": "Tuyển Dụng",
+        "faq": "Câu Hỏi Thường Gặp"
+      },
+      "portalsTitle": "Cổng Truy Cập",
+      "adminDashboard": "Bảng Điều Khiển Admin",
+      "getTheApp": "Tải Ứng Dụng",
+      "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
+      "findStore": "Tìm Cửa Hàng",
+      "careers": "Tuyển Dụng",
+      "faq": "Câu Hỏi Thường Gặp"
+    }
   }
 }

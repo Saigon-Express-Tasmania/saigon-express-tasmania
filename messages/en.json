@@ -1,12 +1,155 @@
 {
-  "HomePage": {
-    "title": "To get started, edit the page.tsx file.",
-    "descriptionPrefix": "Looking for a starting point or more instructions? Head over to",
-    "descriptionTemplates": "Templates",
-    "descriptionOr": "or the",
-    "descriptionLearning": "Learning",
-    "descriptionSuffix": "center.",
-    "deploy": "Deploy Now",
-    "docs": "Documentation"
+  "Home": {
+    "portals": {
+      "franchise": "Franchise Portal",
+      "wholesale": "Wholesale Portal",
+      "warehouse": "Warehouse Portal"
+    },
+    "hero": {
+      "badge": "MADE FRESH DAILY · TASMANIA",
+      "titleLine1": "Authentic Vietnamese.",
+      "titleLine2": "Every Single Day.",
+      "description": "Tasmania's home for fresh bánh mì, pho, bún bowls, and Vietnamese street food — crafted from scratch at 8 locations across the island.",
+      "orderOnline": "Order Online",
+      "catering": "🍱 Catering",
+      "findUs": "Find Us"
+    },
+    "marquee": {
+      "items": [
+        "VIETNAMESE BAGUETTE",
+        "BEEF PHO",
+        "HUE NOODLE SOUP",
+        "FRESH RICE PAPER ROLLS",
+        "BROKEN RICE",
+        "CRISPY PANCAKE",
+        "STIR FRIED NOODLES",
+        "FRIED RICE",
+        "CRISPY FRIED CHICKEN",
+        "CATERING BOXES"
+      ]
+    },
+    "ourFood": {
+      "label": "OUR FOOD",
+      "titleLine1": "Lighten Up Your Lunch.",
+      "titleLine2": "Fresh Vietnamese.",
+      "imageAlt": "Our Vietnamese food",
+      "badgeTitle": "HANDCRAFTED DAILY",
+      "badgeSubtitle": "Every dish made with care, every time.",
+      "description": "Fresh Vietnamese food perfect for meetings, gatherings, and everyday meals. Our bánh mì are baked fresh throughout the day — crispy baguette, house-made pâté, and vibrant fillings that keep you coming back.",
+      "tags": ["Bánh Mì", "Pho", "Bún Bowls", "Spring Rolls", "Rice Paper Rolls", "Broken Rice"],
+      "cta": "Want to Try Our Food?",
+      "mosaicAlt": "Saigon Express food"
+    },
+    "catering": {
+      "label": "CATERING",
+      "titleLine1": "Feed the Whole Crew.",
+      "titleLine2": "We've Got You Covered.",
+      "imageAlt": "Saigon Express catering",
+      "boxImageAlt": "Catering box",
+      "boxTitle": "Mixed Catering Box",
+      "boxSubtitle": "Bánh Mì + Spring Rolls",
+      "description": "From office lunches to large events — our catering boxes are packed fresh with bánh mì, spring rolls, and more. Minimum 10 rolls, delivered or pick-up. Available across Tasmania.",
+      "tags": ["Office Catering", "Events & Parties", "Corporate Orders", "Same-Day Available"],
+      "cta": "Order Catering"
+    },
+    "signature": {
+      "label": "SIGNATURE",
+      "titleLine1": "The Original.",
+      "titleLine2": "The Iconic.",
+      "description": "This is what bánh mì is meant to taste like.",
+      "imageAlt": "Saigon Express food spread",
+      "cta": "See Our Menu"
+    },
+    "categories": {
+      "label": "MORE THAN BÁNH MÌ",
+      "title": "Something for Everyone",
+      "items": [
+        {
+          "title": "Stir Fry Noodles",
+          "desc": "Wok-tossed over high flame until perfectly charred — silky egg noodles with your choice of beef, chicken, prawn or tofu, tossed with fresh vegetables in our signature savoury sauce. Every plate is made to order, every time."
+        },
+        {
+          "title": "Hot Plate",
+          "desc": "Sizzling on a scorching iron plate — tender chicken stir-fried with fresh lemongrass, chilli, capsicum and fragrant herbs in a bold Vietnamese sauce. The aroma hits before it even reaches your table. A Saigon Express signature."
+        },
+        {
+          "title": "Crackling Pork & Roast Duck",
+          "desc": "Two of Vietnam's most celebrated roasts on one plate. Crispy crackling pork belly with shatteringly crunchy skin alongside golden roast duck — both slow-roasted in-house and served with pickled vegetables and our house-made soy dipping sauce."
+        }
+      ]
+    },
+    "bestSellers": {
+      "label": "CUSTOMER FAVOURITES",
+      "title": "Best Sellers",
+      "seeFullMenu": "See Full Menu",
+      "order": "Order →"
+    },
+    "wholesale": {
+      "label": "WHOLESALE",
+      "titleLine1": "Supply Your Café",
+      "titleLine2": "or Restaurant.",
+      "imageAlt": "Wholesale supply",
+      "description": "Partner with Saigon Express Tasmania for wholesale Vietnamese food supply across the island. Bulk pricing, consistent quality, and reliable weekly delivery for cafés, grocery stores, and food service businesses.",
+      "tags": ["Bulk Pricing", "Weekly Delivery", "Consistent Quality", "Tasmanian Business"],
+      "cta": "Wholesale Shop"
+    },
+    "getApp": {
+      "label": "QUICK ACCESS",
+      "title": "Add to Your Home Screen",
+      "description": "Get instant access to our menu, store finder, and order online — right from your phone.",
+      "cta": "📱 Get the App — Free"
+    },
+    "news": {
+      "label": "LATEST FROM US",
+      "title": "News & Updates",
+      "viewAll": "View all",
+      "items": [
+        {
+          "date": "1 Jun 2016",
+          "tag": "OUR STORY",
+          "title": "How It All Began: Opening Our First Store at 335 Elizabeth St, North Hobart",
+          "excerpt": "In 2016, Dr. Tien had one dream — to bring the authentic flavours of Vietnamese street food to Tasmania. Starting from a small shopfront at 335 Elizabeth Street, North Hobart, he wanted every Hobartian to experience the warmth of Vietnamese culture through fresh, healthy, and affordable food. That first store became the heart of what Saigon Express is today."
+        },
+        {
+          "date": "15 Mar 2024",
+          "tag": "TEAM",
+          "title": "The People Behind Every Bowl: Meet the Saigon Express Family",
+          "excerpt": "Behind every steaming bowl of pho and every freshly baked bánh mì is a dedicated team who treat every customer like family. Our staff bring passion, culture, and care to every single dish — every single day."
+        },
+        {
+          "date": "10 Apr 2025",
+          "tag": "NEW STORE",
+          "title": "Saigon Express Sorell — Our 8th Store Is Now Open!",
+          "excerpt": "We're thrilled to announce the opening of Saigon Express Sorell, our 8th store in Tasmania! Bringing fresh, healthy Vietnamese food to the Sorell community — because great food should be accessible to everyone across the island."
+        }
+      ]
+    },
+    "partner": {
+      "title": "🤝 Become a Partner",
+      "description": "Join our growing network of wholesale partners, franchise owners, and catering clients across Tasmania.",
+      "wholesale": "Wholesale Partner",
+      "franchise": "Franchise Opportunity",
+      "catering": "Catering Partner"
+    },
+    "footer": {
+      "brandDescription": "Fresh — Healthy — Vietnamese. Tasmania's home for authentic Vietnamese street food since 2016.",
+      "quickLinksTitle": "Quick Links",
+      "quickLinks": {
+        "ourFood": "Our Food",
+        "ourStory": "Our Story",
+        "catering": "Catering",
+        "wholesaleShop": "Wholesale Shop",
+        "franchise": "Franchise",
+        "careers": "Careers",
+        "faq": "FAQ"
+      },
+      "portalsTitle": "Portals",
+      "adminDashboard": "Admin Dashboard",
+      "getTheApp": "Get the App",
+      "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
+      "findStore": "Find a Store",
+      "careers": "Careers",
+      "faq": "FAQ"
+    }
   }
 }

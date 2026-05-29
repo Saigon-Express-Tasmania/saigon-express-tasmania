@@ -5,11 +5,13 @@ import { useState } from 'react';
 import Link from '@/components/link';
 import { useCart } from '@/contexts/CartContext';
 import { NAV_LINKS, PORTAL_LINKS } from '@/config/nav-links';
+import { useTranslations } from 'next-intl';
 import { MapPin, Menu, ShoppingCart, X } from 'lucide-react';
 
 const LOGO_URL = '/manus-storage/saigonexpresslogo_clean_719f26ac.png';
 
 export default function MainHeader() {
+   const t = useTranslations('Home.portals');
    const [mobileOpen, setMobileOpen] = useState(false);
    const { cartCount, setCartOpen } = useCart();
 
@@ -101,7 +103,7 @@ export default function MainHeader() {
                         onClick={() => setMobileOpen(false)}
                         className="block text-sm text-brand-dark/60 hover:text-brand-red py-1"
                      >
-                        {p.icon} {p.label}
+                        {p.icon} {t(p.id)}
                      </Link>
                   ))}
                </div>
