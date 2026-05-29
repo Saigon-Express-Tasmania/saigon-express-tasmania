@@ -1,7 +1,8 @@
 import AppImage from '@/components/AppImage';
 import LazyImage from '@/components/LazyImage';
 import Link from '@/components/link';
-import MainHeader, { PORTAL_LINKS } from '@/components/MainHeader';
+import MainHeader from '@/components/MainHeader';
+import { PORTAL_LINKS } from '@/config/nav-links';
 import dynamic from 'next/dynamic';
 import type { MenuItem } from '@/contexts/CartContext';
 import type { FeaturedReview } from '@/types';

@@ -4,24 +4,10 @@ import AppImage from '@/components/AppImage';
 import { useState } from 'react';
 import Link from '@/components/link';
 import { useCart } from '@/contexts/CartContext';
+import { NAV_LINKS, PORTAL_LINKS } from '@/config/nav-links';
 import { MapPin, Menu, ShoppingCart, X } from 'lucide-react';
 
 const LOGO_URL = '/manus-storage/saigonexpresslogo_clean_719f26ac.png';
-
-export const NAV_LINKS = [
-   { href: '/', label: 'Home' },
-   { href: '/menu', label: 'Our Food' },
-   { href: '/our-story', label: 'Our Story' },
-   { href: '/wholesale-shop', label: 'Wholesale Shop' },
-   { href: '/franchise', label: 'Franchise' },
-   { href: '/faq', label: 'FAQ' },
-];
-
-export const PORTAL_LINKS = [
-   { href: '/portals/franchise', label: 'Franchise Portal', icon: '🏪' },
-   { href: '/portals/wholesale', label: 'Wholesale Portal', icon: '📦' },
-   { href: '/portals/warehouse', label: 'Warehouse Portal', icon: '🏭' },
-];
 
 export default function MainHeader() {
    const [mobileOpen, setMobileOpen] = useState(false);

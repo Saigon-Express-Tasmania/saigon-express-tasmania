@@ -4,6 +4,14 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/en-US", destination: "/", permanent: true },
+      { source: "/en-US/:path*", destination: "/:path*", permanent: true },
+      { source: "/vi-VN", destination: "/vi", permanent: true },
+      { source: "/vi-VN/:path*", destination: "/vi/:path*", permanent: true },
+    ];
+  },
   images: {
     remotePatterns: [
       {

@@ -1,6 +1,6 @@
-export const DEFAULT_LOCALE = 'en-US';
+export const DEFAULT_LOCALE = 'en';
 
 export const SUPPORTED_LOCALES = [
-    'en-US',
-    'vi-VN',
+    'en',
+    'vi',
 ] as const;
