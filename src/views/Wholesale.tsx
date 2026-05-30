@@ -4,8 +4,16 @@ import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
+import type { WholesaleProduct } from "@/types";
+import { pickWholesaleImageUrl } from "@/types";
 import { toast } from "sonner";
-import { ChevronRight, CheckCircle, TrendingDown, FileText, Truck, Users, Phone, ArrowLeft } from "lucide-react";
+import { ChevronRight, CheckCircle, TrendingDown, FileText, Truck, Users, Phone } from "lucide-react";
+
+function productImageUrls(products: WholesaleProduct[]): string[] {
+  return products
+    .map((p) => pickWholesaleImageUrl(p.imageUrls, [1448, 1024, 512, 256]))
+    .filter((url): url is string => Boolean(url));
+}
 
 const LOGO_URL = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
 
@@ -42,7 +50,11 @@ const WHO_WE_SUPPLY = [
   { emoji: "🎪", label: "Events & Festivals" },
 ];
 
-export default function Wholesale() {
+export default function Wholesale({ products }: { products: WholesaleProduct[] }) {
+  const imageUrls = productImageUrls(products);
+  const heroImage = imageUrls[0] ?? null;
+  const splitImage = imageUrls[1] ?? imageUrls[0] ?? null;
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
@@ -112,7 +124,20 @@ export default function Wholesale() {
 
       {/* Hero */}
       <section className="relative h-[480px] overflow-hidden">
-        <div className="absolute inset-0 bg-black" />
+        {heroImage ? (
+          <>
+            <AppImage
+              src={heroImage}
+              alt="Wholesale Vietnamese food products"
+              fill
+              priority
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-black/55" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-black" />
+        )}
         <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-4">WHOLESALE FOOD SUPPLY TASMANIA</p>
           <h1 className="font-serif text-white text-5xl md:text-7xl leading-tight max-w-2xl mb-6">
@@ -199,8 +224,17 @@ export default function Wholesale() {
       {/* Asymmetric split */}
       <section className="bg-white">
         <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2">
-          <div className="relative h-72 lg:h-auto overflow-hidden">
-            <div className="absolute inset-0 bg-black" />
+          <div className="relative h-72 lg:min-h-[420px] overflow-hidden">
+            {splitImage ? (
+              <AppImage
+                src={splitImage}
+                alt="Saigon Express wholesale supply"
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-black" />
+            )}
           </div>
           <div className="p-10 lg:p-16 flex flex-col justify-center">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-4">HOW IT WORKS</p>

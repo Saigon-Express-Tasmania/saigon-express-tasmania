@@ -23,11 +23,14 @@ export type UploadMediaResult = {
   /** Object path inside the bucket */
   path: string;
   signedUrl: string;
+  /** Permanent public URL when the bucket allows public read */
+  publicUrl: string;
 };
 
 export type SupabaseStorageContextValue = {
   uploadMedia: (file: File, options?: UploadMediaOptions) => Promise<UploadMediaResult>;
   getSignedUrl: (path: string, expiresInSeconds?: number) => Promise<string>;
+  getPublicUrl: (path: string) => string;
   isUploading: boolean;
 };
 
@@ -59,6 +62,11 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const getPublicUrl = useCallback((path: string) => {
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    return data.publicUrl;
+  }, []);
+
   const uploadMedia = useCallback(
     async (file: File, options?: UploadMediaOptions) => {
       const {
@@ -86,21 +94,23 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
         if (uploadError) throw uploadError;
 
         const signedUrl = await getSignedUrl(path);
-        return { path, signedUrl };
+        const publicUrl = getPublicUrl(path);
+        return { path, signedUrl, publicUrl };
       } finally {
         setIsUploading(false);
       }
     },
-    [getSignedUrl],
+    [getPublicUrl, getSignedUrl],
   );
 
   const value = useMemo(
     () => ({
       uploadMedia,
       getSignedUrl,
+      getPublicUrl,
       isUploading,
     }),
-    [getSignedUrl, isUploading, uploadMedia],
+    [getPublicUrl, getSignedUrl, isUploading, uploadMedia],
   );
 
   return (

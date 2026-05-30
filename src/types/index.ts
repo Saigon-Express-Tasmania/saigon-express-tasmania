@@ -6,7 +6,15 @@ export type { MenuItemRow } from "./MenuItem";
 export { mapMenuItemRow } from "./MenuItem";
 export type { StoreLocation, StoreLocationRow } from "./StoreLocation";
 export { mapStoreLocationRow } from "./StoreLocation";
-export type { WholesaleProduct, WholesaleProductRow } from "./WholesaleProduct";
-export { mapWholesaleProductRow } from "./WholesaleProduct";
+export type {
+  WholesaleImageUrls,
+  WholesaleProduct,
+  WholesaleProductRow,
+} from "./WholesaleProduct";
+export {
+  mapWholesaleProductRow,
+  normalizeWholesaleImageUrls,
+  pickWholesaleImageUrl,
+} from "./WholesaleProduct";
 export type { SiteContentSnapshot, LocalizationValue } from "./SiteContent";
 export type { SiteCategory } from "./Category";

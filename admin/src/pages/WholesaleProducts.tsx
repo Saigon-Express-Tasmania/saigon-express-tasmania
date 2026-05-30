@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout';
+import { ImageUpload } from '@/components/ImageUpload';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,11 +37,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+
+const WHOLESALE_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1448] as const;
+
+type WholesaleImageUrls = Record<string, string>;
 
 type WholesaleProductRow = {
   id: number;
@@ -53,10 +59,36 @@ type WholesaleProductRow = {
   stock_qty: number;
   is_available: boolean;
   min_order_qty: number;
-  image_url: string | null;
+  image_urls: WholesaleImageUrls;
   created_at: string;
   updated_at: string;
 };
+
+function normalizeImageUrls(value: unknown): WholesaleImageUrls {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return Object.entries(value as Record<string, unknown>).reduce<WholesaleImageUrls>(
+    (acc, [key, url]) => {
+      const trimmed = String(url ?? '').trim();
+      if (trimmed) acc[key] = trimmed;
+      return acc;
+    },
+    {},
+  );
+}
+
+function previewFromImageUrls(
+  urls: WholesaleImageUrls,
+  preferredSizes: number[] = [1024, 1448, 512, 256],
+): string | null {
+  for (const size of preferredSizes) {
+    const url = urls[String(size)]?.trim();
+    if (url) return url;
+  }
+  const fallback = Object.values(urls).find((url) => url?.trim());
+  return fallback?.trim() ?? null;
+}
 
 type WholesaleProductInput = Omit<
   WholesaleProductRow,
@@ -64,7 +96,7 @@ type WholesaleProductInput = Omit<
 >;
 
 const SELECT_COLUMNS =
-  'id, name, sku, category, description, unit, unit_price, stock_qty, is_available, min_order_qty, image_url, created_at, updated_at';
+  'id, name, sku, category, description, unit, unit_price, stock_qty, is_available, min_order_qty, image_urls, created_at, updated_at';
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
@@ -77,7 +109,7 @@ const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   stock_qty: 0,
   is_available: true,
   min_order_qty: 1,
-  image_url: '',
+  image_urls: {},
 });
 
 async function nextWholesaleProductId(): Promise<number> {
@@ -94,6 +126,7 @@ async function nextWholesaleProductId(): Promise<number> {
 
 export function WholesaleProducts() {
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const { uploadMedia } = useSupabaseStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [products, setProducts] = useState<WholesaleProductRow[]>([]);
@@ -106,6 +139,8 @@ export function WholesaleProducts() {
   const [form, setForm] = useState<WholesaleProductInput>(
     emptyWholesaleProductInput(),
   );
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<WholesaleProductRow | null>(
     null,
@@ -177,6 +212,7 @@ export function WholesaleProducts() {
         ...emptyWholesaleProductInput(),
         id,
       });
+      setImagePreviewUrl(null);
       setDialogOpen(true);
     } catch (err) {
       toast.error(
@@ -200,9 +236,62 @@ export function WholesaleProducts() {
       stock_qty: product.stock_qty,
       is_available: product.is_available,
       min_order_qty: product.min_order_qty,
-      image_url: product.image_url ?? '',
+      image_urls: normalizeImageUrls(product.image_urls),
     });
+    setImagePreviewUrl(previewFromImageUrls(normalizeImageUrls(product.image_urls)));
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (input: File | File[]) => {
+    const files = Array.isArray(input) ? input : [input];
+    const sizes = [...WHOLESALE_IMAGE_UPLOAD_RESIZES].sort((a, b) => a - b);
+
+    if (files.length !== sizes.length) {
+      toast.error('Unexpected number of resized image files.');
+      return;
+    }
+
+    const slugPart =
+      form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
+      `wholesale-${form.id}`;
+    const timestamp = Date.now();
+
+    setIsUploadingImages(true);
+    try {
+      const imageUrls: WholesaleImageUrls = {};
+
+      for (let i = 0; i < sizes.length; i++) {
+        const size = sizes[i];
+        const file = files[i];
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const fileName = `${slugPart}-${timestamp}_${size}.${ext}`;
+
+        const { publicUrl } = await uploadMedia(file, {
+          folder: 'wholesale-products',
+          fileName,
+          upsert: true,
+        });
+        imageUrls[String(size)] = publicUrl;
+      }
+
+      setForm((prev) => ({ ...prev, image_urls: imageUrls }));
+      setImagePreviewUrl(previewFromImageUrls(imageUrls));
+      toast.success('Product images uploaded.');
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to upload product images.';
+      toast.error(message);
+      throw err;
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleImageClear = () => {
+    setForm((prev) => ({ ...prev, image_urls: {} }));
+    setImagePreviewUrl(null);
   };
 
   const handleSave = async () => {
@@ -237,7 +326,7 @@ export function WholesaleProducts() {
         stock_qty: Number(form.stock_qty) || 0,
         is_available: form.is_available,
         min_order_qty: Number(form.min_order_qty) || 1,
-        image_url: form.image_url?.trim() || null,
+        image_urls: form.image_urls,
       };
 
       if (editingId !== null) {
@@ -423,14 +512,32 @@ export function WholesaleProducts() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((p) => (
+                    {filteredProducts.map((p) => {
+                      const thumb = previewFromImageUrls(
+                        normalizeImageUrls(p.image_urls),
+                        [256, 512, 1024, 1448],
+                      );
+                      return (
                       <tr
                         key={p.id}
                         className="border-b transition-colors hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 font-mono text-sm">{p.id}</td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          {p.name}
+                          <div className="flex items-center gap-2.5">
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt=""
+                                className="size-8 shrink-0 rounded-md border object-cover bg-muted"
+                              />
+                            ) : (
+                              <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+                                <ImageIcon className="size-4" />
+                              </div>
+                            )}
+                            <span className="min-w-0">{p.name}</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {p.category}
@@ -473,7 +580,8 @@ export function WholesaleProducts() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -482,8 +590,23 @@ export function WholesaleProducts() {
         </Card>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open && isUploadingImages) return;
+          setDialogOpen(open);
+        }}
+      >
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          showCloseButton={!isUploadingImages}
+          onInteractOutside={(event) => {
+            if (isUploadingImages) event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (isUploadingImages) event.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {editingId !== null
@@ -612,13 +735,20 @@ export function WholesaleProducts() {
             </div>
 
             <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="wp-image">Image URL</Label>
-              <Input
-                id="wp-image"
-                value={form.image_url ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, image_url: e.target.value }))
+              <ImageUpload
+                label="Product image"
+                description="JPEG, PNG, WebP or GIF. Uploads 256, 512, 1024 and 1448px variants."
+                value={imagePreviewUrl ?? previewFromImageUrls(form.image_urls) ?? null}
+                onFileSelect={handleImageUpload}
+                onClear={
+                  Object.keys(form.image_urls).length > 0
+                    ? handleImageClear
+                    : undefined
                 }
+                uploadResizes={[...WHOLESALE_IMAGE_UPLOAD_RESIZES]}
+                isUploading={isUploadingImages}
+                disabled={saving || isUploadingImages}
+                shape="square"
               />
             </div>
 
@@ -639,11 +769,14 @@ export function WholesaleProducts() {
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              disabled={saving}
+              disabled={saving || isUploadingImages}
             >
               Cancel
             </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
+            <Button
+              onClick={() => void handleSave()}
+              disabled={saving || isUploadingImages}
+            >
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

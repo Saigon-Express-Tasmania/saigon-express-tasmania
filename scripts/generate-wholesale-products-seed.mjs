@@ -27,6 +27,14 @@ function sqlText(value) {
   return `'${sqlEscape(value)}'`;
 }
 
+function sqlImageUrls(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "'{}'::jsonb";
+  }
+  const json = JSON.stringify(value);
+  return `'${sqlEscape(json)}'::jsonb`;
+}
+
 function loadWholesaleProducts() {
   const batch = JSON.parse(fs.readFileSync(batchPath, "utf8"));
   const items = batch?.[0]?.result?.data?.json;
@@ -37,6 +45,13 @@ function loadWholesaleProducts() {
 }
 
 function productToSqlRow(item) {
+  const imageUrls =
+    item.imageUrls && typeof item.imageUrls === "object" && !Array.isArray(item.imageUrls)
+      ? item.imageUrls
+      : item.imageUrl
+        ? { "1024": item.imageUrl }
+        : {};
+
   return `  (
     ${item.id},
     ${sqlText(item.name)},
@@ -48,7 +63,7 @@ function productToSqlRow(item) {
     ${item.stockQty},
     ${item.isAvailable ? "true" : "false"},
     ${item.minOrderQty ?? 1},
-    ${sqlText(item.imageUrl)},
+    ${sqlImageUrls(imageUrls)},
     '${sqlEscape(item.createdAt)}'::timestamptz,
     '${sqlEscape(item.updatedAt)}'::timestamptz
   )`;
@@ -69,7 +84,7 @@ insert into public.wholesale_products (
   stock_qty,
   is_available,
   min_order_qty,
-  image_url,
+  image_urls,
   created_at,
   updated_at
 )
@@ -85,7 +100,7 @@ on conflict (id) do update set
   stock_qty = excluded.stock_qty,
   is_available = excluded.is_available,
   min_order_qty = excluded.min_order_qty,
-  image_url = excluded.image_url,
+  image_urls = excluded.image_urls,
   created_at = excluded.created_at,
   updated_at = excluded.updated_at;
 ${END}`;
@@ -100,13 +115,11 @@ function updateMigration(seedSql) {
     throw new Error(`Migration missing seed markers. Add:\n${BEGIN}\n...\n${END}`);
   }
 
-  const updated = migration.slice(0, start) + seedSql + migration.slice(end + END.length);
+  const updated =
+    migration.slice(0, start) + seedSql + "\n" + migration.slice(end + END.length);
   fs.writeFileSync(migrationPath, updated);
+  console.log(`Updated seed block in ${migrationPath}`);
 }
 
 const items = loadWholesaleProducts();
-const seedSql = buildSeedSql(items);
-updateMigration(seedSql);
-
-console.log(`Updated wholesale_products seed with ${items.length} items in ${path.relative(root, migrationPath)}`);
-
+updateMigration(buildSeedSql(items));

@@ -11,7 +11,7 @@ create table public.wholesale_products (
   stock_qty integer not null,
   is_available boolean not null default true,
   min_order_qty integer not null default 1,
-  image_url text,
+  image_urls jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -75,7 +75,7 @@ insert into public.wholesale_products (
   stock_qty,
   is_available,
   min_order_qty,
-  image_url,
+  image_urls,
   created_at,
   updated_at
 )
@@ -91,7 +91,7 @@ values
     200,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -106,7 +106,7 @@ values
     150,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -121,7 +121,7 @@ values
     300,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -136,7 +136,7 @@ values
     100,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -151,7 +151,7 @@ values
     300,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -166,7 +166,7 @@ values
     500,
     true,
     5,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -181,7 +181,7 @@ values
     400,
     true,
     5,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -196,7 +196,7 @@ values
     80,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -211,7 +211,7 @@ values
     200,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -226,7 +226,7 @@ values
     120,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -241,7 +241,7 @@ values
     150,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -256,7 +256,7 @@ values
     100,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -271,7 +271,7 @@ values
     90,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -286,7 +286,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -301,7 +301,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -316,7 +316,7 @@ values
     50,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -331,7 +331,7 @@ values
     40,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -346,7 +346,7 @@ values
     30,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -361,7 +361,7 @@ values
     25,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -376,7 +376,7 @@ values
     20,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -391,7 +391,7 @@ values
     15,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -406,7 +406,7 @@ values
     60,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -421,7 +421,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -436,7 +436,7 @@ values
     60,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -451,7 +451,7 @@ values
     100,
     true,
     5,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -466,7 +466,7 @@ values
     40,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -481,7 +481,7 @@ values
     40,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -496,7 +496,7 @@ values
     70,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -511,7 +511,7 @@ values
     80,
     true,
     5,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -526,7 +526,7 @@ values
     70,
     true,
     5,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -541,7 +541,7 @@ values
     60,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -556,7 +556,7 @@ values
     120,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -571,7 +571,7 @@ values
     100,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -586,7 +586,7 @@ values
     60,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -601,7 +601,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -616,7 +616,7 @@ values
     90,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -631,7 +631,7 @@ values
     70,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -646,7 +646,7 @@ values
     80,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -661,7 +661,7 @@ values
     90,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -676,7 +676,7 @@ values
     70,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -691,7 +691,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -706,7 +706,7 @@ values
     60,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -721,7 +721,7 @@ values
     40,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -736,7 +736,7 @@ values
     20,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -751,7 +751,7 @@ values
     100,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -766,7 +766,7 @@ values
     80,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -781,7 +781,7 @@ values
     50,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -796,7 +796,7 @@ values
     70,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -811,7 +811,7 @@ values
     60,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -826,7 +826,7 @@ values
     50,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -841,7 +841,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -856,7 +856,7 @@ values
     100,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -871,7 +871,7 @@ values
     120,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -886,7 +886,7 @@ values
     150,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -901,7 +901,7 @@ values
     80,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -916,7 +916,7 @@ values
     100,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -931,7 +931,7 @@ values
     100,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -946,7 +946,7 @@ values
     80,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -961,7 +961,7 @@ values
     90,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -976,7 +976,7 @@ values
     200,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -991,7 +991,7 @@ values
     150,
     true,
     1,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1006,7 +1006,7 @@ values
     100,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1021,7 +1021,7 @@ values
     120,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1036,7 +1036,7 @@ values
     100,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1051,7 +1051,7 @@ values
     120,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1066,7 +1066,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1081,7 +1081,7 @@ values
     90,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1096,7 +1096,7 @@ values
     100,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1111,7 +1111,7 @@ values
     90,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1126,7 +1126,7 @@ values
     100,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1141,7 +1141,7 @@ values
     80,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1156,7 +1156,7 @@ values
     70,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1171,7 +1171,7 @@ values
     80,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1186,7 +1186,7 @@ values
     100,
     true,
     3,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   ),
@@ -1201,7 +1201,7 @@ values
     60,
     true,
     2,
-    null,
+    '{}'::jsonb,
     '2026-05-01T18:27:05.000Z'::timestamptz,
     '2026-05-01T18:27:05.000Z'::timestamptz
   )
@@ -1215,8 +1215,9 @@ on conflict (id) do update set
   stock_qty = excluded.stock_qty,
   is_available = excluded.is_available,
   min_order_qty = excluded.min_order_qty,
-  image_url = excluded.image_url,
+  image_urls = excluded.image_urls,
   created_at = excluded.created_at,
   updated_at = excluded.updated_at;
 -- END wholesale_products seed
+
 

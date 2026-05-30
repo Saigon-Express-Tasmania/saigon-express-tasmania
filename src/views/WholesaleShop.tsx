@@ -6,6 +6,7 @@ import { ChevronRight, Search, Lock, Package, CheckCircle, Mail } from "lucide-r
 import Link from "@/components/link";
 import { useState } from "react";
 import type { WholesaleProduct } from "@/types";
+import { pickWholesaleImageUrl } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
@@ -242,7 +243,7 @@ export default function WholesaleShop({ products }: { products: WholesaleProduct
           {/* Product grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filtered.map((p, i) => {
-              const img = p.imageUrl && p.imageUrl.trim() !== "" ? p.imageUrl : null;
+              const img = pickWholesaleImageUrl(p.imageUrls, [512, 1024, 256, 1448]);
               const gradientClass = CATEGORY_COLORS[p.category] ?? "from-gray-800 to-gray-600";
               const catIcon = CATEGORY_ICONS[p.category] ?? "📦";
               const desc = p.description ?? "";

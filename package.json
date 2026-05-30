@@ -14,6 +14,8 @@
     "admin:lint": "eslint admin",
     "admin:preview": "npm exec -- vite preview admin",
     "supabase:push": "node scripts/push-supabase-migrations.mjs",
+    "supabase:functions:serve": "supabase functions serve --env-file supabase/.env",
+    "supabase:functions:deploy": "supabase functions deploy checkout-pickup order-tracking-token stripe-webhook",
     "generate:featured-reviews-seed": "node scripts/generate-featured-reviews-seed.mjs",
     "generate:menu-seed": "node scripts/generate-menu-seed.mjs",
     "deploy:netlify": "node scripts/deploy-netlify.mjs",

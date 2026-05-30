@@ -125,7 +125,6 @@ export default function LazyImage({
           priority={eager}
           sizes={sizes}
           onLoad={() => setLoaded(true)}
-          onLoadingComplete={() => setLoaded(true)}
           onError={() => setError(true)}
           className={cn(
             "relative z-[1] object-cover transition-opacity duration-500",

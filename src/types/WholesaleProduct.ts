@@ -1,3 +1,6 @@
+/** Size key → public image URL (e.g. `"512"` → `https://...`). */
+export type WholesaleImageUrls = Record<string, string>;
+
 /** Row shape from `public.wholesale_products` (snake_case). */
 export type WholesaleProductRow = {
   id: number;
@@ -10,7 +13,7 @@ export type WholesaleProductRow = {
   stock_qty: number;
   is_available: boolean;
   min_order_qty: number;
-  image_url: string | null;
+  image_urls: WholesaleImageUrls;
   created_at: string;
   updated_at: string;
 };
@@ -27,10 +30,40 @@ export type WholesaleProduct = {
   stockQty: number;
   isAvailable: boolean;
   minOrderQty: number;
-  imageUrl: string | null;
+  imageUrls: WholesaleImageUrls;
   createdAt: string;
   updatedAt: string;
 };
+
+export function normalizeWholesaleImageUrls(
+  value: unknown,
+): WholesaleImageUrls {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return Object.entries(value as Record<string, unknown>).reduce<WholesaleImageUrls>(
+    (acc, [key, url]) => {
+      const trimmed = String(url ?? '').trim();
+      if (trimmed) acc[key] = trimmed;
+      return acc;
+    },
+    {},
+  );
+}
+
+/** Pick the first available URL from preferred size keys (largest first by default). */
+export function pickWholesaleImageUrl(
+  urls: WholesaleImageUrls | null | undefined,
+  preferredSizes: number[] = [1024, 1448, 512, 256],
+): string | null {
+  const map = urls ?? {};
+  for (const size of preferredSizes) {
+    const url = map[String(size)]?.trim();
+    if (url) return url;
+  }
+  const fallback = Object.values(map).find((url) => url?.trim());
+  return fallback?.trim() ?? null;
+}
 
 export function mapWholesaleProductRow(row: WholesaleProductRow): WholesaleProduct {
   return {
@@ -44,9 +77,8 @@ export function mapWholesaleProductRow(row: WholesaleProductRow): WholesaleProdu
     stockQty: row.stock_qty,
     isAvailable: row.is_available,
     minOrderQty: row.min_order_qty,
-    imageUrl: row.image_url,
+    imageUrls: normalizeWholesaleImageUrls(row.image_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
-

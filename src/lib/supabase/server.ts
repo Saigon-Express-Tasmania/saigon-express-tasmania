@@ -102,7 +102,7 @@ export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]
   const { data, error } = await supabase
     .from("wholesale_products")
     .select(
-      "id, name, sku, category, description, unit, unit_price, stock_qty, is_available, min_order_qty, image_url, created_at, updated_at",
+      "id, name, sku, category, description, unit, unit_price, stock_qty, is_available, min_order_qty, image_urls, created_at, updated_at",
     )
     .eq("is_available", true)
     .order("category", { ascending: true })
