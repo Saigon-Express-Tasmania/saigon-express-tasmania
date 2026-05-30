@@ -2,8 +2,8 @@ export type { FeaturedReview, FeaturedReviewRow } from "./FeaturedReview";
 export { mapFeaturedReviewRow } from "./FeaturedReview";
 export type { Promotion, PromotionRow } from "./Promotion";
 export { mapPromotionRow } from "./Promotion";
-export type { MenuItemRow } from "./MenuItem";
-export { mapMenuItemRow } from "./MenuItem";
+export type { MenuImageUrls, MenuItemRow } from "./MenuItem";
+export { mapMenuItemRow, normalizeMenuImageUrls, pickMenuImageUrl } from "./MenuItem";
 export type { StoreLocation, StoreLocationRow } from "./StoreLocation";
 export { mapStoreLocationRow } from "./StoreLocation";
 export type {

@@ -10,6 +10,7 @@ import { ItemCustomiseModal, type ItemCustomisation } from "@/components/ItemCus
 import { useCart, type MenuItem } from "@/contexts/CartContext";
 import PickLocationModal from "@/components/PickLocationModal";
 import LazyImage from "@/components/LazyImage";
+import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, StoreLocation } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
@@ -223,7 +224,12 @@ export default function Menu({ menuItems, storeLocations, categoriesContent }: M
                 <div key={item.id} className={`group bg-white overflow-hidden card-lift ${!item.isAvailable ? "opacity-60" : ""}`}>
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                     <LazyImage
-                      src={item.imageUrl ?? categoryImageMap[item.category] ?? DEFAULT_IMG}
+                      src={
+                        pickMenuImageUrl(item.imageUrls, [512, 1024, 1920, 256]) ??
+                        item.imageUrl ??
+                        categoryImageMap[item.category] ??
+                        DEFAULT_IMG
+                      }
                       alt={item.name}
                       wrapperClassName="size-full"
                       className="group-hover:scale-105 transition-transform duration-500"

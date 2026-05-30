@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout';
+import { ImageUpload } from '@/components/ImageUpload';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,11 +37,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  normalizeImageUrls,
+  previewFromImageUrls,
+  type ImageUrlsMap,
+} from '@/lib/image-urls';
+import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+
+const MENU_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1920] as const;
 
 type MenuItemRow = {
   id: number;
@@ -49,7 +58,7 @@ type MenuItemRow = {
   price: string;
   wholesale_price: string | null;
   category: string;
-  image_url: string | null;
+  image_urls: ImageUrlsMap;
   is_available: boolean;
   is_popular: boolean;
   sort_order: number;
@@ -69,7 +78,7 @@ const emptyMenuItemInput = (): MenuItemInput => ({
   price: '',
   wholesale_price: '',
   category: '',
-  image_url: '',
+  image_urls: {},
   is_available: true,
   is_popular: false,
   sort_order: 0,
@@ -90,6 +99,7 @@ async function nextMenuId(): Promise<number> {
 
 export function Menu() {
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const { uploadMedia } = useSupabaseStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [items, setItems] = useState<MenuItemRow[]>([]);
@@ -100,6 +110,8 @@ export function Menu() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<MenuItemInput>(emptyMenuItemInput());
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<MenuItemRow | null>(null);
   const [search, setSearch] = useState('');
@@ -112,7 +124,7 @@ export function Menu() {
       const { data, error: fetchError } = await supabase
         .from('menu')
         .select(
-          'id, name, description, price, wholesale_price, category, image_url, is_available, is_popular, sort_order, ingredients',
+          'id, name, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients',
         )
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
@@ -168,6 +180,7 @@ export function Menu() {
         ...emptyMenuItemInput(),
         id,
       });
+      setImagePreviewUrl(null);
       setDialogOpen(true);
     } catch (err) {
       toast.error(
@@ -185,7 +198,7 @@ export function Menu() {
       price: item.price,
       wholesale_price: item.wholesale_price ?? '',
       category: item.category,
-      image_url: item.image_url ?? '',
+      image_urls: normalizeImageUrls(item.image_urls),
       is_available: item.is_available,
       is_popular: item.is_popular,
       sort_order: item.sort_order,
@@ -194,7 +207,62 @@ export function Menu() {
           ? item.ingredients
           : JSON.stringify(item.ingredients ?? '', null, 2),
     });
+    setImagePreviewUrl(
+      previewFromImageUrls(normalizeImageUrls(item.image_urls), [
+        256, 512, 1024, 1920,
+      ]),
+    );
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (input: File | File[]) => {
+    const files = Array.isArray(input) ? input : [input];
+    const sizes = [...MENU_IMAGE_UPLOAD_RESIZES].sort((a, b) => a - b);
+
+    if (files.length !== sizes.length) {
+      toast.error('Unexpected number of resized image files.');
+      return;
+    }
+
+    const slugPart =
+      form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
+      `menu-${form.id}`;
+    const timestamp = Date.now();
+
+    setIsUploadingImages(true);
+    try {
+      const imageUrls: ImageUrlsMap = {};
+
+      for (let i = 0; i < sizes.length; i++) {
+        const size = sizes[i];
+        const file = files[i];
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const fileName = `${slugPart}-${timestamp}_${size}.${ext}`;
+
+        const { publicUrl } = await uploadMedia(file, {
+          folder: 'menu',
+          fileName,
+          upsert: true,
+        });
+        imageUrls[String(size)] = publicUrl;
+      }
+
+      setForm((prev) => ({ ...prev, image_urls: imageUrls }));
+      setImagePreviewUrl(previewFromImageUrls(imageUrls));
+      toast.success('Menu images uploaded.');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to upload menu images.';
+      toast.error(message);
+      throw err;
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleImageClear = () => {
+    setForm((prev) => ({ ...prev, image_urls: {} }));
+    setImagePreviewUrl(null);
   };
 
   const handleSave = async () => {
@@ -223,14 +291,14 @@ export function Menu() {
 
     setSaving(true);
     try {
-      const payload: MenuItemRow = {
+      const payload = {
         id: form.id,
         name: form.name.trim(),
         description: form.description?.trim() || null,
         price: String(form.price),
         wholesale_price: form.wholesale_price?.trim() || null,
         category: form.category.trim(),
-        image_url: form.image_url?.trim() || null,
+        image_urls: form.image_urls,
         is_available: form.is_available,
         is_popular: form.is_popular,
         sort_order: Number(form.sort_order) || 0,
@@ -246,7 +314,7 @@ export function Menu() {
             price: payload.price,
             wholesale_price: payload.wholesale_price,
             category: payload.category,
-            image_url: payload.image_url,
+            image_urls: payload.image_urls,
             is_available: payload.is_available,
             is_popular: payload.is_popular,
             sort_order: payload.sort_order,
@@ -264,7 +332,7 @@ export function Menu() {
           price: payload.price,
           wholesale_price: payload.wholesale_price,
           category: payload.category,
-          image_url: payload.image_url,
+          image_urls: payload.image_urls,
           is_available: payload.is_available,
           is_popular: payload.is_popular,
           sort_order: payload.sort_order,
@@ -430,7 +498,12 @@ export function Menu() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((item) => (
+                    {filteredItems.map((item) => {
+                      const thumb = previewFromImageUrls(
+                        normalizeImageUrls(item.image_urls),
+                        [256, 512, 1024, 1920],
+                      );
+                      return (
                       <tr
                         key={item.id}
                         className="border-b transition-colors hover:bg-muted/50"
@@ -439,7 +512,20 @@ export function Menu() {
                           {item.id}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          {item.name}
+                          <div className="flex items-center gap-2.5">
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt=""
+                                className="size-8 shrink-0 rounded-md border object-cover bg-muted"
+                              />
+                            ) : (
+                              <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+                                <ImageIcon className="size-4" />
+                              </div>
+                            )}
+                            <span className="min-w-0">{item.name}</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {item.category}
@@ -488,7 +574,8 @@ export function Menu() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -497,8 +584,23 @@ export function Menu() {
         </Card>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open && isUploadingImages) return;
+          setDialogOpen(open);
+        }}
+      >
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          showCloseButton={!isUploadingImages}
+          onInteractOutside={(event) => {
+            if (isUploadingImages) event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (isUploadingImages) event.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {editingId !== null ? 'Edit menu item' : 'Add menu item'}
@@ -555,14 +657,25 @@ export function Menu() {
                 }
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="menu-image">Image URL</Label>
-              <Input
-                id="menu-image"
-                value={form.image_url ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, image_url: e.target.value }))
+            <div className="grid gap-2 md:col-span-2">
+              <ImageUpload
+                label="Menu item image"
+                description="JPEG, PNG, WebP or GIF. Uploads 256, 512, 1024 and 1920px variants."
+                value={
+                  imagePreviewUrl ??
+                  previewFromImageUrls(form.image_urls) ??
+                  null
                 }
+                onFileSelect={handleImageUpload}
+                onClear={
+                  Object.keys(form.image_urls).length > 0
+                    ? handleImageClear
+                    : undefined
+                }
+                uploadResizes={[...MENU_IMAGE_UPLOAD_RESIZES]}
+                isUploading={isUploadingImages}
+                disabled={saving || isUploadingImages}
+                shape="square"
               />
             </div>
             <div className="grid gap-2">
@@ -654,11 +767,14 @@ export function Menu() {
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              disabled={saving}
+              disabled={saving || isUploadingImages}
             >
               Cancel
             </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
+            <Button
+              onClick={() => void handleSave()}
+              disabled={saving || isUploadingImages}
+            >
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

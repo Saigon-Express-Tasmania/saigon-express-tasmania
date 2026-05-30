@@ -39,6 +39,13 @@ function sqlText(value) {
   return `'${sqlEscape(value)}'`;
 }
 
+function sqlImageUrls(imageUrl) {
+  const trimmed = imageUrl?.trim();
+  if (!trimmed) return "'{}'::jsonb";
+  const json = JSON.stringify({ 1920: trimmed });
+  return `'${sqlEscape(json)}'::jsonb`;
+}
+
 function menuToSqlRow(item) {
   const ingredients = `'${sqlEscape(JSON.stringify(item.ingredients ?? []))}'::jsonb`;
   return `  (
@@ -48,7 +55,7 @@ function menuToSqlRow(item) {
     '${sqlEscape(item.price)}',
     ${sqlText(item.wholesalePrice)},
     '${sqlEscape(item.category)}',
-    ${sqlText(item.imageUrl)},
+    ${sqlImageUrls(item.imageUrl)},
     ${item.isAvailable ? "true" : "false"},
     ${item.isPopular ? "true" : "false"},
     ${item.sortOrder ?? 0},
@@ -66,7 +73,7 @@ insert into public.menu (
   price,
   wholesale_price,
   category,
-  image_url,
+  image_urls,
   is_available,
   is_popular,
   sort_order,
@@ -80,7 +87,7 @@ on conflict (id) do update set
   price = excluded.price,
   wholesale_price = excluded.wholesale_price,
   category = excluded.category,
-  image_url = excluded.image_url,
+  image_urls = excluded.image_urls,
   is_available = excluded.is_available,
   is_popular = excluded.is_popular,
   sort_order = excluded.sort_order,
