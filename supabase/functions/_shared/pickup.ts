@@ -1,5 +1,12 @@
-import Stripe from "npm:stripe@17.7.0";
+import type Stripe from "npm:stripe@17.7.0";
 import { createServiceClient } from "./supabase.ts";
+import {
+  createStripeClient,
+  type StripePaymentMode,
+  parsePaymentMode,
+} from "./stripe-secrets.ts";
+
+export type { StripePaymentMode };
 
 export type PickupCheckoutItem = {
   menuItemId: number;
@@ -9,6 +16,7 @@ export type PickupCheckoutItem = {
 };
 
 export type PickupCheckoutInput = {
+  mode: StripePaymentMode;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -22,6 +30,7 @@ export type PickupCheckoutInput = {
 export type PickupCheckoutResult = {
   url: string | null;
   orderId: number;
+  mode: StripePaymentMode;
 };
 
 type StoreStripeRow = {
@@ -37,14 +46,6 @@ function randomHex(byteLength: number): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function getStripe(): Stripe {
-  const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
-  if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not set");
-  }
-  return new Stripe(secretKey);
-}
-
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -55,6 +56,7 @@ export function validatePickupCheckoutInput(body: unknown): PickupCheckoutInput 
   }
 
   const data = body as Record<string, unknown>;
+  const mode = parsePaymentMode(data.mode);
   const customerName = String(data.customerName ?? "").trim();
   const customerEmail = String(data.customerEmail ?? "").trim();
   const customerPhone = String(data.customerPhone ?? "").trim();
@@ -95,6 +97,7 @@ export function validatePickupCheckoutInput(body: unknown): PickupCheckoutInput 
   });
 
   return {
+    mode,
     customerName,
     customerEmail,
     customerPhone,
@@ -128,6 +131,7 @@ export async function createPickupCheckoutSession(
       notes: input.notes ?? null,
       status: "pending",
       payment_status: "unpaid",
+      stripe_mode: input.mode,
     })
     .select("id")
     .single();
@@ -173,7 +177,7 @@ export async function createPickupCheckoutSession(
       ? Math.round(totalCents * platformFeePercent / 100)
       : 0;
 
-  const stripe = getStripe();
+  const stripe = createStripeClient(input.mode);
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = input.items.map((item) => ({
     price_data: {
       currency: "aud",
@@ -183,24 +187,27 @@ export async function createPickupCheckoutSession(
     quantity: item.qty,
   }));
 
+  const stripeMetadata = {
+    orderId: String(orderId),
+    mode: input.mode,
+    customerName: input.customerName,
+    customerEmail: input.customerEmail,
+    pickupTime: input.pickupTime,
+    storeId: String(input.storeId),
+  };
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     payment_method_types: ["card"],
     line_items: lineItems,
     mode: "payment",
     customer_email: input.customerEmail,
     client_reference_id: String(orderId),
-    metadata: {
-      orderId: String(orderId),
-      customerName: input.customerName,
-      customerEmail: input.customerEmail,
-      pickupTime: input.pickupTime,
-      storeId: String(input.storeId),
-    },
+    metadata: stripeMetadata,
     allow_promotion_codes: true,
     success_url: `${input.origin}/checkout/success?orderId=${orderId}`,
     cancel_url: `${input.origin}/checkout?cancelled=1`,
     payment_intent_data: {
-      metadata: { orderId: String(orderId) },
+      metadata: { orderId: String(orderId), mode: input.mode },
       ...(connectAccountId && connectStatus === "active"
         ? {
             application_fee_amount: platformFeeCents,
@@ -221,11 +228,12 @@ export async function createPickupCheckoutSession(
     console.error("[checkout-pickup] Failed to save Stripe session id:", updateError.message);
   }
 
-  return { url: session.url, orderId };
+  return { url: session.url, orderId, mode: input.mode };
 }
 
 export async function markOrderPaidFromStripeSession(
   session: Stripe.Checkout.Session,
+  paymentMode: StripePaymentMode,
 ): Promise<void> {
   const orderId = session.metadata?.orderId ? parseInt(session.metadata.orderId, 10) : null;
   if (!orderId || Number.isNaN(orderId)) return;
@@ -239,6 +247,7 @@ export async function markOrderPaidFromStripeSession(
     .update({
       payment_status: "paid",
       status: "confirmed",
+      stripe_mode: paymentMode,
       cancel_token: cancelToken,
       tracking_token: trackingToken,
       status_updated_at: new Date().toISOString(),
@@ -250,14 +259,17 @@ export async function markOrderPaidFromStripeSession(
     throw error;
   }
 
-  console.log(`[stripe-webhook] Order #${orderId} marked as paid + confirmed`);
+  console.log(`[stripe-webhook] Order #${orderId} (${paymentMode}) marked as paid + confirmed`);
 }
 
-export async function cancelOrderPaymentFailed(orderId: number): Promise<void> {
+export async function cancelOrderPaymentFailed(
+  orderId: number,
+  paymentMode: StripePaymentMode,
+): Promise<void> {
   const supabase = createServiceClient();
   const { error } = await supabase
     .from("orders")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled", stripe_mode: paymentMode })
     .eq("id", orderId);
 
   if (error) {

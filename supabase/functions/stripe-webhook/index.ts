@@ -1,20 +1,22 @@
-import Stripe from "npm:stripe@17.7.0";
+import type Stripe from "npm:stripe@17.7.0";
 import { jsonResponse } from "../_shared/cors.ts";
 import {
   cancelOrderPaymentFailed,
   markOrderPaidFromStripeSession,
+  type StripePaymentMode,
 } from "../_shared/pickup.ts";
+import { constructWebhookEvent } from "../_shared/stripe-secrets.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
+
+function paymentModeFromMetadata(metadata: Record<string, string> | null | undefined): StripePaymentMode | null {
+  const raw = metadata?.mode;
+  if (raw === "test" || raw === "live") return raw;
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
-  }
-
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-  if (!webhookSecret) {
-    console.error("[stripe-webhook] STRIPE_WEBHOOK_SECRET not set");
-    return jsonResponse({ error: "Webhook secret not configured" }, 500);
   }
 
   const signature = req.headers.get("stripe-signature");
@@ -24,14 +26,12 @@ Deno.serve(async (req) => {
 
   const body = await req.text();
   let event: Stripe.Event;
+  let paymentMode: StripePaymentMode;
 
   try {
-    const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
-    }
-    const stripe = new Stripe(secretKey);
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    const verified = constructWebhookEvent(body, signature);
+    event = verified.event;
+    paymentMode = verified.mode;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[stripe-webhook] Signature verification failed:", message);
@@ -39,20 +39,24 @@ Deno.serve(async (req) => {
   }
 
   if (event.id.startsWith("evt_test_")) {
-    return jsonResponse({ verified: true });
+    return jsonResponse({ verified: true, mode: paymentMode });
   }
+
+  console.log(`[stripe-webhook] ${event.type} (${paymentMode})`);
 
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      await markOrderPaidFromStripeSession(session);
+      const mode = paymentModeFromMetadata(session.metadata ?? undefined) ?? paymentMode;
+      await markOrderPaidFromStripeSession(session, mode);
     }
 
     if (event.type === "payment_intent.payment_failed") {
       const pi = event.data.object as Stripe.PaymentIntent;
       const orderId = pi.metadata?.orderId ? parseInt(pi.metadata.orderId, 10) : null;
+      const mode = paymentModeFromMetadata(pi.metadata ?? undefined) ?? paymentMode;
       if (orderId && !Number.isNaN(orderId)) {
-        await cancelOrderPaymentFailed(orderId);
+        await cancelOrderPaymentFailed(orderId, mode);
       }
     }
 
@@ -74,7 +78,7 @@ Deno.serve(async (req) => {
       if (error) {
         console.error("[stripe-webhook] Connect account update failed:", error.message);
       } else {
-        console.log(`[stripe-webhook] Connect account ${account.id} status: ${status}`);
+        console.log(`[stripe-webhook] Connect account ${account.id} (${paymentMode}) status: ${status}`);
       }
     }
   } catch (err) {
@@ -82,5 +86,5 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Internal error processing webhook" }, 500);
   }
 
-  return jsonResponse({ received: true });
+  return jsonResponse({ received: true, mode: paymentMode });
 });
