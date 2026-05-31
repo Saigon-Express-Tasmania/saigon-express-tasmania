@@ -1,22 +1,18 @@
 "use client";
 
-import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import Link from "@/components/link";
-import { ChevronDown, ChevronUp, MessageCircle, Phone, Mail, MapPin, Send, CheckCircle2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  MessageCircle,
+  Phone,
+  Mail,
+  MapPin,
+  Send,
+  CheckCircle2,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
-
-const LOGO_URL = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
-
-const NAV_LINKS = [
-  { href: "/menu", label: "Our Food" },
-  { href: "/wholesale-shop", label: "Wholesale Shop" },
-  { href: "/catering", label: "Catering" },
-  { href: "/franchise", label: "Franchise" },
-  { href: "/stores", label: "Find Us" },
-  { href: "/careers", label: "Careers" },
-  { href: "/faq", label: "FAQ" },
-];
 
 const faqCategories = [
   {
@@ -248,39 +244,6 @@ export default function FAQ() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] font-sans">
-      {/* Portal bar */}
-      <div className="bg-[#1A1A1A] text-white text-xs py-2 px-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <span className="text-stone-400">Fresh · Healthy · Vietnamese</span>
-          <div className="flex gap-4">
-            <Link href="/portals/warehouse" className="hover:text-amber-400 transition-colors">Warehouse</Link>
-            <Link href="/portals/wholesale" className="hover:text-amber-400 transition-colors">Wholesale Portal</Link>
-            <Link href="/portals/franchise" className="hover:text-amber-400 transition-colors">Franchise Hub</Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-stone-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
-          <Link href="/">
-            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} priority className="h-10 w-auto object-contain" />
-          </Link>
-          <div className="hidden md:flex items-center gap-7">
-            {NAV_LINKS.map((l) => (
-              <Link key={l.href} href={l.href} className="text-sm font-medium text-stone-700 hover:text-red-700 transition-colors">
-                {l.label}
-              </Link>
-            ))}
-          </div>
-          <Link href="/menu">
-            <button className="bg-red-700 text-white text-sm font-semibold px-5 py-2 rounded-full hover:bg-red-800 transition-colors">
-              Order Now
-            </button>
-          </Link>
-        </div>
-      </nav>
-
       {/* Hero */}
       <div className="bg-[#1A1A1A] text-white py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
@@ -291,7 +254,8 @@ export default function FAQ() {
             Frequently Asked Questions
           </h1>
           <p className="text-stone-400 text-lg leading-relaxed">
-            Everything you need to know about Saigon Express Tasmania — from ordering and menus to wholesale, catering, and franchising.
+            Everything you need to know about Saigon Express Tasmania — from
+            ordering and menus to wholesale, catering, and franchising.
           </p>
         </div>
       </div>
@@ -312,7 +276,11 @@ export default function FAQ() {
           {faqCategories.map((c) => (
             <button
               key={c.category}
-              onClick={() => setActiveCategory(activeCategory === c.category ? null : c.category)}
+              onClick={() =>
+                setActiveCategory(
+                  activeCategory === c.category ? null : c.category,
+                )
+              }
               className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 activeCategory === c.category
                   ? "bg-red-700 text-white"
@@ -331,7 +299,9 @@ export default function FAQ() {
           <div key={cat.category}>
             <div className="flex items-center gap-3 mb-6">
               <span className="text-2xl">{cat.icon}</span>
-              <h2 className="font-serif text-2xl font-bold text-stone-900">{cat.category}</h2>
+              <h2 className="font-serif text-2xl font-bold text-stone-900">
+                {cat.category}
+              </h2>
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-stone-100 px-6">
               {cat.questions.map((item) => (
@@ -348,9 +318,12 @@ export default function FAQ() {
       {/* Still need help CTA */}
       <div className="bg-[#1A1A1A] text-white py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-serif text-3xl font-bold mb-4">Still Have a Question?</h2>
+          <h2 className="font-serif text-3xl font-bold mb-4">
+            Still Have a Question?
+          </h2>
           <p className="text-stone-400 mb-8 leading-relaxed">
-            Our team is here to help. Reach out via phone, email, or use the live chat button on any page.
+            Our team is here to help. Reach out via phone, email, or use the
+            live chat button on any page.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
@@ -376,25 +349,6 @@ export default function FAQ() {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-[#111] text-white py-12 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div>
-            <AppImage src={LOGO_URL} alt="Saigon Express Tasmania" width={180} height={40} className="h-10 w-auto object-contain mb-3" />
-            <p className="text-stone-500 text-sm">© {new Date().getFullYear()} TTH Enterprises Pty Ltd. ABN 60 650 289 991</p>
-          </div>
-          <div className="flex flex-wrap gap-6 text-sm text-stone-400">
-            <Link href="/menu" className="hover:text-white transition-colors">Menu</Link>
-            <Link href="/catering" className="hover:text-white transition-colors">Catering</Link>
-            <Link href="/wholesale" className="hover:text-white transition-colors">Wholesale</Link>
-            <Link href="/franchise" className="hover:text-white transition-colors">Franchise</Link>
-            <Link href="/careers" className="hover:text-white transition-colors">Careers</Link>
-            <Link href="/stores" className="hover:text-white transition-colors">Find Us</Link>
-            <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
@@ -426,7 +380,11 @@ function SubmitQuestionForm() {
       return;
     }
     setFormError("");
-    submitMutation.mutate({ name: name.trim(), email: email.trim() || undefined, question: question.trim() });
+    submitMutation.mutate({
+      name: name.trim(),
+      email: email.trim() || undefined,
+      question: question.trim(),
+    });
   };
 
   return (
@@ -436,17 +394,25 @@ function SubmitQuestionForm() {
           <div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-4">
             <MessageCircle className="text-red-700" size={22} />
           </div>
-          <h2 className="font-serif text-3xl font-bold text-stone-900 mb-3">Ask Us Anything</h2>
+          <h2 className="font-serif text-3xl font-bold text-stone-900 mb-3">
+            Ask Us Anything
+          </h2>
           <p className="text-stone-500 leading-relaxed">
-            Can't find the answer you're looking for? Submit your question and our team will get back to you.
+            Can't find the answer you're looking for? Submit your question and
+            our team will get back to you.
           </p>
         </div>
 
         {submitted ? (
           <div className="bg-white border border-green-200 rounded-2xl p-8 text-center shadow-sm">
             <CheckCircle2 className="mx-auto text-green-600 mb-3" size={40} />
-            <h3 className="font-semibold text-xl text-stone-900 mb-2">Question Received!</h3>
-            <p className="text-stone-500 mb-6">Thank you! We'll review your question and get back to you as soon as possible.</p>
+            <h3 className="font-semibold text-xl text-stone-900 mb-2">
+              Question Received!
+            </h3>
+            <p className="text-stone-500 mb-6">
+              Thank you! We'll review your question and get back to you as soon
+              as possible.
+            </p>
             <button
               onClick={() => setSubmitted(false)}
               className="text-red-700 font-semibold hover:underline text-sm"
@@ -455,7 +421,10 @@ function SubmitQuestionForm() {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="bg-white border border-stone-200 rounded-2xl p-8 shadow-sm space-y-5">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white border border-stone-200 rounded-2xl p-8 shadow-sm space-y-5"
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-sm font-semibold text-stone-700 mb-1.5">
@@ -473,7 +442,10 @@ function SubmitQuestionForm() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-stone-700 mb-1.5">
-                  Email <span className="text-stone-400 font-normal">(optional — for reply)</span>
+                  Email{" "}
+                  <span className="text-stone-400 font-normal">
+                    (optional — for reply)
+                  </span>
                 </label>
                 <input
                   type="email"
@@ -499,14 +471,20 @@ function SubmitQuestionForm() {
                 placeholder="e.g. Do you offer catering for large events? What are the minimum numbers?"
                 className="w-full border border-stone-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition resize-none"
               />
-              <p className="text-xs text-stone-400 mt-1 text-right">{question.length}/1000</p>
+              <p className="text-xs text-stone-400 mt-1 text-right">
+                {question.length}/1000
+              </p>
             </div>
             {formError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{formError}</p>
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                {formError}
+              </p>
             )}
             <button
               type="submit"
-              disabled={submitMutation.isPending || !name.trim() || !question.trim()}
+              disabled={
+                submitMutation.isPending || !name.trim() || !question.trim()
+              }
               className="w-full flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-colors text-sm"
             >
               {submitMutation.isPending ? (

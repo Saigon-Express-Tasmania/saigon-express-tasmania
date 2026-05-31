@@ -8,6 +8,8 @@ import CartDrawer from "@/components/CartDrawer";
 import { FloatingWidgets } from "@/components/FloatingWidgets";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import type { SiteContentSnapshot } from "@/types";
+import MainHeader from "@/components/MainHeader";
+import MainFooter from "@/components/MainFooter";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -20,7 +22,9 @@ export function Providers({ children, siteContent }: ProvidersProps) {
       <ThemeProvider defaultTheme="light">
         <CartProvider>
           <TooltipProvider>
+            <MainHeader />
             {children}
+            <MainFooter />
             <CartDrawer />
             <FloatingWidgets />
             <Toaster />

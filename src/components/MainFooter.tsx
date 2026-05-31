@@ -1,0 +1,140 @@
+import AppImage from "@/components/AppImage";
+import Link from "@/components/link";
+import { PORTAL_LINKS } from "@/config/nav-links";
+import { LOGO_URL } from "@/lib/site-images";
+import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
+import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
+
+const Newsletter = dynamic(() => import("@/components/Newsletter"));
+
+export default function MainFooter() {
+  const t = useTranslations("Home");
+
+  const footerQuickLinks = [
+    { href: "/menu", label: t("footer.quickLinks.ourFood") },
+    { href: "/our-story", label: t("footer.quickLinks.ourStory") },
+    { href: "/catering", label: t("footer.quickLinks.catering") },
+    { href: "/wholesale-shop", label: t("footer.quickLinks.wholesaleShop") },
+    { href: "/franchise", label: t("footer.quickLinks.franchise") },
+    { href: "/careers", label: t("footer.quickLinks.careers") },
+    { href: "/faq", label: t("footer.quickLinks.faq") },
+  ] as const;
+
+  return (
+    <footer className="bg-brand-dark text-white/70">
+      <div className="max-w-[1280px] mx-auto px-4 pt-16 pb-8">
+        <div className="grid md:grid-cols-[2fr_1fr_1fr_1fr] gap-10 mb-12">
+          {/* Brand col */}
+          <div>
+            <AppImage
+              src={LOGO_URL}
+              alt="Saigon Express Tasmania"
+              width={200}
+              height={48}
+              className="h-12 w-auto object-contain mb-5"
+            />
+            <p className="text-sm leading-relaxed text-white/55 mb-5 max-w-xs">
+              {t("footer.brandDescription")}
+            </p>
+            <div className="flex gap-3">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Facebook"
+                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
+              >
+                <FacebookIcon size={15} />
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram"
+                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
+              >
+                <InstagramIcon size={15} />
+              </a>
+            </div>
+          </div>
+
+          {/* Quick links */}
+          <div>
+            <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">
+              {t("footer.quickLinksTitle")}
+            </h3>
+            <ul className="space-y-2.5 text-sm">
+              {footerQuickLinks.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className="hover:text-white transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Portals */}
+          <div>
+            <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">
+              {t("footer.portalsTitle")}
+            </h3>
+            <ul className="space-y-2.5 text-sm">
+              {PORTAL_LINKS.map((p) => (
+                <li key={p.href}>
+                  <Link
+                    href={p.href}
+                    className="hover:text-white transition-colors"
+                  >
+                    {t(`portals.${p.id}`)}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link
+                  href="/admin"
+                  className="hover:text-white transition-colors"
+                >
+                  {t("footer.adminDashboard")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/get-the-app"
+                  className="hover:text-white transition-colors"
+                >
+                  {t("footer.getTheApp")}
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <Newsletter />
+        </div>
+
+        {/* Bottom bar */}
+        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/60">
+          <p>{t("footer.copyright", { year: new Date().getFullYear() })}</p>
+          <div className="flex gap-4">
+            <Link href="/stores" className="hover:text-white transition-colors">
+              {t("footer.findStore")}
+            </Link>
+            <Link
+              href="/careers"
+              className="hover:text-white transition-colors"
+            >
+              {t("footer.careers")}
+            </Link>
+            <Link href="/faq" className="hover:text-white transition-colors">
+              {t("footer.faq")}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
