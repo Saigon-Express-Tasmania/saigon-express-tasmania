@@ -102,7 +102,7 @@ function InteractiveTimeline() {
             key={item.year}
             onClick={() => handleSelect(i)}
             className={`relative flex flex-col items-center group transition-all duration-300 px-4 md:px-6 ${
-              i === activeIdx ? "scale-110" : "opacity-60 hover:opacity-100"
+              i === activeIdx ? "scale-100" : "opacity-60 hover:opacity-100"
             }`}
           >
             {/* Connector line */}
@@ -115,9 +115,9 @@ function InteractiveTimeline() {
             )}
             {/* Dot */}
             <div
-              className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 shadow-md ${
+              className={`relative z-10 size-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 shadow-md ${
                 i === activeIdx
-                  ? "bg-red-600 text-white ring-4 ring-red-100 scale-110"
+                  ? "bg-red-600 text-white ring-4 ring-red-100"
                   : i < activeIdx
                     ? "bg-red-600 text-white"
                     : "bg-white text-gray-500 border-2 border-gray-200 group-hover:border-red-300"
@@ -125,7 +125,7 @@ function InteractiveTimeline() {
             >
               {i < activeIdx ? (
                 <svg
-                  className="w-4 h-4"
+                  className="size-4"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -362,21 +362,24 @@ export default function OurStory() {
       {/* ── Hero ── */}
       <section className="relative h-[62vh] min-h-[440px] flex items-end overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center scale-105"
+          className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url('/manus-storage/saigo_express__hero_Native_5d9afb69.jpg')`,
+            backgroundImage: `url('/manus-storage/saigo_express__hero_Native_5d9afb69.webp')`,
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
+
         <div className="relative z-10 container pb-16">
-          <div className="max-w-2xl">
-            <span className="inline-block text-xs font-semibold tracking-widest text-red-400 uppercase mb-3">
+          <div className="max-w-2xl bg-black/40 backdrop-blur-[2px] p-6 md:p-8 rounded-2xl border border-white/10 shadow-xl">
+            <span className="inline-block text-sm md:text-base font-bold tracking-widest text-red-400 uppercase mb-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               {t("hero.eyebrow")}
             </span>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-4 whitespace-pre-line">
+
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-4 whitespace-pre-line drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)]">
               {t("hero.heading")}
             </h1>
-            <p className="text-white/80 text-lg max-w-xl">
+
+            <p className="text-white text-lg md:text-xl font-medium max-w-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               {t("hero.subheading")}
             </p>
           </div>
@@ -472,7 +475,7 @@ export default function OurStory() {
                 key={dish.name}
                 className="group rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
               >
-                <div className="aspect-video overflow-hidden">
+                <div className="relative aspect-video overflow-hidden">
                   <AppImage
                     src={DISH_IMAGES[i]}
                     alt={dish.name}
@@ -538,7 +541,7 @@ export default function OurStory() {
         <div className="container">
           <div className="grid lg:grid-cols-2 gap-16 items-center max-w-5xl mx-auto">
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-2xl overflow-hidden aspect-square shadow-md">
+              <div className="relative rounded-2xl overflow-hidden aspect-square shadow-md">
                 <AppImage
                   src="/manus-storage/saigo_express__Vietnamese_Roasted_pork_baguette_Native_81be063f.jpg"
                   alt="Bánh mì"
@@ -546,7 +549,7 @@ export default function OurStory() {
                   className="object-cover"
                 />
               </div>
-              <div className="rounded-2xl overflow-hidden aspect-square shadow-md mt-8">
+              <div className="relative rounded-2xl overflow-hidden aspect-square shadow-md">
                 <AppImage
                   src="/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_d710816c.png"
                   alt="Rice paper rolls"
@@ -554,7 +557,7 @@ export default function OurStory() {
                   className="object-cover"
                 />
               </div>
-              <div className="rounded-2xl overflow-hidden aspect-square shadow-md col-span-2">
+              <div className="relative rounded-2xl overflow-hidden aspect-square shadow-md col-span-2">
                 <AppImage
                   src="/manus-storage/_Q7A0084addedcontrastandsat_4c8d6b63.jpg"
                   alt="Community"
@@ -592,10 +595,9 @@ export default function OurStory() {
               {t("mission.eyebrow")}
             </span>
             <blockquote className="text-2xl md:text-3xl font-serif text-gray-900 leading-relaxed mb-6 italic">
-              {t("mission.quoteVi")}
+              {t("mission.quote")}
             </blockquote>
-            <p className="text-gray-500 text-lg mb-8">{t("mission.quoteEn")}</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center text-sm font-semibold text-gray-700">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center text-xs! font-semibold text-gray-700">
               <div className="flex items-center gap-2 bg-red-50 px-5 py-3 rounded-full">
                 {t("mission.pill1")}
               </div>
