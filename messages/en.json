@@ -1499,6 +1499,17 @@
       "addonRemoved": "{name} removed."
     }
   },
+  "MenuItem": {
+    "bestsellerBadge": "Bestseller",
+    "customiseHint": "Tap Add to Order to choose size, protein, extras, and special requests.",
+    "addToOrder": "Add to Order",
+    "decreaseQty": "Decrease quantity",
+    "increaseQty": "Increase quantity",
+    "reviewsTitle": "Reviews",
+    "backToMenu": "Back to Full Menu",
+    "backToMenuHint": "Browse all categories and dishes",
+    "magnifierHint": "Hover to magnify"
+  },
   "NotFound": {
     "code": "404",
     "heading": "Page Not Found",

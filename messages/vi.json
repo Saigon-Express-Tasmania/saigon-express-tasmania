@@ -1500,6 +1500,17 @@
       "addonRemoved": "Đã xoá {name}."
     }
   },
+  "MenuItem": {
+    "bestsellerBadge": "Bán chạy",
+    "customiseHint": "Nhấn Thêm vào đơn để chọn size, protein, món thêm và ghi chú.",
+    "addToOrder": "Thêm vào đơn",
+    "decreaseQty": "Giảm số lượng",
+    "increaseQty": "Tăng số lượng",
+    "reviewsTitle": "Đánh giá",
+    "backToMenu": "Quay lại thực đơn",
+    "backToMenuHint": "Xem tất cả danh mục và món ăn",
+    "magnifierHint": "Di chuột để phóng to"
+  },
   "NotFound": {
     "code": "404",
     "heading": "Không Tìm Thấy Trang",

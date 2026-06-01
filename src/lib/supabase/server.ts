@@ -62,6 +62,25 @@ export async function fetchMenuItemRows(): Promise<MenuItemRow[]> {
   return (data ?? []) as MenuItemRow[];
 }
 
+export async function fetchMenuItemRowById(
+  id: number,
+): Promise<MenuItemRow | null> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("menu")
+    .select(
+      "id, name, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients",
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`menu item ${id}: ${error.message}`);
+  }
+
+  return (data as MenuItemRow | null) ?? null;
+}
+
 export async function fetchStoreLocationRows(): Promise<StoreLocationRow[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
