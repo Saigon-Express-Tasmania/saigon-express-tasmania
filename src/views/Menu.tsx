@@ -1,6 +1,5 @@
 "use client";
 
-import AppImage from "@/components/AppImage";
 import { useState, useCallback, useMemo } from "react";
 import Link from "@/components/link";
 import {
@@ -10,10 +9,10 @@ import {
   AlertCircle,
   MapPin,
   ChevronRight,
-  ArrowLeft,
   ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import AddOnSuggestionModal, {
   type SuggestedItem,
 } from "@/components/AddOnSuggestionModal";
@@ -27,7 +26,6 @@ import LazyImage from "@/components/LazyImage";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, StoreLocation } from "@/types";
 
-const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
 
 function getSuggestions(
@@ -59,13 +57,14 @@ export default function Menu({
   storeLocations,
   categoriesContent,
 }: MenuProps) {
-  const [activeCategory, setActiveCategory] = useState("All");
+  const t = useTranslations("Menu");
+
+  const [activeCategory, setActiveCategory] = useState(t("allCategory"));
   const [search, setSearch] = useState("");
   const [addonTrigger, setAddonTrigger] = useState<{
     item: SuggestedItem;
     suggestions: SuggestedItem[];
   } | null>(null);
-  // Item customisation modal state
   const [customiseItem, setCustomiseItem] = useState<MenuItem | null>(null);
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
 
@@ -77,7 +76,6 @@ export default function Menu({
     setCartOpen,
     addToCart: ctxAddToCart,
     removeFromCart,
-    updateQty,
   } = useCart();
 
   const categoryImageMap = useMemo<Record<string, string>>(
@@ -111,10 +109,13 @@ export default function Menu({
     (a: string, b: string) =>
       (catOrderMap.get(a) ?? 99) - (catOrderMap.get(b) ?? 99),
   );
-  const categories = ["All", ...sortedCats];
+
+  const allLabel = t("allCategory");
+  const categories = [allLabel, ...sortedCats];
 
   const filtered = (menuItems ?? []).filter((m: MenuItem) => {
-    const matchCat = activeCategory === "All" || m.category === activeCategory;
+    const matchCat =
+      activeCategory === allLabel || m.category === activeCategory;
     const q = search.trim().toLowerCase();
     const matchSearch =
       !q ||
@@ -124,7 +125,6 @@ export default function Menu({
     return matchCat && matchSearch;
   });
 
-  // Opens the customise modal; on confirm, adds to cart and shows add-on suggestions
   const handleOpenCustomise = useCallback((item: MenuItem) => {
     if (!item.isAvailable) return;
     setCustomiseItem(item);
@@ -136,7 +136,6 @@ export default function Menu({
       ctxAddToCart(customiseItem, customisation, customisation.qty, false);
       setCustomiseItem(null);
       setCartOpen(true);
-      // Add-on suggestions
       const all = menuItems ?? [];
       const suggestions = getSuggestions(
         customiseItem,
@@ -150,7 +149,6 @@ export default function Menu({
     [customiseItem, menuItems, ctxAddToCart, setCartOpen, addOnCategoriesMap],
   );
 
-  // Quick +1 for items already in cart (adds a new line with no customisation)
   const handleQuickAdd = useCallback(
     (item: MenuItem) => {
       if (!item.isAvailable) return;
@@ -163,39 +161,37 @@ export default function Menu({
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
-      {/* Video Hero */}
+      {/* Hero */}
       <section className="bg-brand-dark">
         <div className="max-w-[1280px] mx-auto px-6 md:px-16 py-12 md:py-16 grid md:grid-cols-2 gap-10 items-center">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-3">
-              FRESH DAILY · TASMANIA
+              {t("hero.eyebrow")}
             </p>
             <h1 className="font-serif text-white text-4xl md:text-5xl leading-tight mb-4">
-              Our Food
+              {t("hero.heading")}
             </h1>
             <p className="text-white/60 text-base leading-relaxed mb-8">
-              From our signature Bánh Mì to hearty Phở and refreshing Rice Paper
-              Rolls, every item is made fresh daily with authentic Vietnamese
-              flavours.
+              {t("hero.subheading")}
             </p>
             <div className="flex flex-wrap gap-3">
               <a
                 href="#menu-grid"
                 className="inline-flex items-center gap-2 bg-brand-red hover:bg-brand-red/90 text-white font-semibold px-6 py-3 transition-colors text-sm"
               >
-                🛒 View Menu
+                {t("hero.ctaMenu")}
               </a>
               <Link
                 href="/contact"
                 className="inline-flex items-center gap-2 border border-white/30 hover:border-white/60 text-white font-semibold px-6 py-3 transition-colors text-sm"
               >
-                📍 Find Your Nearest Store
+                {t("hero.ctaStore")}
               </Link>
               <Link
                 href="/stores"
                 className="inline-flex items-center gap-2 bg-brand-amber hover:bg-brand-amber/90 text-brand-dark font-semibold px-6 py-3 transition-colors text-sm"
               >
-                🚗 Order Delivery
+                {t("hero.ctaDelivery")}
               </Link>
             </div>
           </div>
@@ -251,7 +247,7 @@ export default function Menu({
           </svg>
           <input
             type="text"
-            placeholder="Search our menu…"
+            placeholder={t("search.placeholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-11 pr-10 py-3 border border-gray-200 bg-white text-brand-dark text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red/40 transition-colors shadow-sm"
@@ -261,35 +257,33 @@ export default function Menu({
               onClick={() => setSearch("")}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-dark/40 hover:text-brand-dark transition-colors text-xs"
             >
-              ✕ Clear
+              {t("search.clearLabel")}
             </button>
           )}
         </div>
+
         {filtered.length === 0 ? (
           <div className="text-center py-24 text-brand-dark/40">
             <p className="font-serif text-2xl mb-2">
               {search
-                ? `No results for "${search}"`
-                : "No items in this category"}
+                ? t("empty.headingSearch", { query: search })
+                : t("empty.headingCategory")}
             </p>
             <p className="text-sm">
-              {search
-                ? "Try a different keyword or clear the search."
-                : "Try selecting a different category above."}
+              {search ? t("empty.hintSearch") : t("empty.hintCategory")}
             </p>
             {search && (
               <button
                 onClick={() => setSearch("")}
                 className="mt-4 text-brand-red text-sm font-semibold hover:underline"
               >
-                Clear search
+                {t("empty.clearSearch")}
               </button>
             )}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {(filtered as MenuItem[]).map((item) => {
-              // Find the most recent cart line for this item (for the overlay qty indicator)
               const cartEntries = cart.filter((c) => c.item.id === item.id);
               const totalQtyInCart = cartEntries.reduce((s, c) => s + c.qty, 0);
               const lastEntry = cartEntries[cartEntries.length - 1];
@@ -317,7 +311,7 @@ export default function Menu({
                     {item.isPopular ? (
                       <div className="absolute top-2 left-2 z-10">
                         <span className="bg-brand-red text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 flex items-center gap-1 shadow-md">
-                          ★ Popular
+                          {t("card.popularBadge")}
                         </span>
                       </div>
                     ) : null}
@@ -325,7 +319,7 @@ export default function Menu({
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <span className="bg-white text-brand-dark text-xs font-bold px-3 py-1.5 flex items-center gap-1.5">
                           <AlertCircle size={12} className="text-brand-red" />{" "}
-                          Temporarily Unavailable
+                          {t("card.unavailableBadge")}
                         </span>
                       </div>
                     ) : totalQtyInCart > 0 && lastEntry ? (
@@ -399,7 +393,7 @@ export default function Menu({
                               : "bg-gray-100 text-gray-400 cursor-not-allowed"
                           }`}
                         >
-                          <Plus size={13} /> Add
+                          <Plus size={13} /> {t("card.addButton")}
                         </button>
                       )}
                     </div>
@@ -416,9 +410,9 @@ export default function Menu({
             <div className="flex items-center gap-3">
               <MapPin size={18} className="text-brand-amber" />
               <div>
-                <p className="font-serif text-lg">Find Your Nearest Store</p>
+                <p className="font-serif text-lg">{t("storeStrip.heading")}</p>
                 <p className="text-white/50 text-xs">
-                  8 locations across Tasmania
+                  {t("storeStrip.subheading")}
                 </p>
               </div>
             </div>
@@ -434,12 +428,11 @@ export default function Menu({
         stores={storeLocations}
         onSelect={(store) => {
           setPickLocationOpen(false);
-          // Navigate to checkout with pre-selected store
           window.location.href = `/checkout?storeId=${store.id}`;
         }}
       />
 
-      {/* Sticky checkout bar — appears when cart has items */}
+      {/* Sticky checkout bar */}
       {cartCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 p-3 pb-5 pointer-events-none">
           <div className="max-w-2xl mx-auto pointer-events-auto">
@@ -447,29 +440,29 @@ export default function Menu({
               onClick={() => setPickLocationOpen(true)}
               className="w-full flex items-center gap-4 bg-brand-red text-white px-5 py-4 rounded-2xl shadow-2xl hover:bg-red-700 active:scale-[0.99] transition-all duration-150"
             >
-              {/* Cart icon with badge */}
               <div className="relative shrink-0">
                 <ShoppingCart size={26} className="text-white" />
                 <span className="absolute -top-2 -right-2 bg-white text-brand-red text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center leading-none">
                   {cartCount}
                 </span>
               </div>
-              {/* Text */}
               <div className="flex-1 text-left">
                 <div className="font-bold text-base leading-tight">
-                  Choose Your Store &amp; Checkout
+                  {t("checkoutBar.heading")}
                 </div>
                 <div className="text-white/80 text-sm mt-0.5">
-                  {cartCount} {cartCount === 1 ? "item" : "items"} · $
-                  {cartTotal.toFixed(2)}
+                  {t("checkoutBar.summary", {
+                    count: cartCount,
+                    total: cartTotal.toFixed(2),
+                  })}
                 </div>
               </div>
-              {/* Arrow */}
               <ArrowRight size={20} className="text-white/70 shrink-0" />
             </button>
           </div>
         </div>
       )}
+
       {/* Item customisation modal */}
       {customiseItem && (
         <ItemCustomiseModal
@@ -488,18 +481,15 @@ export default function Menu({
           const cartSnapshot = [...cart];
           ctxAddToCart(suggestion as MenuItem, undefined, 1, true);
           setAddonTrigger(null);
-          toast.success(`${suggestion.name} added to your order!`, {
-            description: "Great choice — enjoy your meal.",
+          toast.success(t("toast.addonAdded", { name: suggestion.name }), {
+            description: t("toast.addonDescription"),
             duration: 5000,
             action: {
-              label: "Undo",
+              label: t("toast.addonUndo"),
               onClick: () => {
-                // Restore snapshot: clear extra lines added after snapshot
-                const snapshotIds = new Set(
-                  cartSnapshot.map((c) => c.cartLineId),
-                );
-                // We can't easily revert without a full cart replace, so just inform
-                toast.info(`${suggestion.name} removed.`, { duration: 2500 });
+                toast.info(t("toast.addonRemoved", { name: suggestion.name }), {
+                  duration: 2500,
+                });
               },
             },
           });

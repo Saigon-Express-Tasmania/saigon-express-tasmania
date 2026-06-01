@@ -3,18 +3,10 @@
 import AppImage from "@/components/AppImage";
 import { useState, useCallback } from "react";
 import Link from "@/components/link";
-import {
-  MapPin,
-  Clock,
-  Phone,
-  ExternalLink,
-  ArrowLeft,
-  ChevronRight,
-} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { MapPin, Clock, Phone, ExternalLink, ChevronRight } from "lucide-react";
 import { MapView } from "@/components/Map";
 import type { StoreLocation } from "@/types";
-
-const LOGO_URL = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
 
 // Parse hours JSON from DB: { mon: "11:00 AM - 8:30 PM", ... }
 function formatHours(hoursJson: string | null | undefined): string {
@@ -55,6 +47,8 @@ type StoreFinderProps = {
 };
 
 export default function StoreFinder({ stores }: StoreFinderProps) {
+  const t = useTranslations("StoreFinder");
+
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [markersAdded, setMarkersAdded] = useState(false);
@@ -67,6 +61,14 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
 
   const addMarkers = useCallback(
     (map: google.maps.Map, storeList: StoreLocation[]) => {
+      // Snapshot translated strings for use inside imperative Google Maps callbacks.
+      // useTranslations() cannot be called inside a callback, so we capture the
+      // values once at call-site (within the React render cycle via useCallback).
+      const labelDirections = t("map.infoGetDirections");
+      const labelDelivery = t("map.infoOrderDelivery");
+      const labelOpen = t("map.infoStatusOpen");
+      const labelClosed = t("map.infoStatusClosed");
+
       storeList.forEach((store: StoreLocation) => {
         const lat = parseFloat(String(store.lat));
         const lng = parseFloat(String(store.lng));
@@ -74,6 +76,9 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
 
         const hours = formatHours(store.hours);
         const open = isOpenNow(store.hours);
+        const statusLabel = open ? labelOpen : labelClosed;
+        const statusBg = open ? "#dcfce7" : "#fee2e2";
+        const statusColor = open ? "#15803d" : "#b91c1c";
 
         const marker = new google.maps.Marker({
           position: { lat, lng },
@@ -107,18 +112,18 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
             <div style="font-size:12px;color:#555;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
               <span>🕐</span>
               <span>${hours}</span>
-              <span style="margin-left:4px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:${open ? "#dcfce7" : "#fee2e2"};color:${open ? "#15803d" : "#b91c1c"};">${open ? "OPEN" : "CLOSED"}</span>
+              <span style="margin-left:4px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:${statusBg};color:${statusColor};">${statusLabel}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <a href="https://maps.google.com/?q=${encodeURIComponent(store.address)}" target="_blank"
                  style="font-size:12px;color:#C41E3A;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">
-                Get Directions ↗
+                ${labelDirections}
               </a>
               ${
                 store.deliveryUrl
                   ? `<a href="${store.deliveryUrl}" target="_blank"
                  style="font-size:11px;background:#C41E3A;color:#fff;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:4px;display:inline-block;">
-                🚗 Order Delivery
+                ${labelDelivery}
               </a>`
                   : ""
               }
@@ -134,7 +139,8 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
         });
       });
     },
-    [],
+
+    [t],
   );
 
   const handleMapReadyFull = useCallback(
@@ -171,14 +177,12 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
         <div className="absolute inset-0 bg-brand-dark" />
         <div className="relative z-10 h-full flex flex-col items-start justify-end px-6 md:px-16 pb-10 max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-2">
-            FIND US
+            {t("hero.eyebrow")}
           </p>
           <h1 className="font-serif text-white text-4xl md:text-5xl leading-tight">
-            8 Locations Across Tasmania
+            {t("hero.heading")}
           </h1>
-          <p className="text-white/60 text-sm mt-2">
-            From Hobart CBD to Sorell — fresh bánh mì is always nearby
-          </p>
+          <p className="text-white/60 text-sm mt-2">{t("hero.subheading")}</p>
         </div>
       </section>
 
@@ -189,7 +193,7 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
           <div className="lg:col-span-2 space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
             {stores.length === 0 ? (
               <div className="p-6 bg-white border border-gray-200 rounded">
-                No active store locations available.
+                {t("list.empty")}
               </div>
             ) : (
               stores.map((store: StoreLocation) => {
@@ -233,11 +237,13 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
                                   : "bg-red-50 text-red-600"
                               }`}
                             >
-                              {open ? "OPEN" : "CLOSED"}
+                              {open
+                                ? t("list.statusOpen")
+                                : t("list.statusClosed")}
                             </span>
                             {store.name.toLowerCase().includes("sandy bay") && (
                               <span className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 font-bold uppercase tracking-wide rounded-full">
-                                Halal
+                                {t("list.halalBadge")}
                               </span>
                             )}
                           </div>
@@ -273,7 +279,9 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
                         </div>
                         <ChevronRight
                           size={16}
-                          className={`shrink-0 mt-1 transition-transform duration-200 text-brand-dark/30 ${isSelected ? "rotate-90 text-brand-red" : ""}`}
+                          className={`shrink-0 mt-1 transition-transform duration-200 text-brand-dark/30 ${
+                            isSelected ? "rotate-90 text-brand-red" : ""
+                          }`}
                         />
                       </div>
                     </div>
@@ -289,7 +297,7 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
                             onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-red border border-brand-red px-3 py-1.5 hover:bg-brand-red hover:text-white transition-colors"
                           >
-                            Get Directions <ExternalLink size={11} />
+                            {t("card.getDirections")} <ExternalLink size={11} />
                           </a>
                           {store.deliveryUrl && (
                             <a
@@ -299,7 +307,7 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
                               onClick={(e) => e.stopPropagation()}
                               className="inline-flex items-center gap-1.5 text-xs font-bold bg-brand-red text-white px-3 py-1.5 hover:bg-brand-red/90 transition-colors"
                             >
-                              🚗 Order Delivery
+                              {t("card.orderDelivery")}
                             </a>
                           )}
                           <Link
@@ -307,7 +315,7 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-brand-dark text-white px-3 py-1.5 hover:bg-brand-dark/80 transition-colors cursor-pointer">
-                              🛒 Order Pickup
+                              {t("card.orderPickup")}
                             </span>
                           </Link>
                         </div>
@@ -333,17 +341,12 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
       <div className="bg-brand-dark text-white py-8 mt-8">
         <div className="max-w-[1280px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
-            <p className="font-serif text-xl mb-1">
-              Can&apos;t find a store near you?
-            </p>
-            <p className="text-white/50 text-sm">
-              We&apos;re expanding across Tasmania. Enquire about franchise
-              opportunities.
-            </p>
+            <p className="font-serif text-xl mb-1">{t("footer.heading")}</p>
+            <p className="text-white/50 text-sm">{t("footer.body")}</p>
           </div>
           <Link href="/franchise">
             <span className="inline-flex items-center gap-2 bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors cursor-pointer">
-              Franchise Enquiry
+              {t("footer.cta")}
             </span>
           </Link>
         </div>

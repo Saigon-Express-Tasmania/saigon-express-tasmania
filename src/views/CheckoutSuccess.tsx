@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "@/components/link";
+import { useTranslations } from "next-intl";
 import { CheckCircle, ShoppingCart, MapPin, Navigation } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
@@ -11,6 +12,7 @@ type CheckoutSuccessProps = {
 };
 
 export default function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
+  const t = useTranslations("CheckoutSuccess");
   const { clearCart } = useCart();
   const [trackingToken, setTrackingToken] = useState<string | null>(null);
 
@@ -64,29 +66,25 @@ export default function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
             <CheckCircle size={48} className="text-green-600" />
           </div>
           <h1 className="font-serif text-3xl text-brand-dark mb-3">
-            Payment Confirmed!
+            {t("title")}
           </h1>
           {orderId && (
             <p className="text-brand-dark/60 mb-2">
-              Order <strong>#{orderId}</strong> has been placed successfully.
+              {t("orderPlaced", { orderId: `#${orderId}` })}
             </p>
           )}
-          <p className="text-brand-dark/60 mb-6">
-            We&apos;ve received your payment and your order is being prepared.
-            You&apos;ll receive a confirmation email with a tracking link
-            shortly.
-          </p>
+          <p className="text-brand-dark/60 mb-6">{t("description")}</p>
 
           {trackingUrl && (
             <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl">
               <p className="text-sm text-gray-600 mb-3">
-                Watch your order progress in real time:
+                {t("tracking.watchProgress")}
               </p>
               <Link
                 href={trackingUrl}
                 className="inline-flex items-center justify-center gap-2 bg-brand-red text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-brand-red/90 transition-colors w-full"
               >
-                <Navigation size={16} /> Track Your Order Live
+                <Navigation size={16} /> {t("tracking.btnTrackLive")}
               </Link>
             </div>
           )}
@@ -96,13 +94,13 @@ export default function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
               href="/menu"
               className="inline-flex items-center justify-center gap-2 bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors"
             >
-              <ShoppingCart size={16} /> Order More
+              <ShoppingCart size={16} /> {t("ctas.btnOrderMore")}
             </Link>
             <Link
               href="/stores"
               className="inline-flex items-center justify-center gap-2 border border-brand-red text-brand-red px-6 py-3 font-semibold text-sm hover:bg-brand-red/5 transition-colors"
             >
-              <MapPin size={16} /> Find Your Store
+              <MapPin size={16} /> {t("ctas.btnFindStore")}
             </Link>
           </div>
         </div>

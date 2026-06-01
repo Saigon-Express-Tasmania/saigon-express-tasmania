@@ -2,6 +2,7 @@
 
 import AppImage from "@/components/AppImage";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
 import type { WholesaleProduct } from "@/types";
@@ -17,68 +18,54 @@ import {
   Phone,
 } from "lucide-react";
 
-function productImageUrls(products: WholesaleProduct[]): string[] {
-  return products
-    .map((p) => pickWholesaleImageUrl(p.imageUrls, [1448, 1024, 512, 256]))
-    .filter((url): url is string => Boolean(url));
-}
-
-const PRICING_TIERS = [
-  {
-    minQty: "200+ units",
-    discountPct: 25,
-    badge: "Best Value",
-    highlight: true,
-  },
-  { minQty: "100+ units", discountPct: 20, badge: "Popular", highlight: false },
-  { minQty: "50+ units", discountPct: 15, badge: "", highlight: false },
-  { minQty: "20+ units", discountPct: 10, badge: "", highlight: false },
-  { minQty: "10+ units", discountPct: 5, badge: "", highlight: false },
-];
-
-const BENEFITS = [
-  {
-    icon: TrendingDown,
-    title: "Dynamic Bulk Pricing",
-    desc: "Tiered discounts up to 25% for high-volume orders. The more you order, the more you save.",
-  },
-  {
-    icon: FileText,
-    title: "Automated Invoicing",
-    desc: "Professional PDF invoices generated instantly for every order, ready for your accounts team.",
-  },
-  {
-    icon: Truck,
-    title: "Weekly Delivery",
-    desc: "Scheduled weekly deliveries across Tasmania. Never run out of your best-selling items.",
-  },
-  {
-    icon: Users,
-    title: "Account Manager",
-    desc: "A dedicated Saigon Express contact for all your ordering, billing, and product queries.",
-  },
-];
-
-const WHO_WE_SUPPLY = [
-  { emoji: "☕", label: "Cafés & Coffee Shops" },
-  { emoji: "🏪", label: "Grocery & Deli Stores" },
-  { emoji: "🏨", label: "Hotels & Accommodation" },
-  { emoji: "🏫", label: "Schools & Universities" },
-  { emoji: "🏥", label: "Hospitals & Aged Care" },
-  { emoji: "🎪", label: "Events & Festivals" },
-];
+const ICON_MAP: Record<string, React.ElementType> = {
+  TrendingDown,
+  FileText,
+  Truck,
+  Users,
+};
 
 export default function Wholesale({
   products = [],
 }: {
   products: WholesaleProduct[];
 }) {
-  console.log(products);
-  const imageUrls = productImageUrls(products);
+  const t = useTranslations("Wholesale");
+
+  // Array Extraction Strategy (t.raw)
+  const supplyList = (t.raw("supplyList") || []) as Array<{
+    emoji: string;
+    label: string;
+  }>;
+  const benefits = (t.raw("benefits") || []) as Array<{
+    icon: string;
+    title: string;
+    desc: string;
+  }>;
+  const pricingTiers = (t.raw("pricingTiers") || []) as Array<{
+    minQty: string;
+    discountPct: number;
+    badge?: string;
+    highlight: boolean;
+  }>;
+  const howItWorks = (t.raw("howItWorks") || []) as Array<{
+    step: string;
+    title: string;
+    desc: string;
+  }>;
+  const partnerPerks = (t.raw("partnerForm.perks") || []) as string[];
+  const businessTypes = (t.raw("partnerForm.fields.businessType.options") ||
+    []) as string[];
+  const volumeRanges = (t.raw("partnerForm.fields.weeklyVolume.options") ||
+    []) as string[];
+
+  const imageUrls = products
+    .map((p) => pickWholesaleImageUrl(p.imageUrls, [1448, 1024, 512, 256]))
+    .filter((url): url is string => Boolean(url));
+
   const heroImage = imageUrls[0] ?? null;
   const splitImage = imageUrls[1] ?? imageUrls[0] ?? null;
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     businessName: "",
@@ -92,13 +79,13 @@ export default function Wholesale({
 
   const submitInquiry = trpc.public.submitPartnerInquiry.useMutation({
     onSuccess: () => setSubmitted(true),
-    onError: () => toast.error("Failed to submit. Please try again."),
+    onError: () => toast.error(t("partnerForm.messages.error")),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.businessName || !form.contactName || !form.email) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t("partnerForm.messages.validation"));
       return;
     }
     submitInquiry.mutate({
@@ -114,13 +101,13 @@ export default function Wholesale({
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="relative h-[480px] overflow-hidden">
         {heroImage ? (
           <>
             <AppImage
               src={heroImage}
-              alt="Wholesale Vietnamese food products"
+              alt={t("hero.alt")}
               fill
               priority
               className="object-cover"
@@ -132,42 +119,40 @@ export default function Wholesale({
         )}
         <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-4">
-            WHOLESALE FOOD SUPPLY TASMANIA
+            {t("hero.tag")}
           </p>
           <h1 className="font-serif text-white text-5xl md:text-7xl leading-tight max-w-2xl mb-6">
-            Supply Fresh
-            <br />
-            Vietnamese Food
+            {t.rich("hero.title", {
+              br: () => <br />,
+            })}
           </h1>
           <p className="text-white/65 text-lg max-w-xl leading-relaxed mb-8">
-            Partner with Saigon Express to stock authentic Vietnamese products.
-            Competitive wholesale pricing, reliable weekly delivery, and
-            automated invoicing.
+            {t("hero.desc")}
           </p>
           <div className="flex flex-wrap gap-3">
             <a
               href="#partner-form"
               className="bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors inline-flex items-center gap-2"
             >
-              Become a Partner <ChevronRight size={15} />
+              {t("hero.ctaPrimary")} <ChevronRight size={15} />
             </a>
             <Link href="/wholesale-shop">
               <span className="border border-white text-white px-6 py-3 font-semibold text-sm hover:bg-white hover:text-brand-dark transition-colors cursor-pointer">
-                Browse Products
+                {t("hero.ctaSecondary")}
               </span>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Who we supply */}
+      {/* Who We Supply */}
       <section className="bg-white py-12">
         <div className="max-w-[1280px] mx-auto px-6">
           <p className="text-center text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-8">
-            WHO WE SUPPLY
+            {t("supplyTitle")}
           </p>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-            {WHO_WE_SUPPLY.map((w, i) => (
+            {supplyList.map((w, i) => (
               <div
                 key={i}
                 className="flex flex-col items-center gap-2 p-4 bg-brand-cream text-center"
@@ -187,50 +172,52 @@ export default function Wholesale({
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
-              PARTNER BENEFITS
+              {t("benefitsHeading.tag")}
             </p>
             <h2 className="font-serif text-brand-dark text-4xl">
-              Why Partner With Us?
+              {t("benefitsHeading.title")}
             </h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {BENEFITS.map((b, i) => (
-              <div
-                key={i}
-                className="bg-white p-6 hover:shadow-md transition-shadow duration-300"
-              >
-                <div className="w-10 h-10 bg-brand-red flex items-center justify-center mb-4">
-                  <b.icon size={18} className="text-white" />
+            {benefits.map((b, i) => {
+              const Icon = ICON_MAP[b.icon] || CheckCircle;
+              return (
+                <div
+                  key={i}
+                  className="bg-white p-6 hover:shadow-md transition-shadow duration-300"
+                >
+                  <div className="w-10 h-10 bg-brand-red flex items-center justify-center mb-4">
+                    <Icon size={18} className="text-white" />
+                  </div>
+                  <h3 className="font-serif text-brand-dark text-lg mb-2">
+                    {b.title}
+                  </h3>
+                  <p className="text-brand-dark/55 text-sm leading-relaxed">
+                    {b.desc}
+                  </p>
                 </div>
-                <h3 className="font-serif text-brand-dark text-lg mb-2">
-                  {b.title}
-                </h3>
-                <p className="text-brand-dark/55 text-sm leading-relaxed">
-                  {b.desc}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Pricing tiers */}
+      {/* Pricing Tiers */}
       <section className="bg-brand-dark py-16">
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-3">
-              VOLUME DISCOUNTS
+              {t("pricingHeading.tag")}
             </p>
             <h2 className="font-serif text-white text-4xl">
-              Bulk Pricing Tiers
+              {t("pricingHeading.title")}
             </h2>
             <p className="text-white/50 mt-3 text-sm">
-              Discounts applied automatically at checkout based on order
-              quantity
+              {t("pricingHeading.desc")}
             </p>
           </div>
           <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {PRICING_TIERS.map((tier, i) => (
+            {pricingTiers.map((tier, i) => (
               <div
                 key={i}
                 className={`p-5 text-center relative ${tier.highlight ? "bg-brand-red" : "bg-white/5 border border-white/10"}`}
@@ -244,7 +231,7 @@ export default function Wholesale({
                   {tier.discountPct}%
                 </div>
                 <div className="text-white/50 text-xs uppercase tracking-wider mb-2">
-                  off
+                  {t("pricingHeading.off")}
                 </div>
                 <div className="text-white text-sm font-semibold">
                   {tier.minQty}
@@ -253,20 +240,19 @@ export default function Wholesale({
             ))}
           </div>
           <p className="text-center text-white/30 text-xs mt-6">
-            Prices exclude GST. Minimum order 10 units. Delivery charges may
-            apply outside Greater Hobart.
+            {t("pricingHeading.disclaimer")}
           </p>
         </div>
       </section>
 
-      {/* Asymmetric split */}
+      {/* Process Flow */}
       <section className="bg-white">
         <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2">
           <div className="relative h-72 lg:min-h-[420px] overflow-hidden">
             {splitImage ? (
               <AppImage
                 src={splitImage}
-                alt="Saigon Express wholesale supply"
+                alt={t("processHeading.alt")}
                 fill
                 className="object-cover"
               />
@@ -276,36 +262,15 @@ export default function Wholesale({
           </div>
           <div className="p-10 lg:p-16 flex flex-col justify-center">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-4">
-              HOW IT WORKS
+              {t("processHeading.tag")}
             </p>
-            <h2 className="font-serif text-brand-dark text-4xl mb-6">
-              Simple. Reliable.
-              <br />
-              Profitable.
+            <h2 className="font-serif text-brand-dark text-4xl mb-6 whitespace-pre">
+              {t.rich("processHeading.title", {
+                br: () => <br />,
+              })}
             </h2>
             <div className="space-y-4">
-              {[
-                {
-                  step: "01",
-                  title: "Submit Your Enquiry",
-                  desc: "Fill in the partner form below. We'll review your business and get back within 2 business days.",
-                },
-                {
-                  step: "02",
-                  title: "Receive Your Quote",
-                  desc: "We'll send a tailored wholesale price list based on your product mix and estimated weekly volume.",
-                },
-                {
-                  step: "03",
-                  title: "Place Your First Order",
-                  desc: "Access our Quick-Order portal, choose your products, and schedule your first delivery.",
-                },
-                {
-                  step: "04",
-                  title: "Weekly Auto-Invoicing",
-                  desc: "Every order generates a professional PDF invoice automatically, sent to your accounts email.",
-                },
-              ].map((s, i) => (
+              {howItWorks.map((s, i) => (
                 <div key={i} className="flex gap-4">
                   <div className="text-brand-red font-bold text-sm font-mono flex-shrink-0 w-6">
                     {s.step}
@@ -325,43 +290,30 @@ export default function Wholesale({
         </div>
       </section>
 
-      {/* Partner form */}
+      {/* Partner Registration Form */}
       <section id="partner-form" className="py-16 bg-brand-cream">
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-start">
             <div>
               <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
-                BECOME A PARTNER
+                {t("partnerForm.tag")}
               </p>
               <h2 className="font-serif text-brand-dark text-4xl mb-4">
-                Start Your Wholesale Partnership
+                {t("partnerForm.title")}
               </h2>
               <p className="text-brand-dark/55 leading-relaxed mb-6 text-sm">
-                Join over 50 Tasmanian businesses already stocking Saigon
-                Express products. Fill in the form and our wholesale team will
-                be in touch within 2 business days.
+                {t("partnerForm.desc")}
               </p>
               <div className="space-y-3 text-sm text-brand-dark/60">
-                <div className="flex items-center gap-3">
-                  <CheckCircle size={15} className="text-brand-red" /> No
-                  lock-in contracts
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle size={15} className="text-brand-red" /> Flexible
-                  minimum orders
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle size={15} className="text-brand-red" /> Dedicated
-                  account manager
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle size={15} className="text-brand-red" /> Automated
-                  PDF invoicing
-                </div>
+                {partnerPerks.map((perk, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <CheckCircle size={15} className="text-brand-red" /> {perk}
+                  </div>
+                ))}
               </div>
               <div className="mt-8 p-5 bg-white border-l-4 border-brand-red">
                 <p className="font-semibold text-brand-dark text-sm mb-2">
-                  Wholesale enquiries:
+                  {t("partnerForm.contactInfo.title")}
                 </p>
                 <div className="flex items-center gap-2 text-sm text-brand-dark/70 mb-1">
                   <Phone size={13} className="text-brand-red" />
@@ -389,11 +341,10 @@ export default function Wholesale({
                     className="text-brand-red mx-auto mb-4"
                   />
                   <h3 className="font-serif text-2xl text-brand-dark mb-2">
-                    Application Received!
+                    {t("partnerForm.success.title")}
                   </h3>
                   <p className="text-brand-dark/55 text-sm">
-                    Our wholesale team will contact you within 2 business days
-                    to discuss pricing and delivery options.
+                    {t("partnerForm.success.desc")}
                   </p>
                 </div>
               ) : (
@@ -401,7 +352,7 @@ export default function Wholesale({
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Business Name *
+                        {t("partnerForm.fields.businessName")} *
                       </label>
                       <input
                         type="text"
@@ -418,7 +369,7 @@ export default function Wholesale({
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Contact Name *
+                        {t("partnerForm.fields.contactName")} *
                       </label>
                       <input
                         type="text"
@@ -437,7 +388,7 @@ export default function Wholesale({
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Email *
+                        {t("partnerForm.fields.email")} *
                       </label>
                       <input
                         type="email"
@@ -451,7 +402,7 @@ export default function Wholesale({
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Phone
+                        {t("partnerForm.fields.phone")}
                       </label>
                       <input
                         type="tel"
@@ -466,7 +417,7 @@ export default function Wholesale({
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Business Type
+                        {t("partnerForm.fields.businessType.label")}
                       </label>
                       <select
                         value={form.businessType}
@@ -478,19 +429,19 @@ export default function Wholesale({
                         }
                         className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white"
                       >
-                        <option value="">Select type…</option>
-                        <option>Café / Coffee Shop</option>
-                        <option>Grocery / Deli Store</option>
-                        <option>Hotel / Accommodation</option>
-                        <option>School / University</option>
-                        <option>Hospital / Aged Care</option>
-                        <option>Events / Catering</option>
-                        <option>Other</option>
+                        <option value="">
+                          {t("partnerForm.fields.businessType.placeholder")}
+                        </option>
+                        {businessTypes.map((type, idx) => (
+                          <option key={idx} value={type}>
+                            {type}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Est. Weekly Volume
+                        {t("partnerForm.fields.weeklyVolume.label")}
                       </label>
                       <select
                         value={form.estimatedWeeklyVolume}
@@ -502,18 +453,20 @@ export default function Wholesale({
                         }
                         className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white"
                       >
-                        <option value="">Select range…</option>
-                        <option>10–20 units</option>
-                        <option>20–50 units</option>
-                        <option>50–100 units</option>
-                        <option>100–200 units</option>
-                        <option>200+ units</option>
+                        <option value="">
+                          {t("partnerForm.fields.weeklyVolume.placeholder")}
+                        </option>
+                        {volumeRanges.map((range, idx) => (
+                          <option key={idx} value={range}>
+                            {range}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                      Additional Notes
+                      {t("partnerForm.fields.notes")}
                     </label>
                     <textarea
                       rows={3}
@@ -521,7 +474,7 @@ export default function Wholesale({
                       onChange={(e) =>
                         setForm((p) => ({ ...p, message: e.target.value }))
                       }
-                      placeholder="Products you're interested in, delivery requirements, any questions…"
+                      placeholder={t("partnerForm.fields.notesPlaceholder")}
                       className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors resize-none"
                     />
                   </div>
@@ -531,8 +484,8 @@ export default function Wholesale({
                     className="w-full bg-brand-red text-white py-4 font-semibold text-sm hover:bg-brand-red/90 transition-colors disabled:opacity-50"
                   >
                     {submitInquiry.isPending
-                      ? "Submitting…"
-                      : "Submit Partnership Application"}
+                      ? t("partnerForm.submit.pending")
+                      : t("partnerForm.submit.default")}
                   </button>
                 </form>
               )}

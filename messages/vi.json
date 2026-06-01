@@ -49,7 +49,12 @@
       "boxTitle": "Hộp Tiệc Hỗn Hợp",
       "boxSubtitle": "Bánh Mì + Chả Giò",
       "description": "Từ bữa trưa văn phòng đến sự kiện lớn — hộp tiệc của chúng tôi được đóng gói tươi với bánh mì, chả giò và nhiều món khác. Tối thiểu 10 ổ, giao hàng hoặc tự đến lấy. Có mặt khắp Tasmania.",
-      "tags": ["Tiệc Văn Phòng", "Sự Kiện & Tiệc Tùng", "Đơn Hàng Doanh Nghiệp", "Có Trong Ngày"],
+      "tags": [
+        "Tiệc Văn Phòng",
+        "Sự Kiện & Tiệc Tùng",
+        "Đơn Hàng Doanh Nghiệp",
+        "Có Trong Ngày"
+      ],
       "cta": "Đặt Tiệc"
     },
     "signature": {
@@ -90,7 +95,12 @@
       "titleLine2": "hoặc Nhà Hàng.",
       "imageAlt": "Cung cấp bán buôn",
       "description": "Hợp tác với Saigon Express Tasmania để cung cấp thực phẩm Việt Nam bán buôn trên khắp đảo. Giá sỉ, chất lượng ổn định và giao hàng hàng tuần đáng tin cậy cho quán cà phê, cửa hàng tạp hóa và doanh nghiệp dịch vụ ăn uống.",
-      "tags": ["Giá Sỉ", "Giao Hàng Hàng Tuần", "Chất Lượng Ổn Định", "Doanh Nghiệp Tasmania"],
+      "tags": [
+        "Giá Sỉ",
+        "Giao Hàng Hàng Tuần",
+        "Chất Lượng Ổn Định",
+        "Doanh Nghiệp Tasmania"
+      ],
       "cta": "Cửa Hàng Bán Buôn"
     },
     "getApp": {
@@ -151,5 +161,1853 @@
       "careers": "Tuyển Dụng",
       "faq": "Câu Hỏi Thường Gặp"
     }
+  },
+  "Careers": {
+    "hero": {
+      "badge": "GIA NHẬP ĐỘI NGŨ — TASMANIA",
+      "titleLine1": "Phát Triển Cùng",
+      "titleLine2": "Saigon Express.",
+      "description": "Chúng tôi đang xây dựng thương hiệu ẩm thực Việt Nam được yêu thích nhất tại Tasmania — và chúng tôi tìm kiếm những con người đam mê, tài năng để đồng hành. Từ nhà bếp đến quầy phục vụ, mọi vai trò đều quan trọng.",
+      "cta": "Xem Các Vị Trí Tuyển Dụng"
+    },
+    "whyUs": {
+      "label": "TẠI SAO CHỌN SAIGON EXPRESS",
+      "title": "Không Chỉ Là Một Công Việc",
+      "description": "Chúng tôi là một doanh nghiệp gia đình tại Tasmania với những hoài bão lớn. Khi gia nhập cùng chúng tôi, bạn sẽ là một phần của tập thể luôn quan tâm đến món ăn, con người và cộng đồng.",
+      "benefits": {
+        "discount": {
+          "title": "Giảm Giá 30% Bữa Ăn Cho Nhân Viên",
+          "desc": "Hưởng ưu đãi giảm 30% cho bữa ăn của bạn mỗi ca làm việc. Chúng tôi tin vào việc chăm sóc tốt cho đội ngũ của mình."
+        },
+        "progression": {
+          "title": "Lộ Trình Thăng Tiến Nhanh",
+          "desc": "Chúng tôi ưu tiên thúc đẩy nội bộ. Rất nhiều quản lý và trưởng nhóm của chúng tôi đã bắt đầu từ vị trí phụ bếp hoặc nhân viên phục vụ."
+        },
+        "culture": {
+          "title": "Văn Hóa Hòa Nhập, Hỗ Trợ",
+          "desc": "Chúng tôi tôn trọng sự đa dạng và chào đón mọi cá nhân từ các nền tảng khác nhau. Văn hóa Việt Nam nằm ở trái tim chúng tôi — và mọi người đều là gia đình."
+        },
+        "events": {
+          "title": "Sự Kiện Đội Ngũ & Vinh Danh",
+          "desc": "Các buổi tụ họp hàng quý, giải thưởng nhân viên, và một nền văn hóa ghi nhận sâu sắc cho những đóng góp của bạn."
+        },
+        "training": {
+          "title": "Đào Tạo & Phát Triển Được Trả Lương",
+          "desc": "Chúng tôi đầu tư vào sự phát triển của bạn — từ chứng chỉ an toàn thực phẩm đến các buổi hội thảo lãnh đạo và đào tạo pha chế."
+        },
+        "locations": {
+          "title": "Nhiều Chi Nhánh Khắp Tasmania",
+          "desc": "Với 8 chi nhánh hiện tại và nhiều kế hoạch mở rộng, luôn có những cơ hội làm việc gần ngay nơi bạn sống."
+        }
+      }
+    },
+    "jobs": [
+      {
+        "id": 1,
+        "title": "Bếp Trưởng Chảo Wok",
+        "department": "Bộ Phận Bếp",
+        "type": "Toàn Thời Gian",
+        "location": "North Hobart / CBD",
+        "salary": "$65,000 – $80,000 + Quỹ hưu trí",
+        "badge": "VỊ TRÍ CẤP CAO",
+        "badgeColor": "bg-red-600",
+        "summary": "Dẫn dắt đội ngũ bếp tại các chi nhánh bận rộn nhất của chúng tôi. Bạn sẽ làm chủ khu vực chảo wok, thiết lập các tiêu chuẩn chất lượng cho từng món ăn xuất xưởng và hướng dẫn nhân viên bếp cấp dưới các kỹ thuật nấu ăn Việt Nam chính thống.",
+        "responsibilities": [
+          "Chế biến toàn bộ thực đơn Saigon Express theo đúng quy chuẩn, tập trung vào các món xào chảo wok, phở và bún tô",
+          "Duy trì hương vị đồng nhất trên tất cả các món ăn trong những giai đoạn phục vụ cao điểm",
+          "Đào tạo và giám sát các đầu bếp phụ và phụ bếp về kỹ thuật nấu ăn Việt Nam",
+          "Quản lý công đoạn chuẩn bị (mise en place), lịch sơ chế và quy trình làm việc trong bếp để giảm thiểu thời gian lên món",
+          "Giám sát chất lượng thực phẩm, kiểm soát định lượng và tiêu chuẩn trình bày món ăn",
+          "Hỗ trợ Quản lý Nhà hàng trong việc đặt hàng, luân chuyển kho và giảm thiểu hao hụt",
+          "Luôn tuân thủ tất cả các tiêu chuẩn về an toàn thực phẩm, vệ sinh và hệ thống HACCP",
+          "Đóng góp ý tưởng cho các món đặc sản theo mùa và phát triển thực đơn mới"
+        ],
+        "requirements": [
+          "Tối thiểu 3 năm kinh nghiệm làm đầu bếp chảo wok hoặc đầu bếp chính tại một nhà hàng Việt Nam hoặc Châu Á",
+          "Khả năng làm việc tốc độ cao và duy trì chất lượng tốt trong suốt khung giờ cao điểm",
+          "Am hiểu sâu sắc về hồ sơ hương vị, các loại nước dùng và nước sốt Việt Nam",
+          "Có chứng chỉ Giám sát An toàn Thực phẩm (hoặc sẵn sàng tham gia đào tạo để cấp bằng)",
+          "Có khả năng làm việc theo lịch phân công xoay ca bao gồm cuối tuần và các ngày lễ",
+          "Ứng viên có kinh nghiệm quản lý/lãnh đạo đội ngũ là một lợi thế lớn"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Cơ hội thăng tiến lên Bếp Trưởng Toàn Hệ Thống",
+          "Được đào tạo bài bản tại bếp trung tâm của chúng tôi",
+          "Được cung cấp đồng phục miễn phí"
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Bếp Phó (Sous Chef)",
+        "department": "Bộ Phận Bếp",
+        "type": "Toàn Thời Gian",
+        "location": "Mọi Chi Nhánh Tại Tasmania",
+        "salary": "$58,000 – $68,000 + Quỹ hưu trí",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Hỗ trợ Bếp trưởng vận hành căn bếp chất lượng cao và trơn tru. Bạn sẽ chịu trách nhiệm chuẩn bị nguyên liệu hàng ngày, điều hành ca phục vụ và tạm thời thay thế vị trí Bếp trưởng khi được yêu cầu.",
+        "responsibilities": [
+          "Hỗ trợ Bếp trưởng trong mọi khía cạnh quản lý bếp và điều phối dịch vụ",
+          "Dẫn dắt đội ngũ bếp trong ca làm việc khi Bếp trưởng vắng mặt",
+          "Giám sát danh mục chuẩn bị hàng ngày, đảm bảo tất cả các trạm bếp được thiết lập đầy đủ trước giờ mở cửa",
+          "Kiểm soát chi phí thực phẩm, định lượng khẩu phần và tỷ lệ hao hụt theo mục tiêu đề ra",
+          "Thực hiện kiểm tra nhiệt độ hàng ngày và ghi chép tài liệu an toàn thực phẩm",
+          "Đào tạo nhân viên bếp mới và hướng dẫn, kèm cặp liên tục",
+          "Duy trì không gian bếp sạch sẽ, ngăn nắp và an toàn"
+        ],
+        "requirements": [
+          "Hơn 2 năm kinh nghiệm làm Bếp phó hoặc Đầu bếp chính trong môi trường bếp bận rộn",
+          "Hiểu biết vững chắc về ẩm thực Việt Nam hoặc ẩm thực Châu Á",
+          "Có chứng chỉ Giám sát An toàn Thực phẩm",
+          "Kỹ năng tổ chức tốt và khả năng xử lý đa nhiệm dưới áp lực công việc cao",
+          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Lộ trình phát triển rõ ràng lên vị trí Bếp trưởng",
+          "Được cung cấp đồng phục miễn phí",
+          "Được trả lương đầy đủ trong thời gian đào tạo"
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Đầu Bếp / Phụ Bếp",
+        "department": "Bộ Phận Bếp",
+        "type": "Toàn Thời Gian / Bán Thời Gian",
+        "location": "Tất Cả Các Chi Nhánh",
+        "salary": "$24 – $30/giờ + Quỹ hưu trí",
+        "badge": "TUYỂN NHIỀU VỊ TRÍ",
+        "badgeColor": "bg-amber-600",
+        "summary": "Gia nhập đội ngũ bếp của chúng tôi và học hỏi nghệ thuật nấu ăn món Việt chính thống. Cho dù bạn là một đầu bếp có kinh nghiệm hay một người mới đầy nhiệt huyết, chúng tôi sẽ đào tạo bạn theo tiêu chuẩn của Saigon Express.",
+        "responsibilities": [
+          "Chuẩn bị nguyên liệu và hoàn thành các công việc sơ chế hàng ngày",
+          "Hỗ trợ nấu ăn trong ca phục vụ dưới sự điều hành của Bếp trưởng",
+          "Giữ gìn vệ sinh và sự ngăn nắp tại trạm bếp được giao trong suốt ca làm việc",
+          "Hoàn thành các nhiệm vụ dọn dẹp cuối ca theo đúng tiêu chuẩn an toàn thực phẩm",
+          "Nhận và sắp xếp các đơn hàng giao đến, kiểm tra chất lượng và luân chuyển kho hàng",
+          "Hỗ trợ rửa chén bát và hỗ trợ chung trong bếp khi có yêu cầu"
+        ],
+        "requirements": [
+          "Có niềm đam mê với ẩm thực và tinh thần sẵn sàng học hỏi",
+          "Khả năng làm việc hiệu quả trong môi trường nhịp độ nhanh",
+          "Đáng tin cậy, đúng giờ và có tinh thần đồng đội cao",
+          "Có chứng chỉ an toàn vệ sinh thực phẩm (hoặc sẵn sàng học — chúng tôi sẽ hỗ trợ chi phí)",
+          "Có kinh nghiệm làm bếp trước đây là một lợi thế nhưng không bắt buộc"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Được đào tạo có trả lương",
+          "Giêu làm việc linh hoạt",
+          "Lộ trình phát triển lên vị trí Đầu bếp chính hoặc Bếp phó"
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Quản Lý Nhà Hàng",
+        "department": "Bộ Phận Quản Lý",
+        "type": "Toàn Thời Gian",
+        "location": "North Hobart / CBD",
+        "salary": "$70,000 – $85,000 + Quỹ hưu trí + Thưởng",
+        "badge": "VỊ TRÍ LÃNH ĐẠO",
+        "badgeColor": "bg-emerald-700",
+        "summary": "Chịu trách nhiệm toàn diện về hoạt động hàng ngày tại một chi nhánh của Saigon Express. Bạn sẽ quản lý đội ngũ lên đến 15 nhân viên, thúc đẩy doanh số và đảm bảo mọi khách hàng đều rời đi với sự hài lòng.",
+        "responsibilities": [
+          "Giám sát toàn bộ hoạt động của cả khu vực sảnh (FOH) và khu vực bếp (BOH) tại chi nhánh",
+          "Tuyển dụng, đào tạo hội nhập, xếp lịch làm việc và quản lý đội ngũ lên đến 15 nhân viên",
+          "Thúc đẩy doanh thu thông qua các chương trình ưu đãi, bán thêm và nâng cao trải nghiệm khách hàng",
+          "Theo dõi doanh số hàng ngày, chi phí nhân công và giá vốn hàng bán (COGS) so với ngân sách mục tiêu",
+          "Quản lý việc đặt hàng từ nhà cung cấp, duy trì mối quan hệ và độ chính xác của lượng hàng tồn kho",
+          "Tiếp nhận ý kiến phản hồi của khách hàng và giải quyết các khiếu nại một cách chuyên nghiệp, nhanh chóng",
+          "Đảm bảo tuân thủ tất cả các quy định về an toàn thực phẩm, giấy phép kinh doanh rượu và luật an toàn lao động (OH&S)",
+          "Lập báo cáo hàng tuần cho Quản lý Vận hành và Giám đốc Nhượng quyền",
+          "Lan tỏa các tiêu chuẩn thương hiệu và văn hóa Saigon Express tại chi nhánh của bạn"
+        ],
+        "requirements": [
+          "Hơn 3 năm kinh nghiệm quản lý nhà hàng, quán cà phê hoặc chuỗi phục vụ nhanh (QSR)",
+          "Thành tích chứng minh năng lực dẫn dắt và phát triển đội ngũ ngành dịch vụ nhà hàng",
+          "Có tư duy tài chính tốt — thành thạo việc đọc và hiểu các báo cáo doanh thu, lỗ lãi (P&L)",
+          "Có chứng chỉ phục vụ rượu an toàn (RSA) và chứng chỉ Giám sát An toàn Thực phẩm",
+          "Kỹ năng giao tiếp xuất sắc và giải quyết xung đột tốt",
+          "Thời gian làm việc linh hoạt bao gồm cả cuối tuần và các ngày lễ"
+        ],
+        "perks": [
+          "Thưởng hiệu quả công việc",
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Cơ hội thăng tiến lên Quản lý Khu vực",
+          "Được cấp điện thoại công việc",
+          "Được tham gia các khóa đào tạo kỹ năng lãnh đạo có trả lương"
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Trợ Lý Quản Lý Nhà Hàng",
+        "department": "Bộ Phận Quản Lý",
+        "type": "Toàn Thời Gian",
+        "location": "Tất Cả Các Chi Nhánh",
+        "salary": "$58,000 – $68,000 + Quỹ hưu trí",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Hỗ trợ Quản lý Nhà hàng vận hành chi nhánh đạt hiệu quả cao. Đây là vị trí lý tưởng cho một nhân viên phục vụ sảnh cấp cao có kinh nghiệm sẵn sàng bước lên nấc thang quản lý.",
+        "responsibilities": [
+          "Hỗ trợ Quản lý Nhà hàng trong mọi khía cạnh vận hành hàng ngày",
+          "Giám sát nhân viên phục vụ trong ca trực và đóng vai trò quản lý điều hành khi được yêu cầu",
+          "Mở cửa và đóng cửa nhà hàng, bao gồm đối soát tiền mặt và lập báo cáo cuối ngày",
+          "Tiếp nhận và giải quyết các phản hồi, thắc mắc của khách hàng một cách chuyên nghiệp",
+          "Hỗ trợ xếp lịch làm việc, hướng dẫn nhân viên mới và đánh giá hiệu quả công việc định kỳ",
+          "Theo dõi mức tồn kho và hỗ trợ quy trình đặt hàng hàng tuần",
+          "Đảm bảo các tiêu chuẩn thương hiệu và quy trình dịch vụ được thực hiện đồng nhất"
+        ],
+        "requirements": [
+          "Hơn 2 năm kinh nghiệm ở vị trí phục vụ sảnh cấp cao hoặc trưởng nhóm",
+          "Có chứng chỉ phục vụ rượu an toàn (RSA)",
+          "Tác phong lãnh đạo tự tin và kỹ năng giao tiếp tốt",
+          "Sử dụng thành thạo hệ thống POS và có kỹ năng cơ bản về quản lý tiền mặt",
+          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Lộ trình thăng tiến rõ ràng lên vị trí Quản lý Nhà hàng",
+          "Được đào tạo bài bản có trả lương",
+          "Được cung cấp đồng phục"
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Trưởng Nhóm Phục Vụ Sảnh (FOH)",
+        "department": "Bộ Phận Sảnh",
+        "type": "Toàn Thời Gian / Bán Thời Gian",
+        "location": "Tất Cả Các Chi Nhánh",
+        "salary": "$27 – $32/giờ + Quỹ hưu trí",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Điều hành khu vực sảnh trong ca làm việc, đảm bảo mỗi khách hàng đều có trải nghiệm Saigon Express ấm áp, nhanh chóng và đáng nhớ. Bạn sẽ kèm cặp nhân viên phục vụ mới và là người đầu tiên tiếp nhận phản hồi của khách.",
+        "responsibilities": [
+          "Dẫn dắt đội ngũ sảnh trong ca, điều phối nhân viên trực bàn và các trạm dịch vụ",
+          "Chào đón và sắp xếp chỗ ngồi cho khách, quản lý danh sách chờ và giám sát tốc độ xoay bàn",
+          "Xử lý các phản hồi và khiếu nại của khách một cách kịp thời và chuyên nghiệp",
+          "Đào tạo và hướng dẫn nhân viên sảnh cấp dưới về tiêu chuẩn phục vụ và kiến thức thực đơn",
+          "Hỗ trợ các công việc mở/đóng cửa bao gồm kiểm đếm doanh thu tiền mặt",
+          "Đảm bảo khu vực ăn uống luôn sạch sẽ, gọn gàng và được chuẩn bị đầy đủ dụng cụ",
+          "Giao tiếp rõ ràng với đội ngũ bếp để điều phối dòng chảy của các đơn hàng"
+        ],
+        "requirements": [
+          "Hơn 2 năm kinh nghiệm phục vụ sảnh, với ít nhất 6 tháng ở vị trí trưởng nhóm hoặc cấp tương đương",
+          "Có chứng chỉ phục vụ rượu an toàn (RSA)",
+          "Kỹ năng giao tiếp và tương tác cá nhân tuyệt vời",
+          "Khả năng giữ bình tĩnh và tổ chức công việc tốt trong những khoảng thời gian phục vụ bận rộn",
+          "Thời gian làm việc linh hoạt, bao gồm cả cuối tuần và các ngày lễ"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Lộ trình thăng tiến lên Trợ lý Quản lý",
+          "Được cung cấp đồng phục",
+          "Giờ làm việc linh hoạt"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Nhân Viên Phục Vụ Sảnh / Chăm Sóc Khách Hàng",
+        "department": "Bộ Phận Sảnh",
+        "type": "Toàn Thời Gian / Bán Thời Gian / Thời Vụ",
+        "location": "Tất Cả Các Chi Nhánh",
+        "salary": "$24 – $28/giờ + Quỹ hưu trí",
+        "badge": "ĐANG TUYỂN DỤNG",
+        "badgeColor": "bg-primary",
+        "summary": "Chào đón khách hàng với sự nồng hậu và nhiệt huyết, tạo ấn tượng đầu tiên đáng nhớ. Chúng tôi luôn tìm kiếm những con người năng động để cùng gia nhập sảnh ăn.",
+        "responsibilities": [
+          "Chào đón khách hàng với sự nồng hậu và nhiệt huyết, tạo ấn tượng đầu tiên đáng nhớ",
+          "Ghi nhận order chính xác trên hệ thống POS và truyền đạt các yêu cầu đặc biệt tới nhà bếp",
+          "Lên món ăn và thức uống nhanh chóng, đồng thời kiểm tra mức độ hài lòng của khách",
+          "Nắm rõ thực đơn của Saigon Express, bao gồm các thành phần nguyên liệu và chất gây dị ứng",
+          "Giữ gìn khu vực dùng bữa luôn sạch sẽ, gọn gàng trong suốt ca phục vụ",
+          "Thực hiện quy trình thanh toán chính xác đối với các giao dịch tiền mặt và thẻ",
+          "Hỗ trợ các công việc chuẩn bị phụ khi mở và đóng cửa theo sự hướng dẫn",
+          "Gợi ý khéo léo để bán thêm các món ăn, đồ uống hoặc gói dịch vụ tiệc khi thích hợp"
+        ],
+        "requirements": [
+          "Đam mê thực sự với ngành dịch vụ nhà hàng và mong muốn tạo ra trải nghiệm tuyệt vời cho khách",
+          "Có chứng chỉ phục vụ rượu an toàn RSA (hoặc sẵn sàng học — chúng tôi sẽ hỗ trợ bạn)",
+          "Đáng tin cậy, đúng giờ và là một thành viên có tinh thần đồng đội cao",
+          "Khả năng làm việc với tốc độ nhanh trong những khung giờ cao điểm bận rộn",
+          "Có kinh nghiệm làm việc trong ngành dịch vụ là một lợi thế nhưng không bắt buộc",
+          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Thời gian làm việc linh hoạt (thời vụ, bán thời gian hoặc toàn thời gian)",
+          "Được cung cấp đồng phục miễn phí",
+          "Lộ trình phát triển lên vị trí Trưởng nhóm và các cấp bậc cao hơn"
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Nhân Viên Pha Chế / Chuyên Viên Đồ Uống",
+        "department": "Bộ Phận Sảnh",
+        "type": "Bán Thời Gian / Thời Vụ",
+        "location": "CBD / North Hobart",
+        "salary": "$25 – $30/giờ + Quỹ hưu trí",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Pha chế cà phê sữa đá Việt Nam, trà chanh nhà làm và thực đơn espresso phong phú cho khách hàng. Nếu bạn yêu thích cà phê và văn hóa đồ uống Việt Nam, vị trí này dành cho bạn.",
+        "responsibilities": [
+          "Pha chế và phục vụ các loại cà phê máy espresso, cà phê đá Việt Nam và các loại thức uống đặc trưng theo công thức quy chuẩn",
+          "Bảo dưỡng và vệ sinh máy pha cà phê, máy xay và trạm đồ uống theo tiêu chuẩn cao",
+          "Quản lý mức tồn kho cho cà phê, sữa và các nguyên liệu pha chế khác",
+          "Hỗ trợ nhân viên phục vụ sảnh trong những khoảng thời gian khách đông",
+          "Trò chuyện, kết nối với khách hàng và chia sẻ kiến thức của bạn về thực đơn đồ uống"
+        ],
+        "requirements": [
+          "Có kinh nghiệm làm barista với hiểu biết vững chắc về kỹ thuật pha chế espresso",
+          "Có sở thích hoặc hiểu biết về văn hóa đồ uống Việt Nam là một điểm cộng lớn",
+          "Có chứng chỉ phục vụ rượu an toàn (RSA)",
+          "Tính cách thân thiện, côi mở và luôn hướng tới khách hàng",
+          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Miễn phí cà phê trong ca làm việc",
+          "Giờ làm việc linh hoạt",
+          "Được cung cấp đồng phục miễn phí"
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Điều Phối Viên Giao Hàng & Tiệc Sự Kiện",
+        "department": "Bộ Phận Vận Hành",
+        "type": "Toàn Thời Gian / Bán Thời Gian",
+        "location": "Khu Vực Hobart",
+        "salary": "$26 – $32/giờ + Quỹ hưu trí",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Điều phối các hoạt động giao hàng và dịch vụ tiệc (catering) đang ngày càng phát triển của chúng tôi trên khắp khu vực Greater Hobart. Bạn sẽ là xương sống logistics, đảm bảo mọi đơn hàng đến đúng giờ.",
+        "responsibilities": [
+          "Quản lý tất cả các lượt đặt tiệc, xác nhận đơn hàng và giao tiếp trao đổi với khách hàng",
+          "Điều phối lịch trình giao hàng và quản lý tài xế cho các đơn hàng tiệc và đơn hàng sỉ",
+          "Đóng gói và kiểm tra chất lượng các khay tiệc trước khi phân phối",
+          "Liên lạc chặt chẽ với đội ngũ bếp để đảm bảo các đơn hàng tiệc được chuẩn bị đúng giờ",
+          "Bảo quản thiết bị tiệc, kiểm kê bao bì đóng gói và giữ gìn xe giao hàng sạch sẽ",
+          "Thực hiện chăm sóc và lấy ý kiến phản hồi của khách hàng sau sự kiện",
+          "Hỗ trợ phát triển các gói dịch vụ tiệc mới và thiết lập chính sách giá"
+        ],
+        "requirements": [
+          "Có kinh nghiệm trong vai trò điều phối logistics, sự kiện hoặc điều phối ngành dịch vụ",
+          "Có bằng lái xe Úc hợp lệ",
+          "Kỹ năng tổ chức tốt và cực kỳ chú trọng đến từng chi tiết nhỏ",
+          "Kỹ năng giao tiếp xuất sắc — bạn sẽ là đầu mối liên hệ chính của khách hàng",
+          "Có khả năng nâng vác và vận chuyển các thiết bị tiệc nặng lên đến 15kg",
+          "Có chứng chỉ an toàn vệ sinh thực phẩm"
+        ],
+        "perks": [
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Cung cấp xe công ty phục vụ cho việc giao hàng",
+          "Giờ làm việc linh hoạt",
+          "Cơ hội thăng tiến lên Quản lý Vận hành"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Quản Lý Tài Khoản Khách Hàng Doanh Nghiệp (B2B)",
+        "department": "Phòng Kinh Doanh Sỉ",
+        "type": "Toàn Thời Gian",
+        "location": "Hobart (Yêu cầu di chuyển)",
+        "salary": "$60,000 – $72,000 + Quỹ hưu trí + Hoa hồng",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Phát triển mảng kinh doanh bán buôn của chúng tôi trên khắp vùng Tasmania. Bạn sẽ quản lý mối quan hệ với các đối tác quán cà phê, cửa hàng thực phẩm và nhà hàng hiện tại.",
+        "responsibilities": [
+          "Quản lý và phát triển danh mục các tài khoản bán buôn trên toàn Tasmania",
+          "Tiến hành thăm khám khách hàng định kỳ để đảm bảo sự hài lòng và tìm kiếm cơ hội bán thêm",
+          "Tìm kiếm và kết nối với các đối tác B2B mới bao gồm các quán cà phê, cửa hàng delis và khách hàng doanh nghiệp",
+          "Chuẩn bị và trình bày các đề xuất bán sỉ, bảng báo giá và gửi mẫu thử sản phẩm",
+          "Phối hợp với đội ngũ kho để đảm bảo các đơn hàng được hoàn thành chính xác và đúng hạn",
+          "Theo dõi hiệu suất doanh số và báo cáo hàng tuần cho Quản lý Vận hành",
+          "Đại diện cho Saigon Express tại các sự kiện thương mại, triển lãm ẩm thực và các buổi kết nối doanh nghiệp"
+        ],
+        "requirements": [
+          "Hơn 2 năm kinh nghiệm trong vai trò bán hàng B2B hoặc quản lý khách hàng, ưu tiên trong ngành F&B",
+          "Kỹ năng đàm phán và xây dựng mối quan hệ bền vững",
+          "Có bằng lái xe Úc hợp lệ",
+          "Tinh thần tự giác cao với năng lực chứng minh đạt chỉ tiêu doanh số",
+          "Sử dụng thành thạo các công cụ CRM và Microsoft Office"
+        ],
+        "perks": [
+          "Cơ cấu hoa hồng hấp dẫn dựa trên các tài khoản mới",
+          "Được cấp xe công ty di chuyển",
+          "Có ngân sách chi phí tiếp khách để phục vụ công việc",
+          "Lộ trình thăng tiến lên Giám đốc Kinh doanh"
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Điều Phối Viên Marketing & Mạng Xã Hội",
+        "department": "Phòng Marketing",
+        "type": "Bán Thời Gian / Toàn Thời Gian",
+        "location": "Hobart (Làm việc linh hoạt Hybrid)",
+        "salary": "$55,000 – $65,000 + Quỹ hưu trí (Chia theo tỷ lệ)",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Kể câu chuyện về Saigon Express đến với cộng đồng Tasmania và xa hơn nữa. Bạn sẽ quản lý các kênh mạng xã hội, sáng tạo nội dung, chạy chiến dịch và góp phần xây dựng một thương hiệu được yêu thích.",
+        "responsibilities": [
+          "Lên kế hoạch, sáng tạo nội dung và lên lịch bài viết trên Instagram, Facebook và TikTok",
+          "Chụp ảnh và quay video về món ăn, đội ngũ nhân sự và các nội dung hậu trường tại các chi nhánh",
+          "Quản lý tương tác cộng đồng — trả lời các bình luận, tin nhắn trực tiếp (DMs) và các lượt đánh giá",
+          "Lên kế hoạch và triển khai các chương trình khuyến mãi theo mùa, minigames tặng quà và hợp tác với KOLs/KOCs",
+          "Viết nội dung (copywriting) cho trang web, bản tin email và hệ thống bảng biển tại cửa hàng",
+          "Theo dõi số liệu phân tích và báo cáo hiệu quả nội dung hàng tháng",
+          "Hỗ trợ thiết kế menu, tờ rơi và các ấn phẩm truyền thông bổ trợ",
+          "Hỗ trợ đội ngũ nhượng quyền và bán sỉ bằng các tài liệu tiếp thị B2B"
+        ],
+        "requirements": [
+          "Có kinh nghiệm thực tế quản lý mạng xã hội cho các thương hiệu ẩm thực, nhà hàng hoặc phong cách sống",
+          "Kỹ năng chụp ảnh và chỉnh sửa video cơ bản tốt (Reels, TikTok)",
+          "Khả năng viết tốt — văn phong ấm áp, lôi cuốn và đúng tinh thần thương hiệu",
+          "Sử dụng thành thạo Canva hoặc bộ công cụ Adobe Creative Suite",
+          "Có niềm đam mê với văn hóa ẩm thực Việt Nam và nghệ thuật kể chuyện",
+          "Có bằng cấp về Marketing, Truyền thông hoặc lĩnh vực liên quan là một lợi thế"
+        ],
+        "perks": [
+          "Chế độ làm việc kết hợp (lên văn phòng + tại nhà linh hoạt)",
+          "Giảm giá 30% bữa ăn cho nhân viên",
+          "Tự do sáng tạo để phát triển thương hiệu",
+          "Lộ trình phát triển sự nghiệp lên Quản lý Tiếp thị"
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Chuyên Viên Hỗ Trợ Nhượng Quyền",
+        "department": "Phòng Nhượng Quyền",
+        "type": "Toàn Thời Gian",
+        "location": "Hobart CBD",
+        "salary": "$58,000 – $70,000 + Quỹ hưu trí",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Hỗ trợ sự phát triển của mạng lưới nhượng quyền thương hiệu Saigon Express. Bạn sẽ là đầu mối liên hệ chính cho các đối tác nhận quyền mới và hiện tại.",
+        "responsibilities": [
+          "Hướng dẫn các đối tác nhận quyền mới trải qua toàn bộ quy trình đào tạo và thiết lập cửa hàng",
+          "Thực hiện các chuyến thăm cửa hàng định kỳ để đánh giá việc tuân thủ các tiêu chuẩn thương hiệu và quy trình vận hành tiêu chuẩn (SOPs)",
+          "Cung cấp hỗ trợ vận hành liên tục và giải quyết các sự cố phát sinh cho đối tác nhận quyền",
+          "Duy trì và cập nhật Sách hướng dẫn vận hành nhượng quyền cùng các tài liệu đào tạo nội bộ",
+          "Điều phối quy trình tiếp nhận hồ sơ và phê duyệt ứng viên nhượng quyền",
+          "Thay mặt các đối tác nhận quyền để liên lạc và làm việc với các bộ phận pháp lý, tài chính và tiếp thị",
+          "Lập báo cáo hiệu quả hoạt động hàng tháng cho từng địa điểm nhượng quyền"
+        ],
+        "requirements": [
+          "Kinh nghiệm làm việc trong lĩnh vực vận hành nhượng quyền, quản lý nhà hàng hoặc lĩnh vực tương đương",
+          "Kỹ năng tương tác cá nhân tốt và khả năng tạo dựng niềm tin vững chắc với các chủ doanh nghiệp",
+          "Khả năng tổ chức công việc cao cùng kỹ năng giao tiếp bằng văn bản và lời nói xuất sắc",
+          "Sẵn sàng di chuyển công tác đến các địa điểm nhượng quyền trên khắp Tasmania",
+          "Có hiểu biết về hợp đồng nhượng quyền và các khung quy định tuân thủ là một lợi thế lớn"
+        ],
+        "perks": [
+          "Trợ cấp chi phí đi lại công tác",
+          "Lộ trình phát triển lên Giám đốc Phát triển Nhượng quyền",
+          "Được cấp máy tính xách tay và điện thoại công việc",
+          "Được đài thọ các khóa học phát triển chuyên môn nâng cao"
+        ]
+      }
+    ],
+    "cta": {
+      "label": "BẠN ĐÃ SẴN SÀNG ỨNG TUYỂN?",
+      "titleLine1": "Bước Tiến Sự Nghiệp Tiếp Theo",
+      "titleLine2": "Bắt Đầu Từ Đây.",
+      "description": "Gửi CV và một bức thư ngắn giới thiệu bản thân tới đội ngũ của chúng tôi. Hãy cho chúng tôi biết vị trí bạn muốn ứng tuyển và lý do Saigon Express phù hợp với bạn.",
+      "emailBtn": "Gửi Hồ Sơ Qua Email",
+      "smsLabel": "Mọi thắc mắc qua SMS: 0416 036 016",
+      "equalOpportunity": "Saigon Express Tasmania là một đơn vị tuyển dụng công bằng. Chúng tôi hoan nghênh hồ sơ từ ứng viên thuộc mọi hoàn cảnh, bao gồm cả người bản địa First Nations, người khuyết tật, và những người đến từ các cộng đồng đa dạng văn hóa và ngôn ngữ."
+    }
+  },
+  "Catering": {
+    "hero": {
+      "badge": "DỊCH VỤ TIỆC BÁNH MÌ HOBART",
+      "titleLine1": "Đặt Tiệc Cho",
+      "titleLine2": "Mọi Dịp Sự Kiện",
+      "description": "Dịch vụ tiệc món ăn Việt chính gốc giao tận nơi tươi ngon khắp Tasmania — từ bữa trưa văn phòng đến các đêm tiệc trang trọng.",
+      "ctaPacks": "Xem Các Gói Tiệc",
+      "ctaMenu": "Thực Đơn & Giá Cả",
+      "ctaQuote": "Yêu Cầu Báo Giá"
+    },
+    "stats": [
+      { "num": "500+", "label": "Sự Kiện Đã Phục Vụ" },
+      { "num": "50,000+", "label": "Khách Đã Phục Vụ" },
+      { "num": "8", "label": "Chi Nhánh Tại Tasmania" },
+      { "num": "100%", "label": "Tươi Ngon Mỗi Ngày" }
+    ],
+    "whyUs": {
+      "label": "TẠI SAO CHỌN TIỆC SAIGON EXPRESS",
+      "titleLine1": "Thương Hiệu Tiệc Việt",
+      "titleLine2": "Được Yêu Thích Tại Tasmania",
+      "items": [
+        {
+          "emoji": "🌿",
+          "title": "Tươi Ngon Mỗi Ngày",
+          "desc": "Mọi món ăn đều được chuẩn bị tươi mới vào đúng ngày diễn ra sự kiện của bạn — không dùng hàng đông lạnh hay đóng gói sẵn."
+        },
+        {
+          "emoji": "🏆",
+          "title": "Công Thức Đạt Giải Thưởng",
+          "desc": "Các công thức món Việt chính gốc được tinh chỉnh qua nhiều thập kỷ, mang hương vị đặc sắc đến sự kiện của bạn."
+        },
+        {
+          "emoji": "🚚",
+          "title": "Giao Hàng Đúng Hẹn",
+          "desc": "Chúng tôi giao các đơn hàng tiệc trên khắp khu vực Hobart, Sorell, Kingston và các vùng lân cận. Yêu cầu đặt trước ít nhất 24 giờ."
+        },
+        {
+          "emoji": "🌱",
+          "title": "Phù Hợp Nhiều Chế Độ Ăn",
+          "desc": "Có sẵn các tùy chọn món ăn Halal, ăn chay, thuần chay và không chứa gluten (gluten-free) theo yêu cầu."
+        },
+        {
+          "emoji": "👨‍🍳",
+          "title": "Đội Ngũ Giàu Kinh Nghiệm",
+          "desc": "Đội ngũ dịch vụ tiệc của chúng tôi đã phục vụ hàng nghìn sự kiện lớn nhỏ trên khắp hòn đảo Tasmania."
+        },
+        {
+          "emoji": "📋",
+          "title": "Lập Kế Hoạch Dễ Dàng",
+          "desc": "Một đầu mối liên hệ duy nhất từ lúc tiếp nhận yêu cầu đến khâu dọn dẹp sau tiệc. Chúng tôi lo trọn gói từ A-Z."
+        }
+      ]
+    },
+    "packs": {
+      "label": "CÁC GÓI DỊCH VỤ TIỆC",
+      "title": "Lựa Chọn Gói Tiệc",
+      "description": "Tất cả các gói tiệc đều được chuẩn bị tươi mới trong ngày, sử dụng bao bì thân thiện với môi trường và giao tận nơi sự kiện.",
+      "empty": "Hiện tại không có gói tiệc nào sẵn sàng.",
+      "serves": "Phục vụ {serves} khách",
+      "enquire": "Yêu Cầu Tư Vấn"
+    },
+    "menu": {
+      "label": "THỰC ĐƠN TIỆC ĐẦY ĐỦ",
+      "title": "Đặt Hàng Theo Từng Hộp",
+      "description": "Tất cả các hộp tiệc đều được chuẩn bị tươi mới vào ngày diễn ra sự kiện. Vui lòng đặt trước ít nhất 24 giờ. Liên hệ ",
+      "descriptionEmail": "catering@saigonexpress.com.au",
+      "descriptionEnd": " để tùy chỉnh đơn hàng của bạn.",
+      "empty": "Hiện chưa có món ăn thực đơn tiệc nào sẵn sàng.",
+      "caters": "Phục vụ {serves} khách",
+      "enquire": "Yêu Cầu Ngay",
+      "customPrice": "Giá tùy chỉnh",
+      "proteinLabel": "TÙY CHỌN PHẦN THỊT/NHÂN",
+      "proteinList": "Heo Quay Giòn · Xá Xíu · Gà Sốt Satay · Gà Rán Giòn · Gà Xào Sả · Bò Xào Sả · Chay & Đậu Hũ · Tôm Nướng · Vịt Quay",
+      "proteinNote": "Nên chọn menu kết hợp hỗn hợp · Có thể tùy chọn riêng (tối đa 2–3 loại) · Có tính thêm phí đối với một số hương vị cao cấp"
+    },
+    "testimonial": {
+      "quote": "\"Saigon Express đã phục vụ hội nghị thường niên của công ty chúng tôi với 120 khách mời. Thức ăn vô cùng tuyệt vời — tươi ngon, đậm đà hương vị và ai cũng hỏi xin công thức nấu ăn.\"",
+      "author": "— Khách hàng Doanh nghiệp, Hobart CBD"
+    },
+    "form": {
+      "label": "LIÊN HỆ VỚI CHÚNG TÔI",
+      "title": "Yêu Cầu Báo Giá Tiệc",
+      "description": "Hãy chia sẻ về thông tin sự kiện của bạn và chúng tôi sẽ phản hồi trong vòng 24 giờ kèm theo bảng báo giá phù hợp nhất. Không có sự kiện nào là quá lớn hay quá nhỏ.",
+      "features": {
+        "response": "Phản hồi nhanh trong vòng 24 giờ",
+        "guests": "Phục vụ tối thiểu từ 10 khách",
+        "consultation": "Đã bao gồm tư vấn miễn phí",
+        "delivery": "Hỗ trợ giao hàng trên toàn Tasmania"
+      },
+      "directLabel": "Đường dây liên hệ đặt tiệc trực tiếp:",
+      "successTitle": "Đã Nhận Yêu Cầu Tư Vấn!",
+      "successText": "Chúng tôi sẽ liên hệ lại trong vòng 24 giờ kèm theo bảng báo giá được cá nhân hóa cho bạn.",
+      "inputName": "Tên Của Bạn *",
+      "inputOrg": "Tên Doanh Nghiệp/Tổ Chức",
+      "inputEmail": "Email *",
+      "inputPhone": "Số Điện Thoại",
+      "inputDate": "Ngày Diễn Ra Sự Kiện ",
+      "inputDateNote": "— yêu cầu thông báo trước tối thiểu 24 giờ",
+      "inputGuests": "Số Lượng Khách",
+      "inputMessage": "Thông Tin Chi Tiết Về Sự Kiện",
+      "placeholder": "Loại hình sự kiện, yêu cầu chế độ ăn uống đặc biệt, gói tiệc mong muốn, hoặc các yêu cầu riêng khác...",
+      "btnSubmit": "Gửi Yêu Cầu Đặt Tiệc",
+      "btnSending": "Đang Gửi Yêu Cầu…",
+      "enquireTemplate": "Tôi muốn đặt hộp {boxName} ({price}). Vui lòng cung cấp thêm thông tin chi tiết.",
+      "emailSubjectHeader": "YÊU CẦU ĐẶT TIỆC (CATERING ENQUIRY)",
+      "emailEventDate": "Ngày diễn ra",
+      "emailGuestCount": "Số lượng khách"
+    },
+    "errors": {
+      "requiredFields": "Họ tên và email không được bỏ trống",
+      "submitFailed": "Gửi yêu cầu thất bại. Vui lòng gửi email trực tiếp đến catering@saigonexpress.com.au."
+    }
+  },
+  "Checkout": {
+    "steps": {
+      "order": "1. Đơn Hàng",
+      "details": "2. Thông Tin",
+      "confirm": "3. Xác Nhận & Trả Tiền"
+    },
+    "dateStrings": {
+      "today": "Hôm nay",
+      "tomorrow": "Ngày mai",
+      "days": [
+        "Chủ Nhật",
+        "Thứ 2",
+        "Thứ 3",
+        "Thứ 4",
+        "Thứ 5",
+        "Thứ 6",
+        "Thứ 7"
+      ],
+      "months": [
+        "Thg 1",
+        "Thg 2",
+        "Thg 3",
+        "Thg 4",
+        "Thg 5",
+        "Thg 6",
+        "Thg 7",
+        "Thg 8",
+        "Thg 9",
+        "Thg 10",
+        "Thg 11",
+        "Thg 12"
+      ]
+    },
+    "cartSection": {
+      "title": "Đơn Hàng Của Bạn",
+      "empty": "Giỏ hàng của bạn đang trống",
+      "browse": "Xem Thực Đơn",
+      "each": "${price} mỗi phần",
+      "pickupStore": "Chọn Cửa Hàng Nhận Hàng",
+      "loadingStores": "Đang tải danh sách cửa hàng…",
+      "pickupDateTime": "Ngày & Giờ Nhận Hàng",
+      "labelDate": "Ngày nhận",
+      "labelTime": "Giờ nhận"
+    },
+    "summarySection": {
+      "title": "Tóm Tắt Đơn Hàng",
+      "totalLabel": "Tổng cộng",
+      "gstNote": "Giá đã bao gồm thuế GST",
+      "pickupLabel": "Thông tin lấy hàng:",
+      "at": "vào lúc",
+      "btnContinue": "Tiếp tục",
+      "pickupOnlyNote": "Chỉ đến lấy tại cửa hàng · Không giao hàng"
+    },
+    "detailsSection": {
+      "title": "Thông Tin Của Bạn",
+      "labelName": "Họ và Tên *",
+      "placeholderName": "Nhập họ tên của bạn",
+      "labelEmail": "Địa chỉ Email *",
+      "placeholderEmail": "email@viand.com",
+      "labelPhone": "Số Điện Thoại *",
+      "placeholderPhone": "0400 000 000",
+      "labelNotes": "Yêu cầu đặc biệt (không bắt buộc)",
+      "placeholderNotes": "Dị ứng ứng thực phẩm, yêu cầu riêng lẻ khi chuẩn bị món…",
+      "btnReview": "Xem Lại Đơn Hàng"
+    },
+    "confirmSection": {
+      "title": "Xác Nhận & Thanh Toán",
+      "itemsTitle": "Danh Sách Món Ăn",
+      "pickupTitle": "Thông Tin Nhận Hàng",
+      "contactTitle": "Thông Tin Liên Hệ",
+      "paymentTitle": "Thanh Toán",
+      "paymentDesc": "Bạn sẽ được chuyển hướng đến cổng thanh toán bảo mật Stripe để hoàn tất hóa đơn. Chúng tôi chấp nhận mọi loại thẻ tín dụng/thẻ ghi nợ phổ biến.",
+      "secureLabel": "Thanh toán SSL bảo mật qua Stripe",
+      "gstIncludedNote": "Đã bao gồm thuế GST",
+      "btnPay": "Thanh toán ${total}",
+      "btnProcessing": "Đang xử lý…",
+      "termsNote": "Bằng việc đặt đơn hàng, bạn đồng ý với các điều khoản dịch vụ của chúng tôi."
+    },
+    "success": {
+      "title": "Đặt Hàng Thành Công!",
+      "message": "Cảm ơn bạn, {name}! Đơn hàng #{orderId} đã được hệ thống tiếp nhận.",
+      "pickupSummary": "Nhận hàng tại {store} vào ngày {date} lúc {time}. Chúng tôi sẽ gửi email xác nhận đến {email}.",
+      "btnMore": "Đặt Thêm Món"
+    },
+    "toasts": {
+      "cartEmpty": "Giỏ hàng của bạn đang trống",
+      "selectStore": "Vui lòng chọn cửa hàng bạn muốn đến lấy",
+      "enterName": "Vui lòng nhập họ và tên của bạn",
+      "enterEmail": "Vui lòng điền địa chỉ email chính xác",
+      "enterPhone": "Vui lòng nhập số điện thoại liên hệ",
+      "redirecting": "Đang chuyển hướng đến trang thanh toán bảo mật…",
+      "errorDefault": "Gặp lỗi trong quá trình đặt hàng. Vui lòng thử lại sau."
+    }
+  },
+  "CheckoutSuccess": {
+    "title": "Thanh Toán Thành Công!",
+    "orderPlaced": "Đơn hàng {orderId} đã được đặt thành công.",
+    "description": "Chúng tôi đã nhận được thanh toán và đơn hàng của bạn đang được chuẩn bị. Bạn sẽ sớm nhận được một email xác nhận kèm theo liên kết theo dõi đơn hàng.",
+    "tracking": {
+      "watchProgress": "Theo dõi tiến độ đơn hàng của bạn theo thời gian thực:",
+      "btnTrackLive": "Theo Dõi Đơn Hàng Trực Tiếp"
+    },
+    "ctas": {
+      "btnOrderMore": "Đặt Thêm Món",
+      "btnFindStore": "Tìm Cửa Hàng"
+    }
+  },
+  "Contact": {
+    "hero": {
+      "badge": "LIÊN HỆ",
+      "title": "Liên Hệ Với Chúng Tôi",
+      "description": "Chúng tôi rất vui khi nhận được phản hồi từ bạn — cho dù đó là câu hỏi về thực đơn, dịch vụ tiệc, cơ hội hợp tác nhượng quyền, hay chỉ là một lời chào."
+    },
+    "info": {
+      "title": "Thông Tin Liên Hệ",
+      "phoneLabel": "Số Điện Thoại",
+      "emailLabel": "Email",
+      "locationsLabel": "Chi Nhánh",
+      "storesCount": "{count} cửa hàng trên khắp Tasmania"
+    },
+    "hours": {
+      "title": "Giờ Mở Cửa",
+      "schedule": [
+        { "day": "Thứ 2 – Thứ 6", "hours": "10:00 sáng – 8:00 tối" },
+        { "day": "Thứ 7", "hours": "10:00 sáng – 8:30 tối" },
+        { "day": "Chủ Nhật", "hours": "11:00 sáng – 7:00 tối" },
+        { "day": "Ngày Lễ Công Cộng", "hours": "11:00 sáng – 6:00 tối" }
+      ]
+    },
+    "locations": {
+      "title": "Hệ Thống Chi Nhánh",
+      "viewAll": "Xem tất cả cửa hàng trên bản đồ →"
+    },
+    "form": {
+      "title": "Gửi Tin Nhắn Cho Chúng Tôi",
+      "labelName": "Họ và Tên *",
+      "placeholderName": "Nhập họ tên của bạn",
+      "labelEmail": "Email *",
+      "placeholderEmail": "email@example.com",
+      "labelPhone": "Số Điện Thoại",
+      "placeholderPhone": "04xx xxx xxx",
+      "labelSubject": "Tiêu đề",
+      "placeholderSubject": "Ví dụ: Đặt tiệc sự kiện",
+      "labelMessage": "Nội dung tin nhắn *",
+      "placeholderMessage": "Chúng tôi có thể giúp gì cho bạn?",
+      "btnSubmit": "Gửi Tin Nhắn",
+      "btnSending": "Đang gửi…",
+      "note": "Chúng tôi thường phản hồi trong vòng 1 ngày làm việc.",
+      "successTitle": "Đã Nhận Tin Nhắn!",
+      "successText": "Cảm ơn bạn đã liên hệ. Chúng tôi sẽ phản hồi lại trong vòng 1 ngày làm việc.",
+      "btnAnother": "Gửi Thêm Tin Nhắn Khác"
+    },
+    "toasts": {
+      "success": "Gửi tin nhắn thành công! Chúng tôi sẽ phản hồi bạn sớm.",
+      "error": "Gửi tin nhắn thất bại. Vui lòng thử lại hoặc gửi email trực tiếp.",
+      "validation": "Vui lòng nhập đầy đủ thông tin tên, email và nội dung tin nhắn."
+    }
+  },
+  "FAQ": {
+    "hero": {
+      "badge": "Trung tâm hỗ trợ",
+      "title": "Câu hỏi thường gặp",
+      "description": "Mọi điều bạn cần biết về Saigon Express Tasmania — từ đặt món, thực đơn đến chính sách bán sỉ, dịch vụ tiệc và nhượng quyền thương hiệu."
+    },
+    "allTopics": "Tất cả chủ đề",
+    "faqCategories": [
+      {
+        "category": "Đặt món & Giao hàng",
+        "icon": "🛵",
+        "questions": [
+          {
+            "q": "Làm thế nào để tôi đặt món?",
+            "a": "Bạn có thể đặt hàng trực tuyến qua trang web của chúng tôi, qua các ứng dụng Uber Eats, Menulog, DoorDash hoặc đến mua trực tiếp tại bất kỳ chi nhánh nào trong số 8 chi nhánh của chúng tôi tại Tasmania. Hệ thống đặt hàng trực tuyến sẽ hiển thị trạng thái còn món theo thời gian thực."
+          },
+          {
+            "q": "Cửa hàng có dịch vụ giao hàng không?",
+            "a": "Có! Chúng tôi hợp tác với Uber Eats, Menulog và DoorDash để hỗ trợ giao hàng trên khắp khu vực Hobart và các vùng lân cận. Khu vực giao hàng khả dụng sẽ phụ thuộc vào vị trí của bạn và chi nhánh Saigon Express gần nhất."
+          },
+          {
+            "q": "Tôi có thể đặt món trước cho một khung giờ cụ thể không?",
+            "a": "Có, bạn hoàn toàn có thể lên lịch đặt món thông qua ứng dụng của bên thứ ba. Đối với các đơn hàng số lượng lớn cho tập thể hoặc tiệc sự kiện, chúng tôi khuyên bạn nên gửi email trực tiếp đến catering@saigonexpress.com.au ít nhất 48 giờ trước thời gian nhận hàng."
+          },
+          {
+            "q": "Cửa hàng chấp nhận những hình thức thanh toán nào?",
+            "a": "Chúng tôi chấp nhận tất cả các loại thẻ tín dụng và thẻ ghi nợ phổ biến (Visa, Mastercard, Amex), Apple Pay, Google Pay và tiền mặt trực tiếp tại cửa hàng."
+          },
+          {
+            "q": "Tôi có thể thay đổi hoặc hủy đơn hàng không?",
+            "a": "Đơn hàng có thể điều chỉnh hoặc hủy bỏ trong vòng 5 phút sau khi đặt thành công. Đối với đơn hàng mua trực tiếp, vui lòng trao đổi ngay với nhân viên sảnh. Đối với đơn đặt trực tuyến, vui lòng liên hệ tổng đài của nền tảng giao hàng tương ứng."
+          }
+        ]
+      },
+      {
+        "category": "Thực đơn & Chế độ ăn",
+        "icon": "🍜",
+        "questions": [
+          {
+            "q": "Cửa hàng có các món chay hoặc thuần chay không?",
+            "a": "Chắc chắn là có. Nhiều món ăn của chúng tôi có thể đổi sang chế độ chay hoặc thuần chay theo yêu cầu — bao gồm đậu hũ xào, phở rau củ và gỏi cuốn chay. Nhân viên của chúng tôi luôn sẵn sàng tư vấn cách điều chỉnh nguyên liệu phù hợp."
+          },
+          {
+            "q": "Các món ăn có tùy chọn không chứa gluten (gluten-free) không?",
+            "a": "Hầu hết các món trong thực đơn đều có thể điều chỉnh thành món không chứa gluten theo yêu cầu. Hãy báo trước cho nhân viên về yêu cầu ăn uống của bạn khi đặt món. Tuy nhiên do không gian bếp xử lý chung nên hiện tượng nhiễm chéo vẫn có thể xảy ra, bạn hãy lưu ý nếu có tiền sử dị ứng nghiêm trọng."
+          },
+          {
+            "q": "Chi nhánh Sandy Bay có chứng nhận Halal không?",
+            "a": "Đúng vậy, chi nhánh Saigon Express Sandy Bay là địa điểm chuyên phục vụ thực phẩm đạt chứng nhận Halal. Toàn bộ nguồn cung cấp thịt tại chi nhánh này đều đến từ các nhà cung ứng Halal được cấp phép."
+          },
+          {
+            "q": "Thực đơn của hệ thống có bao nhiêu món ăn?",
+            "a": "Thực đơn đầy đủ của chúng tôi sở hữu các món ăn đa dạng thuộc 13 danh mục khác nhau, bao gồm: Món khai vị, Bánh Mì, Bún tô, Phở, Gỏi cuốn, Cơm Việt Nam, Bánh bao, Bún bò Huế, Cơm chiên, Mì nước, Món đĩa gang sizzling, Trứng cuộn, Món xào, Gà rán & Burger, và Đồ uống nhà làm."
+          },
+          {
+            "q": "Cửa hàng có phần ăn dành cho trẻ em không?",
+            "a": "Mặc dù không thiết kế một thực đơn riêng cho trẻ em, nhiều món ăn của chúng tôi — như cơm trắng, phở nước dùng thanh dịu, và chả giò chiên giòn — rất được các bạn nhỏ yêu thích. Nhân viên của chúng tôi rất sẵn lòng gợi ý các lựa chọn phù hợp."
+          },
+          {
+            "q": "Tôi có thể xem thông tin về các chất gây dị ứng ở đâu?",
+            "a": "Có. Thông tin chi tiết về các chất gây dị ứng luôn có sẵn tại tất cả cửa hàng và cung cấp theo yêu cầu. Một số chất gây dị ứng phổ biến như gluten, động vật có vỏ, các loại hạt, trứng và sữa xuất hiện trong một số món ăn nhất định. Hãy thảo luận với nhân viên trước khi đặt món nếu bạn gặp bất kỳ vấn đề dị ứng nào."
+          }
+        ]
+      },
+      {
+        "category": "Dịch vụ Tiệc (Catering)",
+        "icon": "🎉",
+        "questions": [
+          {
+            "q": "Hệ thống có nhận phục vụ tiệc và sự kiện không?",
+            "a": "Có! Chúng tôi cung cấp dịch vụ tiệc chuyên nghiệp cho các buổi sinh nhật, sự kiện doanh nghiệp, đám cưới và tiệc cá nhân với mọi quy mô. Các gói tiệc trải dài từ Gói Văn Phòng Khởi Đầu (dành cho 10–15 người) cho đến các giải pháp thực đơn tùy chỉnh cho sự kiện lớn."
+          },
+          {
+            "q": "Tôi nên đặt dịch vụ tiệc trước bao lâu?",
+            "a": "Chúng tôi khuyên bạn nên đặt trước ít nhất 48–72 giờ đối với các sự kiện nhỏ, và trước 1–2 tuần đối với các sự kiện lớn hoặc tiệc cưới. Vào các đợt cao điểm (Giáng sinh, Phục sinh, ngày lễ lớn), bạn nên đặt lịch càng sớm càng tốt."
+          },
+          {
+            "q": "Cửa hàng hỗ trợ phục vụ tiệc ở những khu vực nào?",
+            "a": "Chúng tôi phục vụ tiệc trên toàn khu vực Greater Hobart và các vùng lân cận thuộc đảo Tasmania. Đối với các sự kiện nằm ngoài trung tâm thành phố Hobart, vui lòng liên hệ qua địa chỉ email catering@saigonexpress.com.au để thỏa thuận về phương án logistics cũng như phụ phí di chuyển."
+          },
+          {
+            "q": "Tôi có thể tùy chỉnh thực đơn tiệc theo yêu cầu riêng không?",
+            "a": "Có. Tất cả các gói dịch vụ tiệc đều có thể điều chỉnh linh hoạt để đáp ứng yêu cầu chế độ ăn uống, chủ đề sự kiện và ngân sách của bạn. Chúng tôi cung cấp đầy đủ các tùy chọn ăn chay, thuần chay, không chứa gluten và món Halal."
+          },
+          {
+            "q": "Dịch vụ có bao gồm thiết bị phục vụ và nhân sự không?",
+            "a": "Các gói tiệc cao cấp của chúng tôi có đi kèm đầy đủ thiết bị bày biện khay tiệc giữ nhiệt và bố trí nhân viên phục vụ tại chỗ cho các sự kiện lớn. Hãy thảo luận chi tiết các yêu cầu này với điều phối viên khi gửi thông tin."
+          }
+        ]
+      },
+      {
+        "category": "Bán sỉ & Khách hàng Doanh nghiệp",
+        "icon": "📦",
+        "questions": [
+          {
+            "q": "Làm thế nào để trở thành đối tác nhập sỉ sản phẩm?",
+            "a": "Hãy truy cập trang Bán sỉ trên website và hoàn thành biểu mẫu thông tin 'Trở thành đối tác', hoặc gửi email trực tiếp đến info@saigonexpress.com.au kèm theo thông tin doanh nghiệp của bạn. Đội ngũ phụ trách mảng bán sỉ sẽ liên hệ lại trong vòng 2 ngày làm việc."
+          },
+          {
+            "q": "Những sản phẩm nào khả dụng trong danh mục sỉ?",
+            "a": "Chúng tôi cung cấp chuỗi sản phẩm thực phẩm Việt Nam toàn diện bao gồm thịt tẩm ướp đông lạnh, các loại cốt bột bánh, nước sốt đặc trưng, đồ khô, nông sản tươi và các vật liệu bao bì đóng gói. Toàn bộ catalog bán sỉ sẽ mở ra sau khi tài khoản doanh nghiệp của bạn được phê duyệt trên Cổng Bán Buôn."
+          },
+          {
+            "q": "Số lượng đặt hàng tối thiểu cho mỗi đơn sỉ là bao nhiêu?",
+            "a": "Số lượng đặt hàng tối thiểu sẽ khác nhau tùy theo từng danh mục mặt hàng. Mức chiết khấu theo khối lượng bắt đầu áp dụng cho số lượng từ 10 sản phẩm trở lên, và mức giá ưu đãi nhất sẽ áp dụng cho số lượng từ 50 sản phẩm trở lên. Báo giá chi tiết hiển thị đầy đủ trên Cổng Bán Buôn."
+          },
+          {
+            "q": "Cửa hàng có áp dụng giảm giá khi mua số lượng lớn không?",
+            "a": "Có. Chúng tôi có các hạn mức chiết khấu lũy tiến: giảm 5% cho 10–24 sản phẩm, giảm 10% cho 25–49 sản phẩm, giảm 15% cho 50–99 sản phẩm, giảm 20% cho 100–199 sản phẩm, và ưu đãi tối đa giảm 25% cho đơn hàng từ 200 sản phẩm trở lên."
+          },
+          {
+            "q": "Hóa đơn bán sỉ được xử lý như thế nào?",
+            "a": "Hóa đơn tệp PDF tự động được khởi tạo cho mọi giao dịch bán buôn và sẵn sàng tải xuống ngay sau khi đơn hàng được xác nhận thành công. Tất cả hóa đơn bao gồm thông tin chi tiết từng mặt hàng, bảng phân rã chiết khấu, cách tính thuế GST và thông tin doanh nghiệp của bạn."
+          },
+          {
+            "q": "Tôi thực hiện đặt đơn sỉ bằng cách nào?",
+            "a": "Sau khi tài khoản bán sỉ được phê duyệt, hãy đăng nhập vào Cổng Bán Buôn tại saigonexpress.com.au/wholesale-shop. Duyệt danh mục sản phẩm, thêm các mặt hàng vào giỏ và tiến hành thanh toán. Bạn có thể thanh toán an toàn bằng các loại thẻ tín dụng/thẻ ghi nợ hoặc Apple Pay. Đơn hàng đặt trước 12h trưa (AEST) vào các ngày làm việc thông thường sẽ được đóng gói điều phối ngay trong ngày; đơn hàng sau 12h trưa sẽ được chuyển đi vào ngày làm việc tiếp theo. Bạn sẽ nhận được email xác nhận đơn và hóa đơn PDF đính kèm lập tức."
+          },
+          {
+            "q": "Yêu cầu bắt buộc để được đặt đơn hàng sỉ là gì?",
+            "a": "Để mua sỉ, bạn cần đáp ứng 3 điều kiện: (1) Sở hữu mã số doanh nghiệp ABN hoặc ACN hoạt động hợp pháp tại Úc; (2) Được phê duyệt trở thành đối tác bán sỉ của Saigon Express; (3) Được cấp tài khoản đăng nhập Cổng Bán Buôn. Chúng tôi không quy định số tiền chi tiêu tối thiểu cho mỗi đơn, tuy nhiên các khung chiết khấu giá sỉ chỉ bắt đầu kích hoạt từ số lượng 10 đơn vị sản phẩm."
+          }
+        ]
+      },
+      {
+        "category": "Nhượng quyền",
+        "icon": "🏪",
+        "questions": [
+          {
+            "q": "Chi phí để nhượng quyền một cửa hàng Saigon Express là bao nhiêu?",
+            "a": "Phí nhượng quyền thương hiệu là $30,000 + GST. Các chi phí định kỳ bao gồm 5% phí tác quyền tính trên doanh thu gộp và 2% phí quỹ tiếp thị toàn hệ thống. Tổng mức vốn đầu tư ban đầu sẽ dao động tùy thuộc vào mô hình cửa hàng (Kiosk, Takeaway hoặc Nhà hàng) và hiện trạng mặt bằng."
+          },
+          {
+            "q": "Hệ thống đang triển khai những mô hình nhượng quyền nào?",
+            "a": "Chúng tôi cung cấp 3 định dạng mặt bằng: Kiosk (phù hợp cho các khu ẩm thực food court trung tâm thương mại bận rộn), Takeaway (mô hình mang đi phổ biến và tối ưu nhất), và Nhà hàng đầy đủ (không gian ăn tại chỗ với khu bếp lớn). Mô hình Kiosk/Takeaway là định dạng khởi đầu được khuyến khích ưu tiên cho đối tác mới."
+          },
+          {
+            "q": "Thời hạn của hợp đồng nhượng quyền là bao lâu?",
+            "a": "Thời hạn hợp đồng nhượng quyền ban đầu là 5 năm, đi kèm điều khoản tùy chọn gia hạn thêm 5 năm tiếp theo dựa trên hiệu quả vận hành thực tế và mức độ tuân thủ các quy chuẩn chung của hệ thống."
+          },
+          {
+            "q": "Đối tác nhận quyền có được đào tạo và hỗ trợ không?",
+            "a": "Có. Tất cả các đối tác nhận quyền đều trải qua khóa đào tạo ban đầu toàn diện bao gồm quy trình vận hành, công thức chuẩn bị món ăn, tiêu chuẩn dịch vụ khách hàng và quản trị kinh doanh. Hỗ trợ liên tục bao gồm quyền tiếp cận chuỗi cung ứng nguyên liệu từ bếp trung tâm, các ấn phẩm marketing và thư viện tài liệu tại Franchise Hub."
+          },
+          {
+            "q": "Hệ thống có khu bếp trung tâm phục vụ nguyên liệu không?",
+            "a": "Có. Saigon Express vận hành hệ thống bếp trung tâm chuyên cung cấp cho các chi nhánh nhượng quyền nguồn nguyên liệu đã sơ chế và các loại nước sốt cốt đóng gói theo công thức bí truyền. Việc này giúp đảm bảo tính đồng nhất hương vị trên toàn hệ thống và giảm thiểu thời gian chuẩn bị của chi nhánh."
+          },
+          {
+            "q": "Làm thế nào để tôi nộp đơn ứng tuyển nhượng quyền?",
+            "a": "Hãy hoàn thành biểu mẫu đăng ký nhượng quyền trên trang Nhượng Quyền của website hoặc liên hệ trực tiếp qua email info@saigonexpress.com.au. Đội ngũ phụ trách sẽ xem xét hồ sơ và sắp xếp một cuộc gọi tư vấn sơ bộ trong vòng 5 ngày làm việc."
+          }
+        ]
+      },
+      {
+        "category": "Chi nhánh & Giờ hoạt động",
+        "icon": "📍",
+        "questions": [
+          {
+            "q": "Hiện có bao nhiêu chi nhánh Saigon Express hoạt động tại Tasmania?",
+            "a": "Chúng tôi hiện vận hành 8 chi nhánh trên khắp Tasmania: hai cửa hàng tại North Hobart (335 Elizabeth St và 329 Elizabeth St), một tại Hobart CBD (95 Liverpool St), Sandy Bay (đạt chuẩn Halal), Kingston, Glebe Hill Village (Howrah), và hai chi nhánh tại vùng Sorell (Gordon St và Gateway Shopping Centre)."
+          },
+          {
+            "q": "Cửa hàng có mở cửa vào các ngày nghỉ lễ công cộng không?",
+            "a": "Có, tất cả các chi nhánh của Saigon Express thường xuyên mở cửa phục vụ xuyên suốt các ngày nghỉ lễ công cộng. Khung giờ mở cửa có thể thay đổi nhẹ tùy chi nhánh — chúng tôi khuyên bạn nên kiểm tra trực tiếp với cửa hàng gần nhất hoặc theo dõi cập nhật trên các kênh mạng xã hội."
+          },
+          {
+            "q": "Nhà hàng có chính sách mang rượu ngoài vào (BYO) không?",
+            "a": "Chính sách BYO (Mang theo đồ uống có cồn của riêng bạn) chỉ áp dụng duy nhất tại chi nhánh số 329 Elizabeth Street, North Hobart. Tất cả các chi nhánh còn lại đều đã được cấp giấy phép phục vụ đồ uống có cồn tại quầy."
+          },
+          {
+            "q": "Tôi có thể đặt bàn trước không?",
+            "a": "Dịch vụ đặt bàn trước hiện khả dụng tại một số chi nhánh cố định. Vui lòng liên hệ trực tiếp với chi nhánh bạn muốn đến hoặc sử dụng tính năng đặt bàn trên website để kiểm tra tình trạng chỗ trống."
+          }
+        ]
+      },
+      {
+        "category": "Thông tin chung",
+        "icon": "💬",
+        "questions": [
+          {
+            "q": "Làm cách nào để liên hệ với Saigon Express?",
+            "a": "Bạn có thể kết nối với chúng tôi qua số điện thoại 0416 036 016, gửi email về info@saigonexpress.com.au, hoặc ghé thăm trực tiếp bất kỳ chi nhánh nào trong số 8 chi nhánh tại Tasmania. Đối với các yêu cầu đặt tiệc sự kiện, vui lòng sử dụng hòm thư riêng catering@saigonexpress.com.au."
+          },
+          {
+            "q": "Cửa hàng có chương trình tích điểm khách hàng thân thiết không?",
+            "a": "Chúng tôi đang trong quá trình xây dựng chương trình thẻ thành viên tích điểm đổi quà dành cho các khách hàng thân thiết. Hãy đăng ký nhận bản tin email newsletter để trở thành người đầu tiên biết khi chương trình ra mắt, đồng thời nhận ngay mã giảm giá chào mừng độc quyền."
+          },
+          {
+            "q": "Tôi có thể gửi ý kiến đóng góp, phản hồi bằng cách nào?",
+            "a": "Chúng tôi luôn trân trọng mọi ý kiến đóng góp từ khách hàng! Bạn có thể gửi email về info@saigonexpress.com.au, để lại đánh giá trên trang Google, TripAdvisor hoặc trao đổi trực tiếp với quản lý tại chi nhánh cửa hàng. Phản hồi của bạn giúp chúng tôi cải thiện chất lượng dịch vụ tốt hơn."
+          },
+          {
+            "q": "Hệ thống có ứng dụng di động riêng không?",
+            "a": "Có! Ứng dụng Saigon Express hiện đã có mặt trên hai kho ứng dụng App Store và Google Play. Hãy ghé thăm trang 'Tải ứng dụng' trên website để xem hướng dẫn cài đặt từng bước chi tiết, bao gồm cả cách thêm lối tắt ứng dụng vào màn hình chính điện thoại để truy cập nhanh chóng."
+          },
+          {
+            "q": "Nhà hàng có bán thẻ quà tặng (Gift card) không?",
+            "a": "Tính năng thẻ quà tặng sẽ sớm được ra mắt trong thời gian tới. Hãy đăng ký nhận bản tin email để hệ thống gửi thông báo tự động ngay khi thẻ quà tặng chính thức mở bán."
+          }
+        ]
+      }
+    ],
+    "form": {
+      "title": "Đặt câu hỏi cho chúng tôi",
+      "subtitle": "Không tìm thấy câu trả lời bạn cần? Hãy gửi câu hỏi của bạn và đội ngũ của chúng tôi sẽ phản hồi trong thời gian sớm nhất.",
+      "labelName": "Tên của bạn *",
+      "placeholderName": "Ví dụ: Nguyễn Văn A",
+      "labelEmail": "Email",
+      "placeholderEmail": "email@cuaban.com",
+      "labelQuestion": "Nội dung câu hỏi *",
+      "placeholderQuestion": "Ví dụ: Hệ thống có nhận đặt tiệc sự kiện quy mô lớn không? Số lượng khách tối thiểu là bao nhiêu?",
+      "btnSubmit": "Gửi câu hỏi",
+      "btnSending": "Đang gửi...",
+      "successTitle": "Đã nhận câu hỏi!",
+      "successText": "Cảm ơn bạn! Chúng tôi sẽ xem xét nội dung câu hỏi và phản hồi lại bạn trong thời gian sớm nhất có thể.",
+      "btnAnother": "Đặt câu hỏi khác"
+    },
+    "stillHelp": {
+      "title": "Bạn vẫn còn câu hỏi thắc mắc?",
+      "description": "Đội ngũ của chúng tôi luôn sẵn sàng hỗ trợ bạn. Kết nối qua số điện thoại, gửi email hoặc nhấn nút live chat trực tuyến ở bất kỳ trang nào.",
+      "btnFindStore": "Tìm cửa hàng"
+    },
+    "errors": {
+      "length": "Vui lòng nhập nội dung câu hỏi có độ dài tối thiểu từ 10 ký tự trở lên.",
+      "fallback": "Đã xảy ra sự cố lỗi hệ thống. Vui lòng thử lại sau."
+    }
+  },
+  "Franchise": {
+    "hero": {
+      "badge": "CƠ HỘI NHƯỢNG QUYỀN",
+      "titleLine1": "Sở Hữu Cửa Hàng",
+      "titleLine2": "Saigon Express Tại Tasmania",
+      "description": "Gia nhập chuỗi nhượng quyền ẩm thực Việt Nam tăng trưởng nhanh nhất Tasmania. Hệ thống vận hành chuẩn chỉnh, hỗ trợ từ bếp trung tâm và thương hiệu được người dân Tasmania yêu thích.",
+      "ctaInterest": "Đăng Ký Nhận Thông Tin",
+      "ctaModels": "Xem Các Mô Hình Nhượng Quyền"
+    },
+    "investmentStrip": [
+      { "num": "$30K", "label": "Phí Cấp Phép Nhượng Quyền (+ GST)" },
+      { "num": "5%", "label": "Phí Tác Quyền (Royalty)" },
+      { "num": "2%", "label": "Phí Quỹ Tiếp Thị" },
+      { "num": "5 + 5", "label": "Thời Hạn Hợp Đồng (Năm)" }
+    ],
+    "about": {
+      "label": "THÔNG TIN VỀ CƠ HỘI HỢP TÁC",
+      "titleLine1": "Doanh Nghiệp Phát Triển",
+      "titleLine2": "Từ Hương Vị Đích Thực",
+      "desc1": "Saigon Express Tasmania được vận hành bởi TTH Enterprises Pty Ltd, dẫn dắt bởi Giám đốc - Tiến sĩ Tiến Hồ. Với hệ thống 8 chi nhánh đang hoạt động tại Tasmania và một khu bếp trung tâm đặt tại Hobart, chúng tôi đã xây dựng một nền tảng nhượng quyền được tối ưu hóa cho khả năng mở rộng quy mô lớn và tính đồng nhất tối đa.",
+      "desc2": "Thực đơn của chúng tôi sở hữu hơn 100 món ăn Việt Nam truyền thống — từ bánh mì, phở cho đến gỏi cuốn, bún tô và các loại đồ uống nhà làm — toàn bộ bán thành phần cốt lõi đều được cung ứng từ bếp trung tâm để đảm bảo chất lượng cao nhất cho từng địa điểm.",
+      "checklist": [
+        "Thương hiệu đang trong quá trình bảo hộ",
+        "Hỗ trợ toàn diện từ Bếp Trung Tâm",
+        "Hệ thống 8 cửa hàng hiện có tại Tasmania",
+        "Cung cấp chương trình đào tạo trọn gói"
+      ],
+      "legalLabel": "Tư Cách Pháp Nhân:",
+      "legalValue": "Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
+      "addressLabel": "Địa Chỉ Đăng Ký:",
+      "addressValue": "Level 2, 86 Collins St, Hobart TAS 7000"
+    },
+    "benefits": {
+      "label": "QUYỀN LỢI ĐỐI TÁC NHƯỢNG QUYỀN",
+      "titleLine1": "Mọi Nền Tảng Sẵn Sàng",
+      "titleLine2": "Để Bạn Thành Công",
+      "items": [
+        {
+          "key": "brand",
+          "title": "Thương Hiệu Đã Được Khẳng Định",
+          "desc": "Thương hiệu ẩm thực Việt Nam có chỗ đứng vững chắc với lượng khách hàng trung thành lớn khắp Tasmania. Nhãn hiệu đang trong quá trình đăng ký bảo hộ độc quyền."
+        },
+        {
+          "key": "kitchen",
+          "title": "Hệ Thống Bếp Trung Tâm",
+          "desc": "Nhà máy sản xuất trung tâm đảm bảo chất lượng món ăn đồng bộ và giảm thiểu tối đa khối lượng sơ chế phức tạp tại cửa hàng của bạn."
+        },
+        {
+          "key": "training",
+          "title": "Đào Tạo Trọn Gói",
+          "desc": "Chương trình hướng dẫn chi tiết từ khâu chuẩn bị nguyên liệu, dịch vụ khách hàng, quản lý hệ thống POS đến quy trình vận hành kiểm toán ca hàng ngày."
+        },
+        {
+          "key": "marketing",
+          "title": "Hỗ Trợ Tiếp Thị chuyên nghiệp",
+          "desc": "Cung cấp bộ nhận diện thương hiệu tại điểm bán, thư viện mẫu thiết kế mạng xã hội và các tài liệu chiến dịch truyền thông toàn diện ngay từ ngày đầu tiên."
+        },
+        {
+          "key": "community",
+          "title": "Cộng Đồng Đối Tác",
+          "desc": "Gia nhập mạng lưới các chủ cửa hàng Saigon Express đang ngày càng lớn mạnh, tham gia các buổi họp định kỳ để trao đổi và chia sẻ kinh nghiệm vận hành."
+        },
+        {
+          "key": "support",
+          "title": "Đồng Hành Liên Tục",
+          "desc": "Đội ngũ chuyên viên nhượng quyền chuyên trách luôn sẵn sàng hỗ trợ bạn về mặt vận hành, marketing và định hướng phát triển doanh thu lâu dài."
+        }
+      ]
+    },
+    "formats": {
+      "label": "MÔ HÌNH CỬA HÀNG",
+      "title": "Lựa Chọn Định Dạng Mặt Bằng",
+      "description": "Ba định dạng cửa hàng đã được chứng minh hiệu quả để phù hợp với các vị trí, ngân sách đầu tư và hoài bão kinh doanh khác nhau. Định dạng ưu tiên: Kiosk / Takeaway / Nhà hàng.",
+      "investmentLabel": "Mức Vốn Đầu Tư Dự Kiến",
+      "investmentNote": "Khung ngân sách đầu tư mang tính chất tham khảo, đã bao gồm chi phí thi công mặt bằng, trang thiết bị, lượng phôi hàng ban đầu và vốn lưu động. Không bao gồm phí cấp phép nhượng quyền ban đầu. Thay đổi tùy thuộc vào thẩm định mặt bằng thực tế.",
+      "items": [
+        {
+          "name": "Kiosk",
+          "icon": "🏪",
+          "desc": "Mô hình nhỏ gọn lý tưởng cho các khu ẩm thực (food court) trung tâm thương mại và các điểm có mật độ di chuyển cao. Chi phí thi công thấp, lắp đặt nhanh.",
+          "investment": "$80K – $120K"
+        },
+        {
+          "name": "Takeaway (Mang đi)",
+          "icon": "🥡",
+          "desc": "Mô hình chuyên phục vụ mang đi với quy trình gọi món tối ưu, thực đơn gọn gàng. Phù hợp cho các trục phố sầm uất và giờ cao điểm ăn trưa văn phòng.",
+          "investment": "$120K – $180K"
+        },
+        {
+          "name": "Restaurant (Nhà hàng đầy đủ)",
+          "icon": "🍽️",
+          "desc": "Không gian ăn tại chỗ toàn diện phục vụ menu Saigon Express đầy đủ. Vị trí lý tưởng tại các tuyến phố lớn trung tâm và các khu tổ hợp phong cách sống.",
+          "investment": "$180K – $280K"
+        }
+      ]
+    },
+    "process": {
+      "label": "QUY TRÌNH HỢP TÁC",
+      "title": "Từ Bước Tìm Hiểu Đến Ngày Khai Trương",
+      "steps": [
+        {
+          "num": "01",
+          "title": "Nộp Hồ Sơ Đăng Ký",
+          "desc": "Hoàn thành biểu mẫu đăng ký nguyện vọng bên dưới. Đội ngũ nhượng quyền của chúng tôi sẽ xem xét và phản hồi hồ sơ trong vòng 5 ngày làm việc."
+        },
+        {
+          "num": "02",
+          "title": "Cuộc Gọi Trao Đổi Sơ Bộ",
+          "desc": "Một cuộc trò chuyện ngắn khoảng 30 phút với Giám đốc Phát triển Nhượng quyền để thảo luận về mục tiêu, định hướng mặt bằng và năng lực tài chính của bạn."
+        },
+        {
+          "num": "03",
+          "title": "Cung Cấp Tài Liệu Pháp Lý",
+          "desc": "Nhận Bộ tài liệu Tiết lộ Thông tin Nhượng quyền (Franchise Disclosure Document) để tiến hành rà soát chuyên sâu cùng đại diện pháp lý và cố vấn tài chính của bạn."
+        },
+        {
+          "num": "04",
+          "title": "Khảo Sát & Thẩm Định Vị Trí",
+          "desc": "Chúng tôi đồng hành hỗ trợ khảo sát mặt bằng đề xuất của bạn về lưu lượng người qua lại, phân tích nhân khẩu học địa phương và tính khả thi thi công."
+        },
+        {
+          "num": "05",
+          "title": "Đào Tạo Vận Hành Trọn Gói",
+          "desc": "Tham gia và hoàn thành khóa đào tạo thực chiến kéo dài 4 tuần tại trung tâm sản xuất của chúng tôi và trực tiếp tại một cửa hàng Saigon Express đang vận hành."
+        },
+        {
+          "num": "06",
+          "title": "Ngày Đại Khai Trương",
+          "desc": "Chính thức mở cửa với sự hỗ trợ truyền thông tiếp thị tổng lực, đội ngũ chuyên viên hỗ trợ cắm chốt tại sảnh và kiện hàng nguyên liệu đầu tiên được giao."
+        }
+      ]
+    },
+    "consultBanner": {
+      "badge": "Tư Vấn Miễn Phí",
+      "title": "Đặt Lịch Khảo Sát Tư Vấn",
+      "description": "Trò chuyện trực tiếp cùng đội ngũ chuyên viên nhượng quyền. Chúng tôi sẽ giải đáp mọi thắc mắc và giúp bạn đánh giá mức độ phù hợp của cơ hội hợp tác kinh doanh này.",
+      "btnBook": "Đặt Lịch Tư Vấn Miễn Phí"
+    },
+    "interestForm": {
+      "label": "ĐĂNG KÝ NGUYỆN VỌNG HỢP TÁC",
+      "title": "Khởi Đầu Hành Trình Của Bạn",
+      "description": "Hãy điền thông tin vào biểu mẫu, Giám đốc Phát triển Nhượng quyền của chúng tôi sẽ liên hệ lại trong vòng 5 ngày làm việc để trao đổi bảo mật về hồ sơ của bạn.",
+      "checkpoints": [
+        "Thông tin tiếp nhận bảo mật tuyệt đối",
+        "Không ràng buộc nghĩa vụ phải tham gia",
+        "Phản hồi chính thức trong 5 ngày làm việc",
+        "Bao gồm cuộc gọi tư vấn định hướng miễn phí"
+      ],
+      "asideTitle": "Đầu mối thông tin nhượng quyền:",
+      "inputName": "Họ và Tên *",
+      "inputEmail": "Địa chỉ Email *",
+      "inputPhone": "Số Điện Thoại",
+      "inputLocation": "Khu Vực Mong Muốn Mở Cửa Hàng",
+      "placeholderLocation": "Ví dụ: Launceston, Devonport…",
+      "inputBudget": "Ngân Sách Đầu Tư Dự Kiến",
+      "placeholderBudget": "Chọn hạn mức ngân sách…",
+      "inputExperience": "Kinh Nghiệm Quản Lý/Kinh Doanh Trước Đây?",
+      "experienceOptions": {
+        "no": "Chưa có kinh nghiệm kinh doanh trước đây",
+        "yes": "Đã có kinh nghiệm vận hành doanh nghiệp/nhượng quyền"
+      },
+      "experiencePayloadYes": "Đã có kinh nghiệm vận hành doanh nghiệp/nhượng quyền",
+      "experiencePayloadNo": "Chưa có kinh nghiệm kinh doanh trước đây",
+      "inputAbout": "Chia Sẻ Đôi Nét Về Bản Thân Bạn",
+      "placeholderAbout": "Kinh nghiệm nền tảng của bạn, lý do bạn quan tâm đến hệ thống Saigon Express, hoặc các câu hỏi dành cho chúng tôi…",
+      "btnSubmit": "Gửi Đăng Ký Nguyện Vọng Hợp Tác",
+      "btnSubmitting": "Đang gửi hồ sơ…",
+      "confidentialNote": "Yêu cầu đăng ký của bạn được xử lý theo quy trình bảo mật nghiêm ngặt. Chúng tôi cam kết không chia sẻ dữ liệu cho bên thứ ba.",
+      "successTitle": "Đã Nhận Hồ Sơ Đăng Ký!",
+      "successText": "Quản lý Phát triển Nhượng quyền của chúng tôi sẽ liên hệ lại với bạn trong vòng 5 ngày làm việc."
+    },
+    "consultModal": {
+      "title": "Đặt Lịch Tư Vấn Miễn Phí",
+      "subtitle": "Chúng tôi sẽ phản hồi bạn trong vòng 24 giờ",
+      "inputName": "Họ và Tên *",
+      "placeholderName": "Nhập họ tên của bạn",
+      "inputPhone": "Số Điện Thoại *",
+      "placeholderPhone": "0400 000 000",
+      "inputEmail": "Địa chỉ Email *",
+      "placeholderEmail": "email@example.com",
+      "inputDate": "Ngày Mong Muốn Đặt Lịch",
+      "inputTime": "Khung Giờ Phù Hợp Nhất",
+      "timeOptions": {
+        "any": "Bất kỳ khung giờ nào trong ngày",
+        "morning": "Buổi sáng (9h sáng – 12h trưa)",
+        "afternoon": "Buổi chiều (12h trưa – 5h chiều)",
+        "evening": "Buổi tối (5h chiều – 7h tối)"
+      },
+      "inputMessage": "Lời nhắn thêm (không bắt buộc)",
+      "placeholderMessage": "Chia sẻ ngắn gọn về nhu cầu tìm hiểu hoặc thông tin nền tảng của bạn…",
+      "btnSubmit": "Xác Nhận Đặt Lịch Tư Vấn",
+      "btnSubmitting": "Đang xử lý đăng ký…",
+      "successTitle": "Đặt Lịch Thành Công!",
+      "successText": "Cảm ơn bạn, {name}. Đội ngũ phụ trách mảng nhượng quyền của chúng tôi sẽ liên hệ lại qua hòm thư {email} trong vòng 24 giờ tới.",
+      "btnClose": "Đóng cửa sổ"
+    },
+    "toasts": {
+      "error": "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.",
+      "requiredMain": "Họ tên và địa chỉ email không được bỏ trống.",
+      "requiredConsult": "Vui lòng nhập đầy đủ họ tên, số điện thoại và email liên hệ."
+    }
+  },
+  "GetTheApp": {
+    "hero": {
+      "logoAlt": "Saigon Express Tasmania",
+      "badge": "Miễn phí · Không cần App Store",
+      "heading": "Tải Ứng Dụng Saigon Express",
+      "subheading": "Đặt hàng nhanh hơn. Ưu đãi độc quyền. Luôn sẵn sàng. Thêm Saigon Express vào màn hình chính — không cần App Store, không tốn dung lượng. Chỉ một chạm để mở bất cứ lúc nào."
+    },
+    "benefits": [
+      {
+        "icon": "Zap",
+        "title": "Đặt Hàng Một Chạm",
+        "desc": "Thực đơn luôn sẵn sàng — đặt hàng nhanh hơn tìm kiếm trên trình duyệt."
+      },
+      {
+        "icon": "Star",
+        "title": "Ưu Đãi Độc Quyền",
+        "desc": "Khuyến mãi và tích điểm thưởng chỉ dành cho người dùng app trước khi hết."
+      },
+      {
+        "icon": "MapPin",
+        "title": "Tìm Cửa Hàng Nhanh",
+        "desc": "Xem tất cả 8 chi nhánh tại Tasmania với giờ mở cửa và chỉ đường."
+      },
+      {
+        "icon": "Smartphone",
+        "title": "Không Cần App Store",
+        "desc": "Cài đặt trực tiếp từ trình duyệt. Không tốn dung lượng thiết bị."
+      }
+    ],
+    "install": {
+      "eyebrow": "Hướng dẫn cài đặt",
+      "heading": "Thêm Vào Màn Hình Chính",
+      "subheading": "Chọn thiết bị và trình duyệt của bạn bên dưới.",
+      "tip": "Safari hoạt động tốt nhất trên iPhone — chỉ cần 3 bước thay vì 5 bước.",
+      "browsers": {
+        "iosSafari": {
+          "emoji": "🍎",
+          "label": "iPhone — Safari",
+          "meta": "Khuyến nghị · 3 bước"
+        },
+        "iosFirefox": {
+          "emoji": "🦊",
+          "label": "iPhone — Firefox",
+          "meta": "5 bước"
+        },
+        "android": {
+          "emoji": "🤖",
+          "label": "Android — Chrome",
+          "meta": "3 bước"
+        }
+      }
+    },
+    "stepsIosSafari": [
+      {
+        "num": "1",
+        "text": "Mở saigonexpress.com.au bằng Safari (không dùng Chrome hoặc Firefox)."
+      },
+      {
+        "num": "2",
+        "text": "Nhấn nút Chia sẻ ⬆ ở giữa phía dưới Safari — trông như một ô vuông có mũi tên chỉ lên."
+      },
+      {
+        "num": "3",
+        "text": "Cuộn xuống trong bảng chia sẻ và nhấn \"Thêm vào Màn hình chính\" (biểu tượng ⊕)."
+      },
+      {
+        "num": "!",
+        "text": "Trong ô tên, đảm bảo hiển thị Saigon Express. Nếu hiển thị khác, xoá đi và nhập Saigon Express."
+      },
+      {
+        "num": "✓",
+        "text": "Nhấn Thêm ở góc trên bên phải — biểu tượng Saigon Express xuất hiện trên màn hình chính!"
+      }
+    ],
+    "stepsIosFirefox": [
+      {
+        "num": "1",
+        "text": "Mở saigonexpress.com.au bằng Firefox."
+      },
+      {
+        "num": "2",
+        "text": "Nhấn nút menu ⋯ ở góc dưới bên phải màn hình."
+      },
+      {
+        "num": "3",
+        "text": "Nhấn Chia sẻ từ menu xuất hiện."
+      },
+      {
+        "num": "4",
+        "text": "Trong bảng chia sẻ iOS, nhấn \"Xem thêm\" rồi nhấn \"Thêm vào Màn hình chính\"."
+      },
+      {
+        "num": "!",
+        "text": "Trong ô tên, kiểm tra xem có hiển thị Saigon Express không. Nếu không, xoá đi và nhập Saigon Express."
+      },
+      {
+        "num": "✓",
+        "text": "Nhấn Thêm — biểu tượng Saigon Express xuất hiện trên màn hình chính!"
+      }
+    ],
+    "stepsAndroid": [
+      {
+        "num": "1",
+        "text": "Mở saigonexpress.com.au bằng Chrome."
+      },
+      {
+        "num": "2",
+        "text": "Nhấn menu ⋮ ở góc trên bên phải Chrome."
+      },
+      {
+        "num": "3",
+        "text": "Chọn \"Thêm vào Màn hình chính\"."
+      },
+      {
+        "num": "✓",
+        "text": "Nhấn Thêm — biểu tượng Saigon Express xuất hiện trên màn hình chính!"
+      }
+    ],
+    "share": {
+      "heading": "Mở Trang Này Trên Điện Thoại",
+      "subheading": "Hỗ trợ iPhone (Safari) và Android (Chrome) · Không cần App Store",
+      "copyIdle": "Sao chép liên kết",
+      "copiedConfirm": "Đã sao chép!",
+      "whatsappLabel": "Chia sẻ qua WhatsApp",
+      "whatsappMessage": "Thêm Saigon Express Tasmania vào màn hình chính của bạn: {appUrl}",
+      "toastSuccess": "Đã sao chép liên kết!"
+    }
+  },
+  "Menu": {
+    "hero": {
+      "eyebrow": "Làm Mới Mỗi Ngày · Tasmania",
+      "heading": "Thực Đơn Của Chúng Tôi",
+      "subheading": "Từ Bánh Mì đặc trưng đến Phở đậm đà và Gỏi Cuốn tươi mát, mỗi món đều được làm mới mỗi ngày với hương vị Việt Nam chính thống.",
+      "ctaMenu": "🛒 Xem Thực Đơn",
+      "ctaStore": "📍 Tìm Cửa Hàng Gần Nhất",
+      "ctaDelivery": "🚗 Đặt Giao Hàng"
+    },
+    "search": {
+      "placeholder": "Tìm kiếm thực đơn…",
+      "clearLabel": "✕ Xoá"
+    },
+    "allCategory": "Tất cả",
+    "empty": {
+      "headingSearch": "Không có kết quả cho \"{query}\"",
+      "headingCategory": "Không có món nào trong danh mục này",
+      "hintSearch": "Thử từ khoá khác hoặc xoá tìm kiếm.",
+      "hintCategory": "Thử chọn danh mục khác bên trên.",
+      "clearSearch": "Xoá tìm kiếm"
+    },
+    "card": {
+      "popularBadge": "★ Phổ biến",
+      "unavailableBadge": "Tạm Thời Không Có",
+      "addButton": "Thêm"
+    },
+    "storeStrip": {
+      "heading": "Tìm Cửa Hàng Gần Nhất",
+      "subheading": "8 chi nhánh trên khắp Tasmania"
+    },
+    "checkoutBar": {
+      "heading": "Chọn Cửa Hàng & Thanh Toán",
+      "summary": "{count, plural, one {# món} other {# món}} · ${total}"
+    },
+    "toast": {
+      "addonAdded": "Đã thêm {name} vào đơn hàng của bạn!",
+      "addonDescription": "Lựa chọn tuyệt vời — chúc ngon miệng!",
+      "addonUndo": "Hoàn tác",
+      "addonRemoved": "Đã xoá {name}."
+    }
+  },
+  "NotFound": {
+    "code": "404",
+    "heading": "Không Tìm Thấy Trang",
+    "body": "Xin lỗi, trang bạn đang tìm kiếm không tồn tại. Trang có thể đã được di chuyển hoặc xoá.",
+    "goHome": "Về Trang Chủ"
+  },
+  "OurStory": {
+    "hero": {
+      "eyebrow": "Câu Chuyện Của Chúng Tôi",
+      "heading": "Từ Công Thức Của Mẹ\nĐến Bàn Ăn Của Tasmania",
+      "subheading": "Ẩm thực Việt Nam chính gốc, chế biến tươi mỗi ngày — mang hương vị thật sự của quê nhà đến từng góc Tasmania."
+    },
+    "founder": {
+      "eyebrow": "Nhà Sáng Lập",
+      "heading": "TS. Tiến Hồ — Nhà Sáng Lập",
+      "paragraph1": "TS. Tiến Hồ đến Tasmania với tư cách sinh viên và đã yêu mảnh đất này. Nhưng có một điều còn thiếu — những món ăn quen thuộc từ thuở ấu thơ. Vì vậy, vào tháng 6 năm 2016, ông tự mình mở Saigon Express đầu tiên tại 335 Elizabeth Street, North Hobart, với một ý tưởng đơn giản:",
+      "quote": "\"Từ công thức nấu ăn của mẹ đến mỗi bàn ăn của người dân Tasmania.\"",
+      "paragraph2": "Mỗi món ăn đều được chế biến tươi từ nguyên liệu Tasmanian chất lượng — rau củ địa phương, thảo mộc trồng tại Tasmania và nguồn nước sạch Tasmania. Thực phẩm trung thực, lành mạnh và đúng với hương vị ông lớn lên cùng tại Việt Nam.",
+      "paragraph3": "Mười năm sau, Saigon Express đã phát triển lên tám địa điểm khắp Tasmania. Sứ mệnh chưa bao giờ thay đổi — mang ẩm thực Việt Nam thực sự đến cộng đồng, tôn vinh văn hóa Việt và chứng minh những gì một doanh nghiệp Việt-Úc có thể đạt được.",
+      "badge": {
+        "years": "10",
+        "yearsLabel": "Năm · 2016–2026 🎉",
+        "locations": "8+",
+        "locationsLabel": "Địa điểm"
+      }
+    },
+    "timeline": {
+      "eyebrow": "Hành Trình Của Chúng Tôi",
+      "heading": "Một Thập Kỷ Phát Triển — 2016 đến 2026",
+      "subheading": "Chọn bất kỳ cột mốc nào để khám phá câu chuyện đầy đủ đằng sau từng chương của Saigon Express.",
+      "readMore": "Đọc toàn bộ câu chuyện",
+      "showLess": "Thu gọn",
+      "items": [
+        {
+          "year": "2016",
+          "title": "Nơi Tất Cả Bắt Đầu",
+          "location": "North Hobart — 335 Elizabeth Street",
+          "highlight": "2 nhân viên · Cửa hàng đầu tiên · Tháng 6/2016",
+          "description": "TS. Tiến Hồ khai trương Saigon Express đầu tiên vào tháng 6 năm 2016 với chỉ hai nhân viên và một đam mê duy nhất: mang ẩm thực đường phố Việt Nam đích thực đến Tasmania. Được truyền cảm hứng từ những công thức nấu ăn tại nhà của mẹ, ông quyết tâm mang những hương vị thuần Việt — tươi ngon, lành mạnh và đậm đà — đến từng bàn ăn của người dân Tasmania.",
+          "detail": "Xuất phát từ một cửa hàng khiêm tốn tại 335 Elizabeth Street, TS. Tiến Hồ đã đầu tư tất cả vào một giấc mơ mà nhiều người cho là viển vông. Lúc bấy giờ, Tasmania hầu như chưa có bất kỳ nhà hàng Việt Nam nào. Chỉ vài tháng sau, tiếng lành đồn xa — phở ở đây là phở thật, bánh mì được nướng tươi mỗi ngày, và sự tiếp đón chân thành. Slogan đã nói lên tất cả: 'Tươi, lành mạnh, thuần Việt — từ công thức của mẹ đến bàn ăn của bạn.' Cửa hàng đầu tiên đó đã trở thành nền tảng cho tất cả những gì theo sau.",
+          "stat": {
+            "value": "2",
+            "label": "Nhân viên khi khai trương"
+          }
+        },
+        {
+          "year": "2019",
+          "title": "Khai Trương Lounge & Bar",
+          "location": "North Hobart — 329 Elizabeth Street",
+          "highlight": "Ăn tại chỗ · Quầy cocktail",
+          "description": "Bốn năm sau khi cửa hàng đầu tiên chứng minh được sức hút thật sự của ẩm thực Việt tại Hobart, TS. Tiến Hồ khai trương O-Grill Restaurant Lounge & Bar ngay cạnh đó. Địa điểm mới mang đến trải nghiệm ăn tại chỗ thư giãn, quầy cocktail và thực đơn mở rộng — bao gồm Kumquat Mojito nay đã nổi tiếng.",
+          "detail": "O-Grill Lounge & Bar tại 329 Elizabeth Street đã chuyển đổi Saigon Express từ một quán ăn nhanh mang đi thành một điểm đến. Thực khách có thể nhâm nhi cocktail, thưởng thức các đĩa ăn chung và trải nghiệm trọn vẹn ẩm thực Việt Nam trong không gian ấm cúng, hiện đại. North Hobart trở thành trái tim không thể tranh cãi của thương hiệu.",
+          "stat": {
+            "value": "2",
+            "label": "Địa điểm tại North Hobart"
+          }
+        },
+        {
+          "year": "2021",
+          "title": "Tiến Về Phía Nam",
+          "location": "Kingston Plaza — Channel Highway",
+          "highlight": "Vùng ngoại ô phía nam · Địa điểm thứ 3",
+          "description": "Kingston trở thành địa điểm thứ ba, đưa tầm nhìn của TS. Tiến Hồ về ẩm thực đường phố Việt Nam dễ tiếp cận đến vùng ngoại ô phía nam Hobart. Cửa hàng Kingston Plaza giới thiệu thương hiệu đến một cộng đồng mới gồm các gia đình và chuyên gia, đồng thời chứng minh rằng nhu cầu về ẩm thực Việt tươi ngon, giá phải chăng vươn xa hơn nhiều so với khu vực trung tâm.",
+          "detail": "Kingston Plaza là một bước đi có chủ đích để kiểm tra sức hút của thương hiệu ngoài vùng lõi North Hobart. Phản hồi vượt quá mong đợi — các gia đình, nhân viên văn phòng và sinh viên dọc hành lang Channel Highway đón nhận thực đơn nhiệt tình. Điều này xác nhận rằng Saigon Express đã vượt ra khỏi ranh giới một khu phố và sẵn sàng trở thành thương hiệu thực sự trên toàn đảo.",
+          "stat": {
+            "value": "3",
+            "label": "Địa điểm"
+          }
+        },
+        {
+          "year": "2022",
+          "title": "Vượt Sang Bờ Đông",
+          "location": "Glebe Hill Village — Howrah",
+          "highlight": "20+ nhân viên · Bờ đông",
+          "description": "Nhà hàng Glebe Hill Village khai trương mềm vào tháng 11 năm 2022, lần đầu tiên đưa Saigon Express đến bờ đông Hobart. Đội ngũ lúc này đã phát triển lên hơn hai mươi nhân viên, và danh tiếng về ẩm thực Việt tươi ngon, nhất quán của thương hiệu đã được khẳng định vững chắc trên toàn khu vực Hobart.",
+          "detail": "Howrah đánh dấu một cột mốc địa lý quan trọng — lần đầu tiên Saigon Express phục vụ khách hàng ở cả hai bên sông Derwent. Địa điểm Glebe Hill Village được thiết kế với phòng ăn rộng hơn và thực đơn ăn tại chỗ mở rộng, phản ánh sự tự tin ngày càng lớn và sự trưởng thành trong vận hành của thương hiệu.",
+          "stat": {
+            "value": "20+",
+            "label": "Thành viên đội ngũ"
+          }
+        },
+        {
+          "year": "2024",
+          "title": "Vào Trung Tâm Thành Phố",
+          "location": "Hobart CBD — 95 Liverpool Street",
+          "highlight": "250+ món ăn · Trung tâm thành phố",
+          "description": "Tháng 12 năm 2024 đánh dấu một cột mốc: Saigon Express khai trương địa điểm hiện đại nhất từ trước đến nay tại trung tâm Hobart. Với hơn 250 món trong thực đơn — từ bánh mì và phở đến bánh bao, burger gà chiên và gỏi cuốn — cửa hàng CBD mang hương vị Việt Nam đến tận cửa nhân viên văn phòng, sinh viên và du khách Hobart.",
+          "detail": "Cửa hàng CBD tại 95 Liverpool Street là dự án tham vọng nhất của thương hiệu cho đến nay — một địa điểm trung tâm thành phố có lưu lượng khách cao, được thiết kế để phục vụ cả đám đông buổi trưa, thực khách buổi tối lẫn khách cuối tuần. Thực đơn được mở rộng lên hơn 250 món, và thiết kế nội thất phản ánh thẩm mỹ đô thị hiện đại hơn trong khi vẫn tôn vinh nguồn cội Việt Nam của thương hiệu.",
+          "stat": {
+            "value": "250+",
+            "label": "Món trong thực đơn"
+          }
+        },
+        {
+          "year": "2025",
+          "title": "Chạm Đến Mọi Góc Tasmania",
+          "location": "Sorell — Gateway Shopping Centre & Gordon Street",
+          "highlight": "Đạt giải thưởng · 8+ địa điểm",
+          "description": "Thương hiệu mở rộng đến Sorell vào năm 2025 với hai địa điểm mới phục vụ cộng đồng Derwent Valley và Coal River Valley. Saigon Express được vinh danh là Nhà Hàng Việt Nam Tốt Nhất tại Hội đồng Sorell bởi Quality Business Awards, đạt điểm chất lượng trên 95%.",
+          "detail": "Sorell đánh dấu lần đầu tiên thương hiệu vươn ra ngoài khu vực Hobart, cho thấy cam kết thực sự trong việc đưa ẩm thực Việt đến với mọi người dân Tasmania bất kể nơi họ sinh sống. Sự công nhận từ Quality Business Awards — với điểm chất lượng trên 95% — xác nhận tiêu chuẩn nhất quán của thương hiệu trên tất cả các địa điểm. Sandy Bay cũng được công bố là khu vực tiếp theo đón chào Saigon Express.",
+          "stat": {
+            "value": "8+",
+            "label": "Địa điểm"
+          }
+        }
+      ]
+    },
+    "food": {
+      "eyebrow": "Ẩm Thực",
+      "heading": "Ẩm Thực Việt Nam & Câu Chuyện Của Nó",
+      "subheading": "Ẩm thực Việt được định nghĩa bởi sự cân bằng — giữa tươi và chín, thanh và đậm, quen thuộc và bất ngờ. Mỗi món ăn mang theo hàng thế kỷ lịch sử, địa lý và văn hóa.",
+      "dishes": [
+        {
+          "name": "Phở",
+          "description": "Món ăn biểu tượng nhất của Việt Nam — nước dùng xương hầm kỹ thơm nức mùi hồi, quế và gừng nướng, dùng cùng bún gạo và thịt theo sở thích."
+        },
+        {
+          "name": "Bánh Mì",
+          "description": "Di sản từ ảnh hưởng thuộc địa Pháp — ổ bánh mì giòn nhồi thịt kiểu Việt, củ cải muối chua, rau mùi tươi và ớt."
+        },
+        {
+          "name": "Cuốn (Gỏi Cuốn)",
+          "description": "Bánh tráng mỏng cuốn rau thơm tươi, bún và nhân tùy chọn — một cách thưởng thức truyền thống Việt bằng tay."
+        },
+        {
+          "name": "Bún (Bún Trộn)",
+          "description": "Bún gạo lạnh phủ thịt nướng, rau thơm tươi, đậu phộng giã và nước chấm chua ngọt — nhẹ nhàng, tươi mát và đậm đà."
+        }
+      ],
+      "pressQuote": "\"Người Việt vẫn tìm thấy 'hồn' của quê hương, trong khi thực khách quốc tế cảm nhận một trải nghiệm hài hòa và dễ tiếp cận.\"",
+      "pressAttribution": "— VietnamPlus / SBS, Tháng 2/2026",
+      "pressBody": "Saigon Express được SBS Úc và VietnamPlus (hãng thông tấn quốc gia Việt Nam) đăng tải vào tháng 2 năm 2026 như một câu chuyện điển hình về tinh thần khởi nghiệp của người Việt tại Úc — minh chứng rằng ẩm thực Việt Nam đích thực đã khẳng định vị trí của mình bên cạnh ẩm thực Nhật, Hàn và Thái trong văn hóa ẩm thực hàng ngày của Tasmania."
+    },
+    "anniversary": {
+      "eyebrow": "🎉 Kỷ Niệm 10 Năm",
+      "heading": "2016 – 2026: Một Thập Kỷ Hương Vị",
+      "body": "Từ một căn bếp hai người ở North Hobart đến tám địa điểm khắp Tasmania — năm nay đánh dấu mười năm mang công thức của mẹ đến bàn ăn của bạn.",
+      "quote": "\"Nay là được 10 năm đó em — mình có thể celebrate năm nay.\"",
+      "stats": [
+        {
+          "value": "10",
+          "label": "Năm"
+        },
+        {
+          "value": "8+",
+          "label": "Địa điểm"
+        },
+        {
+          "value": "100+",
+          "label": "Thành viên đội ngũ"
+        },
+        {
+          "value": "250+",
+          "label": "Món trong thực đơn"
+        }
+      ]
+    },
+    "community": {
+      "eyebrow": "Cộng Đồng & Văn Hóa",
+      "heading": "Hơn Cả Một Nhà Hàng",
+      "paragraph1": "Saigon Express luôn là câu chuyện về con người không kém gì về ẩm thực. Cộng đồng người Việt tại Hobart nhỏ bé nhưng gắn kết chặt chẽ, và thương hiệu đã trở thành nơi tụ họp — tổ chức các lễ hội Trung Thu thu hút hàng trăm người tham dự, và những bữa tiệc Tất Niên dành cho những ai không thể về quê ăn Tết.",
+      "paragraph2": "Đội ngũ phản ánh tinh thần đa văn hóa này — sinh viên quốc tế Việt Nam làm việc cùng đồng nghiệp từ Bangladesh, Ấn Độ và khắp nước Úc, tạo nên một gian bếp đa dạng như chính những món ăn mà nó sản xuất ra.",
+      "paragraph3": "Tasmania, với khí hậu mát mẻ và nhịp sống chậm rãi, đã trở thành ngôi nhà thực sự của nhiều thành viên trong đội ngũ — một nơi mà theo cách riêng lặng lẽ của nó, gợi nhớ những vùng cao nguyên miền Bắc Việt Nam."
+    },
+    "mission": {
+      "eyebrow": "Sứ Mệnh Của Chúng Tôi",
+      "quoteVi": "\"Mang hương vị ẩm thực Việt đích thực đến gần hơn với cộng đồng, lan tỏa văn hóa ẩm thực quê hương và khẳng định tinh thần khởi nghiệp của người Việt xa xứ.\"",
+      "quoteEn": "Mang ẩm thực Việt Nam đích thực đến gần hơn với cộng đồng, lan tỏa văn hóa ẩm thực quê hương và khẳng định tinh thần khởi nghiệp của người Việt xa xứ.",
+      "pill1": "🍜 Món ăn quen thuộc, đậm đà vị nhà",
+      "pill2": "🤝 Kết nối cộng đồng, quảng bá văn hóa Việt"
+    },
+    "values": {
+      "eyebrow": "Những Gì Chúng Tôi Theo Đuổi",
+      "heading": "Giá Trị Của Chúng Tôi",
+      "items": [
+        {
+          "title": "Tươi Mỗi Ngày",
+          "description": "Mỗi món ăn được chế biến từ đầu vào mỗi buổi sáng. Không có lối tắt đông lạnh — chỉ là nguyên liệu tươi và nấu theo yêu cầu."
+        },
+        {
+          "title": "Bén Rễ Trong Văn Hóa",
+          "description": "Các công thức của chúng tôi mang hương vị của những gian bếp gia đình và hàng rong Việt Nam. Từ nồi phở hầm lâu đến những cuốn gỏi cuốn tay, mỗi món ăn kể một câu chuyện."
+        },
+        {
+          "title": "Cộng Đồng Là Ưu Tiên",
+          "description": "Chúng tôi tổ chức Tết Trung Thu, bữa tiệc Năm Mới Âm Lịch và các sự kiện cộng đồng vì ẩm thực là cây cầu văn hóa mạnh mẽ nhất."
+        },
+        {
+          "title": "Chân Thực Và Dễ Tiếp Cận",
+          "description": "Ẩm thực Việt Nam là dành cho tất cả mọi người. Chúng tôi cân bằng 'hồn quê hương' cho thực khách Việt với một trải nghiệm chào đón dành cho tất cả người Tasmania."
+        },
+        {
+          "title": "Tinh Thần Khởi Nghiệp",
+          "description": "Từ hai nhân viên trong căn bếp North Hobart đến tám địa điểm khắp đảo — sự phát triển của chúng tôi là minh chứng rằng đam mê và niềm tin của cộng đồng tạo nên điều bền vững."
+        },
+        {
+          "title": "Tự Hào Là Người Tasmania",
+          "description": "Khí hậu mát mẻ và những cộng đồng gắn kết của Tasmania gợi nhớ quê hương cho nhiều thành viên trong đội ngũ. Chúng tôi tự hào được là một phần câu chuyện ẩm thực của hòn đảo này."
+        }
+      ]
+    },
+    "cta": {
+      "heading": "Hãy Đến Trải Nghiệm Câu Chuyện",
+      "subheading": "Tám địa điểm khắp Tasmania. Ăn tại chỗ, mang đi, hoặc đặt trước — hương vị Việt Nam gần hơn bạn nghĩ.",
+      "findStore": "Tìm Cửa Hàng",
+      "viewMenu": "Xem Thực Đơn"
+    }
+  },
+  "Promotions": {
+    "hero": {
+      "eyebrow": "Ưu Đãi Độc Quyền",
+      "heading": "Khuyến Mãi Hiện Tại",
+      "subheading": "Ưu đãi mới, phần thưởng thành viên và khuyến mãi độc quyền trên ứng dụng — cập nhật thường xuyên.",
+      "logoAlt": "Saigon Express"
+    },
+    "card": {
+      "defaultCta": "Đặt Ngay",
+      "expires": "Hết hạn {date}"
+    },
+    "empty": {
+      "heading": "Hiện chưa có khuyến mãi nào",
+      "body": "Hãy quay lại sớm — ưu đãi mới được cập nhật thường xuyên!",
+      "browseMenu": "Xem Thực Đơn"
+    },
+    "bottomCta": {
+      "nudge": "Bạn muốn biết ưu đãi mới đầu tiên?",
+      "getApp": "Tải Ứng Dụng để Nhận Ưu Đãi Độc Quyền",
+      "browseMenu": "Xem Thực Đơn"
+    }
+  },
+  "StoreFinder": {
+    "hero": {
+      "eyebrow": "Tìm Chúng Tôi",
+      "heading": "8 Địa Điểm Khắp Tasmania",
+      "subheading": "Từ trung tâm Hobart đến Sorell — bánh mì tươi luôn ở gần bạn"
+    },
+    "list": {
+      "empty": "Hiện chưa có địa điểm cửa hàng nào.",
+      "statusOpen": "ĐANG MỞ",
+      "statusClosed": "ĐÃ ĐÓNG",
+      "halalBadge": "Halal"
+    },
+    "card": {
+      "getDirections": "Chỉ Đường",
+      "orderDelivery": "🚗 Đặt Giao Hàng",
+      "orderPickup": "🛒 Đặt Mang Về"
+    },
+    "map": {
+      "infoGetDirections": "Chỉ Đường ↗",
+      "infoOrderDelivery": "🚗 Đặt Giao Hàng",
+      "infoStatusOpen": "ĐANG MỞ",
+      "infoStatusClosed": "ĐÃ ĐÓNG"
+    },
+    "footer": {
+      "heading": "Không tìm thấy cửa hàng gần bạn?",
+      "body": "Chúng tôi đang mở rộng khắp Tasmania. Hãy hỏi về cơ hội nhượng quyền.",
+      "cta": "Hỏi Về Nhượng Quyền"
+    }
+  },
+  "Wholesale": {
+    "hero": {
+      "tag": "CUNG CẤP THỰC PHẨM SỈ TẠI TASMANIA",
+      "title": "Cung Cấp Thực Phẩm\nViệt Nam Tươi Ngon",
+      "desc": "Hợp tác với Saigon Express để phân phối các sản phẩm Việt Nam chính gốc. Giá sỉ cạnh tranh, lịch giao hàng hàng tuần đáng tin cậy và xuất hóa đơn tự động.",
+      "ctaPrimary": "Trở Thành Đối Tác",
+      "ctaSecondary": "Xem Sản Phẩm",
+      "alt": "Các sản phẩm món ăn Việt Nam giá sỉ"
+    },
+    "supplyTitle": "ĐỐI TƯỢNG CUNG CẤP",
+    "supplyList": [
+      { "emoji": "☕", "label": "Quán Café & Cà Phê" },
+      { "emoji": "🏪", "label": "Tiệm Tạp Hóa & Deli" },
+      { "emoji": "🏨", "label": "Khách Sạn & Lưu Trú" },
+      { "emoji": "🏫", "label": "Trường Học & Đại Học" },
+      { "emoji": "🏥", "label": "Bệnh Viện & Viện Dưỡng Lão" },
+      { "emoji": "🎪", "label": "Sự Kiện & Lễ Hội" }
+    ],
+    "benefitsHeading": {
+      "tag": "QUYỀN LỢI ĐỐI TÁC",
+      "title": "Tại Sao Nên Chọn Chúng Tôi?"
+    },
+    "benefits": [
+      {
+        "icon": "TrendingDown",
+        "title": "Chính Sách Giá Linh Hoạt",
+        "desc": "Chiết khấu theo từng hạn mức lên tới 25% cho đơn hàng số lượng lớn. Càng mua nhiều, càng tiết kiệm."
+      },
+      {
+        "icon": "FileText",
+        "title": "Hóa Đơn Tự Động",
+        "desc": "Hóa đơn PDF chuyên nghiệp được tạo lập ngay lập tức cho mỗi đơn hàng, sẵn sàng gửi tới bộ phận kế toán."
+      },
+      {
+        "icon": "Truck",
+        "title": "Giao Hàng Hàng Tuần",
+        "desc": "Lịch giao nhận cố định hàng tuần trên toàn bang Tasmania. Không lo gián đoạn nguồn hàng bán chạy."
+      },
+      {
+        "icon": "Users",
+        "title": "Quản Lý Tài Khoản Riêng",
+        "desc": "Đầu mối liên hệ riêng tại Saigon Express để hỗ trợ mọi vấn đề về đặt hàng, thanh toán và sản phẩm."
+      }
+    ],
+    "pricingHeading": {
+      "tag": "CHIẾT KHẤU THEO SỐ LƯỢNG",
+      "title": "Hạn Mức Giá Bán Sỉ",
+      "desc": "Chiết khấu sẽ được tự động áp dụng khi thanh toán dựa trên số lượng đơn hàng",
+      "off": "giảm",
+      "disclaimer": "Giá chưa bao gồm thuế GST. Đơn hàng tối thiểu từ 10 sản phẩm. Phí giao hàng có thể được áp dụng ngoài khu vực Greater Hobart."
+    },
+    "pricingTiers": [
+      {
+        "minQty": "Từ 200 đơn vị",
+        "discountPct": 25,
+        "badge": "Giá Tốt Nhất",
+        "highlight": true
+      },
+      {
+        "minQty": "Từ 100 đơn vị",
+        "discountPct": 20,
+        "badge": "Phổ Biến",
+        "highlight": false
+      },
+      {
+        "minQty": "Từ 50 đơn vị",
+        "discountPct": 15,
+        "badge": "",
+        "highlight": false
+      },
+      {
+        "minQty": "Từ 20 đơn vị",
+        "discountPct": 10,
+        "badge": "",
+        "highlight": false
+      },
+      {
+        "minQty": "Từ 10 đơn vị",
+        "discountPct": 5,
+        "badge": "",
+        "highlight": false
+      }
+    ],
+    "processHeading": {
+      "tag": "QUY TRÌNH HỢP TÁC",
+      "title": "Đơn Giản. Tin Cậy.\nHiệu Quả.",
+      "alt": "Hệ thống cung ứng sỉ Saigon Express"
+    },
+    "howItWorks": [
+      {
+        "step": "01",
+        "title": "Gửi Yêu Cầu Cho Chúng Tôi",
+        "desc": "Điền đầy đủ thông tin vào mẫu đăng ký đối tác bên dưới. Chúng tôi sẽ thẩm định và phản hồi trong vòng 2 ngày làm việc."
+      },
+      {
+        "step": "02",
+        "title": "Nhận Báo Giá Chi Tiết",
+        "desc": "Chúng tôi sẽ gửi danh mục giá bán sỉ được thiết kế riêng phù hợp với cơ cấu sản phẩm và sản lượng dự kiến hàng tuần của bạn."
+      },
+      {
+        "step": "03",
+        "title": "Đặt Đơn Hàng Đầu Tiên",
+        "desc": "Truy cập vào cổng đặt hàng nhanh trực tuyến, lựa chọn các sản phẩm cần mua và lên lịch nhận chuyến giao hàng đầu tiên."
+      },
+      {
+        "step": "04",
+        "title": "Hóa Đơn Tự Động Hàng Tuần",
+        "desc": "Hệ thống tự động phát hành hóa đơn định dạng PDF chuyên nghiệp cho từng đơn hàng và gửi thẳng đến email kế toán của bạn."
+      }
+    ],
+    "partnerForm": {
+      "tag": "TRỞ THÀNH ĐỐI TÁC",
+      "title": "Khởi Đầu Quan Hệ Hợp Tác Bán Sỉ",
+      "desc": "Đồng hành cùng hơn 50 doanh nghiệp tại bang Tasmania đang phân phối sản phẩm từ Saigon Express. Hãy điền thông tin và đội ngũ bán sỉ của chúng tôi sẽ liên hệ lại trong vòng 2 ngày làm việc.",
+      "perks": [
+        "Không ràng buộc hợp đồng dài hạn",
+        "Số lượng đơn hàng tối thiểu linh hoạt",
+        "Có nhân viên hỗ trợ tài khoản riêng",
+        "Hệ thống hóa đơn PDF tự động"
+      ],
+      "contactInfo": {
+        "title": "Liên hệ bộ phận bán sỉ:"
+      },
+      "success": {
+        "title": "Đã Nhận Đơn Đăng Ký!",
+        "desc": "Đội ngũ phụ trách bán sỉ của chúng tôi sẽ liên hệ với bạn trong vòng 2 ngày làm việc để trao đổi cụ thể về giá cả và phương thức giao hàng."
+      },
+      "fields": {
+        "businessName": "Tên Doanh Nghiệp",
+        "contactName": "Tên Người Liên Hệ",
+        "email": "Địa Chỉ Email",
+        "phone": "Số Điện Thoại",
+        "businessType": {
+          "label": "Loại Hình Kinh Doanh",
+          "placeholder": "Chọn loại hình…",
+          "options": [
+            "Quán Café / Cà Phê",
+            "Cửa Hàng Thực Phẩm / Deli",
+            "Khách Sạn / Nơi Lưu Trú",
+            "Trường Học / Đại Học",
+            "Bệnh Viện / Nhà Dưỡng Lão",
+            "Sự Kiện / Tiệc Khách Hàng",
+            "Khác"
+          ]
+        },
+        "weeklyVolume": {
+          "label": "Sản Lượng Dự Kiến / Tuần",
+          "placeholder": "Chọn hạn mức…",
+          "options": [
+            "10–20 đơn vị",
+            "20–50 đơn vị",
+            "50–100 đơn vị",
+            "100–200 đơn vị",
+            "Trên 200 đơn vị"
+          ]
+        },
+        "notes": "Ghi Chú Bổ Sung",
+        "notesPlaceholder": "Các sản phẩm bạn đang quan tâm, yêu cầu về vận chuyển, hoặc câu hỏi khác dành cho chúng tôi…"
+      },
+      "submit": {
+        "default": "Gửi Đơn Đăng Ký Đối Tác",
+        "pending": "Đang gửi thông tin…"
+      },
+      "messages": {
+        "validation": "Vui lòng nhập đầy đủ các trường thông tin bắt buộc.",
+        "error": "Gửi thông tin thất bại. Vui lòng thử lại sau."
+      }
+    }
+  },
+  "WholesaleShop": {
+    "header": {
+      "title": "Sản Phẩm Của Chúng Tôi",
+      "desc": "Khám phá danh mục đầy đủ các sản phẩm món ăn Việt Nam chính gốc cung cấp giá sỉ trên toàn bang Tasmania."
+    },
+    "banner": {
+      "title": "Giá Bán Sỉ — Chỉ Dành Cho Thành Viên",
+      "desc": "Giá của tất cả các sản phẩm thực phẩm chỉ được hiển thị độc quyền cho các khách hàng mua sỉ đã được phê duyệt. Hãy đăng ký doanh nghiệp của bạn để mở khóa bảng giá và đặt hàng.",
+      "perks": [
+        "Giá cả thỏa thuận theo yêu cầu",
+        "Số lượng đặt hàng tối thiểu linh hoạt",
+        "Hỗ trợ ưu tiên đặc biệt"
+      ],
+      "cta": "Đăng Ký Thành Viên Sỉ"
+    },
+    "notice": {
+      "title": "Trang này chỉ dành cho khách hàng mua sỉ đã đăng ký",
+      "desc": "Đăng ký thành viên để xem giá bán sỉ và đặt hàng. Nếu bạn đã có mã PIN, hãy nhập mã để xem giá ngay.",
+      "ctaRegister": "Đăng Ký Xem Giá",
+      "ctaPin": "Nhập Mã PIN"
+    },
+    "search": {
+      "placeholder": "Tìm kiếm sản phẩm theo tên hoặc mô tả...",
+      "clear": "✕ Xóa",
+      "itemsCount": "{count} mặt hàng"
+    },
+    "productCard": {
+      "unitLabel": "Đơn vị",
+      "priceLabel": "Giá (chưa thuế GST)",
+      "minOrderLabel": "Tối thiểu",
+      "priceValueLocked": "Chỉ cho thành viên",
+      "minOrderValue": "{qty} sản phẩm",
+      "priceDisclaimer": "Chỉ áp dụng giá sỉ",
+      "ctaPin": "🔑 Nhập Mã PIN",
+      "ctaRegister": "Thành viên mới? Đăng ký"
+    },
+    "noProducts": {
+      "title": "Không tìm thấy sản phẩm nào khớp với \"{search}\"",
+      "desc": "Vui lòng thử lại với từ khóa khác."
+    },
+    "pricingHeading": {
+      "tag": "MỨC GIÁ BÁN SỈ",
+      "title": "Chiết Khấu Theo Số Lượng",
+      "desc": "Mức chiết khấu được áp dụng tự động cho từng danh mục sản phẩm dựa trên số lượng đặt hàng. Bạn có thể chọn đa dạng sản phẩm để tối ưu chi phí.",
+      "badgePopular": "MUA NHIỀU NHẤT",
+      "offLabel": "giảm",
+      "disclaimer": "Giá chưa bao gồm thuế GST. Áp dụng giá trị đơn hàng tối thiểu. Liên hệ với chúng tôi để có chính sách giá riêng cho tài khoản lớn.",
+      "cta": "Đăng Ký Quyền Truy Cập Sỉ"
+    },
+    "pricingTiers": [
+      {
+        "label": "Mặc Định",
+        "min": "1–9 sản phẩm",
+        "discount": "0%",
+        "color": "from-white/5 to-white/10"
+      },
+      {
+        "label": "Hạng Đồng",
+        "min": "10–24 sản phẩm",
+        "discount": "Giảm 5%",
+        "color": "from-amber-900/30 to-amber-800/20"
+      },
+      {
+        "label": "Hạng Bạc",
+        "min": "25–49 sản phẩm",
+        "discount": "Giảm 10%",
+        "color": "from-slate-600/30 to-slate-500/20"
+      },
+      {
+        "label": "Hạng Vàng",
+        "min": "50–99 sản phẩm",
+        "discount": "Giảm 15%",
+        "color": "from-yellow-700/30 to-yellow-600/20",
+        "popular": true
+      },
+      {
+        "label": "Hạng Bạch Kim",
+        "min": "100+ sản phẩm",
+        "discount": "Giảm 25%",
+        "color": "from-primary/30 to-primary/20"
+      }
+    ],
+    "categories": [
+      { "key": "All", "label": "Tất Cả" },
+      { "key": "Dough", "label": "Bột Bánh" },
+      { "key": "Dried Foods", "label": "Đồ Khô" },
+      { "key": "Equipment", "label": "Thiết Bị" },
+      { "key": "Fresh Food", "label": "Thực Phẩm Tươi" },
+      { "key": "Frozen Food", "label": "Thực Phẩm Đông Lạnh" },
+      { "key": "Frozen Marinated Meat", "label": "Thịt Ướp Đông Lạnh" },
+      { "key": "Packaging", "label": "Bao Bì" },
+      { "key": "Sauce", "label": "Nước Sốt" },
+      { "key": "Pastry", "label": "Bánh Ngọt" }
+    ]
   }
 }

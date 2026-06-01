@@ -5,42 +5,9 @@ import { motion } from "framer-motion";
 import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
 import Link from "@/components/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
-
-const PRICING_TIERS = [
-  {
-    label: "Standard",
-    min: "1–9 units",
-    discount: "0%",
-    color: "from-white/5 to-white/10",
-  },
-  {
-    label: "Bronze",
-    min: "10–24 units",
-    discount: "5% off",
-    color: "from-amber-900/30 to-amber-800/20",
-  },
-  {
-    label: "Silver",
-    min: "25–49 units",
-    discount: "10% off",
-    color: "from-slate-600/30 to-slate-500/20",
-  },
-  {
-    label: "Gold",
-    min: "50–99 units",
-    discount: "15% off",
-    color: "from-yellow-700/30 to-yellow-600/20",
-    popular: true,
-  },
-  {
-    label: "Platinum",
-    min: "100+ units",
-    discount: "25% off",
-    color: "from-primary/30 to-primary/20",
-  },
-];
 
 const CATEGORY_COLORS: Record<string, string> = {
   Dough: "from-amber-800 to-amber-600",
@@ -53,6 +20,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Sauce: "from-orange-800 to-orange-600",
   Pastry: "from-amber-700 to-amber-500",
 };
+
 const CATEGORY_ICONS: Record<string, string> = {
   Dough: "🥖",
   "Dried Foods": "🌾",
@@ -65,28 +33,36 @@ const CATEGORY_ICONS: Record<string, string> = {
   Pastry: "🥐",
 };
 
+interface LocalizedCategory {
+  key: string;
+  label: string;
+}
+
+interface LocalizedPricingTier {
+  label: string;
+  min: string;
+  discount: string;
+  color: string;
+  popular?: boolean;
+}
+
 export default function WholesaleShop({
   products,
 }: {
   products: WholesaleProduct[];
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const t = useTranslations("WholesaleShop");
+
+  // Array Extraction Strategy via t.raw[cite: 3]
+  const categoriesData = (t.raw("categories") || []) as LocalizedCategory[];
+  const pricingTiers = (t.raw("pricingTiers") || []) as LocalizedPricingTier[];
+  const bannerPerks = (t.raw("banner.perks") || []) as string[];
+
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const allCategories = [
-    "All",
-    "Dough",
-    "Dried Foods",
-    "Equipment",
-    "Fresh Food",
-    "Frozen Food",
-    "Frozen Marinated Meat",
-    "Packaging",
-    "Sauce",
-  ];
-
   const normalizedSearch = search.trim().toLowerCase();
+
   const displayProducts = (
     selectedCategory === "All"
       ? products
@@ -105,12 +81,9 @@ export default function WholesaleShop({
       <section className="py-16 border-b border-border/40 bg-background">
         <div className="container">
           <h1 className="font-serif text-5xl lg:text-6xl font-bold text-foreground mb-3">
-            Our Products
+            {t("header.title")}
           </h1>
-          <p className="text-muted-foreground text-lg">
-            Explore our complete range of authentic Vietnamese food products for
-            wholesale supply across Tasmania.
-          </p>
+          <p className="text-muted-foreground text-lg">{t("header.desc")}</p>
         </div>
       </section>
 
@@ -126,32 +99,24 @@ export default function WholesaleShop({
                 </div>
                 <div>
                   <div className="font-bold text-white text-lg mb-1">
-                    Wholesale Pricing — Members Only
+                    {t("banner.title")}
                   </div>
                   <p className="text-white/65 text-sm max-w-md">
-                    Prices for all food products are available exclusively to
-                    approved wholesale clients. Register your business to unlock
-                    pricing and place orders.
+                    {t("banner.desc")}
                   </p>
                   <div className="flex flex-wrap gap-4 mt-3 text-xs text-white/55">
-                    <span className="flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-400" />{" "}
-                      Custom negotiated prices
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-400" />{" "}
-                      Minimum order quantities
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-400" />{" "}
-                      Priority support
-                    </span>
+                    {bannerPerks.map((perk, idx) => (
+                      <span key={idx} className="flex items-center gap-1.5">
+                        <CheckCircle className="w-3.5 h-3.5 text-green-400" />{" "}
+                        {perk}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
               <Link href="/wholesale-member-portal">
                 <button className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap">
-                  Register for Wholesale <ChevronRight className="w-4 h-4" />
+                  {t("banner.cta")} <ChevronRight className="w-4 h-4" />
                 </button>
               </Link>
             </div>
@@ -169,23 +134,22 @@ export default function WholesaleShop({
               </div>
               <div>
                 <div className="font-semibold text-foreground text-sm">
-                  This page is for registered wholesale customers
+                  {t("notice.title")}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Register to view wholesale pricing and place orders. If you
-                  already have a PIN, enter it to view prices now.
+                  {t("notice.desc")}
                 </div>
               </div>
             </div>
             <div className="flex gap-2 shrink-0">
               <Link href="/wholesale-member-portal">
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
-                  Register for Pricing
+                  {t("notice.ctaRegister")}
                 </button>
               </Link>
               <Link href="/portals/wholesale">
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg border border-border hover:border-primary/40 transition-colors">
-                  Enter PIN
+                  {t("notice.ctaPin")}
                 </button>
               </Link>
             </div>
@@ -201,7 +165,7 @@ export default function WholesaleShop({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search products by name or description..."
+              placeholder={t("search.placeholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-colors shadow-sm"
@@ -211,28 +175,28 @@ export default function WholesaleShop({
                 onClick={() => setSearch("")}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                ✕ Clear
+                {t("search.clear")}
               </button>
             )}
           </div>
 
           {/* Category filter pills */}
           <div className="flex flex-wrap gap-2 mb-6">
-            {allCategories.map((cat) => (
+            {categoriesData.map((cat) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={cat.key}
+                onClick={() => setSelectedCategory(cat.key)}
                 className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                  selectedCategory === cat
+                  selectedCategory === cat.key
                     ? "bg-foreground text-background border-foreground"
                     : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary bg-transparent"
                 }`}
               >
-                {cat}
+                {cat.label}
               </button>
             ))}
             <span className="ml-2 text-sm text-muted-foreground self-center">
-              {filtered.length} items
+              {t("search.itemsCount", { count: filtered.length })}
             </span>
           </div>
 
@@ -248,19 +212,22 @@ export default function WholesaleShop({
               const catIcon = CATEGORY_ICONS[p.category] ?? "📦";
               const desc = p.description ?? "";
               const badge: string | null = null;
+
               const specs: [string, string][] = [
-                ["Unit", p.unit],
+                [t("productCard.unitLabel"), p.unit],
                 [
-                  "Price (ex GST)",
+                  t("productCard.priceLabel"),
                   p.unitPrice
                     ? `$${Number(p.unitPrice).toFixed(2)}`
-                    : "Members only",
+                    : t("productCard.priceValueLocked"),
                 ],
                 ...(p.minOrderQty
-                  ? ([["Min Order", `${p.minOrderQty} units`]] as [
-                      string,
-                      string,
-                    ][])
+                  ? ([
+                      [
+                        t("productCard.minOrderLabel"),
+                        t("productCard.minOrderValue", { qty: p.minOrderQty }),
+                      ],
+                    ] as [string, string][])
                   : []),
               ];
               return (
@@ -322,12 +289,12 @@ export default function WholesaleShop({
                     {/* Price locked */}
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
                       <Lock className="w-3.5 h-3.5 shrink-0" />
-                      <span>Wholesale pricing only</span>
+                      <span>{t("productCard.priceDisclaimer")}</span>
                     </div>
                     <div className="flex gap-2">
                       <Link href="/wholesale-member-portal" className="flex-1">
                         <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
-                          🔑 Enter PIN
+                          {t("productCard.ctaPin")}
                         </button>
                       </Link>
                       <Link
@@ -335,7 +302,7 @@ export default function WholesaleShop({
                         className="flex-1"
                       >
                         <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
-                          New? Register
+                          {t("productCard.ctaRegister")}
                         </button>
                       </Link>
                     </div>
@@ -348,8 +315,8 @@ export default function WholesaleShop({
           {filtered.length === 0 && (
             <div className="text-center py-20 text-muted-foreground">
               <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <p className="font-medium">No products found for "{search}"</p>
-              <p className="text-sm mt-1">Try a different search term.</p>
+              <p className="font-medium">{t("noProducts.title", { search })}</p>
+              <p className="text-sm mt-1">{t("noProducts.desc")}</p>
             </div>
           )}
         </div>
@@ -363,18 +330,17 @@ export default function WholesaleShop({
               className="text-xs font-bold tracking-[0.2em] uppercase mb-3"
               style={{ color: "oklch(71% 0.155 62)" }}
             >
-              BULK PRICING
+              {t("pricingHeading.tag")}
             </div>
             <h2 className="font-serif text-4xl lg:text-5xl font-bold text-white mb-4">
-              Volume Discount Tiers
+              {t("pricingHeading.title")}
             </h2>
             <p className="text-white/45 max-w-md mx-auto">
-              Discounts apply per line item based on quantity ordered. Mix and
-              match products to maximise your savings.
+              {t("pricingHeading.desc")}
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-4 max-w-3xl mx-auto">
-            {PRICING_TIERS.map((tier, i) => (
+            {pricingTiers.map((tier, i) => (
               <motion.div
                 key={tier.label}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -385,7 +351,7 @@ export default function WholesaleShop({
               >
                 {tier.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full bg-primary text-white whitespace-nowrap">
-                    MOST POPULAR
+                    {t("pricingHeading.badgePopular")}
                   </div>
                 )}
                 <div className="text-xs font-bold tracking-[0.15em] uppercase text-white/50 mb-2">
@@ -401,14 +367,12 @@ export default function WholesaleShop({
             ))}
           </div>
           <p className="text-center text-white/25 text-xs mt-8">
-            Prices exclusive of GST. Minimum order value applies. Contact us for
-            custom pricing on large accounts.
+            {t("pricingHeading.disclaimer")}
           </p>
           <div className="text-center mt-8">
             <Link href="/wholesale-member-portal">
               <button className="inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors">
-                Register for Wholesale Access{" "}
-                <ChevronRight className="w-4 h-4" />
+                {t("pricingHeading.cta")} <ChevronRight className="w-4 h-4" />
               </button>
             </Link>
           </div>

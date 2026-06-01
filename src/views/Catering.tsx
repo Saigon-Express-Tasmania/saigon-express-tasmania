@@ -2,8 +2,7 @@
 
 import AppImage from "@/components/AppImage";
 import { useState } from "react";
-import MainHeader from "@/components/MainHeader";
-import MainFooter from "@/components/MainFooter";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
@@ -18,45 +17,24 @@ import {
 import type { CateringPack } from "@/lib/supabase/catering-packs";
 import type { CateringBox } from "@/lib/supabase/catering-boxes";
 
-const WHY_US = [
-  {
-    emoji: "🌿",
-    title: "Fresh Daily",
-    desc: "Every item prepared fresh on the day of your event — never frozen, never pre-packaged.",
-  },
-  {
-    emoji: "🏆",
-    title: "Award-Winning Recipes",
-    desc: "Authentic Vietnamese recipes refined over decades, brought to your event.",
-  },
-  {
-    emoji: "🚚",
-    title: "Scheduled Delivery",
-    desc: "We deliver catering orders across Hobart, Sorell, Kingston, and surrounding areas. Minimum 24 hours' notice required.",
-  },
-  {
-    emoji: "🌱",
-    title: "Dietary Friendly",
-    desc: "Halal, vegetarian, vegan, and gluten-free options available on request.",
-  },
-  {
-    emoji: "👨‍🍳",
-    title: "Experienced Team",
-    desc: "Our catering team has served thousands of events across Tasmania.",
-  },
-  {
-    emoji: "📋",
-    title: "Hassle-Free Planning",
-    desc: "One point of contact from enquiry to clean-up. We handle everything.",
-  },
-];
-
 type CateringProps = {
   packs: CateringPack[];
   boxes: CateringBox[];
 };
 
+interface WhyUsItem {
+  emoji: string;
+  title: string;
+  desc: string;
+}
+
+interface StatItem {
+  num: string;
+  label: string;
+}
+
 export default function Catering({ packs, boxes }: CateringProps) {
+  const t = useTranslations("Catering");
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     contactName: "",
@@ -68,12 +46,16 @@ export default function Catering({ packs, boxes }: CateringProps) {
     message: "",
   });
 
+  // Load configuration arrays from translation files
+  const whyUsList: WhyUsItem[] = t.raw("whyUs.items");
+  const statsList: StatItem[] = t.raw("stats");
+
   const handleEnquireBox = (boxName: string, price: string) => {
     setForm((prev) => ({
       ...prev,
       message: prev.message
         ? prev.message
-        : `I'm interested in ordering the ${boxName} (${price}). Please provide more details.`,
+        : t("form.enquireTemplate", { boxName, price }),
     }));
     const el = document.getElementById("catering-enquiry-form");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -81,16 +63,13 @@ export default function Catering({ packs, boxes }: CateringProps) {
 
   const submitInquiry = trpc.public.submitPartnerInquiry.useMutation({
     onSuccess: () => setSubmitted(true),
-    onError: () =>
-      toast.error(
-        "Failed to send enquiry. Please email catering@saigonexpress.com.au directly.",
-      ),
+    onError: () => toast.error(t("errors.submitFailed")),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.contactName || !form.email) {
-      toast.error("Name and email are required");
+      toast.error(t("errors.requiredFields"));
       return;
     }
     submitInquiry.mutate({
@@ -98,7 +77,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
       businessName: form.businessName || form.contactName,
       email: form.email,
       phone: form.phone || undefined,
-      message: `CATERING ENQUIRY\nEvent Date: ${form.eventDate}\nGuest Count: ${form.guestCount}\n\n${form.message}`,
+      message: `${t("form.emailSubjectHeader")}\n${t("form.emailEventDate")}: ${form.eventDate}\n${t("form.emailGuestCount")}: ${form.guestCount}\n\n${form.message}`,
     });
   };
 
@@ -123,35 +102,34 @@ export default function Catering({ packs, boxes }: CateringProps) {
         <div className="absolute inset-0 bg-black" />
         <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-4">
-            BÁNH MÌ CATERING HOBART
+            {t("hero.badge")}
           </p>
           <h1 className="font-serif text-white text-5xl md:text-7xl leading-tight max-w-2xl mb-6">
-            Catering for
+            {t("hero.titleLine1")}
             <br />
-            Every Occasion
+            {t("hero.titleLine2")}
           </h1>
           <p className="text-white/65 text-lg max-w-xl leading-relaxed mb-8">
-            Authentic Vietnamese catering delivered fresh across Tasmania — from
-            office lunches to gala dinners.
+            {t("hero.description")}
           </p>
           <div className="flex flex-wrap gap-3">
             <a
               href="#packs"
               className="bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors inline-flex items-center gap-2"
             >
-              View Catering Packs <ChevronRight size={15} />
+              {t("hero.ctaPacks")} <ChevronRight size={15} />
             </a>
             <a
               href="#catering-menu"
               className="bg-white/10 border border-white/40 text-white px-6 py-3 font-semibold text-sm hover:bg-white/20 transition-colors inline-flex items-center gap-2"
             >
-              Full Menu & Prices <ChevronRight size={15} />
+              {t("hero.ctaMenu")} <ChevronRight size={15} />
             </a>
             <a
               href="#catering-enquiry-form"
               className="border border-white text-white px-6 py-3 font-semibold text-sm hover:bg-white hover:text-brand-dark transition-colors"
             >
-              Request a Quote
+              {t("hero.ctaQuote")}
             </a>
           </div>
         </div>
@@ -160,12 +138,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
       {/* Stats strip */}
       <section className="bg-brand-red text-white py-10">
         <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {[
-            { num: "500+", label: "Events Catered" },
-            { num: "50,000+", label: "Guests Served" },
-            { num: "8", label: "Tasmania Locations" },
-            { num: "100%", label: "Fresh Daily" },
-          ].map((s, i) => (
+          {statsList.map((s, i) => (
             <div key={i}>
               <div className="font-serif text-4xl font-bold mb-1">{s.num}</div>
               <div className="text-white/65 text-sm font-medium uppercase tracking-wider">
@@ -181,16 +154,16 @@ export default function Catering({ packs, boxes }: CateringProps) {
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="text-center mb-10">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
-              WHY SAIGON EXPRESS CATERING
+              {t("whyUs.label")}
             </p>
             <h2 className="font-serif text-brand-dark text-4xl">
-              Tasmania's Favourite
+              {t("whyUs.titleLine1")}
               <br />
-              Vietnamese Caterer
+              {t("whyUs.titleLine2")}
             </h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {WHY_US.map((item, i) => (
+            {whyUsList.map((item, i) => (
               <div key={i} className="flex gap-4 p-5 bg-brand-cream">
                 <div className="text-3xl flex-shrink-0">{item.emoji}</div>
                 <div>
@@ -212,20 +185,19 @@ export default function Catering({ packs, boxes }: CateringProps) {
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
-              CATERING PACKAGES
+              {t("packs.label")}
             </p>
             <h2 className="font-serif text-brand-dark text-4xl">
-              Choose Your Pack
+              {t("packs.title")}
             </h2>
             <p className="text-brand-dark/55 mt-3 max-w-xl mx-auto text-sm">
-              All packs include fresh preparation on the day, eco-friendly
-              packaging, and delivery to your venue.
+              {t("packs.description")}
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             {packs.length === 0 ? (
               <div className="md:col-span-2 text-center text-sm text-brand-dark/55 py-8">
-                No catering packs available right now.
+                {t("packs.empty")}
               </div>
             ) : (
               packs.map((pack) => (
@@ -257,7 +229,8 @@ export default function Catering({ packs, boxes }: CateringProps) {
                           {pack.price}
                         </div>
                         <div className="text-xs text-brand-dark/40 flex items-center gap-1 justify-end mt-0.5">
-                          <Users size={11} /> {pack.serves}
+                          <Users size={11} />{" "}
+                          {t("packs.serves", { serves: pack.serves })}
                         </div>
                       </div>
                     </div>
@@ -282,7 +255,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                       href="#catering-enquiry-form"
                       className="inline-flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 text-sm font-semibold hover:bg-brand-red transition-colors"
                     >
-                      Enquire Now <ChevronRight size={14} />
+                      {t("packs.enquire")} <ChevronRight size={14} />
                     </a>
                   </div>
                 </div>
@@ -297,27 +270,26 @@ export default function Catering({ packs, boxes }: CateringProps) {
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
-              FULL CATERING MENU
+              {t("menu.label")}
             </p>
             <h2 className="font-serif text-brand-dark text-4xl">
-              Order by the Box
+              {t("menu.title")}
             </h2>
             <p className="text-brand-dark/55 mt-3 max-w-2xl mx-auto text-sm">
-              All boxes are freshly prepared on the day of your event. Please
-              provide at least 24 hours' notice. Contact{" "}
+              {t("menu.description")}
               <a
-                href="mailto:catering@saigonexpress.com.au"
+                href={`mailto:${t("menu.descriptionEmail")}`}
                 className="text-brand-red underline"
               >
-                catering@saigonexpress.com.au
+                {t("menu.descriptionEmail")}
               </a>{" "}
-              to customise your order.
+              {t("menu.descriptionEnd")}
             </p>
           </div>
 
           {boxGroups.length === 0 ? (
             <div className="text-center text-sm text-brand-dark/55 py-6">
-              No catering menu items available right now.
+              {t("menu.empty")}
             </div>
           ) : (
             boxGroups.map((group, groupIndex) => (
@@ -354,7 +326,8 @@ export default function Catering({ packs, boxes }: CateringProps) {
                         </h4>
                         {item.serves && (
                           <p className="text-xs text-brand-red font-semibold mb-3 flex items-center gap-1">
-                            <Users size={11} /> Caters {item.serves}
+                            <Users size={11} />{" "}
+                            {t("menu.caters", { serves: item.serves })}
                           </p>
                         )}
                         {item.note && (
@@ -401,12 +374,12 @@ export default function Catering({ packs, boxes }: CateringProps) {
                               item.name,
                               item.price ??
                                 item.prices[0]?.price ??
-                                "Custom price",
+                                t("menu.customPrice"),
                             )
                           }
                           className="w-full bg-brand-red text-white text-xs font-bold py-2.5 px-4 hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-1.5 mt-auto"
                         >
-                          Enquire Now <ChevronRight size={13} />
+                          {t("menu.enquire")} <ChevronRight size={13} />
                         </button>
                       </div>
                     </div>
@@ -419,16 +392,11 @@ export default function Catering({ packs, boxes }: CateringProps) {
           {/* Protein note */}
           <div className="bg-brand-dark text-white p-6 text-center">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-2">
-              CHOOSE YOUR PROTEIN
+              {t("menu.proteinLabel")}
             </p>
-            <p className="text-white/80 text-sm">
-              Crispy Roast Pork · BBQ Pork · Satay Chicken · Fried Chicken ·
-              Lemongrass Chicken · Lemongrass Beef · Veggie & Tofu · Grilled
-              Prawns · BBQ Duck
-            </p>
+            <p className="text-white/80 text-sm">{t("menu.proteinList")}</p>
             <p className="text-white/50 text-xs mt-2">
-              Mixed selection recommended · Custom selection available (max 2–3
-              options) · Additional charge for premium flavours
+              {t("menu.proteinNote")}
             </p>
           </div>
         </div>
@@ -440,12 +408,10 @@ export default function Catering({ packs, boxes }: CateringProps) {
         <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
           <Star size={24} className="text-brand-amber mx-auto mb-6" />
           <blockquote className="font-serif text-white text-2xl md:text-3xl leading-relaxed mb-6">
-            "Saigon Express catered our company's annual conference for 120
-            guests. The food was incredible — fresh, flavourful, and everyone
-            was asking for the recipe."
+            {t("testimonial.quote")}
           </blockquote>
           <p className="text-white/50 text-sm font-medium">
-            — Corporate Client, Hobart CBD
+            {t("testimonial.author")}
           </p>
         </div>
       </section>
@@ -456,36 +422,35 @@ export default function Catering({ packs, boxes }: CateringProps) {
           <div className="grid lg:grid-cols-2 gap-12 items-start">
             <div>
               <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
-                GET IN TOUCH
+                {t("form.label")}
               </p>
               <h2 className="font-serif text-brand-dark text-4xl mb-4">
-                Request a Catering Quote
+                {t("form.title")}
               </h2>
               <p className="text-brand-dark/55 leading-relaxed mb-6 text-sm">
-                Tell us about your event and we'll get back to you within 24
-                hours with a tailored quote. No event is too big or too small.
+                {t("form.description")}
               </p>
               <div className="space-y-3 text-sm text-brand-dark/60">
                 <div className="flex items-center gap-3">
-                  <Clock size={16} className="text-brand-red" /> Response within
-                  24 hours
+                  <Clock size={16} className="text-brand-red" />{" "}
+                  {t("form.features.response")}
                 </div>
                 <div className="flex items-center gap-3">
-                  <Users size={16} className="text-brand-red" /> Minimum 10
-                  guests
+                  <Users size={16} className="text-brand-red" />{" "}
+                  {t("form.features.guests")}
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle size={16} className="text-brand-red" /> Free
-                  consultation included
+                  <CheckCircle size={16} className="text-brand-red" />{" "}
+                  {t("form.features.consultation")}
                 </div>
                 <div className="flex items-center gap-3">
-                  <MapPin size={16} className="text-brand-red" /> Tasmania-wide
-                  delivery available
+                  <MapPin size={16} className="text-brand-red" />{" "}
+                  {t("form.features.delivery")}
                 </div>
               </div>
               <div className="mt-8 p-5 bg-brand-cream border-l-4 border-brand-red">
                 <p className="font-semibold text-brand-dark text-sm mb-2">
-                  Direct catering enquiries:
+                  {t("form.directLabel")}
                 </p>
                 <div className="flex items-center gap-2 text-sm text-brand-dark/70 mb-1">
                   <Phone size={13} className="text-brand-red" />
@@ -513,11 +478,10 @@ export default function Catering({ packs, boxes }: CateringProps) {
                     className="text-brand-red mx-auto mb-4"
                   />
                   <h3 className="font-serif text-2xl text-brand-dark mb-2">
-                    Enquiry Received!
+                    {t("form.successTitle")}
                   </h3>
                   <p className="text-brand-dark/55 text-sm">
-                    We'll be in touch within 24 hours with your personalised
-                    catering quote.
+                    {t("form.successText")}
                   </p>
                 </div>
               ) : (
@@ -525,7 +489,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Your Name *
+                        {t("form.inputName")}
                       </label>
                       <input
                         type="text"
@@ -542,7 +506,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Organisation
+                        {t("form.inputOrg")}
                       </label>
                       <input
                         type="text"
@@ -560,7 +524,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Email *
+                        {t("form.inputEmail")}
                       </label>
                       <input
                         type="email"
@@ -574,7 +538,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Phone
+                        {t("form.inputPhone")}
                       </label>
                       <input
                         type="tel"
@@ -589,9 +553,9 @@ export default function Catering({ packs, boxes }: CateringProps) {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Event Date{" "}
+                        {t("form.inputDate")}
                         <span className="text-brand-red font-normal normal-case text-[10px]">
-                          — min. 24 hrs notice required
+                          {t("form.inputDateNote")}
                         </span>
                       </label>
                       <input
@@ -610,7 +574,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                        Number of Guests
+                        {t("form.inputGuests")}
                       </label>
                       <input
                         type="number"
@@ -625,7 +589,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                      Tell Us About Your Event
+                      {t("form.inputMessage")}
                     </label>
                     <textarea
                       rows={4}
@@ -633,7 +597,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                       onChange={(e) =>
                         setForm((p) => ({ ...p, message: e.target.value }))
                       }
-                      placeholder="Event type, dietary requirements, preferred pack, any special requests..."
+                      placeholder={t("form.placeholder")}
                       className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors bg-brand-cream resize-none"
                     />
                   </div>
@@ -643,8 +607,8 @@ export default function Catering({ packs, boxes }: CateringProps) {
                     className="w-full bg-brand-red text-white py-4 font-semibold text-sm hover:bg-brand-red/90 transition-colors disabled:opacity-50"
                   >
                     {submitInquiry.isPending
-                      ? "Sending Enquiry…"
-                      : "Send Catering Enquiry"}
+                      ? t("form.btnSending")
+                      : t("form.btnSubmit")}
                   </button>
                 </form>
               )}

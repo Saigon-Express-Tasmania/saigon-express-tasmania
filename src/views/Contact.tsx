@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "@/components/link";
+import { useTranslations } from "next-intl";
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,18 +11,18 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import type { StoreLocation } from "@/types";
 
-const HOURS = [
-  { day: "Monday – Friday", hours: "10:00 am – 8:00 pm" },
-  { day: "Saturday", hours: "10:00 am – 8:30 pm" },
-  { day: "Sunday", hours: "11:00 am – 7:00 pm" },
-  { day: "Public Holidays", hours: "11:00 am – 6:00 pm" },
-];
-
 type ContactProps = {
   storeLocations: StoreLocation[];
 };
 
+interface HoursItem {
+  day: string;
+  hours: string;
+}
+
 export default function Contact({ storeLocations }: ContactProps) {
+  const t = useTranslations("Contact");
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -31,15 +32,15 @@ export default function Contact({ storeLocations }: ContactProps) {
   });
   const [submitted, setSubmitted] = useState(false);
 
+  // Directly pull structured localized arrays from JSON definitions
+  const hoursSchedule: HoursItem[] = t.raw("hours.schedule");
+
   const submitContact = trpc.public.submitContactMessage.useMutation({
     onSuccess: () => {
       setSubmitted(true);
-      toast.success("Message sent! We'll get back to you soon.");
+      toast.success(t("toasts.success"));
     },
-    onError: () =>
-      toast.error(
-        "Failed to send message. Please try again or email us directly.",
-      ),
+    onError: () => toast.error(t("toasts.error")),
   });
 
   const handleChange = (
@@ -51,7 +52,7 @@ export default function Contact({ storeLocations }: ContactProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
-      toast.error("Please fill in your name, email, and message.");
+      toast.error(t("toasts.validation"));
       return;
     }
     submitContact.mutate({
@@ -69,14 +70,13 @@ export default function Contact({ storeLocations }: ContactProps) {
       <section className="bg-brand-dark py-16 px-6">
         <div className="max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-3">
-            GET IN TOUCH
+            {t("hero.badge")}
           </p>
           <h1 className="font-serif text-white text-4xl md:text-5xl leading-tight mb-4">
-            Contact Us
+            {t("hero.title")}
           </h1>
           <p className="text-white/60 text-base max-w-xl">
-            We'd love to hear from you — whether it's a question about our menu,
-            catering enquiry, franchise opportunity, or just a hello.
+            {t("hero.description")}
           </p>
         </div>
       </section>
@@ -88,7 +88,7 @@ export default function Contact({ storeLocations }: ContactProps) {
           {/* Quick contact */}
           <div>
             <h2 className="font-serif text-brand-dark text-2xl mb-5">
-              Get in Touch
+              {t("info.title")}
             </h2>
             <div className="space-y-4">
               <a
@@ -100,7 +100,7 @@ export default function Contact({ storeLocations }: ContactProps) {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">
-                    Phone
+                    {t("info.phoneLabel")}
                   </p>
                   <p className="text-brand-dark font-semibold group-hover:text-brand-red transition-colors">
                     0416 036 016
@@ -116,7 +116,7 @@ export default function Contact({ storeLocations }: ContactProps) {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">
-                    Email
+                    {t("info.emailLabel")}
                   </p>
                   <p className="text-brand-dark font-semibold group-hover:text-brand-red transition-colors">
                     info@saigonexpress.com.au
@@ -129,10 +129,10 @@ export default function Contact({ storeLocations }: ContactProps) {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">
-                    Locations
+                    {t("info.locationsLabel")}
                   </p>
                   <p className="text-brand-dark font-semibold">
-                    {storeLocations.length} stores across Tasmania
+                    {t("info.storesCount", { count: storeLocations.length })}
                   </p>
                 </div>
               </div>
@@ -142,13 +142,13 @@ export default function Contact({ storeLocations }: ContactProps) {
           {/* Opening hours */}
           <div>
             <h2 className="font-serif text-brand-dark text-2xl mb-5 flex items-center gap-2">
-              <Clock size={20} className="text-brand-red" /> Opening Hours
+              <Clock size={20} className="text-brand-red" /> {t("hours.title")}
             </h2>
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              {HOURS.map((h, i) => (
+              {hoursSchedule.map((h, i) => (
                 <div
                   key={h.day}
-                  className={`flex justify-between items-center px-5 py-3.5 text-sm ${i < HOURS.length - 1 ? "border-b border-gray-50" : ""}`}
+                  className={`flex justify-between items-center px-5 py-3.5 text-sm ${i < hoursSchedule.length - 1 ? "border-b border-gray-50" : ""}`}
                 >
                   <span className="text-brand-dark/70 font-medium">
                     {h.day}
@@ -164,7 +164,7 @@ export default function Contact({ storeLocations }: ContactProps) {
           {/* Locations */}
           <div>
             <h2 className="font-serif text-brand-dark text-2xl mb-5">
-              Our Locations
+              {t("locations.title")}
             </h2>
             <div className="grid sm:grid-cols-2 gap-3">
               {storeLocations.map((loc) => (
@@ -185,7 +185,7 @@ export default function Contact({ storeLocations }: ContactProps) {
               href="/stores"
               className="inline-flex items-center gap-1.5 text-brand-red text-sm font-semibold mt-4 hover:underline"
             >
-              View all stores on map →
+              {t("locations.viewAll")}
             </Link>
           </div>
         </div>
@@ -193,17 +193,16 @@ export default function Contact({ storeLocations }: ContactProps) {
         {/* Right: contact form */}
         <div>
           <h2 className="font-serif text-brand-dark text-2xl mb-6">
-            Send Us a Message
+            {t("form.title")}
           </h2>
           {submitted ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
               <h3 className="font-serif text-brand-dark text-xl mb-2">
-                Message Received!
+                {t("form.successTitle")}
               </h3>
               <p className="text-brand-dark/60 text-sm mb-6">
-                Thanks for reaching out. We'll get back to you within 1 business
-                day.
+                {t("form.successText")}
               </p>
               <Button
                 onClick={() => {
@@ -219,7 +218,7 @@ export default function Contact({ storeLocations }: ContactProps) {
                 variant="outline"
                 className="border-brand-red text-brand-red hover:bg-brand-red hover:text-white"
               >
-                Send Another Message
+                {t("form.btnAnother")}
               </Button>
             </div>
           ) : (
@@ -230,28 +229,28 @@ export default function Contact({ storeLocations }: ContactProps) {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                    Name *
+                    {t("form.labelName")}
                   </label>
                   <Input
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    placeholder="Your full name"
-                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20"
+                    placeholder={t("form.placeholderName")}
+                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20 bg-white"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                    Email *
+                    {t("form.labelEmail")}
                   </label>
                   <Input
                     name="email"
                     type="email"
                     value={form.email}
                     onChange={handleChange}
-                    placeholder="you@example.com"
-                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20"
+                    placeholder={t("form.placeholderEmail")}
+                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20 bg-white"
                     required
                   />
                 </div>
@@ -259,41 +258,41 @@ export default function Contact({ storeLocations }: ContactProps) {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                    Phone
+                    {t("form.labelPhone")}
                   </label>
                   <Input
                     name="phone"
                     type="tel"
                     value={form.phone}
                     onChange={handleChange}
-                    placeholder="04xx xxx xxx"
-                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20"
+                    placeholder={t("form.placeholderPhone")}
+                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20 bg-white"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                    Subject
+                    {t("form.labelSubject")}
                   </label>
                   <Input
                     name="subject"
                     value={form.subject}
                     onChange={handleChange}
-                    placeholder="e.g. Catering enquiry"
-                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20"
+                    placeholder={t("form.placeholderSubject")}
+                    className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20 bg-white"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-brand-dark/60 uppercase tracking-wider mb-1.5">
-                  Message *
+                  {t("form.labelMessage")}
                 </label>
                 <Textarea
                   name="message"
                   value={form.message}
                   onChange={handleChange}
-                  placeholder="How can we help you?"
+                  placeholder={t("form.placeholderMessage")}
                   rows={5}
-                  className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20 resize-none"
+                  className="border-gray-200 focus:border-brand-red focus:ring-brand-red/20 resize-none bg-white"
                   required
                 />
               </div>
@@ -303,15 +302,15 @@ export default function Contact({ storeLocations }: ContactProps) {
                 className="w-full bg-brand-red hover:bg-brand-red/90 text-white font-semibold py-3 gap-2"
               >
                 {submitContact.isPending ? (
-                  "Sending…"
+                  t("form.btnSending")
                 ) : (
                   <>
-                    <Send size={16} /> Send Message
+                    <Send size={16} /> {t("form.btnSubmit")}
                   </>
                 )}
               </Button>
               <p className="text-brand-dark/40 text-xs text-center">
-                We typically respond within 1 business day.
+                {t("form.note")}
               </p>
             </form>
           )}
