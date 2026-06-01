@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,11 +38,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { previewFromImageUrls, type ImageUrlsMap } from '@/lib/image-urls';
+import { resizeImageToSizes } from '@/lib/image-resize';
 import {
-  normalizeImageUrls,
-  previewFromImageUrls,
-  type ImageUrlsMap,
-} from '@/lib/image-urls';
+  parseMenuImageUrls,
+  previewFromParsedMenuImages,
+  serializeMenuImageUrls,
+  type MenuImageMoreEntry,
+} from '@/lib/menu-image-urls';
+import { resolveMenuSlug, slugFromName } from '@/lib/slug';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
@@ -50,15 +55,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 const MENU_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1920] as const;
+const ADDITIONAL_IMAGE_SM = 256;
+const ADDITIONAL_IMAGE_LG = 1920;
 
 type MenuItemRow = {
   id: number;
   name: string;
+  slug: string;
   description: string | null;
   price: string;
   wholesale_price: string | null;
   category: string;
-  image_urls: ImageUrlsMap;
+  image_urls: Record<string, unknown>;
+  related_items: number[];
   is_available: boolean;
   is_popular: boolean;
   sort_order: number;
@@ -67,18 +76,23 @@ type MenuItemRow = {
   ingredients: any;
 };
 
-type MenuItemInput = Omit<MenuItemRow, 'ingredients'> & {
+type MenuItemInput = Omit<MenuItemRow, 'ingredients' | 'image_urls'> & {
+  image_sizes: ImageUrlsMap;
+  additional_images: MenuImageMoreEntry[];
   ingredients: string;
 };
 
 const emptyMenuItemInput = (): MenuItemInput => ({
   id: 0,
+  slug: '',
   name: '',
   description: '',
   price: '',
   wholesale_price: '',
   category: '',
-  image_urls: {},
+  image_sizes: {},
+  additional_images: [],
+  related_items: [],
   is_available: true,
   is_popular: false,
   sort_order: 0,
@@ -112,6 +126,8 @@ export function Menu() {
   const [form, setForm] = useState<MenuItemInput>(emptyMenuItemInput());
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isUploadingAdditionalImages, setIsUploadingAdditionalImages] =
+    useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<MenuItemRow | null>(null);
   const [search, setSearch] = useState('');
@@ -124,13 +140,21 @@ export function Menu() {
       const { data, error: fetchError } = await supabase
         .from('menu')
         .select(
-          'id, name, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients',
+          'id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients',
         )
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
       if (fetchError) throw fetchError;
-      setItems((data ?? []) as MenuItemRow[]);
+      setItems(
+        (data ?? []).map((row) => {
+          const item = row as MenuItemRow;
+          return {
+            ...item,
+            slug: resolveMenuSlug(item.slug, item.name),
+          };
+        }),
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load menu items.';
@@ -190,15 +214,19 @@ export function Menu() {
   };
 
   const openEdit = (item: MenuItemRow) => {
+    const parsedImages = parseMenuImageUrls(item.image_urls);
     setEditingId(item.id);
     setForm({
       id: item.id,
       name: item.name,
+      slug: resolveMenuSlug(item.slug, item.name),
       description: item.description ?? '',
       price: item.price,
       wholesale_price: item.wholesale_price ?? '',
       category: item.category,
-      image_urls: normalizeImageUrls(item.image_urls),
+      image_sizes: parsedImages.sizes,
+      additional_images: parsedImages.more,
+      related_items: item.related_items,
       is_available: item.is_available,
       is_popular: item.is_popular,
       sort_order: item.sort_order,
@@ -208,9 +236,7 @@ export function Menu() {
           : JSON.stringify(item.ingredients ?? '', null, 2),
     });
     setImagePreviewUrl(
-      previewFromImageUrls(normalizeImageUrls(item.image_urls), [
-        256, 512, 1024, 1920,
-      ]),
+      previewFromParsedMenuImages(parsedImages, [256, 512, 1024, 1920]),
     );
     setDialogOpen(true);
   };
@@ -224,9 +250,7 @@ export function Menu() {
       return;
     }
 
-    const slugPart =
-      form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
-      `menu-${form.id}`;
+    const slugPart = form.slug.trim() || `menu-${form.id}`;
     const timestamp = Date.now();
 
     setIsUploadingImages(true);
@@ -247,7 +271,7 @@ export function Menu() {
         imageUrls[String(size)] = publicUrl;
       }
 
-      setForm((prev) => ({ ...prev, image_urls: imageUrls }));
+      setForm((prev) => ({ ...prev, image_sizes: imageUrls }));
       setImagePreviewUrl(previewFromImageUrls(imageUrls));
       toast.success('Menu images uploaded.');
     } catch (err) {
@@ -261,9 +285,59 @@ export function Menu() {
   };
 
   const handleImageClear = () => {
-    setForm((prev) => ({ ...prev, image_urls: {} }));
+    setForm((prev) => ({ ...prev, image_sizes: {} }));
     setImagePreviewUrl(null);
   };
+
+  const handleAdditionalImageUpload = async (file: File) => {
+    const slugPart = form.slug.trim() || `menu-${form.id}`;
+    const timestamp = Date.now();
+    const index = form.additional_images.length;
+
+    setIsUploadingAdditionalImages(true);
+    try {
+      const [smFile, lgFile] = await resizeImageToSizes(file, [
+        ADDITIONAL_IMAGE_SM,
+        ADDITIONAL_IMAGE_LG,
+      ]);
+      const ext = smFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+
+      const { publicUrl: sm } = await uploadMedia(smFile, {
+        folder: 'menu',
+        fileName: `${slugPart}-more-${index}-${timestamp}-sm.${ext}`,
+        upsert: true,
+      });
+      const { publicUrl: lg } = await uploadMedia(lgFile, {
+        folder: 'menu',
+        fileName: `${slugPart}-more-${index}-${timestamp}-lg.${ext}`,
+        upsert: true,
+      });
+
+      setForm((prev) => ({
+        ...prev,
+        additional_images: [...prev.additional_images, { sm, lg }],
+      }));
+      toast.success('Additional image added.');
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to upload additional image.';
+      toast.error(message);
+      throw err;
+    } finally {
+      setIsUploadingAdditionalImages(false);
+    }
+  };
+
+  const handleAdditionalImageRemove = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      additional_images: prev.additional_images.filter((_, i) => i !== index),
+    }));
+  };
+
+  const imageUploadBusy = isUploadingImages || isUploadingAdditionalImages;
 
   const handleSave = async () => {
     if (!form.name.trim()) {
@@ -291,14 +365,24 @@ export function Menu() {
 
     setSaving(true);
     try {
+      const slug = slugFromName(form.name);
+      if (!slug) {
+        toast.error('Name must produce a valid slug.');
+        return;
+      }
+
       const payload = {
         id: form.id,
         name: form.name.trim(),
+        slug,
         description: form.description?.trim() || null,
         price: String(form.price),
         wholesale_price: form.wholesale_price?.trim() || null,
         category: form.category.trim(),
-        image_urls: form.image_urls,
+        image_urls: serializeMenuImageUrls(
+          form.image_sizes,
+          form.additional_images,
+        ),
         is_available: form.is_available,
         is_popular: form.is_popular,
         sort_order: Number(form.sort_order) || 0,
@@ -310,6 +394,7 @@ export function Menu() {
           .from('menu')
           .update({
             name: payload.name,
+            slug: payload.slug,
             description: payload.description,
             price: payload.price,
             wholesale_price: payload.wholesale_price,
@@ -328,6 +413,7 @@ export function Menu() {
         const { error: insertError } = await supabase.from('menu').insert({
           id: payload.id,
           name: payload.name,
+          slug: payload.slug,
           description: payload.description,
           price: payload.price,
           wholesale_price: payload.wholesale_price,
@@ -499,8 +585,8 @@ export function Menu() {
                   </thead>
                   <tbody>
                     {filteredItems.map((item) => {
-                      const thumb = previewFromImageUrls(
-                        normalizeImageUrls(item.image_urls),
+                      const thumb = previewFromParsedMenuImages(
+                        parseMenuImageUrls(item.image_urls),
                         [256, 512, 1024, 1920],
                       );
                       return (
@@ -587,18 +673,18 @@ export function Menu() {
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && isUploadingImages) return;
+          if (!open && imageUploadBusy) return;
           setDialogOpen(open);
         }}
       >
         <DialogContent
           className="max-w-2xl max-h-[90vh] overflow-y-auto"
-          showCloseButton={!isUploadingImages}
+          showCloseButton={!imageUploadBusy}
           onInteractOutside={(event) => {
-            if (isUploadingImages) event.preventDefault();
+            if (imageUploadBusy) event.preventDefault();
           }}
           onEscapeKeyDown={(event) => {
-            if (isUploadingImages) event.preventDefault();
+            if (imageUploadBusy) event.preventDefault();
           }}
         >
           <DialogHeader>
@@ -642,9 +728,25 @@ export function Menu() {
               <Input
                 id="menu-name"
                 value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setForm((f) => ({
+                    ...f,
+                    name,
+                    slug: slugFromName(name),
+                  }));
+                }}
+              />
+            </div>
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="menu-slug">Slug</Label>
+              <Input
+                id="menu-slug"
+                readOnly
+                value={form.slug}
+                className="cursor-default bg-muted text-foreground"
+                aria-readonly="true"
+                tabIndex={-1}
               />
             </div>
             <div className="grid gap-2">
@@ -663,19 +765,28 @@ export function Menu() {
                 description="JPEG, PNG, WebP or GIF. Uploads 256, 512, 1024 and 1920px variants."
                 value={
                   imagePreviewUrl ??
-                  previewFromImageUrls(form.image_urls) ??
+                  previewFromImageUrls(form.image_sizes) ??
                   null
                 }
                 onFileSelect={handleImageUpload}
                 onClear={
-                  Object.keys(form.image_urls).length > 0
+                  Object.keys(form.image_sizes).length > 0
                     ? handleImageClear
                     : undefined
                 }
                 uploadResizes={[...MENU_IMAGE_UPLOAD_RESIZES]}
                 isUploading={isUploadingImages}
-                disabled={saving || isUploadingImages}
+                disabled={saving || imageUploadBusy}
                 shape="square"
+              />
+            </div>
+            <div className="grid gap-2 md:col-span-2">
+              <MenuAdditionalImages
+                images={form.additional_images}
+                onAdd={handleAdditionalImageUpload}
+                onRemove={handleAdditionalImageRemove}
+                isUploading={isUploadingAdditionalImages}
+                disabled={saving || imageUploadBusy}
               />
             </div>
             <div className="grid gap-2">
@@ -767,13 +878,13 @@ export function Menu() {
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              disabled={saving || isUploadingImages}
+              disabled={saving || imageUploadBusy}
             >
               Cancel
             </Button>
             <Button
               onClick={() => void handleSave()}
-              disabled={saving || isUploadingImages}
+              disabled={saving || imageUploadBusy}
             >
               {saving ? (
                 <>

@@ -1499,6 +1499,25 @@
       "addonRemoved": "{name} removed."
     }
   },
+  "MenuItem": {
+    "bestsellerBadge": "Bestseller",
+    "customiseTitle": "Customise your order",
+    "selectPlaceholder": "Select an option",
+    "multiSelectPlaceholder": "Select options",
+    "multiSelectedCount": "{count} selected",
+    "noneOption": "None",
+    "done": "Done",
+    "requiredFieldsReminder": "Please select: {fields}",
+    "addToOrder": "Add to Order",
+    "decreaseQty": "Decrease quantity",
+    "increaseQty": "Increase quantity",
+    "relatedTitle": "You May Also Like",
+    "backToMenu": "Back to Full Menu",
+    "backToMenuHint": "Browse all categories and dishes",
+    "magnifierHint": "Hover to magnify",
+    "additionalImagesTitle": "Additional images",
+    "additionalImagesSelect": "View image {index}"
+  },
   "NotFound": {
     "code": "404",
     "heading": "Page Not Found",

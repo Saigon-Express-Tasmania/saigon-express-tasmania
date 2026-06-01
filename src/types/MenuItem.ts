@@ -3,10 +3,39 @@ import type { MenuItem } from "@/contexts/CartContext";
 /** Size key → image URL (e.g. `"512"` → `https://...`). */
 export type MenuImageUrls = Record<string, string>;
 
+/** Additional gallery entry in `image_urls.more`. */
+export type MenuImageMoreEntry = {
+  sm: string;
+  lg: string;
+};
+
+function isMenuImageMoreEntry(value: unknown): value is MenuImageMoreEntry {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const row = value as Record<string, unknown>;
+  return Boolean(String(row.sm ?? "").trim() && String(row.lg ?? "").trim());
+}
+
+export function parseMenuImageMore(value: unknown): MenuImageMoreEntry[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return [];
+  }
+  const more = (value as Record<string, unknown>).more;
+  if (!Array.isArray(more)) return [];
+  return more
+    .filter(isMenuImageMoreEntry)
+    .map((row) => ({
+      sm: String(row.sm).trim(),
+      lg: String(row.lg).trim(),
+    }));
+}
+
 /** Row shape from `public.menu` (snake_case). */
 export type MenuItemRow = {
   id: number;
   name: string;
+  slug: string;
   description: string | null;
   price: string;
   wholesale_price: string | null;
@@ -24,6 +53,7 @@ export function normalizeMenuImageUrls(value: unknown): MenuImageUrls {
   }
   return Object.entries(value as Record<string, unknown>).reduce<MenuImageUrls>(
     (acc, [key, url]) => {
+      if (key === "more" || !/^\d+$/.test(key)) return acc;
       const trimmed = String(url ?? "").trim();
       if (trimmed) acc[key] = trimmed;
       return acc;
@@ -47,14 +77,17 @@ export function pickMenuImageUrl(
 
 export function mapMenuItemRow(row: MenuItemRow): MenuItem {
   const imageUrls = normalizeMenuImageUrls(row.image_urls);
+  const moreImages = parseMenuImageMore(row.image_urls);
   return {
     id: row.id,
     name: row.name,
+    slug: row.slug?.trim() ?? "",
     category: row.category,
     price: row.price,
     description: row.description,
     isAvailable: row.is_available,
     imageUrls,
+    moreImages,
     imageUrl: pickMenuImageUrl(imageUrls),
     sortOrder: row.sort_order,
     isPopular: row.is_popular,

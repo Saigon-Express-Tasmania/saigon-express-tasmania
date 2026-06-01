@@ -12,7 +12,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { menuItemDetailPath } from "@/lib/menu-item-routes";
 import AddOnSuggestionModal, {
   type SuggestedItem,
 } from "@/components/AddOnSuggestionModal";
@@ -60,6 +61,12 @@ export default function Menu({
   categoriesContent,
 }: MenuProps) {
   const t = useTranslations("Menu");
+  const locale = useLocale();
+
+  const menuItemPath = useCallback(
+    (item: MenuItem) => menuItemDetailPath(item, locale),
+    [locale],
+  );
 
   const [activeCategory, setActiveCategory] = useState(t("allCategory"));
   const [search, setSearch] = useState("");
@@ -317,43 +324,52 @@ export default function Menu({
               const totalQtyInCart = cartEntries.reduce((s, c) => s + c.qty, 0);
               const lastEntry = cartEntries[cartEntries.length - 1];
 
+              const detailHref = menuItemPath(item);
+
               return (
                 <div
                   key={item.id}
                   className={`group bg-white overflow-hidden card-lift ${!item.isAvailable ? "opacity-60" : ""}`}
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                    <LazyImage
-                      src={
-                        pickMenuImageUrl(
-                          item.imageUrls,
-                          [512, 1024, 1920, 256],
-                        ) ??
-                        item.imageUrl ??
-                        categoryImageMap[item.category] ??
-                        DEFAULT_IMG
-                      }
-                      alt={item.name}
-                      wrapperClassName="size-full"
-                      className="group-hover:scale-105 transition-transform duration-500"
-                    />
+                    <Link
+                      href={detailHref}
+                      className="absolute inset-0 z-0 block"
+                      aria-label={item.name}
+                    >
+                      <LazyImage
+                        src={
+                          pickMenuImageUrl(
+                            item.imageUrls,
+                            [512, 1024, 1920, 256],
+                          ) ??
+                          item.imageUrl ??
+                          categoryImageMap[item.category] ??
+                          DEFAULT_IMG
+                        }
+                        alt=""
+                        wrapperClassName="size-full"
+                        className="group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </Link>
                     {item.isPopular ? (
-                      <div className="absolute top-2 left-2 z-10">
+                      <div className="pointer-events-none absolute top-2 left-2 z-10">
                         <span className="bg-brand-red text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 flex items-center gap-1 shadow-md">
                           {t("card.popularBadge")}
                         </span>
                       </div>
                     ) : null}
                     {!item.isAvailable ? (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/50">
                         <span className="bg-white text-brand-dark text-xs font-bold px-3 py-1.5 flex items-center gap-1.5">
                           <AlertCircle size={12} className="text-brand-red" />{" "}
                           {t("card.unavailableBadge")}
                         </span>
                       </div>
                     ) : totalQtyInCart > 0 && lastEntry ? (
-                      <div className="absolute bottom-2 right-2 flex items-center gap-0 bg-white shadow-lg overflow-hidden">
+                      <div className="absolute bottom-2 right-2 z-10 flex items-center gap-0 overflow-hidden bg-white shadow-lg">
                         <button
+                          type="button"
                           onClick={() => removeFromCart(lastEntry.cartLineId)}
                           className="w-8 h-8 flex items-center justify-center text-brand-dark hover:bg-gray-100 transition-colors"
                         >
@@ -363,6 +379,7 @@ export default function Menu({
                           {totalQtyInCart}
                         </span>
                         <button
+                          type="button"
                           onClick={() => handleOpenCustomise(item)}
                           className="w-8 h-8 flex items-center justify-center bg-brand-red text-white hover:bg-brand-red/90 transition-colors"
                         >
@@ -371,26 +388,32 @@ export default function Menu({
                       </div>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => handleOpenCustomise(item)}
-                        className="absolute bottom-2 right-2 w-9 h-9 bg-brand-red text-white flex items-center justify-center hover:bg-brand-red/90 transition-colors shadow-lg opacity-0 group-hover:opacity-100"
+                        className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center bg-brand-red text-white opacity-0 shadow-lg transition-all hover:bg-brand-red/90 group-hover:opacity-100"
                       >
                         <Plus size={16} />
                       </button>
                     )}
                   </div>
-                  <div className="p-4">
+                  <Link
+                    href={detailHref}
+                    className="block p-4 pb-3 transition-colors hover:bg-brand-cream/50"
+                  >
                     <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest mb-1">
                       {item.category}
                     </p>
-                    <h3 className="font-serif text-brand-dark text-lg leading-snug mb-1">
+                    <h3 className="font-serif text-brand-dark text-lg leading-snug mb-1 group-hover:text-brand-red transition-colors">
                       {item.name}
                     </h3>
                     {item.description && (
-                      <p className="text-xs text-brand-dark/50 line-clamp-2 mb-3 leading-relaxed">
+                      <p className="text-xs text-brand-dark/50 line-clamp-2 leading-relaxed">
                         {item.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 mt-auto pt-2 border-t border-gray-100">
+                  </Link>
+                  <div className="px-4 pb-4">
+                    <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
                       <span className="flex-shrink-0 bg-brand-red text-white text-sm font-bold px-3 py-2 rounded-full">
                         ${parseFloat(item.price).toFixed(2)}
                       </span>

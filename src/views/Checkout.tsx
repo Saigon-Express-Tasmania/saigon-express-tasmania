@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/contexts/CartContext";
+import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import type { StoreLocation } from "@/types";
 
@@ -149,6 +150,7 @@ export default function Checkout({
       }>("checkout-pickup", {
         method: "POST",
         body: {
+          mode: getClientStripeMode(),
           customerName: name,
           customerEmail: email,
           customerPhone: phone,

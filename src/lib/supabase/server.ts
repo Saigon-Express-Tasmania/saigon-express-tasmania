@@ -44,13 +44,14 @@ export async function fetchFeaturedReviewRows(): Promise<FeaturedReviewRow[]> {
   return (data ?? []) as FeaturedReviewRow[];
 }
 
+const MENU_ITEM_SELECT =
+  "id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients";
+
 export async function fetchMenuItemRows(): Promise<MenuItemRow[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("menu")
-    .select(
-      "id, name, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients",
-    )
+    .select(MENU_ITEM_SELECT)
     .eq("is_available", true)
     .order("sort_order", { ascending: true })
     .order("id", { ascending: true });
@@ -60,6 +61,43 @@ export async function fetchMenuItemRows(): Promise<MenuItemRow[]> {
   }
 
   return (data ?? []) as MenuItemRow[];
+}
+
+export async function fetchMenuItemRowById(
+  id: number,
+): Promise<MenuItemRow | null> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("menu")
+    .select(MENU_ITEM_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`menu item ${id}: ${error.message}`);
+  }
+
+  return (data as MenuItemRow | null) ?? null;
+}
+
+export async function fetchMenuItemRowBySlug(
+  slug: string,
+): Promise<MenuItemRow | null> {
+  const trimmed = slug.trim();
+  if (!trimmed) return null;
+
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("menu")
+    .select(MENU_ITEM_SELECT)
+    .eq("slug", trimmed)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`menu item slug "${trimmed}": ${error.message}`);
+  }
+
+  return (data as MenuItemRow | null) ?? null;
 }
 
 export async function fetchStoreLocationRows(): Promise<StoreLocationRow[]> {

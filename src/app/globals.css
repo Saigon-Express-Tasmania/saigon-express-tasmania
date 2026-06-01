@@ -553,3 +553,35 @@
     }
   }
 }
+
+/* Menu item detail: react-inner-image-zoom fills image aspect frame */
+.menu-item-image-zoom .menu-item-image-zoom__figure.iiz {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.menu-item-image-zoom .menu-item-image-zoom__figure > div:first-child {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  padding-top: 0 !important;
+}
+
+.menu-item-image-zoom .menu-item-image-zoom__img.iiz__img {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.menu-item-image-zoom .menu-item-image-zoom__figure .iiz__zoom-img {
+  max-width: none !important;
+}

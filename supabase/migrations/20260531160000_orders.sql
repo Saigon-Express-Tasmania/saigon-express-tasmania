@@ -21,6 +21,7 @@ create table public.orders (
   total numeric(10, 2) not null,
   status public.order_status not null default 'pending',
   stripe_checkout_session_id text,
+  stripe_mode text check (stripe_mode in ('test', 'live')),
   payment_status public.payment_status not null default 'unpaid',
   notes text,
   cancel_token text,
@@ -45,12 +46,14 @@ create index orders_tracking_token_idx on public.orders (tracking_token) where t
 create index order_items_order_id_idx on public.order_items (order_id);
 
 comment on table public.orders is 'Customer pickup orders placed via the public checkout flow.';
+comment on column public.orders.stripe_mode is
+  'Stripe payment environment used at checkout (test or live).';
 comment on table public.order_items is 'Line items for customer pickup orders.';
 
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
--- No public access; API routes use service_role.
+-- No public access; edge functions use service_role.
 create policy "Service role full access on orders"
   on public.orders
   for all

@@ -2,12 +2,14 @@
 
 create table public.menu (
   id bigint primary key,
+  slug text not null default '',
   name text not null,
   description text,
   price text not null,
   wholesale_price text,
   category text not null,
   image_urls jsonb not null default '{}'::jsonb,
+  related_items bigint[] not null default '{}'::bigint[],
   is_available boolean not null default true,
   is_popular boolean not null default false,
   sort_order integer not null default 0,
@@ -22,6 +24,9 @@ create index menu_is_available_sort_order_idx
 
 create index menu_category_sort_order_idx
   on public.menu (category, sort_order, id);
+
+create index menu_slug_idx
+  on public.menu (slug);
 
 alter table public.menu enable row level security;
 

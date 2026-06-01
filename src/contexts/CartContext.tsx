@@ -10,12 +10,15 @@ import type { ItemCustomisation } from "@/components/ItemCustomiseModal";
 export type MenuItem = {
   id: number;
   name: string;
+  slug?: string;
   category: string;
   price: string;
   description?: string | null;
   isAvailable: boolean | number;
   /** Size-keyed URLs from `menu.image_urls`. */
   imageUrls?: Record<string, string>;
+  /** Gallery entries from `image_urls.more` (sm/lg). */
+  moreImages?: { sm: string; lg: string }[];
   imageUrl?: string | null;
   sortOrder?: number | null;
   isPopular?: boolean | number | null;

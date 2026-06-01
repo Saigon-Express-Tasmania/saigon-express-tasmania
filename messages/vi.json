@@ -1500,6 +1500,25 @@
       "addonRemoved": "Đã xoá {name}."
     }
   },
+  "MenuItem": {
+    "bestsellerBadge": "Bán chạy",
+    "customiseTitle": "Tùy chỉnh món của bạn",
+    "selectPlaceholder": "Chọn một mục",
+    "multiSelectPlaceholder": "Chọn các mục",
+    "multiSelectedCount": "Đã chọn {count} mục",
+    "noneOption": "Không chọn",
+    "done": "Xong",
+    "requiredFieldsReminder": "Vui lòng chọn: {fields}",
+    "addToOrder": "Thêm vào đơn",
+    "decreaseQty": "Giảm số lượng",
+    "increaseQty": "Tăng số lượng",
+    "relatedTitle": "Bạn Cũng Có Thể Thích",
+    "backToMenu": "Quay lại thực đơn",
+    "backToMenuHint": "Xem tất cả danh mục và món ăn",
+    "magnifierHint": "Di chuột để phóng to",
+    "additionalImagesTitle": "Hình ảnh thêm",
+    "additionalImagesSelect": "Xem hình {index}"
+  },
   "NotFound": {
     "code": "404",
     "heading": "Không Tìm Thấy Trang",
