@@ -1,29 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { loadMenuItemPageData } from "@/lib/menu-item-page";
+import { getMenuItemFromParam } from "@/lib/supabase/menu-item";
 import MenuItemView from "@/views/MenuItem";
-import { getCategories } from "@/lib/supabase/categories";
-import { getMenuItemById } from "@/lib/supabase/menu-item";
-import { getMenuItems } from "@/lib/supabase/menu";
-import { getStoreLocations } from "@/lib/supabase/store-locations";
 
 type PageProps = {
   params: Promise<{ locale: string; itemId: string }>;
 };
 
-function parseItemId(raw: string): number | null {
-  const id = Number.parseInt(raw, 10);
-  if (!Number.isFinite(id) || id < 1) return null;
-  return id;
-}
-
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { itemId } = await params;
-  const id = parseItemId(itemId);
-  if (id === null) return { title: "Menu Item" };
-
-  const item = await getMenuItemById(id);
+  const item = await getMenuItemFromParam(itemId);
   if (!item) return { title: "Menu Item Not Found" };
 
   return {
@@ -36,25 +25,8 @@ export async function generateMetadata({
 
 export default async function LocaleMenuItemPage({ params }: PageProps) {
   const { itemId } = await params;
-  const id = parseItemId(itemId);
-  if (id === null) notFound();
+  const data = await loadMenuItemPageData(itemId);
+  if (!data) notFound();
 
-  const [item, menuItems, categoriesContent, storeLocations] =
-    await Promise.all([
-      getMenuItemById(id),
-      getMenuItems(),
-      getCategories(),
-      getStoreLocations(),
-    ]);
-
-  if (!item) notFound();
-
-  return (
-    <MenuItemView
-      item={item}
-      menuItems={menuItems}
-      categoriesContent={categoriesContent}
-      storeLocations={storeLocations}
-    />
-  );
+  return <MenuItemView {...data} />;
 }

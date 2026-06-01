@@ -11,7 +11,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { DEFAULT_LOCALE } from "@/config/localize";
+import { menuItemDetailPath } from "@/lib/menu-item-routes";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import LazyImage from "@/components/LazyImage";
 import { getRelatedMenuItems } from "@/lib/menu-related-items";
@@ -76,8 +76,7 @@ export default function MenuItemView({
   const priceLabel = `$${parseFloat(item.price).toFixed(2)}`;
 
   const menuItemPath = useCallback(
-    (id: number) =>
-      locale === DEFAULT_LOCALE ? `/menu/${id}` : `/${locale}/menu/${id}`,
+    (menuItem: MenuItem) => menuItemDetailPath(menuItem, locale),
     [locale],
   );
 
@@ -196,7 +195,7 @@ export default function MenuItemView({
               {relatedItems.map((related) => (
                 <Link
                   key={related.id}
-                  href={menuItemPath(related.id)}
+                  href={menuItemPath(related)}
                   className="group overflow-hidden bg-white card-lift"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">

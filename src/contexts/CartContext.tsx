@@ -10,6 +10,7 @@ import type { ItemCustomisation } from "@/components/ItemCustomiseModal";
 export type MenuItem = {
   id: number;
   name: string;
+  slug?: string;
   category: string;
   price: string;
   description?: string | null;

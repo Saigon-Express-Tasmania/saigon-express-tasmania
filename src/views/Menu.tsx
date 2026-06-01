@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
-import { DEFAULT_LOCALE } from "@/config/localize";
+import { menuItemDetailPath } from "@/lib/menu-item-routes";
 import AddOnSuggestionModal, {
   type SuggestedItem,
 } from "@/components/AddOnSuggestionModal";
@@ -62,8 +62,7 @@ export default function Menu({
   const locale = useLocale();
 
   const menuItemPath = useCallback(
-    (id: number) =>
-      locale === DEFAULT_LOCALE ? `/menu/${id}` : `/${locale}/menu/${id}`,
+    (item: MenuItem) => menuItemDetailPath(item, locale),
     [locale],
   );
 
@@ -296,7 +295,7 @@ export default function Menu({
               const totalQtyInCart = cartEntries.reduce((s, c) => s + c.qty, 0);
               const lastEntry = cartEntries[cartEntries.length - 1];
 
-              const detailHref = menuItemPath(item.id);
+              const detailHref = menuItemPath(item);
 
               return (
                 <div

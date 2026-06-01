@@ -42,6 +42,7 @@ import {
   previewFromImageUrls,
   type ImageUrlsMap,
 } from '@/lib/image-urls';
+import { resolveMenuSlug, slugFromName } from '@/lib/slug';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
@@ -54,11 +55,13 @@ const MENU_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1920] as const;
 type MenuItemRow = {
   id: number;
   name: string;
+  slug: string;
   description: string | null;
   price: string;
   wholesale_price: string | null;
   category: string;
   image_urls: ImageUrlsMap;
+  related_items: number[];
   is_available: boolean;
   is_popular: boolean;
   sort_order: number;
@@ -73,12 +76,14 @@ type MenuItemInput = Omit<MenuItemRow, 'ingredients'> & {
 
 const emptyMenuItemInput = (): MenuItemInput => ({
   id: 0,
+  slug: '',
   name: '',
   description: '',
   price: '',
   wholesale_price: '',
   category: '',
   image_urls: {},
+  related_items: [],
   is_available: true,
   is_popular: false,
   sort_order: 0,
@@ -124,13 +129,21 @@ export function Menu() {
       const { data, error: fetchError } = await supabase
         .from('menu')
         .select(
-          'id, name, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients',
+          'id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients',
         )
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
       if (fetchError) throw fetchError;
-      setItems((data ?? []) as MenuItemRow[]);
+      setItems(
+        (data ?? []).map((row) => {
+          const item = row as MenuItemRow;
+          return {
+            ...item,
+            slug: resolveMenuSlug(item.slug, item.name),
+          };
+        }),
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load menu items.';
@@ -194,11 +207,13 @@ export function Menu() {
     setForm({
       id: item.id,
       name: item.name,
+      slug: resolveMenuSlug(item.slug, item.name),
       description: item.description ?? '',
       price: item.price,
       wholesale_price: item.wholesale_price ?? '',
       category: item.category,
       image_urls: normalizeImageUrls(item.image_urls),
+      related_items: item.related_items,
       is_available: item.is_available,
       is_popular: item.is_popular,
       sort_order: item.sort_order,
@@ -224,9 +239,7 @@ export function Menu() {
       return;
     }
 
-    const slugPart =
-      form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
-      `menu-${form.id}`;
+    const slugPart = form.slug.trim() || `menu-${form.id}`;
     const timestamp = Date.now();
 
     setIsUploadingImages(true);
@@ -291,9 +304,16 @@ export function Menu() {
 
     setSaving(true);
     try {
+      const slug = slugFromName(form.name);
+      if (!slug) {
+        toast.error('Name must produce a valid slug.');
+        return;
+      }
+
       const payload = {
         id: form.id,
         name: form.name.trim(),
+        slug,
         description: form.description?.trim() || null,
         price: String(form.price),
         wholesale_price: form.wholesale_price?.trim() || null,
@@ -310,6 +330,7 @@ export function Menu() {
           .from('menu')
           .update({
             name: payload.name,
+            slug: payload.slug,
             description: payload.description,
             price: payload.price,
             wholesale_price: payload.wholesale_price,
@@ -328,6 +349,7 @@ export function Menu() {
         const { error: insertError } = await supabase.from('menu').insert({
           id: payload.id,
           name: payload.name,
+          slug: payload.slug,
           description: payload.description,
           price: payload.price,
           wholesale_price: payload.wholesale_price,
@@ -642,9 +664,25 @@ export function Menu() {
               <Input
                 id="menu-name"
                 value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setForm((f) => ({
+                    ...f,
+                    name,
+                    slug: slugFromName(name),
+                  }));
+                }}
+              />
+            </div>
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="menu-slug">Slug</Label>
+              <Input
+                id="menu-slug"
+                readOnly
+                value={form.slug}
+                className="cursor-default bg-muted text-foreground"
+                aria-readonly="true"
+                tabIndex={-1}
               />
             </div>
             <div className="grid gap-2">

@@ -7,6 +7,7 @@ export type MenuImageUrls = Record<string, string>;
 export type MenuItemRow = {
   id: number;
   name: string;
+  slug: string;
   description: string | null;
   price: string;
   wholesale_price: string | null;
@@ -50,6 +51,7 @@ export function mapMenuItemRow(row: MenuItemRow): MenuItem {
   return {
     id: row.id,
     name: row.name,
+    slug: row.slug?.trim() ?? "",
     category: row.category,
     price: row.price,
     description: row.description,
