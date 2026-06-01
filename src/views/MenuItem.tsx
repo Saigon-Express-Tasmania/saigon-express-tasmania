@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "@/components/link";
 import {
   AlertCircle,
   ArrowRight,
+  ChevronLeft,
   ChevronRight,
   Minus,
   Plus,
@@ -16,10 +17,11 @@ import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import LazyImage from "@/components/LazyImage";
 import { getRelatedMenuItems } from "@/lib/menu-related-items";
 import { pickMenuImageUrl } from "@/types";
+import ItemCustomiseDropdowns from "@/components/ItemCustomiseDropdowns";
 import {
-  ItemCustomiseModal,
-  type ItemCustomisation,
-} from "@/components/ItemCustomiseModal";
+  getMissingRequiredOptionGroups,
+  useItemCustomisationState,
+} from "@/lib/item-customise-options";
 import PickLocationModal from "@/components/PickLocationModal";
 import { useCart, type MenuItem } from "@/contexts/CartContext";
 import type { SiteCategory, StoreLocation } from "@/types";
@@ -45,8 +47,19 @@ export default function MenuItemView({
 
   const [qty, setQty] = useState(1);
   const [selectedGalleryId, setSelectedGalleryId] = useState("primary");
-  const [customiseOpen, setCustomiseOpen] = useState(false);
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
+  const [missingRequiredIds, setMissingRequiredIds] = useState<string[]>([]);
+  const customiseSectionRef = useRef<HTMLDivElement>(null);
+
+  const {
+    groups,
+    selections,
+    note,
+    setNote,
+    setGroupSelection,
+    extraPrice,
+    buildCustomisation,
+  } = useItemCustomisationState(item.category);
 
   const { cartCount, cartTotal, addToCart, setCartOpen } = useCart();
 
@@ -130,33 +143,79 @@ export default function MenuItemView({
     galleryOptions.find((option) => option.id === selectedGalleryId) ??
     galleryOptions[0];
 
-  const handleCustomiseConfirm = useCallback(
-    (customisation: ItemCustomisation) => {
-      addToCart(item, { ...customisation, qty }, qty, false);
-      setCustomiseOpen(false);
-      setCartOpen(true);
+  const lineTotal = useMemo(() => {
+    const base = parseFloat(item.price);
+    return (base + extraPrice) * qty;
+  }, [item.price, extraPrice, qty]);
+
+  const handleSetGroupSelection = useCallback(
+    (groupId: string, ids: string[]) => {
+      setGroupSelection(groupId, ids);
+      if (ids.length > 0) {
+        setMissingRequiredIds((prev) => prev.filter((id) => id !== groupId));
+      }
     },
-    [item, qty, addToCart, setCartOpen],
+    [setGroupSelection],
   );
 
-  const handleAddClick = () => {
+  const handleAddClick = useCallback(() => {
     if (!item.isAvailable) return;
-    setCustomiseOpen(true);
-  };
+
+    const missing = getMissingRequiredOptionGroups(groups, selections);
+    if (missing.length > 0) {
+      setMissingRequiredIds(missing.map((group) => group.id));
+      customiseSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
+
+    setMissingRequiredIds([]);
+    addToCart(item, buildCustomisation(qty), qty, false);
+    setCartOpen(true);
+  }, [
+    item,
+    qty,
+    groups,
+    selections,
+    addToCart,
+    buildCustomisation,
+    setCartOpen,
+  ]);
+
+  const requiredFieldsMessage = useMemo(() => {
+    if (missingRequiredIds.length === 0) return null;
+    const titles = groups
+      .filter((group) => missingRequiredIds.includes(group.id))
+      .map((group) => group.title);
+    return t("requiredFieldsReminder", { fields: titles.join(", ") });
+  }, [missingRequiredIds, groups, t]);
 
   return (
     <div className="min-h-screen bg-brand-cream pb-28 font-sans">      
       <div className="mx-auto max-w-[1200px] px-5 py-8 md:px-6">
         <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:gap-12">
-          {/* Media */}
           <div className="flex-[1.2]">
-            {selectedGallery ? (
-              <MenuItemImageZoom
-                src={selectedGallery.displaySrc}
-                zoomSrc={selectedGallery.zoomSrc}
-                alt={item.name}
-              />
-            ) : null}
+            <Link href="/menu" className="inline-block mb-4">
+              <div className="flex items-center justify-between bg-brand-dark px-8 py-2 text-white transition-colors hover:bg-brand-dark/90 rounded">
+                <ChevronLeft size={18} className="text-white/50 mr-2" />
+                <div>
+                  <p className="font-serif text-lg">{t("backToMenu")}</p>
+                </div>            
+              </div>
+            </Link>
+
+            {/* Media */}
+            <div className="flex-[1.2]">
+              {selectedGallery ? (
+                <MenuItemImageZoom
+                  src={selectedGallery.displaySrc}
+                  zoomSrc={selectedGallery.zoomSrc}
+                  alt={item.name}
+                />
+              ) : null}
+            </div>
 
             {hasMoreImages ? (
               <div className="mt-4">
@@ -227,9 +286,32 @@ export default function MenuItemView({
               </p>
             ) : null}
 
-            <p className="mb-6 border-t border-gray-200 pt-4 text-sm text-brand-dark/60">
-              {t("customiseHint")}
-            </p>
+            <div
+              ref={customiseSectionRef}
+              className="mb-6 border-t border-gray-200 pt-5"
+            >
+              <h2 className="mb-4 font-serif text-lg font-bold text-brand-dark">
+                {t("customiseTitle")}
+              </h2>
+              <ItemCustomiseDropdowns
+                groups={groups}
+                selections={selections}
+                onSetGroupSelection={handleSetGroupSelection}
+                note={note}
+                onNoteChange={setNote}
+                invalidGroupIds={missingRequiredIds}
+              />
+            </div>
+
+            {requiredFieldsMessage ? (
+              <p
+                role="alert"
+                className="mb-4 flex items-start gap-2 rounded-lg border border-brand-red/30 bg-brand-red/5 px-3 py-2.5 text-sm text-brand-red"
+              >
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span>{requiredFieldsMessage}</span>
+              </p>
+            ) : null}
 
             <div className="flex items-center gap-4 border-t border-gray-200 pt-5">
               <div className="flex items-center overflow-hidden rounded border border-gray-200 bg-white">
@@ -257,13 +339,19 @@ export default function MenuItemView({
                 type="button"
                 onClick={handleAddClick}
                 disabled={!item.isAvailable}
-                className={`h-10 flex-1 rounded text-sm font-semibold transition-colors ${
+                className={`flex h-10 flex-1 items-center justify-between rounded px-4 text-sm font-semibold transition-colors ${
                   item.isAvailable
                     ? "bg-brand-dark text-white hover:bg-brand-dark/90"
                     : "cursor-not-allowed bg-gray-100 text-gray-400"
                 }`}
               >
-                {t("addToOrder")}
+                <span className="flex items-center gap-2">
+                  <ShoppingCart size={16} />
+                  {t("addToOrder")}
+                </span>
+                {item.isAvailable ? (
+                  <span>${lineTotal.toFixed(2)}</span>
+                ) : null}
               </button>
             </div>
           </div>
@@ -316,17 +404,7 @@ export default function MenuItemView({
               ))}
             </div>
           </section>
-        ) : null}
-
-        <Link href="/menu" className="mt-10 inline-block">
-          <div className="flex items-center justify-between bg-brand-dark px-8 py-5 text-white transition-colors hover:bg-brand-dark/90">
-            <div>
-              <p className="font-serif text-lg">{t("backToMenu")}</p>
-              <p className="text-xs text-white/50">{t("backToMenuHint")}</p>
-            </div>
-            <ChevronRight size={18} className="text-white/50" />
-          </div>
-        </Link>
+        ) : null}        
       </div>
 
       <PickLocationModal
@@ -370,19 +448,6 @@ export default function MenuItemView({
         </div>
       ) : null}
 
-      {customiseOpen ? (
-        <ItemCustomiseModal
-          item={{
-            ...item,
-            imageUrl:
-              item.imageUrl ??
-              categoryImageMap[item.category] ??
-              DEFAULT_IMG,
-          }}
-          onConfirm={handleCustomiseConfirm}
-          onClose={() => setCustomiseOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }
