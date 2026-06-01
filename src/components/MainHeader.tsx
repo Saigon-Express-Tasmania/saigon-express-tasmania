@@ -11,6 +11,7 @@ import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
 export default function MainHeader() {
+  const tLinks = useTranslations("NavLinks");
   const t = useTranslations("Home");
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -72,7 +73,7 @@ export default function MainHeader() {
                 href={l.href}
                 className="text-sm font-medium text-brand-dark/80 hover:text-brand-red transition-colors"
               >
-                {l.label}
+                {tLinks(`${l.key}`)}
               </Link>
             ))}
           </nav>
@@ -82,19 +83,20 @@ export default function MainHeader() {
               href="/stores"
               className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
             >
-              <MapPin size={15} /> Find Us
+              <MapPin size={15} />
+              {tLinks("find_us")}
             </Link>
             <Link
               href="/catering"
               className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
             >
-              🍱 Catering
+              🍱 {tLinks("catering")}
             </Link>
             <Link
               href="/user-portal"
               className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
             >
-              👤 My Account
+              👤 {tLinks("my_account")}
             </Link>
             {cartCount > 0 ? (
               <button
@@ -102,7 +104,9 @@ export default function MainHeader() {
                 className="btn-red text-sm py-2 px-4 flex items-center gap-1.5"
               >
                 <ShoppingCart size={15} />
-                Order ({cartCount})
+                {tLinks("order", {
+                  count: cartCount,
+                })}
               </button>
             ) : (
               <Link
@@ -110,7 +114,7 @@ export default function MainHeader() {
                 className="btn-red text-sm py-2 px-4"
               >
                 <ShoppingCart size={15} />
-                Order Online
+                {tLinks("order_online")}
               </Link>
             )}
             <button

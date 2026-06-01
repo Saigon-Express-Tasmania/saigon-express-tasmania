@@ -2,6 +2,7 @@
 
 import AppImage from "@/components/AppImage";
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { X, Plus, ShoppingBag, Check } from "lucide-react";
 
 export interface SuggestedItem {
@@ -23,14 +24,14 @@ interface AddOnSuggestionModalProps {
 }
 
 const CATEGORY_IMGS: Record<string, string> = {
-  "Drinks":              "/manus-storage/spring-rolls-2_f1e40ae6.jpg",
-  "Entrée":              "/manus-storage/entree-seafood-spring-rolls_f060f6bd.jpg",
-  "Rice Paper Rolls":    "/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_5da191dd.png",
-  "Burgers & Chicken":   "/manus-storage/banh-mi-2_7d02846f.jpg",
+  Drinks: "/manus-storage/spring-rolls-2_f1e40ae6.jpg",
+  Entrée: "/manus-storage/entree-seafood-spring-rolls_f060f6bd.jpg",
+  "Rice Paper Rolls":
+    "/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_5da191dd.png",
+  "Burgers & Chicken": "/manus-storage/banh-mi-2_7d02846f.jpg",
 };
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
 
-// Delay (ms) between the animation completing and the modal closing
 const DISMISS_DELAY = 600;
 
 export default function AddOnSuggestionModal({
@@ -40,20 +41,19 @@ export default function AddOnSuggestionModal({
   onAdd,
   onClose,
 }: AddOnSuggestionModalProps) {
+  const t = useTranslations("CartAddOnModal");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Track which card is currently animating (null = none)
   const [addingId, setAddingId] = useState<number | null>(null);
 
-  // Auto-dismiss after 8 seconds
   useEffect(() => {
     if (!triggerItem) return;
     timerRef.current = setTimeout(onClose, 8000);
+
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [triggerItem, onClose]);
+  }, []);
 
-  // Reset animation state whenever the modal opens with a new trigger
   useEffect(() => {
     setAddingId(null);
   }, [triggerItem]);
@@ -62,44 +62,46 @@ export default function AddOnSuggestionModal({
 
   const handleAdd = (item: SuggestedItem) => {
     if (addingId !== null || !item.isAvailable) return;
-    // 1. Start the card animation
     setAddingId(item.id);
-    // 2. Fire the actual add + dismiss after the animation settles
     setTimeout(() => {
       onAdd(item);
-      // onAdd already calls onClose via the parent handler
     }, DISMISS_DELAY);
   };
 
   return (
     <>
-      {/* Backdrop — click to dismiss */}
       <div
         className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
         onClick={onClose}
       />
 
-      {/* Modal panel — slides up from bottom */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-2xl animate-slide-up">
-        {/* Header */}
+        {/* Header Section */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <ShoppingBag size={16} className="text-brand-red" />
             <span className="text-sm font-semibold text-brand-dark">
-              Added <span className="text-brand-red">{triggerItem.name}</span> — complete your meal?
+              {/* FIXED INTERPOLATION EXTRACTION */}
+              {t.rich("header.template", {
+                itemName: triggerItem.name,
+                brandRed: (chunks) => (
+                  <span className="text-brand-red">{chunks}</span>
+                ),
+              })}
             </span>
           </div>
           <button
             onClick={onClose}
+            aria-label={t("aria.close")}
             className="w-7 h-7 flex items-center justify-center text-brand-dark/40 hover:text-brand-dark transition-colors"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Suggestion cards */}
+        {/* Suggestion Cards */}
         <div className="flex gap-3 px-5 py-4 overflow-x-auto scrollbar-hide">
-          {suggestions.map(item => {
+          {suggestions.map((item) => {
             const inCart = cartIds.has(item.id);
             const isAnimating = addingId === item.id;
 
@@ -110,20 +112,24 @@ export default function AddOnSuggestionModal({
                   isAnimating ? "animate-card-add" : ""
                 }`}
               >
-                {/* Image with checkmark overlay during animation */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-gray-200">
                   <AppImage
-                    src={item.imageUrl ?? CATEGORY_IMGS[item.category] ?? DEFAULT_IMG}
+                    src={
+                      item.imageUrl ??
+                      CATEGORY_IMGS[item.category] ??
+                      DEFAULT_IMG
+                    }
                     alt={item.name}
                     fill
                     className={`object-cover transition-all duration-300 ${
                       isAnimating ? "brightness-75 scale-105" : ""
                     }`}
                   />
-                  {/* Checkmark overlay — fades in during animation */}
                   <div
                     className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-                      isAnimating ? "opacity-100" : "opacity-0 pointer-events-none"
+                      isAnimating
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none"
                     }`}
                   >
                     <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shadow-lg animate-check-pop">
@@ -132,7 +138,6 @@ export default function AddOnSuggestionModal({
                   </div>
                 </div>
 
-                {/* Info */}
                 <div className="p-2.5">
                   <p className="text-[9px] font-bold text-brand-red uppercase tracking-widest mb-0.5">
                     {item.category}
@@ -146,21 +151,30 @@ export default function AddOnSuggestionModal({
                     </span>
                     <button
                       onClick={() => handleAdd(item)}
-                      disabled={inCart || !item.isAvailable || addingId !== null}
+                      disabled={
+                        inCart || !item.isAvailable || addingId !== null
+                      }
                       className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 transition-all duration-200 ${
                         isAnimating
                           ? "bg-green-500 text-white scale-95"
                           : inCart
-                          ? "bg-green-600 text-white cursor-default"
-                          : item.isAvailable
-                          ? "bg-brand-red text-white hover:bg-brand-red/90 active:scale-95"
-                          : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            ? "bg-green-600 text-white cursor-default"
+                            : item.isAvailable
+                              ? "bg-brand-red text-white hover:bg-brand-red/90 active:scale-95"
+                              : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       }`}
                     >
-                      {isAnimating || inCart
-                        ? <><Check size={10} /> Added</>
-                        : <><Plus size={10} /> Add</>
-                      }
+                      {isAnimating || inCart ? (
+                        <>
+                          <Check size={10} /> {t("actions.added")}
+                        </>
+                      ) : item.isAvailable ? (
+                        <>
+                          <Plus size={10} /> {t("actions.add")}
+                        </>
+                      ) : (
+                        t("actions.unavailable")
+                      )}
                     </button>
                   </div>
                 </div>
@@ -169,7 +183,6 @@ export default function AddOnSuggestionModal({
           })}
         </div>
 
-        {/* Progress bar auto-dismiss indicator */}
         <div className="h-0.5 bg-gray-100 mx-5 mb-4 overflow-hidden">
           <div className="h-full bg-brand-red animate-shrink-width" />
         </div>

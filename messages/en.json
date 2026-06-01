@@ -1,4 +1,17 @@
 {
+  "NavLinks": {
+    "home": "Home",
+    "our_food": "Our Food",
+    "our_story": "Our Story",
+    "wholesale": "Wholesale Shop",
+    "franchise": "Franchise",
+    "faq": "FAQ",
+    "find_us": "Find Us",
+    "catering": "Catering",
+    "my_account": "My Account",
+    "order": "Order {count}",
+    "order_online": "Order Online"
+  },
   "Home": {
     "portals": {
       "franchise": "Franchise Portal",
@@ -2008,5 +2021,451 @@
       { "key": "Sauce", "label": "Sauce" },
       { "key": "Pastry", "label": "Pastry" }
     ]
+  },
+  "CartAddOnModal": {
+    "header": {
+      "template": "Added <brandRed>{itemName}</brandRed> — complete your meal?"
+    },
+    "actions": {
+      "add": "Add",
+      "added": "Added",
+      "unavailable": "Sold Out"
+    },
+    "aria": {
+      "close": "Close suggestion panel"
+    }
+  },
+  "CartDrawer": {
+    "header": {
+      "title": "Your Order"
+    },
+    "pickupBanner": {
+      "title": "In-Store Pickup Only",
+      "template": "Want delivery? <storeLink>Select your store →</storeLink>"
+    },
+    "emptyState": {
+      "title": "Your cart is empty",
+      "menuCta": "Browse the Menu →",
+      "deliveryCta": "Order delivery — select your nearest store"
+    },
+    "itemRow": {
+      "priceEach": "${price} each",
+      "customisationPrefix": {
+        "no": "No ",
+        "extra": "Extra ",
+        "well": "Well ",
+        "rare": "Rare "
+      }
+    },
+    "footer": {
+      "totalLabel": "Total",
+      "checkoutButton": "Proceed to Checkout",
+      "deliveryButton": "Order Delivery Instead"
+    }
+  },
+  "FloatingWidgets": {
+    "aria": {
+      "facebookCta": "Message Saigon Express on Facebook",
+      "openChat": "Chat with Saigon Express",
+      "closeChat": "Close chat",
+      "minimize": "Minimize chat panel"
+    },
+    "titles": {
+      "widgetBtn": "Chat With Us",
+      "brand": "Saigon Express Tasmania",
+      "status": "AI Assistant · Online now"
+    },
+    "chat": {
+      "inputPlaceholder": "Type a message...",
+      "welcomeMsg": "Xin chào! 👋 Welcome to Saigon Express Tasmania. How can I help you today? Ask me about our menu, store locations, catering, wholesale, or franchise opportunities!",
+      "errorMsg": "Sorry, I'm having trouble connecting right now. Please call us on 0416 036 016 or email info@saigonexpress.com.au."
+    },
+    "quickReplies": [
+      "What's on the menu?",
+      "Where are your stores?",
+      "Do you offer catering?",
+      "Halal options?",
+      "Franchise info"
+    ]
+  },
+  "GetApp": {
+    "brandName": "Saigon Express Tasmania",
+    "brandDomain": "saigonexpress.com.au",
+    "badge": "Free • No App Store needed",
+    "heading": "Get the SG App",
+    "subheading": "Faster. Easier. Always Ready.",
+    "description": "Add {brandName} to your home screen — no App Store, no storage used. Just one tap to open anytime.",
+    "tip": "💡 Tip: {safariTip} — it installs in 3 steps instead of 5.",
+    "tipSafariBold": "Safari works best on iPhone",
+    "shareLabel": "📲 Share this page with friends",
+    "shareFooterLine1": "Open this page on your phone to install the app.",
+    "shareFooterLine2": "Works on iPhone (Safari) and Android (Chrome) • No App Store needed",
+    "copyLink": "🔗 Copy Link",
+    "whatsapp": "WhatsApp",
+    "whatsappMessage": "Order Vietnamese food from Saigon Express Tasmania! Add it to your home screen: {siteOrigin}",
+    "benefits": [
+      {
+        "icon": "🎁",
+        "title": "Earn Stamps Faster",
+        "desc": "Open the app, scan QR at the counter — stamp added in seconds. No need to search for the website.",
+        "href": null
+      },
+      {
+        "icon": "⚡",
+        "title": "Order in One Tap",
+        "desc": "Menu always ready, order 3× faster than a browser.",
+        "href": null
+      },
+      {
+        "icon": "🔔",
+        "title": "Exclusive Deals",
+        "desc": "Get promotions only for app users — before they run out.",
+        "href": "/promotions"
+      },
+      {
+        "icon": "📍",
+        "title": "Find Stores Offline",
+        "desc": "View addresses and opening hours even without internet.",
+        "href": null
+      }
+    ],
+    "instructions": {
+      "ios_safari": {
+        "platform": "🍎 iPhone — Safari browser",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Open {domain} in Safari (not Chrome or Firefox)",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap the {share} at the bottom centre of Safari (the box with an arrow pointing up)",
+            "boldPart": "Share button ↑"
+          },
+          {
+            "type": "numbered",
+            "text": "Scroll down in the share sheet and tap {action} (with a ⊕ icon)",
+            "boldPart": "“Add to Home Screen”"
+          },
+          {
+            "type": "warning",
+            "text": "In the name field, check it says {appName}. If it shows something else, clear it and type {appName}",
+            "boldPart": "Saigon Express"
+          },
+          {
+            "type": "success",
+            "text": "Tap {action} in the top-right corner — the SG icon appears on your home screen!",
+            "boldPart": "Add"
+          }
+        ]
+      },
+      "ios_firefox": {
+        "platform": "🦊 iPhone — Firefox browser",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Open {domain} in Firefox",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap the {menu} button at the bottom-right of the screen",
+            "boldPart": "⋯ menu"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap {action} from the menu that appears",
+            "boldPart": "Share"
+          },
+          {
+            "type": "numbered",
+            "text": "In the iOS share sheet, tap {viewMore} (bottom-right ↓ arrow), then tap {action}",
+            "boldPart": "“Add to Home Screen”"
+          },
+          {
+            "type": "warning",
+            "text": "In the name field, check it says {appName}. If it shows something else, clear it and type {appName}",
+            "boldPart": "Saigon Express"
+          },
+          {
+            "type": "success",
+            "text": "Tap {action} in the top-right corner — the SG icon appears on your home screen!",
+            "boldPart": "Add"
+          }
+        ]
+      },
+      "android_chrome": {
+        "platform": "🤖 Android — Chrome browser",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Open {domain} in Chrome",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap the {menu} in the top-right corner of Chrome",
+            "boldPart": "⋮ menu"
+          },
+          {
+            "type": "numbered",
+            "text": "Select {action}",
+            "boldPart": "“Add to Home Screen”"
+          },
+          {
+            "type": "success",
+            "text": "Tap {action} — the SG icon appears on your home screen!",
+            "boldPart": "Add"
+          }
+        ]
+      }
+    }
+  },
+  "ItemCustomiseModal": {
+    "requiredBadge": "Required",
+    "chooseAny": "Choose any",
+    "specialInstructions": {
+      "title": "Special Instructions",
+      "optional": "Optional",
+      "placeholder": "e.g. No peanuts, extra sauce on the side, make it extra crispy...",
+      "charCount": "{count}/200"
+    },
+    "addToCart": "Add to Cart",
+    "proteinOptions": [
+      {
+        "id": "pork",
+        "label": "BBQ Pork (Xá Xíu)"
+      },
+      {
+        "id": "chicken",
+        "label": "Grilled Chicken"
+      },
+      {
+        "id": "prawn",
+        "label": "Prawn"
+      },
+      {
+        "id": "beef",
+        "label": "Beef (Bò)"
+      },
+      {
+        "id": "tofu",
+        "label": "Tofu (Vegetarian)"
+      },
+      {
+        "id": "pork_belly",
+        "label": "Crackling Pork Belly"
+      },
+      {
+        "id": "mixed",
+        "label": "Mixed Proteins"
+      }
+    ],
+    "unifiedExtras": [
+      {
+        "id": "extra_beef",
+        "label": "Extra Beef"
+      },
+      {
+        "id": "extra_chicken",
+        "label": "Extra Chicken"
+      },
+      {
+        "id": "extra_prawn",
+        "label": "Extra Prawn"
+      },
+      {
+        "id": "extra_seafood",
+        "label": "Extra Seafood"
+      },
+      {
+        "id": "extra_crispy_pork",
+        "label": "Extra Crispy Pork"
+      },
+      {
+        "id": "extra_veggies",
+        "label": "Extra Veggies"
+      },
+      {
+        "id": "extra_noodles",
+        "label": "Extra Noodles"
+      },
+      {
+        "id": "extra_fried_egg",
+        "label": "Extra Fried Egg"
+      },
+      {
+        "id": "extra_broth",
+        "label": "Extra Broth"
+      },
+      {
+        "id": "extra_chilli",
+        "label": "Extra Chilli"
+      },
+      {
+        "id": "extra_sauce",
+        "label": "Extra Sauce"
+      }
+    ],
+    "banhMiVeggies": [
+      {
+        "id": "no_coriander",
+        "label": "No Coriander"
+      },
+      {
+        "id": "no_spring_onion",
+        "label": "No Spring Onion"
+      },
+      {
+        "id": "no_daikon",
+        "label": "No Daikon & Carrot"
+      },
+      {
+        "id": "no_cucumber",
+        "label": "No Cucumber"
+      },
+      {
+        "id": "extra_veggies",
+        "label": "Extra Veggies"
+      },
+      {
+        "id": "extra_coriander",
+        "label": "Extra Coriander"
+      },
+      {
+        "id": "extra_cucumber",
+        "label": "Extra Cucumber"
+      },
+      {
+        "id": "no_veggies",
+        "label": "No Veggies at All"
+      }
+    ],
+    "spiceOptions": [
+      {
+        "id": "no_chilli",
+        "label": "No Chilli"
+      },
+      {
+        "id": "mild",
+        "label": "Mild"
+      },
+      {
+        "id": "medium",
+        "label": "Medium"
+      },
+      {
+        "id": "hot",
+        "label": "Hot 🌶️"
+      },
+      {
+        "id": "extra_hot",
+        "label": "Extra Hot 🌶️🌶️"
+      }
+    ],
+    "sauceOptions": [
+      {
+        "id": "sauce_mayo",
+        "label": "Sriracha Mayo"
+      },
+      {
+        "id": "sauce_hoisin",
+        "label": "Hoisin Sauce"
+      },
+      {
+        "id": "sauce_fish",
+        "label": "Fish Sauce Dressing"
+      },
+      {
+        "id": "sauce_soy",
+        "label": "Soy Sauce"
+      },
+      {
+        "id": "sauce_chilli",
+        "label": "Chilli Sauce"
+      },
+      {
+        "id": "no_sauce",
+        "label": "No Sauce"
+      }
+    ],
+    "groupTitles": {
+      "protein_banh_mi": "Choose Your Protein",
+      "protein_rice": "Protein Choice",
+      "extras": "Add Extras",
+      "veggies": "Veggies & Toppings",
+      "spice": "Spice Level",
+      "sauce_banh_mi": "Sauce",
+      "sauce_condiments": "Condiments"
+    }
+  },
+  "Jobs": {
+    "sectionLabel": "OPEN POSITIONS",
+    "heading": "Find Your Role",
+    "subheading": "We have {count} open positions across our Tasmanian locations. Click any role to read the full job description.",
+    "filterAll": "All",
+    "keyResponsibilities": "Key Responsibilities",
+    "lookingFor": "What We're Looking For",
+    "perksAndBenefits": "Perks & Benefits",
+    "applyButton": "Apply for This Role",
+    "applyFootnote": "Send your CV and cover letter to",
+    "applyEmail": "info@saigonexpress.com.au",
+    "emailSubject": "Application: {jobTitle}",
+    "emailBody": "Hi Saigon Express Team,%0D%0A%0D%0AI am applying for the {jobTitle} position.%0D%0A%0D%0APlease find my details below:%0D%0A%0D%0AName:%0D%0APhone:%0D%0AAvailability:%0D%0A%0D%0AThank you"
+  },
+  "Newsletter": {
+    "getInTouch": "Get in Touch",
+    "phoneLabel": "0416 036 016 (SMS only)",
+    "address": "Level 2, 86 Collins St\nHobart TAS 7000",
+    "stayUpdated": "Stay Updated",
+    "successMessage": "✓ You're on the list!",
+    "namePlaceholder": "Your name *",
+    "emailPlaceholder": "Email address *",
+    "subscribing": "Subscribing…",
+    "subscribe": "Subscribe"
+  },
+  "PickLocationModal": {
+    "heading": "Pick a Location",
+    "cartItems_one": "{count} item in your cart",
+    "cartItems_other": "{count} items in your cart",
+    "searchPlaceholder": "Search suburb or location...",
+    "noResults": "No locations match your search",
+    "openNow": "Open now",
+    "closed": "Closed",
+    "hoursUnavailable": "Hours unavailable",
+    "cartSummary_one": "{count} item",
+    "cartSummary_other": "{count} items"
+  },
+  "PopularSection": {
+    "sectionLabel": "Customer Favourites",
+    "heading": "Most Popular",
+    "viewFullMenu": "View Full Menu",
+    "popularBadge": "Popular",
+    "addToCart": "Add to Cart",
+    "unavailable": "Unavailable",
+    "removeLastCartLine": "Remove last cart line",
+    "addAnother": "Add another",
+    "viewCart": "View Cart ({count} items · ${total})"
+  },
+  "ReviewCard": {
+    "powered": "Reviews powered by Google"
+  },
+  "ShareDealButton": {
+    "triggerLabel": "Chia sẻ ưu đãi",
+    "popoverHeading": "Chia sẻ qua",
+    "shareText": "{title}{hasDescription, select, true { — {description}} other {}} 🍜 Saigon Express Tasmania",
+    "copyLink": "Sao chép liên kết",
+    "copyLinkCopied": "Đã sao chép!",
+    "channels": {
+      "facebook": "Facebook",
+      "twitter": "X (Twitter)",
+      "whatsapp": "WhatsApp"
+    },
+    "toast": {
+      "copySuccess": "Đã sao chép liên kết!",
+      "copySuccessDescription": "Chia sẻ ở bất kỳ đâu bạn muốn.",
+      "copyError": "Không thể sao chép liên kết."
+    }
   }
 }

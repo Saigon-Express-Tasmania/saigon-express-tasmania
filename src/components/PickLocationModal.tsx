@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { X, MapPin, Search, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import type { StoreLocation } from "@/types";
@@ -13,15 +14,15 @@ interface PickLocationModalProps {
 }
 
 /** Parse hours JSON and return today's hours string */
-function getTodayHours(hoursJson: string | null): string {
-  if (!hoursJson) return "Hours unavailable";
+function getTodayHours(hoursJson: string | null, fallback: string): string {
+  if (!hoursJson) return fallback;
   try {
     const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
     const key = days[new Date().getDay()];
     const parsed = JSON.parse(hoursJson) as Record<string, string>;
-    return parsed[key] ?? "Hours unavailable";
+    return parsed[key] ?? fallback;
   } catch {
-    return "Hours unavailable";
+    return fallback;
   }
 }
 
@@ -35,7 +36,9 @@ function isOpenNow(hoursJson: string | null): boolean {
     const todayHours = parsed[key];
     if (!todayHours) return false;
 
-    const match = todayHours.match(/(\d+:\d+\s*[AP]M)\s*-\s*(\d+:\d+\s*[AP]M)/i);
+    const match = todayHours.match(
+      /(\d+:\d+\s*[AP]M)\s*-\s*(\d+:\d+\s*[AP]M)/i,
+    );
     if (!match) return false;
 
     const parseTime = (t: string) => {
@@ -55,7 +58,13 @@ function isOpenNow(hoursJson: string | null): boolean {
   }
 }
 
-export default function PickLocationModal({ open, onClose, onSelect, stores }: PickLocationModalProps) {
+export default function PickLocationModal({
+  open,
+  onClose,
+  onSelect,
+  stores,
+}: PickLocationModalProps) {
+  const t = useTranslations("PickLocationModal");
   const [search, setSearch] = useState("");
   const { cartCount, cartTotal } = useCart();
 
@@ -63,7 +72,7 @@ export default function PickLocationModal({ open, onClose, onSelect, stores }: P
     if (!search.trim()) return stores;
     const q = search.toLowerCase();
     return stores.filter(
-      s =>
+      (s) =>
         s.name.toLowerCase().includes(q) ||
         s.address.toLowerCase().includes(q) ||
         (s.suburb ?? "").toLowerCase().includes(q),
@@ -82,9 +91,11 @@ export default function PickLocationModal({ open, onClose, onSelect, stores }: P
         {/* Header */}
         <div className="flex items-start justify-between p-6 pb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Pick a Location</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t("heading")}</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              {cartCount} {cartCount === 1 ? "item" : "items"} in your cart
+              {t(cartCount === 1 ? "cartItems_one" : "cartItems_other", {
+                count: cartCount,
+              })}
             </p>
           </div>
           <button
@@ -98,12 +109,15 @@ export default function PickLocationModal({ open, onClose, onSelect, stores }: P
         {/* Search */}
         <div className="px-6 pb-3">
           <div className="relative">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={16}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
               type="text"
-              placeholder="Search suburb or location..."
+              placeholder={t("searchPlaceholder")}
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border-2 border-brand-red rounded-full text-sm focus:outline-none focus:border-brand-red placeholder-gray-400"
               autoFocus
             />
@@ -115,16 +129,22 @@ export default function PickLocationModal({ open, onClose, onSelect, stores }: P
           {storesFiltered.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
               <MapPin size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No locations match your search</p>
+              <p className="text-sm">{t("noResults")}</p>
             </div>
           ) : (
-            storesFiltered.map(store => {
-              const open = isOpenNow(store.hours);
-              const todayHours = getTodayHours(store.hours);
+            storesFiltered.map((store) => {
+              const storeOpen = isOpenNow(store.hours);
+              const todayHours = getTodayHours(
+                store.hours,
+                t("hoursUnavailable"),
+              );
               return (
                 <button
                   key={store.id}
-                  onClick={() => { onSelect(store); onClose(); }}
+                  onClick={() => {
+                    onSelect(store);
+                    onClose();
+                  }}
                   className="w-full flex items-center gap-4 p-4 border border-gray-100 rounded-2xl hover:border-brand-red hover:bg-red-50/30 transition-all text-left group"
                 >
                   <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
@@ -134,15 +154,26 @@ export default function PickLocationModal({ open, onClose, onSelect, stores }: P
                     <p className="font-bold text-gray-900 text-sm">
                       {store.name.replace(/^SGE\s+/, "")}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">{store.suburb ?? store.address}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {store.suburb ?? store.address}
+                    </p>
                     <p className="text-xs mt-0.5">
-                      <span className={open ? "text-green-600 font-medium" : "text-orange-500 font-medium"}>
-                        {open ? "Open now" : "Closed"}
+                      <span
+                        className={
+                          storeOpen
+                            ? "text-green-600 font-medium"
+                            : "text-orange-500 font-medium"
+                        }
+                      >
+                        {storeOpen ? t("openNow") : t("closed")}
                       </span>
                       <span className="text-gray-400 ml-1">· {todayHours}</span>
                     </p>
                   </div>
-                  <ChevronRight size={16} className="text-gray-300 group-hover:text-brand-red transition-colors flex-shrink-0" />
+                  <ChevronRight
+                    size={16}
+                    className="text-gray-300 group-hover:text-brand-red transition-colors flex-shrink-0"
+                  />
                 </button>
               );
             })
@@ -152,8 +183,14 @@ export default function PickLocationModal({ open, onClose, onSelect, stores }: P
         {/* Bottom cart summary */}
         <div className="border-t border-gray-100 px-6 py-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">{cartCount} {cartCount === 1 ? "item" : "items"}</span>
-            <span className="font-bold text-gray-900">${cartTotal.toFixed(2)}</span>
+            <span className="text-gray-500">
+              {t(cartCount === 1 ? "cartSummary_one" : "cartSummary_other", {
+                count: cartCount,
+              })}
+            </span>
+            <span className="font-bold text-gray-900">
+              ${cartTotal.toFixed(2)}
+            </span>
           </div>
         </div>
       </div>

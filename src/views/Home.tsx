@@ -1,8 +1,6 @@
 import AppImage from "@/components/AppImage";
 import LazyImage from "@/components/LazyImage";
 import Link from "@/components/link";
-import MainHeader from "@/components/MainHeader";
-import MainFooter from "@/components/MainFooter";
 
 import dynamic from "next/dynamic";
 import type { MenuItem } from "@/contexts/CartContext";

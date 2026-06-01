@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
@@ -27,34 +28,39 @@ type Job = {
 };
 
 export default function Jobs({ jobs }: { jobs: Job[] }) {
+  const t = useTranslations("Jobs");
+
   const [expandedJob, setExpandedJob] = useState<number | null>(null);
-  const [filterDept, setFilterDept] = useState("All");
+  const [filterDept, setFilterDept] = useState(t("filterAll"));
+
+  const filterAllLabel = t("filterAll");
 
   const departments = [
-    "All",
+    filterAllLabel,
     ...Array.from(new Set(jobs.map((j) => j.department))),
   ];
+
   const filtered =
-    filterDept === "All"
+    filterDept === filterAllLabel
       ? jobs
       : jobs.filter((j) => j.department === filterDept);
 
   return (
     <section id="positions" className="py-20 bg-[#F5F0E8]">
       <div className="container">
+        {/* Section heading */}
         <div className="text-center mb-10">
           <div
             className="text-xs font-bold tracking-[0.2em] uppercase mb-3"
             style={{ color: "oklch(71% 0.155 62)" }}
           >
-            OPEN POSITIONS
+            {t("sectionLabel")}
           </div>
           <h2 className="font-serif text-4xl font-bold text-foreground">
-            Find Your Role
+            {t("heading")}
           </h2>
           <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
-            We have {jobs.length} open positions across our Tasmanian locations.
-            Click any role to read the full job description.
+            {t("subheading", { count: jobs.length })}
           </p>
         </div>
 
@@ -75,6 +81,7 @@ export default function Jobs({ jobs }: { jobs: Job[] }) {
           ))}
         </div>
 
+        {/* Job list */}
         <div className="space-y-4 max-w-4xl mx-auto">
           {filtered.map((job, i) => (
             <motion.div
@@ -145,10 +152,11 @@ export default function Jobs({ jobs }: { jobs: Job[] }) {
                       </p>
 
                       <div className="grid md:grid-cols-2 gap-6 mb-6">
+                        {/* Responsibilities */}
                         <div>
                           <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                            Key Responsibilities
+                            {t("keyResponsibilities")}
                           </h4>
                           <ul className="space-y-2">
                             {job.responsibilities.map((r, ri) => (
@@ -164,10 +172,12 @@ export default function Jobs({ jobs }: { jobs: Job[] }) {
                             ))}
                           </ul>
                         </div>
+
+                        {/* Requirements + Perks */}
                         <div>
                           <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-                            What We're Looking For
+                            {t("lookingFor")}
                           </h4>
                           <ul className="space-y-2 mb-5">
                             {job.requirements.map((r, ri) => (
@@ -184,7 +194,7 @@ export default function Jobs({ jobs }: { jobs: Job[] }) {
                           </ul>
                           <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                            Perks & Benefits
+                            {t("perksAndBenefits")}
                           </h4>
                           <ul className="space-y-2">
                             {job.perks.map((p, pi) => (
@@ -202,21 +212,21 @@ export default function Jobs({ jobs }: { jobs: Job[] }) {
                         </div>
                       </div>
 
+                      {/* Apply CTA */}
                       <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
                         <a
-                          href={`mailto:info@saigonexpress.com.au?subject=Application: ${encodeURIComponent(
-                            job.title,
-                          )}&body=Hi Saigon Express Team,%0D%0A%0D%0AI am applying for the ${encodeURIComponent(
-                            job.title,
-                          )} position.%0D%0A%0D%0APlease find my details below:%0D%0A%0D%0AName:%0D%0APhone:%0D%0AAvailability:%0D%0A%0D%0AThank you`}
+                          href={`mailto:${t("applyEmail")}?subject=${encodeURIComponent(
+                            t("emailSubject", { jobTitle: job.title }),
+                          )}&body=${t("emailBody", { jobTitle: encodeURIComponent(job.title) })}`}
                           className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors text-sm"
                         >
-                          <Mail className="w-4 h-4" /> Apply for This Role
+                          <Mail className="w-4 h-4" />
+                          {t("applyButton")}
                         </a>
                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-4 py-2.5">
-                          Send your CV and cover letter to{" "}
+                          {t("applyFootnote")}{" "}
                           <strong className="text-foreground ml-1">
-                            info@saigonexpress.com.au
+                            {t("applyEmail")}
                           </strong>
                         </span>
                       </div>

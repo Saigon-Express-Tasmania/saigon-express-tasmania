@@ -1,12 +1,13 @@
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
 import { PORTAL_LINKS } from "@/config/nav-links";
-import { LOGO_URL } from "@/lib/site-images";
+
 import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 
 const Newsletter = dynamic(() => import("@/components/Newsletter"));
+const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
 export default function MainFooter() {
   const t = useTranslations("Home");

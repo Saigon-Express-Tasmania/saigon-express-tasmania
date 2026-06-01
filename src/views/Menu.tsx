@@ -175,12 +175,12 @@ export default function Menu({
               {t("hero.subheading")}
             </p>
             <div className="flex flex-wrap gap-3">
-              <a
-                href="#menu-grid"
+              <Link
+                href="/menu#categories"
                 className="inline-flex items-center gap-2 bg-brand-red hover:bg-brand-red/90 text-white font-semibold px-6 py-3 transition-colors text-sm"
               >
                 {t("hero.ctaMenu")}
-              </a>
+              </Link>
               <Link
                 href="/contact"
                 className="inline-flex items-center gap-2 border border-white/30 hover:border-white/60 text-white font-semibold px-6 py-3 transition-colors text-sm"

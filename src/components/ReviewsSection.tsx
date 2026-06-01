@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import type { FeaturedReview } from '@/types';
+import { useEffect, useRef, useState } from "react";
+import type { FeaturedReview } from "@/types";
+import { useTranslations } from "next-intl";
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
@@ -15,10 +16,10 @@ function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
         <svg
           key={i}
           viewBox="0 0 20 20"
-          fill={i < rating ? 'currentColor' : 'none'}
+          fill={i < rating ? "currentColor" : "none"}
           stroke="currentColor"
           strokeWidth={i < rating ? 0 : 1.5}
-          className={`w-4 h-4 ${i < rating ? 'text-amber-400' : 'text-stone-500'}`}
+          className={`w-4 h-4 ${i < rating ? "text-amber-400" : "text-stone-500"}`}
         >
           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
         </svg>
@@ -29,25 +30,25 @@ function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
-  'bg-red-700',
-  'bg-amber-700',
-  'bg-emerald-700',
-  'bg-sky-700',
-  'bg-violet-700',
-  'bg-rose-700',
-  'bg-teal-700',
-  'bg-orange-700',
+  "bg-red-700",
+  "bg-amber-700",
+  "bg-emerald-700",
+  "bg-sky-700",
+  "bg-violet-700",
+  "bg-rose-700",
+  "bg-teal-700",
+  "bg-orange-700",
 ];
 
 function ReviewerAvatar({ name }: { name: string }) {
   const initials = name
-    .split(' ')
+    .split(" ")
     .slice(0, 2)
     .map((w) => w[0])
-    .join('')
+    .join("")
     .toUpperCase();
   const colorIdx =
-    name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) %
+    name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) %
     AVATAR_COLORS.length;
   return (
     <div
@@ -129,6 +130,8 @@ type ReviewsSectionProps = {
 };
 
 export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
+  const t = useTranslations("ReviewCard");
+
   const trackRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const posRef = useRef<number>(0);
@@ -166,11 +169,11 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
     const handleResize = () => {
       halfWidth = track.scrollWidth / 2;
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       cancelAnimationFrame(animRef.current);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, [displayReviews.length, isPaused]);
 
@@ -182,7 +185,7 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
             0,
           ) / reviews.length
         ).toFixed(1)
-      : '5.0';
+      : "5.0";
 
   return (
     <section className="py-20 bg-stone-950 overflow-hidden">
@@ -225,7 +228,7 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
             <div
               ref={trackRef}
               className="flex will-change-transform"
-              style={{ width: 'max-content' }}
+              style={{ width: "max-content" }}
             >
               {displayReviews.map((review, idx) => (
                 <ReviewCard
@@ -261,7 +264,7 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
           />
         </svg>
-        <span>Reviews powered by Google</span>
+        <span>{t("powered")}</span>
       </div>
     </section>
   );

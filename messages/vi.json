@@ -1,4 +1,17 @@
 {
+  "NavLinks": {
+    "home": "Trang Chủ",
+    "our_food": "Món Ăn",
+    "our_story": "Câu Chuyện",
+    "wholesale": "Bán Buôn",
+    "franchise": "Nhượng Quyền",
+    "faq": "Câu Hỏi",
+    "find_us": "Cửa hàng",
+    "catering": "Dịch Vụ",
+    "my_account": "Tài Khoản",
+    "order": "Giỏ hàng {count}",
+    "order_online": "Giỏ hàng"
+  },
   "Home": {
     "portals": {
       "franchise": "Cổng Nhượng Quyền",
@@ -2009,5 +2022,451 @@
       { "key": "Sauce", "label": "Nước Sốt" },
       { "key": "Pastry", "label": "Bánh Ngọt" }
     ]
+  },
+  "CartAddOnModal": {
+    "header": {
+      "template": "Đã thêm <brandRed>{itemName}</brandRed> — thêm món để bữa ăn hoàn hảo hơn?"
+    },
+    "actions": {
+      "add": "Thêm",
+      "added": "Đã thêm",
+      "unavailable": "Hết hàng"
+    },
+    "aria": {
+      "close": "Đóng bảng gợi ý"
+    }
+  },
+  "CartDrawer": {
+    "header": {
+      "title": "Đơn Hàng Của Bạn"
+    },
+    "pickupBanner": {
+      "title": "Chỉ Nhận Tại Cửa Hàng",
+      "template": "Bạn muốn giao hàng? <storeLink>Chọn cửa hàng của bạn →</storeLink>"
+    },
+    "emptyState": {
+      "title": "Giỏ hàng của bạn đang trống",
+      "menuCta": "Xem Thực Đơn →",
+      "deliveryCta": "Giao hàng tận nơi — chọn cửa hàng gần nhất"
+    },
+    "itemRow": {
+      "priceEach": "{price}đ mỗi phần",
+      "customisationPrefix": {
+        "no": "Không ",
+        "extra": "Thêm ",
+        "well": "Chín ",
+        "rare": "Tái "
+      }
+    },
+    "footer": {
+      "totalLabel": "Tổng cộng",
+      "checkoutButton": "Tiến Hành Thanh Toán",
+      "deliveryButton": "Đặt Giao Hàng Tận Nơi"
+    }
+  },
+  "FloatingWidgets": {
+    "aria": {
+      "facebookCta": "Nhắn tin cho Saigon Express qua Facebook",
+      "openChat": "Trò chuyện với Saigon Express",
+      "closeChat": "Đóng cửa sổ chat",
+      "minimize": "Thu nhỏ khung chat"
+    },
+    "titles": {
+      "widgetBtn": "Trò Chuyện",
+      "brand": "Saigon Express Tasmania",
+      "status": "Trợ lý AI · Đang hoạt động"
+    },
+    "chat": {
+      "inputPlaceholder": "Nhập tin nhắn...",
+      "welcomeMsg": "Xin chào! 👋 Chào mừng bạn đến với Saigon Express Tasmania. Tôi có thể giúp gì cho bạn hôm nay? Hãy hỏi tôi về thực đơn, cửa hàng, dịch vụ tiệc, giá sỉ hoặc cơ hội nhượng quyền!",
+      "errorMsg": "Rất tiếc, hệ thống đang gặp sự cố kết nối. Vui lòng liên hệ qua số điện thoại 0416 036 016 hoặc gửi email về info@saigonexpress.com.au."
+    },
+    "quickReplies": [
+      "Thực đơn có gì?",
+      "Địa chỉ các cửa hàng?",
+      "Có đặt tiệc catering không?",
+      "Món ăn chuẩn Halal?",
+      "Thông tin nhượng quyền"
+    ]
+  },
+  "GetApp": {
+    "brandName": "Saigon Express Tasmania",
+    "brandDomain": "saigonexpress.com.au",
+    "badge": "Miễn phí • Không cần App Store",
+    "heading": "Tải App SG",
+    "subheading": "Nhanh hơn. Dễ hơn. Luôn sẵn sàng.",
+    "description": "Thêm {brandName} vào màn hình chính — không cần App Store, không tốn bộ nhớ. Chỉ một chạm là mở ngay.",
+    "tip": "💡 Mẹo: {safariTip} — chỉ cần 3 bước thay vì 5.",
+    "tipSafariBold": "Safari hoạt động tốt nhất trên iPhone",
+    "shareLabel": "📲 Chia sẻ trang này với bạn bè",
+    "shareFooterLine1": "Mở trang này trên điện thoại để cài đặt app.",
+    "shareFooterLine2": "Hỗ trợ iPhone (Safari) và Android (Chrome) • Không cần App Store",
+    "copyLink": "🔗 Sao chép liên kết",
+    "whatsapp": "WhatsApp",
+    "whatsappMessage": "Đặt đồ ăn Việt Nam từ Saigon Express Tasmania! Thêm vào màn hình chính của bạn: {siteOrigin}",
+    "benefits": [
+      {
+        "icon": "🎁",
+        "title": "Tích tem nhanh hơn",
+        "desc": "Mở app, quét QR tại quầy — tem được cộng trong vài giây. Không cần tìm lại trang web.",
+        "href": null
+      },
+      {
+        "icon": "⚡",
+        "title": "Đặt món chỉ một chạm",
+        "desc": "Menu luôn sẵn sàng, đặt hàng nhanh hơn trình duyệt 3 lần.",
+        "href": null
+      },
+      {
+        "icon": "🔔",
+        "title": "Ưu đãi độc quyền",
+        "desc": "Nhận khuyến mãi dành riêng cho người dùng app — trước khi hết.",
+        "href": "/promotions"
+      },
+      {
+        "icon": "📍",
+        "title": "Tìm cửa hàng offline",
+        "desc": "Xem địa chỉ và giờ mở cửa ngay cả khi không có mạng.",
+        "href": null
+      }
+    ],
+    "instructions": {
+      "ios_safari": {
+        "platform": "🍎 iPhone — Trình duyệt Safari",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Mở {domain} bằng Safari (không dùng Chrome hoặc Firefox)",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Nhấn nút {share} ở giữa phía dưới Safari (biểu tượng hộp có mũi tên hướng lên)",
+            "boldPart": "Chia sẻ ↑"
+          },
+          {
+            "type": "numbered",
+            "text": "Cuộn xuống trong bảng chia sẻ và nhấn {action} (có biểu tượng ⊕)",
+            "boldPart": "\"Thêm vào màn hình chính\""
+          },
+          {
+            "type": "warning",
+            "text": "Trong ô tên, kiểm tra xem có hiện {appName} không. Nếu hiện tên khác, xoá đi và nhập {appName}",
+            "boldPart": "Saigon Express"
+          },
+          {
+            "type": "success",
+            "text": "Nhấn {action} ở góc trên bên phải — biểu tượng SG xuất hiện trên màn hình chính!",
+            "boldPart": "Thêm"
+          }
+        ]
+      },
+      "ios_firefox": {
+        "platform": "🦊 iPhone — Trình duyệt Firefox",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Mở {domain} bằng Firefox",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Nhấn nút {menu} ở góc dưới bên phải màn hình",
+            "boldPart": "⋯ menu"
+          },
+          {
+            "type": "numbered",
+            "text": "Nhấn {action} trong menu hiện ra",
+            "boldPart": "Chia sẻ"
+          },
+          {
+            "type": "numbered",
+            "text": "Trong bảng chia sẻ iOS, nhấn {viewMore} (mũi tên ↓ dưới bên phải), rồi nhấn {action}",
+            "boldPart": "\"Thêm vào màn hình chính\""
+          },
+          {
+            "type": "warning",
+            "text": "Trong ô tên, kiểm tra xem có hiện {appName} không. Nếu hiện tên khác, xoá đi và nhập {appName}",
+            "boldPart": "Saigon Express"
+          },
+          {
+            "type": "success",
+            "text": "Nhấn {action} ở góc trên bên phải — biểu tượng SG xuất hiện trên màn hình chính!",
+            "boldPart": "Thêm"
+          }
+        ]
+      },
+      "android_chrome": {
+        "platform": "🤖 Android — Trình duyệt Chrome",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Mở {domain} bằng Chrome",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Nhấn {menu} ở góc trên bên phải Chrome",
+            "boldPart": "⋮ menu"
+          },
+          {
+            "type": "numbered",
+            "text": "Chọn {action}",
+            "boldPart": "\"Thêm vào màn hình chính\""
+          },
+          {
+            "type": "success",
+            "text": "Nhấn {action} — biểu tượng SG xuất hiện trên màn hình chính!",
+            "boldPart": "Thêm"
+          }
+        ]
+      }
+    }
+  },
+  "ItemCustomiseModal": {
+    "requiredBadge": "Bắt buộc",
+    "chooseAny": "Chọn tuỳ ý",
+    "specialInstructions": {
+      "title": "Yêu cầu đặc biệt",
+      "optional": "Tuỳ chọn",
+      "placeholder": "Ví dụ: Không đậu phộng, thêm sốt riêng, làm giòn thêm...",
+      "charCount": "{count}/200"
+    },
+    "addToCart": "Thêm vào giỏ",
+    "proteinOptions": [
+      {
+        "id": "pork",
+        "label": "Xá Xíu (Thịt Heo Nướng)"
+      },
+      {
+        "id": "chicken",
+        "label": "Gà Nướng"
+      },
+      {
+        "id": "prawn",
+        "label": "Tôm"
+      },
+      {
+        "id": "beef",
+        "label": "Bò"
+      },
+      {
+        "id": "tofu",
+        "label": "Đậu Hũ (Chay)"
+      },
+      {
+        "id": "pork_belly",
+        "label": "Thịt Ba Chỉ Giòn"
+      },
+      {
+        "id": "mixed",
+        "label": "Nhiều Loại Protein"
+      }
+    ],
+    "unifiedExtras": [
+      {
+        "id": "extra_beef",
+        "label": "Thêm Bò"
+      },
+      {
+        "id": "extra_chicken",
+        "label": "Thêm Gà"
+      },
+      {
+        "id": "extra_prawn",
+        "label": "Thêm Tôm"
+      },
+      {
+        "id": "extra_seafood",
+        "label": "Thêm Hải Sản"
+      },
+      {
+        "id": "extra_crispy_pork",
+        "label": "Thêm Thịt Heo Giòn"
+      },
+      {
+        "id": "extra_veggies",
+        "label": "Thêm Rau"
+      },
+      {
+        "id": "extra_noodles",
+        "label": "Thêm Mì/Bún"
+      },
+      {
+        "id": "extra_fried_egg",
+        "label": "Thêm Trứng Chiên"
+      },
+      {
+        "id": "extra_broth",
+        "label": "Thêm Nước Dùng"
+      },
+      {
+        "id": "extra_chilli",
+        "label": "Thêm Ớt"
+      },
+      {
+        "id": "extra_sauce",
+        "label": "Thêm Sốt"
+      }
+    ],
+    "banhMiVeggies": [
+      {
+        "id": "no_coriander",
+        "label": "Không Ngò"
+      },
+      {
+        "id": "no_spring_onion",
+        "label": "Không Hành Lá"
+      },
+      {
+        "id": "no_daikon",
+        "label": "Không Cà Rốt & Củ Cải"
+      },
+      {
+        "id": "no_cucumber",
+        "label": "Không Dưa Leo"
+      },
+      {
+        "id": "extra_veggies",
+        "label": "Thêm Rau"
+      },
+      {
+        "id": "extra_coriander",
+        "label": "Thêm Ngò"
+      },
+      {
+        "id": "extra_cucumber",
+        "label": "Thêm Dưa Leo"
+      },
+      {
+        "id": "no_veggies",
+        "label": "Không Rau Gì Cả"
+      }
+    ],
+    "spiceOptions": [
+      {
+        "id": "no_chilli",
+        "label": "Không Cay"
+      },
+      {
+        "id": "mild",
+        "label": "Ít Cay"
+      },
+      {
+        "id": "medium",
+        "label": "Vừa Cay"
+      },
+      {
+        "id": "hot",
+        "label": "Cay 🌶️"
+      },
+      {
+        "id": "extra_hot",
+        "label": "Rất Cay 🌶️🌶️"
+      }
+    ],
+    "sauceOptions": [
+      {
+        "id": "sauce_mayo",
+        "label": "Sốt Mayo Sriracha"
+      },
+      {
+        "id": "sauce_hoisin",
+        "label": "Tương Hoisin"
+      },
+      {
+        "id": "sauce_fish",
+        "label": "Nước Mắm Pha"
+      },
+      {
+        "id": "sauce_soy",
+        "label": "Nước Tương"
+      },
+      {
+        "id": "sauce_chilli",
+        "label": "Sốt Ớt"
+      },
+      {
+        "id": "no_sauce",
+        "label": "Không Sốt"
+      }
+    ],
+    "groupTitles": {
+      "protein_banh_mi": "Chọn Nhân Bánh",
+      "protein_rice": "Chọn Protein",
+      "extras": "Thêm Món Phụ",
+      "veggies": "Rau & Topping",
+      "spice": "Độ Cay",
+      "sauce_banh_mi": "Sốt",
+      "sauce_condiments": "Gia Vị Thêm"
+    }
+  },
+  "Jobs": {
+    "sectionLabel": "VỊ TRÍ TUYỂN DỤNG",
+    "heading": "Tìm Vị Trí Phù Hợp",
+    "subheading": "Chúng tôi có {count} vị trí đang tuyển dụng tại các chi nhánh ở Tasmania. Nhấn vào vị trí bất kỳ để xem mô tả công việc đầy đủ.",
+    "filterAll": "Tất cả",
+    "keyResponsibilities": "Trách Nhiệm Chính",
+    "lookingFor": "Yêu Cầu Ứng Viên",
+    "perksAndBenefits": "Quyền Lợi & Phúc Lợi",
+    "applyButton": "Ứng Tuyển Vị Trí Này",
+    "applyFootnote": "Gửi CV và thư xin việc của bạn đến",
+    "applyEmail": "info@saigonexpress.com.au",
+    "emailSubject": "Ứng tuyển: {jobTitle}",
+    "emailBody": "Kính gửi đội ngũ Saigon Express,%0D%0A%0D%0ATôi muốn ứng tuyển vị trí {jobTitle}.%0D%0A%0D%0AVui lòng xem thông tin của tôi bên dưới:%0D%0A%0D%0AHọ tên:%0D%0ASố điện thoại:%0D%0AThời gian có thể làm việc:%0D%0A%0D%0AXin cảm ơn"
+  },
+  "Newsletter": {
+    "getInTouch": "Liên Hệ",
+    "phoneLabel": "0416 036 016 (Chỉ nhắn tin SMS)",
+    "address": "Tầng 2, 86 Collins St\nHobart TAS 7000",
+    "stayUpdated": "Cập Nhật Tin Tức",
+    "successMessage": "✓ Bạn đã đăng ký thành công!",
+    "namePlaceholder": "Họ và tên *",
+    "emailPlaceholder": "Địa chỉ email *",
+    "subscribing": "Đang đăng ký…",
+    "subscribe": "Đăng Ký"
+  },
+  "PickLocationModal": {
+    "heading": "Chọn Chi Nhánh",
+    "cartItems_one": "{count} món trong giỏ hàng",
+    "cartItems_other": "{count} món trong giỏ hàng",
+    "searchPlaceholder": "Tìm theo khu vực hoặc địa chỉ...",
+    "noResults": "Không tìm thấy chi nhánh phù hợp",
+    "openNow": "Đang mở cửa",
+    "closed": "Đã đóng cửa",
+    "hoursUnavailable": "Chưa có giờ mở cửa",
+    "cartSummary_one": "{count} món",
+    "cartSummary_other": "{count} món"
+  },
+  "PopularSection": {
+    "sectionLabel": "Được Yêu Thích Nhất",
+    "heading": "Phổ Biến Nhất",
+    "viewFullMenu": "Xem Toàn Bộ Thực Đơn",
+    "popularBadge": "Phổ Biến",
+    "addToCart": "Thêm vào giỏ",
+    "unavailable": "Tạm Hết",
+    "removeLastCartLine": "Xoá món vừa thêm",
+    "addAnother": "Thêm một nữa",
+    "viewCart": "Xem Giỏ Hàng ({count} món · ${total})"
+  },
+  "ReviewCard": {
+    "powered": "Đánh giá được cung cấp bởi Google"
+  },
+  "ShareDealButton": {
+    "triggerLabel": "Chia sẻ ưu đãi",
+    "popoverHeading": "Chia sẻ qua",
+    "shareText": "{title}{hasDescription, select, true { — {description}} other {}} 🍜 Saigon Express Tasmania",
+    "copyLink": "Sao chép liên kết",
+    "copyLinkCopied": "Đã sao chép!",
+    "channels": {
+      "facebook": "Facebook",
+      "twitter": "X (Twitter)",
+      "whatsapp": "WhatsApp"
+    },
+    "toast": {
+      "copySuccess": "Đã sao chép liên kết!",
+      "copySuccessDescription": "Chia sẻ ở bất kỳ đâu bạn muốn.",
+      "copyError": "Không thể sao chép liên kết."
+    }
   }
 }
