@@ -17,6 +17,8 @@ export type MenuItem = {
   isAvailable: boolean | number;
   /** Size-keyed URLs from `menu.image_urls`. */
   imageUrls?: Record<string, string>;
+  /** Gallery entries from `image_urls.more` (sm/lg). */
+  moreImages?: { sm: string; lg: string }[];
   imageUrl?: string | null;
   sortOrder?: number | null;
   isPopular?: boolean | number | null;

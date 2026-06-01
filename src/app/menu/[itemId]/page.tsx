@@ -12,7 +12,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { itemId } = await params;
-  const item = await getMenuItemFromParam(itemId);
+  const item = await getMenuItemFromParam(itemId);  
   if (!item) return { title: "Menu Item Not Found" };
 
   return {

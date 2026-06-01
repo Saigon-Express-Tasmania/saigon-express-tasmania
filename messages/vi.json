@@ -1509,7 +1509,9 @@
     "relatedTitle": "Bạn Cũng Có Thể Thích",
     "backToMenu": "Quay lại thực đơn",
     "backToMenuHint": "Xem tất cả danh mục và món ăn",
-    "magnifierHint": "Di chuột để phóng to"
+    "magnifierHint": "Di chuột để phóng to",
+    "additionalImagesTitle": "Hình ảnh thêm",
+    "additionalImagesSelect": "Xem hình {index}"
   },
   "NotFound": {
     "code": "404",

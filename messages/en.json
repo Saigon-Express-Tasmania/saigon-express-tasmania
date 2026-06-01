@@ -1508,7 +1508,9 @@
     "relatedTitle": "You May Also Like",
     "backToMenu": "Back to Full Menu",
     "backToMenuHint": "Browse all categories and dishes",
-    "magnifierHint": "Hover to magnify"
+    "magnifierHint": "Hover to magnify",
+    "additionalImagesTitle": "Additional images",
+    "additionalImagesSelect": "View image {index}"
   },
   "NotFound": {
     "code": "404",

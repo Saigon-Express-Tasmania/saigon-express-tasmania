@@ -44,6 +44,7 @@ export default function MenuItemView({
   const locale = useLocale();
 
   const [qty, setQty] = useState(1);
+  const [selectedGalleryId, setSelectedGalleryId] = useState("primary");
   const [customiseOpen, setCustomiseOpen] = useState(false);
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
 
@@ -85,6 +86,50 @@ export default function MenuItemView({
     [item, menuItems],
   );
 
+  type GalleryOption = {
+    id: string;
+    thumbSrc: string;
+    displaySrc: string;
+    zoomSrc: string;
+  };
+
+  const galleryOptions = useMemo((): GalleryOption[] => {
+    const primaryThumb =
+      pickMenuImageUrl(item.imageUrls, [256, 512, 1024]) ??
+      item.imageUrl ??
+      DEFAULT_IMG;
+    const primaryDisplay =
+      pickMenuImageUrl(item.imageUrls, [1024, 512, 1920]) ?? primaryThumb;
+    const primaryZoom =
+      pickMenuImageUrl(item.imageUrls, [1920, 1024]) ?? primaryDisplay;
+
+    const options: GalleryOption[] = [
+      {
+        id: "primary",
+        thumbSrc: primaryThumb,
+        displaySrc: primaryDisplay,
+        zoomSrc: primaryZoom,
+      },
+    ];
+
+    (item.moreImages ?? []).forEach((entry, index) => {
+      options.push({
+        id: `more-${index}`,
+        thumbSrc: entry.sm,
+        displaySrc: entry.lg,
+        zoomSrc: entry.lg,
+      });
+    });
+
+    return options;
+  }, [item.imageUrl, item.imageUrls, item.moreImages]);
+
+  const hasMoreImages = (item.moreImages?.length ?? 0) > 0;
+
+  const selectedGallery =
+    galleryOptions.find((option) => option.id === selectedGalleryId) ??
+    galleryOptions[0];
+
   const handleCustomiseConfirm = useCallback(
     (customisation: ItemCustomisation) => {
       addToCart(item, { ...customisation, qty }, qty, false);
@@ -105,10 +150,48 @@ export default function MenuItemView({
         <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:gap-12">
           {/* Media */}
           <div className="flex-[1.2]">
-            <MenuItemImageZoom
-              imageUrls={item.imageUrls}
-              alt={item.name}
-            />
+            {selectedGallery ? (
+              <MenuItemImageZoom
+                src={selectedGallery.displaySrc}
+                zoomSrc={selectedGallery.zoomSrc}
+                alt={item.name}
+              />
+            ) : null}
+
+            {hasMoreImages ? (
+              <div className="mt-4">
+                <h2 className="mb-2 text-sm font-semibold text-brand-dark/70">
+                  {t("additionalImagesTitle")}
+                </h2>
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {galleryOptions.map((option, index) => {
+                    const isActive = option.id === selectedGallery?.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setSelectedGalleryId(option.id)}
+                        className={`h-[60px] w-20 shrink-0 overflow-hidden rounded border-2 bg-white transition-colors ${
+                          isActive
+                            ? "border-brand-red"
+                            : "border-gray-200 hover:border-brand-red/40"
+                        }`}
+                        aria-label={t("additionalImagesSelect", {
+                          index: index + 1,
+                        })}
+                        aria-pressed={isActive}
+                      >
+                        <img
+                          src={option.thumbSrc}
+                          alt=""
+                          className="size-full object-cover"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Info */}
