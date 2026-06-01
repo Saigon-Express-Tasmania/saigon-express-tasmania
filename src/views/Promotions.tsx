@@ -9,31 +9,49 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tag, Clock, ChevronRight, Sparkles } from "lucide-react";
 import { ShareDealButton } from "@/components/ShareDealButton";
 import { SITE_ORIGIN } from "@/lib/site-origin";
+import { useTranslations, useLocale } from "next-intl";
 import type { Promotion } from "@/types";
 
 const LOGO_URL = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
-const FALLBACK_IMG = "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
+const FALLBACK_IMG =
+  "/manus-storage/saigon-express-logo-transparent_62bc8ecb.png";
 
 function PromotionCard({ promo }: { promo: Promotion }) {
+  const t = useTranslations("Promotions.card");
+  const locale = useLocale();
+
   const [imageSrc, setImageSrc] = useState(promo.imageUrl ?? FALLBACK_IMG);
   const isExternal = promo.ctaHref?.startsWith("http");
+
+  // Format date in the user's locale; fall back gracefully
   const expiresLabel = promo.expiresAt
-    ? `Expires ${new Date(promo.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
+    ? t("expires", {
+        date: new Date(promo.expiresAt).toLocaleDateString(
+          locale === "vi" ? "vi-VN" : "en-AU",
+          { day: "numeric", month: "short", year: "numeric" },
+        ),
+      })
     : null;
 
   const cta = (
     <Button className="bg-red-700 hover:bg-red-800 text-white w-full sm:w-auto gap-1.5">
-      {promo.ctaLabel ?? "Order Now"}
+      {promo.ctaLabel ?? t("defaultCta")}
       <ChevronRight className="w-4 h-4" />
     </Button>
   );
 
   // Build a URL-safe slug from the title for anchor linking
-  const slug = promo.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const slug = promo.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
   const dealUrl = `${SITE_ORIGIN}/promotions#${slug}`;
 
   return (
-    <Card id={slug} className="overflow-hidden border-0 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors group">
+    <Card
+      id={slug}
+      className="overflow-hidden border-0 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors group"
+    >
       <div className="relative h-48 overflow-hidden">
         <AppImage
           src={imageSrc}
@@ -58,9 +76,13 @@ function PromotionCard({ promo }: { promo: Promotion }) {
         )}
       </div>
       <CardContent className="p-5 space-y-3">
-        <h3 className="text-white font-bold text-lg leading-snug">{promo.title}</h3>
+        <h3 className="text-white font-bold text-lg leading-snug">
+          {promo.title}
+        </h3>
         {promo.description && (
-          <p className="text-white/70 text-sm leading-relaxed">{promo.description}</p>
+          <p className="text-white/70 text-sm leading-relaxed">
+            {promo.description}
+          </p>
         )}
         {expiresLabel && (
           <div className="flex items-center gap-1.5 text-yellow-400/80 text-xs">
@@ -70,7 +92,9 @@ function PromotionCard({ promo }: { promo: Promotion }) {
         )}
         <div className="pt-1 flex flex-wrap items-center gap-2">
           {isExternal ? (
-            <a href={promo.ctaHref!} target="_blank" rel="noopener noreferrer">{cta}</a>
+            <a href={promo.ctaHref!} target="_blank" rel="noopener noreferrer">
+              {cta}
+            </a>
           ) : (
             <Link href={promo.ctaHref ?? "/menu"}>{cta}</Link>
           )}
@@ -85,7 +109,12 @@ function PromotionCard({ promo }: { promo: Promotion }) {
   );
 }
 
-export default function Promotions({ promotions }: { promotions: Promotion[] }) {
+export default function Promotions({
+  promotions,
+}: {
+  promotions: Promotion[];
+}) {
+  const t = useTranslations("Promotions");
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#6b1010] via-[#4a0c0c] to-[#2d0808]">
@@ -100,19 +129,17 @@ export default function Promotions({ promotions }: { promotions: Promotion[] }) 
         <div className="relative max-w-2xl mx-auto space-y-4">
           <div className="flex items-center justify-center gap-2 text-yellow-400 text-sm font-semibold tracking-widest uppercase">
             <Sparkles className="w-4 h-4" />
-            Exclusive Deals
+            {t("hero.eyebrow")}
             <Sparkles className="w-4 h-4" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight">
-            Current Promotions
+            {t("hero.heading")}
           </h1>
-          <p className="text-white/70 text-lg">
-            Fresh deals, loyalty rewards, and app-exclusive offers — updated regularly.
-          </p>
+          <p className="text-white/70 text-lg">{t("hero.subheading")}</p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <AppImage
               src={LOGO_URL}
-              alt="Saigon Express"
+              alt={t("hero.logoAlt")}
               width={180}
               height={40}
               priority
@@ -127,11 +154,13 @@ export default function Promotions({ promotions }: { promotions: Promotion[] }) 
         {promotions.length === 0 && (
           <div className="text-center py-20 text-white/60">
             <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-40" />
-            <p className="text-xl font-semibold text-white/80">No active promotions right now</p>
-            <p className="mt-2">Check back soon — new deals drop regularly!</p>
+            <p className="text-xl font-semibold text-white/80">
+              {t("empty.heading")}
+            </p>
+            <p className="mt-2">{t("empty.body")}</p>
             <Link href="/menu">
               <Button className="mt-6 bg-red-700 hover:bg-red-800 text-white">
-                Browse the Menu
+                {t("empty.browseMenu")}
               </Button>
             </Link>
           </div>
@@ -148,19 +177,20 @@ export default function Promotions({ promotions }: { promotions: Promotion[] }) 
 
       {/* Bottom CTA */}
       <section className="border-t border-white/10 py-12 px-4 text-center">
-        <p className="text-white/60 text-sm mb-4">
-          Want to be the first to know about new deals?
-        </p>
+        <p className="text-white/60 text-sm mb-4">{t("bottomCta.nudge")}</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/#get-the-sg-app">
             <Button className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold gap-2">
               <Sparkles className="w-4 h-4" />
-              Get the App for App-Only Deals
+              {t("bottomCta.getApp")}
             </Button>
           </Link>
           <Link href="/menu">
-            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 bg-transparent">
-              Browse the Menu
+            <Button
+              variant="outline"
+              className="border-white/30 text-white hover:bg-white/10 bg-transparent"
+            >
+              {t("bottomCta.browseMenu")}
             </Button>
           </Link>
         </div>

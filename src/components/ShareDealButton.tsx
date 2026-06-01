@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { FacebookIcon, XIcon } from "@/components/icons/brand-icons";
 import { Share2, MessageCircle, Link2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,33 +20,42 @@ interface ShareDealButtonProps {
   url?: string;
 }
 
-export function ShareDealButton({ title, description, url }: ShareDealButtonProps) {
+export function ShareDealButton({
+  title,
+  description,
+  url,
+}: ShareDealButtonProps) {
+  const t = useTranslations("ShareDealButton");
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
 
   const dealUrl =
-    url && url.startsWith("http")
-      ? url
-      : `${SITE_ORIGIN}${url ?? "/"}`;
+    url && url.startsWith("http") ? url : `${SITE_ORIGIN}${url ?? "/"}`;
 
   const encodedUrl = encodeURIComponent(dealUrl);
-  const encodedText = encodeURIComponent(`${title}${description ? ` — ${description}` : ""} 🍜 Saigon Express Tasmania`);
+  const encodedText = encodeURIComponent(
+    t("shareText", {
+      title,
+      description: description ?? "",
+      hasDescription: description ? "true" : "false",
+    }),
+  );
 
   const channels = [
     {
-      label: "Facebook",
+      label: t("channels.facebook"),
       icon: <FacebookIcon className="w-4 h-4" />,
       color: "hover:bg-blue-600/20 hover:text-blue-400",
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
     },
     {
-      label: "X (Twitter)",
+      label: t("channels.twitter"),
       icon: <XIcon className="w-4 h-4" />,
       color: "hover:bg-sky-500/20 hover:text-sky-400",
       href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
     },
     {
-      label: "WhatsApp",
+      label: t("channels.whatsapp"),
       icon: <MessageCircle className="w-4 h-4" />,
       color: "hover:bg-green-600/20 hover:text-green-400",
       href: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
@@ -57,10 +67,12 @@ export function ShareDealButton({ title, description, url }: ShareDealButtonProp
       await navigator.clipboard.writeText(dealUrl);
       setCopied(true);
       setOpen(false);
-      toast.success("Link copied!", { description: "Share it anywhere you like." });
+      toast.success(t("toast.copySuccess"), {
+        description: t("toast.copySuccessDescription"),
+      });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Could not copy link.");
+      toast.error(t("toast.copyError"));
     }
   };
 
@@ -78,7 +90,7 @@ export function ShareDealButton({ title, description, url }: ShareDealButtonProp
           className="border-white/20 text-white/70 hover:text-white hover:bg-white/10 bg-transparent gap-1.5 text-xs"
         >
           <Share2 className="w-3.5 h-3.5" />
-          Share this deal
+          {t("triggerLabel")}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -87,7 +99,7 @@ export function ShareDealButton({ title, description, url }: ShareDealButtonProp
         sideOffset={6}
       >
         <p className="text-white/40 text-[10px] uppercase tracking-widest px-2 pb-1.5 font-semibold">
-          Share via
+          {t("popoverHeading")}
         </p>
         <div className="space-y-0.5">
           {channels.map((ch) => (
@@ -109,7 +121,7 @@ export function ShareDealButton({ title, description, url }: ShareDealButtonProp
             ) : (
               <Link2 className="w-4 h-4" />
             )}
-            {copied ? "Copied!" : "Copy Link"}
+            {copied ? t("copyLinkCopied") : t("copyLink")}
           </button>
         </div>
       </PopoverContent>

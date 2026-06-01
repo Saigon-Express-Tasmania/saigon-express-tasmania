@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "@/components/link";
 import AppImage from "@/components/AppImage";
 import LazyImage from "@/components/LazyImage";
+import { useTranslations } from "next-intl";
 import {
   ShoppingCart,
   MapPin,
@@ -43,58 +44,58 @@ function generateTimeSlots(): string[] {
 
 const TIME_SLOTS = generateTimeSlots();
 
-function generatePickupDates(): { label: string; value: string }[] {
-  const dates: { label: string; value: string }[] = [];
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    const label =
-      i === 0
-        ? `Today, ${d.getDate()} ${monthNames[d.getMonth()]}`
-        : i === 1
-          ? `Tomorrow, ${d.getDate()} ${monthNames[d.getMonth()]}`
-          : `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}`;
-    const value = d.toISOString().split("T")[0];
-    dates.push({ label, value });
-  }
-  return dates;
-}
-
-const PICKUP_DATES = generatePickupDates();
-
 type CheckoutProps = {
   storeLocations: StoreLocation[];
   initialStoreId?: number | null;
 };
 
-export default function Checkout({ storeLocations, initialStoreId = null }: CheckoutProps) {
+interface DateConfig {
+  today: string;
+  tomorrow: string;
+  days: string[];
+  months: string[];
+}
+
+export default function Checkout({
+  storeLocations,
+  initialStoreId = null,
+}: CheckoutProps) {
+  const t = useTranslations("Checkout");
   const stores = storeLocations;
   const { cart, cartTotal, removeFromCart, updateQty, clearCart } = useCart();
 
-  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(initialStoreId);
+  // Load dynamically localized strings for date mapping runtime utilities
+  const dateConfig: DateConfig = t.raw("dateStrings");
+
+  const pickupDates = useMemo(() => {
+    const dates: { label: string; value: string }[] = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const label =
+        i === 0
+          ? `${dateConfig.today}, ${d.getDate()} ${dateConfig.months[d.getMonth()]}`
+          : i === 1
+            ? `${dateConfig.tomorrow}, ${d.getDate()} ${dateConfig.months[d.getMonth()]}`
+            : `${dateConfig.days[d.getDay()]} , ${d.getDate()} ${dateConfig.months[d.getMonth()]}`;
+      const value = d.toISOString().split("T")[0];
+      dates.push({ label, value });
+    }
+    return dates;
+  }, [dateConfig]);
+
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(
+    initialStoreId,
+  );
   useEffect(() => {
     if (initialStoreId && stores.length > 0 && !selectedStoreId) {
-      if (stores.find((s) => s.id === initialStoreId)) setSelectedStoreId(initialStoreId);
+      if (stores.find((s) => s.id === initialStoreId))
+        setSelectedStoreId(initialStoreId);
     }
   }, [stores, initialStoreId, selectedStoreId]);
 
-  const [pickupDate, setPickupDate] = useState(PICKUP_DATES[0]?.value ?? "");
+  const [pickupDate, setPickupDate] = useState(pickupDates[0]?.value ?? "");
   const [pickupTime, setPickupTime] = useState(TIME_SLOTS[4] ?? "12:00 PM");
 
   const [name, setName] = useState("");
@@ -112,14 +113,13 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
     [stores, selectedStoreId],
   );
 
-
   const handleProceedToDetails = () => {
     if (cart.length === 0) {
-      toast.error("Your cart is empty");
+      toast.error(t("toasts.cartEmpty"));
       return;
     }
     if (!selectedStoreId) {
-      toast.error("Please select a pickup store");
+      toast.error(t("toasts.selectStore"));
       return;
     }
     setStep("details");
@@ -127,15 +127,15 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
 
   const handleProceedToConfirm = () => {
     if (!name.trim()) {
-      toast.error("Please enter your name");
+      toast.error(t("toasts.enterName"));
       return;
     }
     if (!email.trim()) {
-      toast.error("Please enter your email");
+      toast.error(t("toasts.enterEmail"));
       return;
     }
     if (!phone.trim()) {
-      toast.error("Please enter your phone number");
+      toast.error(t("toasts.enterPhone"));
       return;
     }
     setStep("confirm");
@@ -160,7 +160,8 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
           items: cart.map((c) => ({
             menuItemId: c.item.id,
             qty: c.qty,
-            unitPrice: parseFloat(c.item.price) + (c.customisation?.extraPrice ?? 0),
+            unitPrice:
+              parseFloat(c.item.price) + (c.customisation?.extraPrice ?? 0),
             itemName: c.item.name,
           })),
           origin: window.location.origin,
@@ -168,13 +169,13 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
       });
 
       if (!result.ok) {
-        throw new Error(result.error || "Failed to place order. Please try again.");
+        throw new Error(result.error || t("toasts.errorDefault"));
       }
 
       const data = result.data;
 
       if (data.url) {
-        toast.success("Redirecting to secure payment…");
+        toast.success(t("toasts.redirecting"));
         setTimeout(() => {
           window.location.href = data.url!;
         }, 300);
@@ -190,7 +191,8 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
 
       throw new Error("No checkout URL returned");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to place order. Please try again.";
+      const message =
+        err instanceof Error ? err.message : t("toasts.errorDefault");
       toast.error(message);
     } finally {
       setIsPlacing(false);
@@ -204,16 +206,25 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={40} className="text-green-600" />
           </div>
-          <h1 className="font-serif text-3xl text-brand-dark mb-3">Order Confirmed!</h1>
+          <h1 className="font-serif text-3xl text-brand-dark mb-3">
+            {t("success.title")}
+          </h1>
           <p className="text-brand-dark/60 mb-2">
-            Thank you, <strong>{name}</strong>! Your order #{orderId} has been received.
+            {t("success.message", {
+              name,
+              orderId: orderId ?? "-1",
+            })}
           </p>
           <p className="text-brand-dark/60 mb-6">
-            Pickup at <strong>{selectedStore?.name}</strong> on <strong>{pickupDate}</strong> at{" "}
-            <strong>{pickupTime}</strong>. We&apos;ll send a confirmation to <strong>{email}</strong>.
+            {t("success.pickupSummary", {
+              store: selectedStore ? selectedStore.name : "",
+              date: pickupDate,
+              time: pickupTime,
+              email: email,
+            })}
           </p>
           <Link href="/menu" className="btn-red inline-flex items-center gap-2">
-            <ShoppingCart size={16} /> Order More
+            <ShoppingCart size={16} /> {t("success.btnMore")}
           </Link>
         </div>
       </div>
@@ -222,31 +233,12 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
 
   return (
     <div className="min-h-screen bg-brand-cream">
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/">
-            <AppImage
-              src={LOGO_URL}
-              alt="Saigon Express Tasmania"
-              width={180}
-              height={40}
-              priority
-              className="h-10 w-auto object-contain"
-            />
-          </Link>
-          <div className="flex items-center gap-2 text-sm text-brand-dark/50">
-            <ShoppingCart size={16} />
-            <span>Checkout</span>
-          </div>
-        </div>
-      </header>
-
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-[900px] mx-auto px-6 py-4 flex items-center gap-2 text-sm">
           {[
-            { key: "cart", label: "1. Your Order" },
-            { key: "details", label: "2. Your Details" },
-            { key: "confirm", label: "3. Confirm & Pay" },
+            { key: "cart", label: t("steps.order") },
+            { key: "details", label: t("steps.details") },
+            { key: "confirm", label: t("steps.confirm") },
           ].map((s, i) => (
             <div key={s.key} className="flex items-center gap-2">
               {i > 0 && <ChevronRight size={14} className="text-gray-300" />}
@@ -271,25 +263,36 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                 >
                   <ArrowLeft size={18} />
                 </Link>
-                <h2 className="font-serif text-2xl text-brand-dark">Your Order</h2>
+                <h2 className="font-serif text-2xl text-brand-dark">
+                  {t("cartSection.title")}
+                </h2>
               </div>
 
               {cart.length === 0 ? (
                 <div className="bg-white p-8 text-center">
-                  <ShoppingCart size={32} className="text-brand-dark/20 mx-auto mb-3" />
-                  <p className="text-brand-dark/40 mb-4">Your cart is empty</p>
+                  <ShoppingCart
+                    size={32}
+                    className="text-brand-dark/20 mx-auto mb-3"
+                  />
+                  <p className="text-brand-dark/40 mb-4">
+                    {t("cartSection.empty")}
+                  </p>
                   <Link href="/menu" className="btn-red text-sm">
-                    Browse Menu
+                    {t("cartSection.browse")}
                   </Link>
                 </div>
               ) : (
                 <div className="bg-white divide-y divide-gray-50">
                   {cart.map((line) => {
                     const linePrice =
-                      (parseFloat(line.item.price) + (line.customisation?.extraPrice ?? 0)) *
+                      (parseFloat(line.item.price) +
+                        (line.customisation?.extraPrice ?? 0)) *
                       line.qty;
                     return (
-                      <div key={line.cartLineId} className="p-4 flex items-start gap-3">
+                      <div
+                        key={line.cartLineId}
+                        className="p-4 flex items-start gap-3"
+                      >
                         {line.item.imageUrl && (
                           <LazyImage
                             src={line.item.imageUrl}
@@ -298,13 +301,16 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-brand-dark text-sm">{line.item.name}</p>
+                          <p className="font-medium text-brand-dark text-sm">
+                            {line.item.name}
+                          </p>
                           <p className="text-xs text-brand-dark/40">
-                            $
-                            {(
-                              parseFloat(line.item.price) + (line.customisation?.extraPrice ?? 0)
-                            ).toFixed(2)}{" "}
-                            each
+                            {t("cartSection.each", {
+                              price: (
+                                parseFloat(line.item.price) +
+                                (line.customisation?.extraPrice ?? 0)
+                              ).toFixed(2),
+                            })}
                           </p>
                           {line.customisation?.note && (
                             <p className="text-xs text-brand-dark/40 italic mt-0.5">
@@ -320,7 +326,9 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                           >
                             <Minus size={11} />
                           </button>
-                          <span className="w-5 text-center text-sm font-bold">{line.qty}</span>
+                          <span className="w-5 text-center text-sm font-bold">
+                            {line.qty}
+                          </span>
                           <button
                             type="button"
                             onClick={() => updateQty(line.cartLineId, 1)}
@@ -347,10 +355,13 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
 
               <div className="bg-white p-5">
                 <h3 className="font-semibold text-brand-dark mb-3 flex items-center gap-2">
-                  <MapPin size={16} className="text-brand-red" /> Select Pickup Store
+                  <MapPin size={16} className="text-brand-red" />{" "}
+                  {t("cartSection.pickupStore")}
                 </h3>
                 {stores.length === 0 ? (
-                  <p className="text-sm text-brand-dark/40">Loading stores…</p>
+                  <p className="text-sm text-brand-dark/40">
+                    {t("cartSection.loadingStores")}
+                  </p>
                 ) : (
                   <div className="grid sm:grid-cols-2 gap-2">
                     {stores.map((store) => (
@@ -364,7 +375,9 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                             : "border-gray-200 hover:border-brand-red/40"
                         }`}
                       >
-                        <p className="font-medium text-brand-dark text-sm">{store.name}</p>
+                        <p className="font-medium text-brand-dark text-sm">
+                          {store.name}
+                        </p>
                         <p className="text-xs text-brand-dark/50 mt-0.5 leading-snug">
                           {store.address}
                         </p>
@@ -376,19 +389,20 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
 
               <div className="bg-white p-5">
                 <h3 className="font-semibold text-brand-dark mb-3 flex items-center gap-2">
-                  <Clock size={16} className="text-brand-red" /> Pickup Date & Time
+                  <Clock size={16} className="text-brand-red" />{" "}
+                  {t("cartSection.pickupDateTime")}
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-brand-dark/50 font-medium uppercase tracking-wide mb-1 block">
-                      Date
+                      {t("cartSection.labelDate")}
                     </label>
                     <select
                       value={pickupDate}
                       onChange={(e) => setPickupDate(e.target.value)}
                       className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white"
                     >
-                      {PICKUP_DATES.map((d) => (
+                      {pickupDates.map((d) => (
                         <option key={d.value} value={d.value}>
                           {d.label}
                         </option>
@@ -397,16 +411,16 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                   </div>
                   <div>
                     <label className="text-xs text-brand-dark/50 font-medium uppercase tracking-wide mb-1 block">
-                      Time
+                      {t("cartSection.labelTime")}
                     </label>
                     <select
                       value={pickupTime}
                       onChange={(e) => setPickupTime(e.target.value)}
                       className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white"
                     >
-                      {TIME_SLOTS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
+                      {TIME_SLOTS.map((tSlot) => (
+                        <option key={tSlot} value={tSlot}>
+                          {tSlot}
                         </option>
                       ))}
                     </select>
@@ -417,17 +431,23 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
 
             <div className="lg:col-span-2">
               <div className="bg-white p-5 sticky top-24">
-                <h3 className="font-semibold text-brand-dark mb-4">Order Summary</h3>
+                <h3 className="font-semibold text-brand-dark mb-4">
+                  {t("summarySection.title")}
+                </h3>
                 <div className="space-y-2 mb-4">
                   {cart.map((line) => (
-                    <div key={line.cartLineId} className="flex justify-between text-sm">
+                    <div
+                      key={line.cartLineId}
+                      className="flex justify-between text-sm"
+                    >
                       <span className="text-brand-dark/70">
                         {line.item.name} × {line.qty}
                       </span>
                       <span className="text-brand-dark font-medium">
                         $
                         {(
-                          (parseFloat(line.item.price) + (line.customisation?.extraPrice ?? 0)) *
+                          (parseFloat(line.item.price) +
+                            (line.customisation?.extraPrice ?? 0)) *
                           line.qty
                         ).toFixed(2)}
                       </span>
@@ -436,17 +456,24 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                 </div>
                 <div className="border-t border-gray-100 pt-3 mb-4">
                   <div className="flex justify-between font-bold text-brand-dark text-lg">
-                    <span>Total</span>
+                    <span>{t("summarySection.totalLabel")}</span>
                     <span>${cartTotal.toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-brand-dark/40 mt-1">Prices include GST</p>
+                  <p className="text-xs text-brand-dark/40 mt-1">
+                    {t("summarySection.gstNote")}
+                  </p>
                 </div>
                 {selectedStore && (
                   <div className="bg-brand-cream p-3 mb-4 text-xs text-brand-dark/60">
-                    <p className="font-semibold text-brand-dark mb-1">{selectedStore.name}</p>
+                    <p className="font-semibold text-brand-dark mb-1">
+                      {t("summarySection.pickupLabel")}
+                    </p>
+                    <p className="font-medium text-brand-dark mb-0.5">
+                      {selectedStore.name}
+                    </p>
                     <p>{selectedStore.address}</p>
                     <p className="mt-1">
-                      {pickupDate} at {pickupTime}
+                      {pickupDate} {t("summarySection.at")} {pickupTime}
                     </p>
                   </div>
                 )}
@@ -456,10 +483,10 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                   disabled={cart.length === 0}
                   className="w-full bg-brand-red text-white py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Continue <ChevronRight size={15} />
+                  {t("summarySection.btnContinue")} <ChevronRight size={15} />
                 </button>
                 <p className="text-xs text-brand-dark/40 text-center mt-3">
-                  Pickup only · No delivery
+                  {t("summarySection.pickupOnlyNote")}
                 </p>
               </div>
             </div>
@@ -477,56 +504,61 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                 >
                   <ArrowLeft size={18} />
                 </button>
-                <h2 className="font-serif text-2xl text-brand-dark">Your Details</h2>
+                <h2 className="font-serif text-2xl text-brand-dark">
+                  {t("detailsSection.title")}
+                </h2>
               </div>
 
               <div className="bg-white p-6 space-y-4">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-brand-dark/50 mb-1.5 block">
-                    <User size={12} className="inline mr-1" /> Full Name *
+                    <User size={12} className="inline mr-1" />{" "}
+                    {t("detailsSection.labelName")}
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                    className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red transition-colors"
+                    placeholder={t("detailsSection.placeholderName")}
+                    className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-brand-dark/50 mb-1.5 block">
-                    <Mail size={12} className="inline mr-1" /> Email Address *
+                    <Mail size={12} className="inline mr-1" />{" "}
+                    {t("detailsSection.labelEmail")}
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red transition-colors"
+                    placeholder={t("detailsSection.placeholderEmail")}
+                    className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-brand-dark/50 mb-1.5 block">
-                    <Phone size={12} className="inline mr-1" /> Phone Number *
+                    <Phone size={12} className="inline mr-1" />{" "}
+                    {t("detailsSection.labelPhone")}
                   </label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="0400 000 000"
-                    className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red transition-colors"
+                    placeholder={t("detailsSection.placeholderPhone")}
+                    className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-brand-dark/50 mb-1.5 block">
-                    Special Instructions (optional)
+                    {t("detailsSection.labelNotes")}
                   </label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Allergies, special requests…"
+                    placeholder={t("detailsSection.placeholderNotes")}
                     rows={3}
-                    className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red transition-colors resize-none"
+                    className="w-full border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-brand-red transition-colors resize-none bg-white"
                   />
                 </div>
               </div>
@@ -534,17 +566,23 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
 
             <div className="lg:col-span-2">
               <div className="bg-white p-5 sticky top-24">
-                <h3 className="font-semibold text-brand-dark mb-4">Order Summary</h3>
+                <h3 className="font-semibold text-brand-dark mb-4">
+                  {t("summarySection.title")}
+                </h3>
                 <div className="space-y-2 mb-4">
                   {cart.map((line) => (
-                    <div key={line.cartLineId} className="flex justify-between text-sm">
+                    <div
+                      key={line.cartLineId}
+                      className="flex justify-between text-sm"
+                    >
                       <span className="text-brand-dark/70">
                         {line.item.name} × {line.qty}
                       </span>
                       <span className="text-brand-dark font-medium">
                         $
                         {(
-                          (parseFloat(line.item.price) + (line.customisation?.extraPrice ?? 0)) *
+                          (parseFloat(line.item.price) +
+                            (line.customisation?.extraPrice ?? 0)) *
                           line.qty
                         ).toFixed(2)}
                       </span>
@@ -553,15 +591,17 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                 </div>
                 <div className="border-t border-gray-100 pt-3 mb-4">
                   <div className="flex justify-between font-bold text-brand-dark text-lg">
-                    <span>Total</span>
+                    <span>{t("summarySection.totalLabel")}</span>
                     <span>${cartTotal.toFixed(2)}</span>
                   </div>
                 </div>
                 {selectedStore && (
                   <div className="bg-brand-cream p-3 mb-4 text-xs text-brand-dark/60">
-                    <p className="font-semibold text-brand-dark mb-1">{selectedStore.name}</p>
+                    <p className="font-semibold text-brand-dark mb-1">
+                      {selectedStore.name}
+                    </p>
                     <p>
-                      {pickupDate} at {pickupTime}
+                      {pickupDate} {t("summarySection.at")} {pickupTime}
                     </p>
                   </div>
                 )}
@@ -570,7 +610,7 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                   onClick={handleProceedToConfirm}
                   className="w-full bg-brand-red text-white py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-2"
                 >
-                  Review Order <ChevronRight size={15} />
+                  {t("detailsSection.btnReview")} <ChevronRight size={15} />
                 </button>
               </div>
             </div>
@@ -588,11 +628,15 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                 >
                   <ArrowLeft size={18} />
                 </button>
-                <h2 className="font-serif text-2xl text-brand-dark">Confirm & Pay</h2>
+                <h2 className="font-serif text-2xl text-brand-dark">
+                  {t("confirmSection.title")}
+                </h2>
               </div>
 
               <div className="bg-white p-5">
-                <h3 className="font-semibold text-brand-dark mb-3">Your Items</h3>
+                <h3 className="font-semibold text-brand-dark mb-3">
+                  {t("confirmSection.itemsTitle")}
+                </h3>
                 <div className="space-y-2">
                   {cart.map((line) => (
                     <div
@@ -605,40 +649,50 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                       <span className="text-brand-dark font-medium">
                         $
                         {(
-                          (parseFloat(line.item.price) + (line.customisation?.extraPrice ?? 0)) *
+                          (parseFloat(line.item.price) +
+                            (line.customisation?.extraPrice ?? 0)) *
                           line.qty
                         ).toFixed(2)}
                       </span>
                     </div>
                   ))}
                   <div className="flex justify-between font-bold text-brand-dark pt-2">
-                    <span>Total</span>
+                    <span>{t("summarySection.totalLabel")}</span>
                     <span>${cartTotal.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white p-5">
-                <h3 className="font-semibold text-brand-dark mb-3">Pickup Details</h3>
+                <h3 className="font-semibold text-brand-dark mb-3">
+                  {t("confirmSection.pickupTitle")}
+                </h3>
                 <div className="space-y-2 text-sm text-brand-dark/70">
                   <div className="flex items-start gap-2">
-                    <MapPin size={14} className="text-brand-red mt-0.5 flex-shrink-0" />
+                    <MapPin
+                      size={14}
+                      className="text-brand-red mt-0.5 flex-shrink-0"
+                    />
                     <div>
-                      <p className="font-medium text-brand-dark">{selectedStore?.name}</p>
+                      <p className="font-medium text-brand-dark">
+                        {selectedStore?.name}
+                      </p>
                       <p>{selectedStore?.address}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock size={14} className="text-brand-red flex-shrink-0" />
                     <span>
-                      {pickupDate} at {pickupTime}
+                      {pickupDate} {t("summarySection.at")} {pickupTime}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white p-5">
-                <h3 className="font-semibold text-brand-dark mb-3">Contact Details</h3>
+                <h3 className="font-semibold text-brand-dark mb-3">
+                  {t("confirmSection.contactTitle")}
+                </h3>
                 <div className="space-y-1.5 text-sm text-brand-dark/70">
                   <div className="flex items-center gap-2">
                     <User size={13} className="text-brand-red" />
@@ -663,32 +717,39 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
               <div className="bg-white p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <CreditCard size={16} className="text-brand-red" />
-                  <h3 className="font-semibold text-brand-dark">Payment</h3>
+                  <h3 className="font-semibold text-brand-dark">
+                    {t("confirmSection.paymentTitle")}
+                  </h3>
                 </div>
                 <p className="text-sm text-brand-dark/60 mb-3">
-                  You&apos;ll be redirected to our secure Stripe checkout to complete payment. We
-                  accept all major credit/debit cards.
+                  {t("confirmSection.paymentDesc")}
                 </p>
                 <div className="flex items-center gap-2 text-xs text-brand-dark/40">
                   <CheckCircle size={12} className="text-green-500" />
-                  <span>Secure SSL payment via Stripe</span>
+                  <span>{t("confirmSection.secureLabel")}</span>
                 </div>
               </div>
             </div>
 
             <div className="lg:col-span-2">
               <div className="bg-white p-5 sticky top-24">
-                <h3 className="font-semibold text-brand-dark mb-4">Order Total</h3>
+                <h3 className="font-semibold text-brand-dark mb-4">
+                  {t("summarySection.title")}
+                </h3>
                 <div className="space-y-2 mb-4">
                   {cart.map((line) => (
-                    <div key={line.cartLineId} className="flex justify-between text-sm">
+                    <div
+                      key={line.cartLineId}
+                      className="flex justify-between text-sm"
+                    >
                       <span className="text-brand-dark/70">
                         {line.item.name} × {line.qty}
                       </span>
                       <span className="text-brand-dark font-medium">
                         $
                         {(
-                          (parseFloat(line.item.price) + (line.customisation?.extraPrice ?? 0)) *
+                          (parseFloat(line.item.price) +
+                            (line.customisation?.extraPrice ?? 0)) *
                           line.qty
                         ).toFixed(2)}
                       </span>
@@ -697,10 +758,12 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                 </div>
                 <div className="border-t border-gray-100 pt-3 mb-5">
                   <div className="flex justify-between font-bold text-brand-dark text-xl">
-                    <span>Total</span>
+                    <span>{t("summarySection.totalLabel")}</span>
                     <span>${cartTotal.toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-brand-dark/40 mt-1">Includes GST</p>
+                  <p className="text-xs text-brand-dark/40 mt-1">
+                    {t("confirmSection.gstIncludedNote")}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -711,16 +774,19 @@ export default function Checkout({ storeLocations, initialStoreId = null }: Chec
                   {isPlacing ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Processing…
+                      {t("confirmSection.btnProcessing")}
                     </span>
                   ) : (
                     <>
-                      <CreditCard size={16} /> Pay ${cartTotal.toFixed(2)}
+                      <CreditCard size={16} />{" "}
+                      {t("confirmSection.btnPay", {
+                        total: cartTotal.toFixed(2),
+                      })}
                     </>
                   )}
                 </button>
                 <p className="text-xs text-brand-dark/40 text-center mt-3">
-                  By placing your order you agree to our terms of service.
+                  {t("confirmSection.termsNote")}
                 </p>
               </div>
             </div>

@@ -1,4 +1,17 @@
 {
+  "NavLinks": {
+    "home": "Home",
+    "our_food": "Our Food",
+    "our_story": "Our Story",
+    "wholesale": "Wholesale Shop",
+    "franchise": "Franchise",
+    "faq": "FAQ",
+    "find_us": "Find Us",
+    "catering": "Catering",
+    "my_account": "My Account",
+    "order": "Order {count}",
+    "order_online": "Order Online"
+  },
   "Home": {
     "portals": {
       "franchise": "Franchise Portal",
@@ -36,7 +49,14 @@
       "badgeTitle": "HANDCRAFTED DAILY",
       "badgeSubtitle": "Every dish made with care, every time.",
       "description": "Fresh Vietnamese food perfect for meetings, gatherings, and everyday meals. Our bánh mì are baked fresh throughout the day — crispy baguette, house-made pâté, and vibrant fillings that keep you coming back.",
-      "tags": ["Bánh Mì", "Pho", "Bún Bowls", "Spring Rolls", "Rice Paper Rolls", "Broken Rice"],
+      "tags": [
+        "Bánh Mì",
+        "Pho",
+        "Bún Bowls",
+        "Spring Rolls",
+        "Rice Paper Rolls",
+        "Broken Rice"
+      ],
       "cta": "Want to Try Our Food?",
       "mosaicAlt": "Saigon Express food"
     },
@@ -49,7 +69,12 @@
       "boxTitle": "Mixed Catering Box",
       "boxSubtitle": "Bánh Mì + Spring Rolls",
       "description": "From office lunches to large events — our catering boxes are packed fresh with bánh mì, spring rolls, and more. Minimum 10 rolls, delivered or pick-up. Available across Tasmania.",
-      "tags": ["Office Catering", "Events & Parties", "Corporate Orders", "Same-Day Available"],
+      "tags": [
+        "Office Catering",
+        "Events & Parties",
+        "Corporate Orders",
+        "Same-Day Available"
+      ],
       "cta": "Order Catering"
     },
     "signature": {
@@ -90,7 +115,12 @@
       "titleLine2": "or Restaurant.",
       "imageAlt": "Wholesale supply",
       "description": "Partner with Saigon Express Tasmania for wholesale Vietnamese food supply across the island. Bulk pricing, consistent quality, and reliable weekly delivery for cafés, grocery stores, and food service businesses.",
-      "tags": ["Bulk Pricing", "Weekly Delivery", "Consistent Quality", "Tasmanian Business"],
+      "tags": [
+        "Bulk Pricing",
+        "Weekly Delivery",
+        "Consistent Quality",
+        "Tasmanian Business"
+      ],
       "cta": "Wholesale Shop"
     },
     "getApp": {
@@ -150,6 +180,2292 @@
       "findStore": "Find a Store",
       "careers": "Careers",
       "faq": "FAQ"
+    }
+  },
+  "Careers": {
+    "hero": {
+      "badge": "JOIN OUR TEAM — TASMANIA",
+      "titleLine1": "Grow With",
+      "titleLine2": "Saigon Express.",
+      "description": "We are building Tasmania's most loved Vietnamese food brand — and we want passionate, talented people to build it with us. From the kitchen to the counter, every role matters.",
+      "cta": "View Open Positions"
+    },
+    "whyUs": {
+      "label": "WHY SAIGON EXPRESS",
+      "title": "More Than Just a Job",
+      "description": "We are a family-owned Tasmanian business with big ambitions. When you join us, you join a team that cares about food, people, and community.",
+      "benefits": {
+        "discount": {
+          "title": "30% Staff Meal Discount",
+          "desc": "Enjoy 30% off your meal every time you work. We believe in looking after our team."
+        },
+        "progression": {
+          "title": "Fast Career Progression",
+          "desc": "We promote from within. Many of our managers and team leaders started as kitchen hands or FOH staff."
+        },
+        "culture": {
+          "title": "Inclusive, Supportive Culture",
+          "desc": "We celebrate diversity and welcome people from all backgrounds. Vietnamese culture is at our heart — and everyone is family."
+        },
+        "events": {
+          "title": "Team Events & Recognition",
+          "desc": "Quarterly team gatherings, staff awards, and a genuine culture of appreciation for the work you do."
+        },
+        "training": {
+          "title": "Paid Training & Development",
+          "desc": "We invest in your growth — from food safety certificates to leadership workshops and barista training."
+        },
+        "locations": {
+          "title": "Multiple Locations Across Tasmania",
+          "desc": "With 8 locations and more planned, there are opportunities close to where you live."
+        }
+      }
+    },
+    "jobs": [
+      {
+        "id": 1,
+        "title": "Head Wok Chef",
+        "department": "Kitchen",
+        "type": "Full-Time",
+        "location": "North Hobart / CBD",
+        "salary": "$65,000 – $80,000 + super",
+        "badge": "SENIOR ROLE",
+        "badgeColor": "bg-red-600",
+        "summary": "Lead our kitchen brigade across our busiest locations. You will own the wok station, set the quality standard for every dish that leaves the pass, and mentor junior kitchen staff in authentic Vietnamese cooking techniques.",
+        "responsibilities": [
+          "Execute the full Saigon Express menu to specification, with a focus on wok-based dishes, pho, and bún bowls",
+          "Maintain consistent flavour profiles across all menu items during high-volume service periods",
+          "Train and supervise junior cooks and kitchen hands in Vietnamese cooking techniques",
+          "Manage mise en place, prep schedules, and kitchen workflow to minimise ticket times",
+          "Monitor food quality, portion control, and plate presentation standards",
+          "Assist the Restaurant Manager with ordering, stock rotation, and waste reduction",
+          "Uphold all food safety, hygiene, and HACCP standards at all times",
+          "Contribute ideas for seasonal specials and menu development"
+        ],
+        "requirements": [
+          "Minimum 3 years' experience as a wok chef or senior cook in a Vietnamese or Asian restaurant",
+          "Proven ability to work at speed and maintain quality during peak service",
+          "Strong knowledge of Vietnamese flavour profiles, stocks, and sauces",
+          "Food Safety Supervisor certificate (or willingness to obtain)",
+          "Ability to work a rotating roster including weekends and public holidays",
+          "Team leadership experience is highly regarded"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Career progression to Head Chef",
+          "Training in our central kitchen",
+          "Uniform provided"
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Sous Chef",
+        "department": "Kitchen",
+        "type": "Full-Time",
+        "location": "Any Tasmanian Location",
+        "salary": "$58,000 – $68,000 + super",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Support the Head Chef in running a smooth, high-quality kitchen operation. You will be responsible for daily prep, service execution, and stepping up as acting Head Chef when required.",
+        "responsibilities": [
+          "Assist the Head Chef in all aspects of kitchen management and service",
+          "Lead the kitchen team during service in the Head Chef's absence",
+          "Oversee daily prep lists, ensuring all stations are fully set up before service",
+          "Monitor food costs, portion sizes, and wastage in line with targets",
+          "Conduct daily temperature checks and food safety documentation",
+          "Train new kitchen staff and provide ongoing coaching",
+          "Maintain a clean, organised, and safe kitchen environment"
+        ],
+        "requirements": [
+          "2+ years' experience as a Sous Chef or Senior Cook in a fast-paced kitchen",
+          "Solid understanding of Vietnamese or Asian cuisine",
+          "Food Safety Supervisor certificate",
+          "Strong organisational skills and ability to multitask under pressure",
+          "Flexible availability including weekends"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Clear pathway to Head Chef",
+          "Uniform provided",
+          "Paid training"
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Cook / Kitchen Hand",
+        "department": "Kitchen",
+        "type": "Full-Time / Part-Time",
+        "location": "All Locations",
+        "salary": "$24 – $30/hr + super",
+        "badge": "MULTIPLE POSITIONS",
+        "badgeColor": "bg-amber-600",
+        "summary": "Join our kitchen team and learn the craft of authentic Vietnamese cooking. Whether you are an experienced cook or an enthusiastic beginner, we will train you to the Saigon Express standard.",
+        "responsibilities": [
+          "Prepare ingredients and complete daily mise en place tasks",
+          "Assist with cooking during service under the direction of the Head Chef",
+          "Maintain cleanliness and organisation of your station throughout service",
+          "Complete end-of-shift cleaning duties to food safety standards",
+          "Receive and store deliveries, checking quality and rotating stock",
+          "Assist with dishwashing and general kitchen support as required"
+        ],
+        "requirements": [
+          "Passion for food and a willingness to learn",
+          "Ability to work efficiently in a fast-paced environment",
+          "Reliable, punctual, and a strong team player",
+          "Food handling certificate (or willingness to obtain — we will help)",
+          "Previous kitchen experience is an advantage but not essential"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Paid training",
+          "Flexible hours",
+          "Pathway to Cook or Sous Chef"
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Restaurant Manager",
+        "department": "Management",
+        "type": "Full-Time",
+        "location": "North Hobart / CBD",
+        "salary": "$70,000 – $85,000 + super + bonus",
+        "badge": "LEADERSHIP",
+        "badgeColor": "bg-emerald-700",
+        "summary": "Take ownership of the daily operations of a Saigon Express location. You will lead a team of up to 15 staff, drive sales performance, and ensure every guest leaves with a smile.",
+        "responsibilities": [
+          "Oversee all front-of-house and back-of-house operations for your location",
+          "Recruit, onboard, roster, and manage a team of up to 15 FOH and BOH staff",
+          "Drive revenue through upselling, promotions, and excellent guest experience",
+          "Monitor daily sales, labour costs, and COGS against budget targets",
+          "Manage stock ordering, supplier relationships, and inventory accuracy",
+          "Handle guest feedback and resolve complaints professionally and promptly",
+          "Ensure compliance with all food safety, liquor licensing, and OH&S regulations",
+          "Prepare weekly reports for the Operations Manager and Franchise Director",
+          "Champion the Saigon Express brand standards and culture at your location"
+        ],
+        "requirements": [
+          "3+ years' experience managing a restaurant, café, or QSR location",
+          "Proven track record of leading and developing hospitality teams",
+          "Strong financial acumen — comfortable reading P&L reports",
+          "RSA certificate and Food Safety Supervisor certificate",
+          "Excellent communication and conflict-resolution skills",
+          "Flexible availability including weekends and public holidays"
+        ],
+        "perks": [
+          "Performance bonus",
+          "30% staff meal discount",
+          "Career path to Area Manager",
+          "Company phone",
+          "Paid leadership training"
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Assistant Restaurant Manager",
+        "department": "Management",
+        "type": "Full-Time",
+        "location": "All Locations",
+        "salary": "$58,000 – $68,000 + super",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Support the Restaurant Manager in running a high-performing location. This is an ideal role for an experienced senior FOH team member ready to take the next step into management.",
+        "responsibilities": [
+          "Assist the Restaurant Manager in all aspects of daily operations",
+          "Supervise FOH staff during service and act as duty manager when required",
+          "Open and close the venue, including cash reconciliation and end-of-day reporting",
+          "Handle guest feedback and escalations with professionalism",
+          "Assist with rostering, onboarding new staff, and conducting performance check-ins",
+          "Monitor stock levels and assist with ordering",
+          "Ensure brand standards and service procedures are followed consistently"
+        ],
+        "requirements": [
+          "2+ years' experience in a senior FOH or team leader role",
+          "RSA certificate",
+          "Strong leadership presence and communication skills",
+          "Comfortable with POS systems and basic cash handling",
+          "Flexible availability including weekends"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Clear pathway to Restaurant Manager",
+          "Paid training",
+          "Uniform provided"
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Front of House (FOH) Team Leader",
+        "department": "Front of House",
+        "type": "Full-Time / Part-Time",
+        "location": "All Locations",
+        "salary": "$27 – $32/hr + super",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Lead the floor during service, ensuring every guest receives a warm, efficient, and memorable Saigon Express experience. You will mentor junior FOH staff and be the first point of contact for guest feedback.",
+        "responsibilities": [
+          "Lead the FOH team during service, directing staff to tables and stations",
+          "Greet and seat guests, manage waitlists, and oversee table turnover",
+          "Handle guest feedback and complaints promptly and professionally",
+          "Train and coach junior FOH staff in service standards and menu knowledge",
+          "Assist with opening and closing duties including cash reconciliation",
+          "Ensure the dining area is clean, well-presented, and fully stocked at all times",
+          "Communicate clearly with the kitchen team to manage ticket flow"
+        ],
+        "requirements": [
+          "2+ years' experience in a FOH role, with at least 6 months in a team leader or senior capacity",
+          "RSA certificate",
+          "Excellent communication and interpersonal skills",
+          "Ability to stay calm and organised during busy service periods",
+          "Flexible availability including weekends and public holidays"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Pathway to Assistant Manager",
+          "Uniform provided",
+          "Flexible hours"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Talented FOH Staff / Wait Staff",
+        "department": "Front of House",
+        "type": "Full-Time / Part-Time / Casual",
+        "location": "All Locations",
+        "salary": "$24 – $28/hr + super",
+        "badge": "NOW HIRING",
+        "badgeColor": "bg-primary",
+        "summary": "Be the face of Saigon Express. We are always looking for warm, energetic, and guest-focused people to join our front-of-house team. No Vietnamese food experience required — just a genuine love of hospitality.",
+        "responsibilities": [
+          "Welcome guests with warmth and enthusiasm, creating a memorable first impression",
+          "Take orders accurately using our POS system and communicate special requests to the kitchen",
+          "Deliver food and beverages promptly and check in on guest satisfaction",
+          "Maintain a thorough knowledge of the full Saigon Express menu, including ingredients and allergens",
+          "Keep the dining area clean, tidy, and well-presented throughout service",
+          "Process payments and handle cash and card transactions accurately",
+          "Assist with opening and closing side duties as directed",
+          "Upsell menu items, drinks, and catering packages where appropriate"
+        ],
+        "requirements": [
+          "Genuine passion for hospitality and creating great guest experiences",
+          "RSA certificate (or willingness to obtain — we will support you)",
+          "Reliable, punctual, and a strong team player",
+          "Ability to work at pace during busy service periods",
+          "Previous hospitality experience is an advantage but not essential",
+          "Flexible availability including weekends"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Flexible casual, part-time, or full-time hours",
+          "Uniform provided",
+          "Pathway to Team Leader and beyond"
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Barista / Drinks Specialist",
+        "department": "Front of House",
+        "type": "Part-Time / Casual",
+        "location": "CBD / North Hobart",
+        "salary": "$25 – $30/hr + super",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Craft our Vietnamese iced coffee, homemade lemon tea, and full espresso menu for our guests. If you love coffee and Vietnamese drinks culture, this role is for you.",
+        "responsibilities": [
+          "Prepare and serve espresso-based coffees, Vietnamese iced coffee, and homemade drinks to specification",
+          "Maintain the coffee machine, grinder, and drinks station to a high standard of cleanliness",
+          "Manage stock levels for coffee, milk, and drinks ingredients",
+          "Assist FOH staff during busy service periods",
+          "Engage with guests and share your knowledge of our drinks menu"
+        ],
+        "requirements": [
+          "Barista experience with a strong understanding of espresso technique",
+          "Interest in Vietnamese drinks culture is a bonus",
+          "RSA certificate",
+          "Friendly, guest-focused personality",
+          "Flexible availability including weekends"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Free coffee on shift",
+          "Flexible hours",
+          "Uniform provided"
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Delivery & Catering Coordinator",
+        "department": "Operations",
+        "type": "Full-Time / Part-Time",
+        "location": "Hobart Region",
+        "salary": "$26 – $32/hr + super",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Coordinate our growing catering and delivery operations across Greater Hobart. You will be the logistics backbone of our catering business, ensuring every order arrives on time, at temperature, and presented perfectly.",
+        "responsibilities": [
+          "Manage all catering order bookings, confirmations, and client communication",
+          "Coordinate delivery schedules and driver logistics for catering and wholesale orders",
+          "Pack and quality-check catering orders before dispatch",
+          "Liaise with the kitchen team to ensure catering orders are prepared on time",
+          "Maintain catering equipment, packaging inventory, and delivery vehicle cleanliness",
+          "Handle post-event follow-up with catering clients",
+          "Assist with the development of new catering packages and pricing"
+        ],
+        "requirements": [
+          "Experience in a logistics, events, or hospitality coordination role",
+          "Valid Australian driver's licence",
+          "Strong organisational skills and attention to detail",
+          "Excellent communication skills — you will be the client's main point of contact",
+          "Ability to lift and carry catering equipment (up to 15kg)",
+          "Food handling certificate"
+        ],
+        "perks": [
+          "30% staff meal discount",
+          "Company vehicle for deliveries",
+          "Flexible hours",
+          "Pathway to Operations Manager"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Wholesale & B2B Account Manager",
+        "department": "Sales & Wholesale",
+        "type": "Full-Time",
+        "location": "Hobart (Travel Required)",
+        "salary": "$60,000 – $72,000 + super + commission",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Grow our wholesale business across Tasmania. You will manage relationships with existing café, grocery, and hospitality partners, and actively prospect for new B2B accounts.",
+        "responsibilities": [
+          "Manage and grow a portfolio of wholesale accounts across Tasmania",
+          "Conduct regular client visits to ensure satisfaction and identify upsell opportunities",
+          "Prospect and onboard new B2B partners including cafés, delis, and corporate clients",
+          "Prepare and present wholesale proposals, pricing, and product samples",
+          "Coordinate with the warehouse team to ensure accurate and timely order fulfilment",
+          "Track sales performance and report weekly to the Operations Manager",
+          "Represent Saigon Express at trade events, food expos, and networking functions"
+        ],
+        "requirements": [
+          "2+ years' experience in a B2B sales or account management role, preferably in food & beverage",
+          "Strong relationship-building and negotiation skills",
+          "Valid Australian driver's licence",
+          "Self-motivated with a proven ability to hit sales targets",
+          "Proficiency in CRM tools and Microsoft Office"
+        ],
+        "perks": [
+          "Commission structure on new accounts",
+          "Company vehicle",
+          "Expense account for client entertainment",
+          "Career path to Sales Manager"
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Marketing & Social Media Coordinator",
+        "department": "Marketing",
+        "type": "Part-Time / Full-Time",
+        "location": "Hobart (Hybrid)",
+        "salary": "$55,000 – $65,000 + super (pro-rata)",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Tell the Saigon Express story to Tasmania and beyond. You will manage our social media presence, create content, run promotions, and help build one of Tasmania's most loved food brands.",
+        "responsibilities": [
+          "Plan, create, and schedule content across Instagram, Facebook, and TikTok",
+          "Photograph and film food, team, and behind-the-scenes content at our locations",
+          "Manage community engagement — respond to comments, DMs, and reviews",
+          "Plan and execute seasonal promotions, giveaways, and influencer partnerships",
+          "Write copy for the website, email newsletters, and in-store signage",
+          "Monitor analytics and report on content performance monthly",
+          "Assist with the design of menus, flyers, and marketing collateral",
+          "Support the franchise and wholesale teams with B2B marketing materials"
+        ],
+        "requirements": [
+          "Demonstrated experience managing social media for a food, hospitality, or lifestyle brand",
+          "Strong photography and basic video editing skills (Reels, TikTok)",
+          "Excellent copywriting ability — warm, engaging, and on-brand",
+          "Proficiency in Canva or Adobe Creative Suite",
+          "Passion for Vietnamese food culture and storytelling",
+          "Degree in Marketing, Communications, or a related field is advantageous"
+        ],
+        "perks": [
+          "Hybrid work arrangement",
+          "30% staff meal discount",
+          "Creative freedom to build the brand",
+          "Career path to Marketing Manager"
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Franchise Support Officer",
+        "department": "Franchise",
+        "type": "Full-Time",
+        "location": "Hobart CBD",
+        "salary": "$58,000 – $70,000 + super",
+        "badge": null,
+        "badgeColor": "",
+        "summary": "Support the growth of the Saigon Express franchise network. You will be the primary point of contact for new and existing franchisees, helping them succeed through training, compliance, and operational support.",
+        "responsibilities": [
+          "Onboard new franchisees through the full training and set-up process",
+          "Conduct regular store visits to assess compliance with brand standards and SOPs",
+          "Provide ongoing operational support and troubleshooting to franchisees",
+          "Maintain and update the Franchise Operations Manual and training materials",
+          "Coordinate the franchise application and approval process",
+          "Liaise with legal, finance, and marketing teams on behalf of franchisees",
+          "Prepare monthly performance reports for each franchise location"
+        ],
+        "requirements": [
+          "Experience in franchise operations, hospitality management, or a similar field",
+          "Strong interpersonal skills and ability to build trust with business owners",
+          "Highly organised with excellent written and verbal communication",
+          "Willingness to travel to franchise locations across Tasmania",
+          "Understanding of franchise agreements and compliance frameworks is advantageous"
+        ],
+        "perks": [
+          "Travel allowance",
+          "Career path to Franchise Development Manager",
+          "Company phone and laptop",
+          "Paid professional development"
+        ]
+      }
+    ],
+    "cta": {
+      "label": "READY TO APPLY?",
+      "titleLine1": "Your Next Career Move",
+      "titleLine2": "Starts Here.",
+      "description": "Send your CV and a brief cover letter to our team. Tell us which role you're applying for and why Saigon Express is the right fit for you.",
+      "emailBtn": "Email Your Application",
+      "smsLabel": "SMS enquiries: 0416 036 016",
+      "equalOpportunity": "Saigon Express Tasmania is an equal opportunity employer. We welcome applications from people of all backgrounds, including First Nations peoples, people with disability, and those from culturally and linguistically diverse communities."
+    }
+  },
+  "Catering": {
+    "hero": {
+      "badge": "BÁNH MÌ CATERING HOBART",
+      "titleLine1": "Catering for",
+      "titleLine2": "Every Occasion",
+      "description": "Authentic Vietnamese catering delivered fresh across Tasmania — from office lunches to gala dinners.",
+      "ctaPacks": "View Catering Packs",
+      "ctaMenu": "Full Menu & Prices",
+      "ctaQuote": "Request a Quote"
+    },
+    "stats": [
+      { "num": "500+", "label": "Events Catered" },
+      { "num": "50,000+", "label": "Guests Served" },
+      { "num": "8", "label": "Tasmania Locations" },
+      { "num": "100%", "label": "Fresh Daily" }
+    ],
+    "whyUs": {
+      "label": "WHY SAIGON EXPRESS CATERING",
+      "titleLine1": "Tasmania's Favourite",
+      "titleLine2": "Vietnamese Caterer",
+      "items": [
+        {
+          "emoji": "🌿",
+          "title": "Fresh Daily",
+          "desc": "Every item prepared fresh on the day of your event — never frozen, never pre-packaged."
+        },
+        {
+          "emoji": "🏆",
+          "title": "Award-Winning Recipes",
+          "desc": "Authentic Vietnamese recipes refined over decades, brought to your event."
+        },
+        {
+          "emoji": "🚚",
+          "title": "Scheduled Delivery",
+          "desc": "We deliver catering orders across Hobart, Sorell, Kingston, and surrounding areas. Minimum 24 hours' notice required."
+        },
+        {
+          "emoji": "🌱",
+          "title": "Dietary Friendly",
+          "desc": "Halal, vegetarian, vegan, and gluten-free options available on request."
+        },
+        {
+          "emoji": "👨‍🍳",
+          "title": "Experienced Team",
+          "desc": "Our catering team has served thousands of events across Tasmania."
+        },
+        {
+          "emoji": "📋",
+          "title": "Hassle-Free Planning",
+          "desc": "One point of contact from enquiry to clean-up. We handle everything."
+        }
+      ]
+    },
+    "packs": {
+      "label": "CATERING PACKAGES",
+      "title": "Choose Your Pack",
+      "description": "All packs include fresh preparation on the day, eco-friendly packaging, and delivery to your venue.",
+      "empty": "No catering packs available right now.",
+      "serves": "Serves {serves}",
+      "enquire": "Enquire Now"
+    },
+    "menu": {
+      "label": "FULL CATERING MENU",
+      "title": "Order by the Box",
+      "description": "All boxes are freshly prepared on the day of your event. Please provide at least 24 hours' notice. Contact ",
+      "descriptionEmail": "catering@saigonexpress.com.au",
+      "descriptionEnd": " to customise your order.",
+      "empty": "No catering menu items available right now.",
+      "caters": "Caters {serves}",
+      "enquire": "Enquire Now",
+      "customPrice": "Custom price",
+      "proteinLabel": "CHOOSE YOUR PROTEIN",
+      "proteinList": "Crispy Roast Pork · BBQ Pork · Satay Chicken · Fried Chicken · Lemongrass Chicken · Lemongrass Beef · Veggie & Tofu · Grilled Prawns · BBQ Duck",
+      "proteinNote": "Mixed selection recommended · Custom selection available (max 2–3 options) · Additional charge for premium flavours"
+    },
+    "testimonial": {
+      "quote": "\"Saigon Express catered our company's annual conference for 120 guests. The food was incredible — fresh, flavourful, and everyone was asking for the recipe.\"",
+      "author": "— Corporate Client, Hobart CBD"
+    },
+    "form": {
+      "label": "GET IN TOUCH",
+      "title": "Request a Catering Quote",
+      "description": "Tell us about your event and we'll get back to you within 24 hours with a tailored quote. No event is too big or too small.",
+      "features": {
+        "response": "Response within 24 hours",
+        "guests": "Minimum 10 guests",
+        "consultation": "Free consultation included",
+        "delivery": "Tasmania-wide delivery available"
+      },
+      "directLabel": "Direct catering enquiries:",
+      "successTitle": "Enquiry Received!",
+      "successText": "We'll be in touch within 24 hours with your personalised catering quote.",
+      "inputName": "Your Name *",
+      "inputOrg": "Organisation",
+      "inputEmail": "Email *",
+      "inputPhone": "Phone",
+      "inputDate": "Event Date ",
+      "inputDateNote": "— min. 24 hrs notice required",
+      "inputGuests": "Number of Guests",
+      "inputMessage": "Tell Us About Your Event",
+      "placeholder": "Event type, dietary requirements, preferred pack, any special requests...",
+      "btnSubmit": "Send Catering Enquiry",
+      "btnSending": "Sending Enquiry…",
+      "enquireTemplate": "I'm interested in ordering the {boxName} ({price}). Please provide more details.",
+      "emailSubjectHeader": "CATERING ENQUIRY",
+      "emailEventDate": "Event Date",
+      "emailGuestCount": "Guest Count"
+    },
+    "errors": {
+      "requiredFields": "Name and email are required",
+      "submitFailed": "Failed to send enquiry. Please email catering@saigonexpress.com.au directly."
+    }
+  },
+  "Checkout": {
+    "steps": {
+      "order": "1. Your Order",
+      "details": "2. Your Details",
+      "confirm": "3. Confirm & Pay"
+    },
+    "dateStrings": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "days": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ]
+    },
+    "cartSection": {
+      "title": "Your Order",
+      "empty": "Your Cart is Empty",
+      "browse": "Browse Menu",
+      "each": "{price} each",
+      "pickupStore": "Select Pickup Store",
+      "loadingStores": "Loading stores…",
+      "pickupDateTime": "Pickup Date & Time",
+      "labelDate": "Date",
+      "labelTime": "Time"
+    },
+    "summarySection": {
+      "title": "Order Summary",
+      "totalLabel": "Total",
+      "gstNote": "Prices include GST",
+      "pickupLabel": "Pickup details:",
+      "at": "at",
+      "btnContinue": "Continue",
+      "pickupOnlyNote": "Pickup only · No delivery"
+    },
+    "detailsSection": {
+      "title": "Your Details",
+      "labelName": "Full Name *",
+      "placeholderName": "Your name",
+      "labelEmail": "Email Address *",
+      "placeholderEmail": "you@example.com",
+      "labelPhone": "Phone Number *",
+      "placeholderPhone": "0400 000 000",
+      "labelNotes": "Special Instructions (optional)",
+      "placeholderNotes": "Allergies, special requests…",
+      "btnReview": "Review Order"
+    },
+    "confirmSection": {
+      "title": "Confirm & Pay",
+      "itemsTitle": "Your Items",
+      "pickupTitle": "Pickup Details",
+      "contactTitle": "Contact Details",
+      "paymentTitle": "Payment",
+      "paymentDesc": "You'll be redirected to our secure Stripe checkout to complete payment. We accept all major credit/debit cards.",
+      "secureLabel": "Secure SSL payment via Stripe",
+      "gstIncludedNote": "Includes GST",
+      "btnPay": "Pay {total}",
+      "btnProcessing": "Processing…",
+      "termsNote": "By placing your order you agree to our terms of service."
+    },
+    "success": {
+      "title": "Order Confirmed!",
+      "message": "Thank you, {name}! Your order #{orderId} has been received.",
+      "pickupSummary": "Pickup at {store} on {date} at {time}. We'll send a confirmation to {email}.",
+      "btnMore": "Order More"
+    },
+    "toasts": {
+      "cartEmpty": "Your cart is empty",
+      "selectStore": "Please select a pickup store",
+      "enterName": "Please enter your name",
+      "enterEmail": "Please enter your email",
+      "enterPhone": "Please enter your phone number",
+      "redirecting": "Redirecting to secure payment…",
+      "errorDefault": "Failed to place order. Please try again."
+    }
+  },
+  "CheckoutSuccess": {
+    "title": "Payment Confirmed!",
+    "orderPlaced": "Order {orderId} has been placed successfully.",
+    "description": "We've received your payment and your order is being prepared. You'll receive a confirmation email with a tracking link shortly.",
+    "tracking": {
+      "watchProgress": "Watch your order progress in real time:",
+      "btnTrackLive": "Track Your Order Live"
+    },
+    "ctas": {
+      "btnOrderMore": "Order More",
+      "btnFindStore": "Find Your Store"
+    }
+  },
+  "Contact": {
+    "hero": {
+      "badge": "GET IN TOUCH",
+      "title": "Contact Us",
+      "description": "We'd love to hear from you — whether it's a question about our menu, catering enquiry, franchise opportunity, or just a hello."
+    },
+    "info": {
+      "title": "Get in Touch",
+      "phoneLabel": "Phone",
+      "emailLabel": "Email",
+      "locationsLabel": "Locations",
+      "storesCount": "{count} stores across Tasmania"
+    },
+    "hours": {
+      "title": "Opening Hours",
+      "schedule": [
+        { "day": "Monday – Friday", "hours": "10:00 am – 8:00 pm" },
+        { "day": "Saturday", "hours": "10:00 am – 8:30 pm" },
+        { "day": "Sunday", "hours": "11:00 am – 7:00 pm" },
+        { "day": "Public Holidays", "hours": "11:00 am – 6:00 pm" }
+      ]
+    },
+    "locations": {
+      "title": "Our Locations",
+      "viewAll": "View all stores on map →"
+    },
+    "form": {
+      "title": "Send Us a Message",
+      "labelName": "Name *",
+      "placeholderName": "Your full name",
+      "labelEmail": "Email *",
+      "placeholderEmail": "you@example.com",
+      "labelPhone": "Phone",
+      "placeholderPhone": "04xx xxx xxx",
+      "labelSubject": "Subject",
+      "placeholderSubject": "e.g. Catering enquiry",
+      "labelMessage": "Message *",
+      "placeholderMessage": "How can we help you?",
+      "btnSubmit": "Send Message",
+      "btnSending": "Sending…",
+      "note": "We typically respond within 1 business day.",
+      "successTitle": "Message Received!",
+      "successText": "Thanks for reaching out. We'll get back to you within 1 business day.",
+      "btnAnother": "Send Another Message"
+    },
+    "toasts": {
+      "success": "Message sent! We'll get back to you soon.",
+      "error": "Failed to send message. Please try again or email us directly.",
+      "validation": "Please fill in your name, email, and message."
+    }
+  },
+  "FAQ": {
+    "hero": {
+      "badge": "Help Centre",
+      "title": "Frequently Asked Questions",
+      "description": "Everything you need to know about Saigon Express Tasmania — from ordering and menus to wholesale, catering, and franchising."
+    },
+    "allTopics": "All Topics",
+    "faqCategories": [
+      {
+        "category": "Ordering & Delivery",
+        "icon": "🛵",
+        "questions": [
+          {
+            "q": "How can I place an order?",
+            "a": "You can order online through our website, via Uber Eats, Menulog, or DoorDash, or visit any of our 8 Tasmania locations in person. Our online ordering system shows real-time availability for all menu items."
+          },
+          {
+            "q": "Do you offer delivery?",
+            "a": "Yes! We partner with Uber Eats, Menulog, and DoorDash for delivery across Hobart and surrounding areas. Delivery availability depends on your location and the nearest Saigon Express branch."
+          },
+          {
+            "q": "Can I pre-order for a specific time?",
+            "a": "Yes, scheduled ordering is available through our third-party delivery partners. For large group orders or catering, we recommend contacting us directly at catering@saigonexpress.com.au at least 48 hours in advance."
+          },
+          {
+            "q": "What payment methods do you accept?",
+            "a": "We accept all major credit and debit cards (Visa, Mastercard, Amex), Apple Pay, Google Pay, and cash at all store locations."
+          },
+          {
+            "q": "Can I modify or cancel my order?",
+            "a": "Orders can be modified or cancelled within 5 minutes of placement. For in-store orders, please speak with our staff directly. For online orders, contact the relevant delivery platform."
+          }
+        ]
+      },
+      {
+        "category": "Menu & Dietary",
+        "icon": "🍜",
+        "questions": [
+          {
+            "q": "Do you have vegetarian and vegan options?",
+            "a": "Absolutely. Many of our dishes can be made vegetarian or vegan on request — including tofu stir-fries, vegetable pho, and vegan rice paper rolls. Our staff can advise on modifications for most dishes."
+          },
+          {
+            "q": "Are your dishes gluten-free?",
+            "a": "Many of our dishes can be made gluten-free on request. Almost anything on our menu can be adapted — just let our staff know your dietary requirements when ordering. Cross-contamination may occur in our kitchens, so please inform us of any severe allergies."
+          },
+          {
+            "q": "Is the Sandy Bay location Halal certified?",
+            "a": "Yes, Saigon Express Sandy Bay is our dedicated Halal-certified location. All meat served at this branch is sourced from certified Halal suppliers."
+          },
+          {
+            "q": "How many dishes do you offer?",
+            "a": "Our full menu features dishes across 13 categories including Entrées, Bánh Mì, Bún Bowls, Phở, Rice Paper Rolls, Vietnamese Rice, Bao, Spicy Noodle Soup (Bún Bò Huế), Fried Rice, Noodle Soups, Hot Plates, Omelettes, Stir-Fried Dishes, Fried Chicken & Burgers, and Homemade Drinks."
+          },
+          {
+            "q": "Do you have kids' meals?",
+            "a": "While we don't have a dedicated kids' menu, many of our dishes — such as plain steamed rice, mild pho, and fresh spring rolls — are popular with children. Our staff are happy to suggest suitable options."
+          },
+          {
+            "q": "Can I see allergen information?",
+            "a": "Yes. Allergen information is available at all store locations and on request. Common allergens including gluten, shellfish, nuts, eggs, and dairy are present in various dishes. Please speak with our staff before ordering if you have any food allergies."
+          }
+        ]
+      },
+      {
+        "category": "Catering",
+        "icon": "🎉",
+        "questions": [
+          {
+            "q": "Do you cater for events?",
+            "a": "Yes! We offer professional catering for birthdays, corporate events, weddings, and private functions of all sizes. Our catering packages range from our Office Starter Pack (feeds 10–15) up to fully customised large-event solutions."
+          },
+          {
+            "q": "How far in advance should I book catering?",
+            "a": "We recommend booking at least 48–72 hours in advance for smaller events, and at least 1–2 weeks for large events or weddings. For peak periods (Christmas, Easter, public holidays), earlier booking is strongly advised."
+          },
+          {
+            "q": "What areas do you cater to?",
+            "a": "We cater across Greater Hobart and the surrounding Tasmanian regions. For events outside the Hobart metro area, please contact us at catering@saigonexpress.com.au to discuss logistics and any travel surcharges."
+          },
+          {
+            "q": "Can I customise my catering menu?",
+            "a": "Yes. All catering packages can be customised to suit your dietary requirements, event theme, and budget. We offer vegetarian, vegan, gluten-free, and Halal options across our catering range."
+          },
+          {
+            "q": "Do you provide serving equipment and staff?",
+            "a": "Our premium catering packages include serving equipment and, for larger events, on-site staff. Please discuss your requirements with our catering team when enquiring."
+          }
+        ]
+      },
+      {
+        "category": "Wholesale & B2B",
+        "icon": "📦",
+        "questions": [
+          {
+            "q": "How do I become a wholesale partner?",
+            "a": "Visit our Wholesale page and complete the 'Become a Partner' enquiry form, or email info@saigonexpress.com.au with your business details. Our wholesale team will contact you within 2 business days."
+          },
+          {
+            "q": "What products are available for wholesale?",
+            "a": "We supply a full range of Vietnamese food products including frozen marinated meats, dough products, sauces, dried goods, fresh produce, and packaging materials. Our wholesale catalogue is available to approved partners through the Wholesale Portal."
+          },
+          {
+            "q": "What are the minimum order quantities?",
+            "a": "Minimum order quantities vary by product category. Volume discount tiers apply from 10+ units, with our best rates available from 50+ units. Full pricing is displayed in the Wholesale Portal after partner approval."
+          },
+          {
+            "q": "Do you offer bulk pricing discounts?",
+            "a": "Yes. We offer tiered bulk-buy discounts: 5% off for 10–24 units, 10% off for 25–49 units, 15% off for 50–99 units, 20% off for 100–199 units, and 25% off for 200+ units."
+          },
+          {
+            "q": "How are wholesale invoices handled?",
+            "a": "Automated PDF invoices are generated for every wholesale transaction and are available for download immediately after order confirmation. All invoices include itemised product details, bulk discount breakdowns, GST calculations, and your business information."
+          },
+          {
+            "q": "How do I place a wholesale order?",
+            "a": "Once your wholesale account is approved, log in to the Wholesale Portal at saigonexpress.com.au/wholesale-shop. Browse the full product catalogue, add items to your cart, and proceed to checkout. You can pay securely by credit/debit card or Apple Pay. Orders placed before 12pm AEST on business days are typically dispatched the same day; orders after 12pm are dispatched the following business day. You will receive an automated order confirmation and a PDF invoice by email immediately after checkout."
+          },
+          {
+            "q": "What are the requirements to place a wholesale order?",
+            "a": "To order wholesale you must: (1) hold an active ABN or ACN registered in Australia; (2) be an approved Saigon Express wholesale partner — apply via the 'Become a Partner' form on our Wholesale page; (3) have a verified wholesale account login. There is no minimum spend per order, however bulk-discount pricing tiers apply from 10 units. Wholesale pricing is exclusive to approved business customers and is not available to the general public."
+          }
+        ]
+      },
+      {
+        "category": "Franchise",
+        "icon": "🏪",
+        "questions": [
+          {
+            "q": "How much does a Saigon Express franchise cost?",
+            "a": "The franchise licence fee is $30,000 + GST. Ongoing fees include a 5% royalty on gross sales and a 2% marketing levy. Total investment varies depending on the store format (Kiosk, Takeaway, or Restaurant) and location fit-out requirements."
+          },
+          {
+            "q": "What franchise models are available?",
+            "a": "We offer three formats: Kiosk (ideal for food courts and high-traffic retail), Takeaway (our most popular format), and full Restaurant (dine-in with full kitchen). The Kiosk/Takeaway model is our preferred starting format for new franchisees."
+          },
+          {
+            "q": "What is the contract term?",
+            "a": "The initial franchise agreement is for 5 years, with an optional renewal term of a further 5 years, subject to performance and compliance with the franchise agreement."
+          },
+          {
+            "q": "Do you provide training and support?",
+            "a": "Yes. All franchisees receive comprehensive initial training covering operations, food preparation, customer service, and business management. Ongoing support includes access to our central kitchen supply chain, marketing materials, and the Franchise Hub resource library."
+          },
+          {
+            "q": "Is a central kitchen available?",
+            "a": "Yes. Saigon Express operates a central kitchen that supplies franchisees with pre-prepared ingredients and signature sauces, ensuring consistency across all locations and reducing franchisee preparation time."
+          },
+          {
+            "q": "How do I apply for a franchise?",
+            "a": "Complete the franchise application form on our Franchise page or contact us at info@saigonexpress.com.au. Our franchise team will review your application and arrange an initial consultation call within 5 business days."
+          }
+        ]
+      },
+      {
+        "category": "Store Locations & Hours",
+        "icon": "📍",
+        "questions": [
+          {
+            "q": "How many Saigon Express locations are there in Tasmania?",
+            "a": "We currently operate 8 locations across Tasmania: two in North Hobart (335 Elizabeth St and 329 Elizabeth St), one in Hobart CBD (95 Liverpool St), Sandy Bay (Halal), Kingston, Glebe Hill Village (Howrah), and two in Sorell (Gordon St and Gateway Shopping Centre)."
+          },
+          {
+            "q": "Are you open on public holidays?",
+            "a": "Yes, all Saigon Express locations are usually open on public holidays. Hours may vary slightly — we recommend checking with your nearest store directly or following our social media for any holiday hour updates."
+          },
+          {
+            "q": "Do you have BYO?",
+            "a": "BYO (Bring Your Own alcohol) is available at our 329 Elizabeth Street, North Hobart location only. All other locations are fully licensed."
+          },
+          {
+            "q": "Is table booking available?",
+            "a": "Table bookings are available at select locations. Please contact your preferred store directly or use the booking function on our website to check availability."
+          }
+        ]
+      },
+      {
+        "category": "General",
+        "icon": "💬",
+        "questions": [
+          {
+            "q": "How do I contact Saigon Express?",
+            "a": "You can reach us by phone on 0416 036 016, by email at info@saigonexpress.com.au, or by visiting any of our 8 Tasmania locations. For catering enquiries, use catering@saigonexpress.com.au."
+          },
+          {
+            "q": "Do you have a loyalty or rewards program?",
+            "a": "We are currently developing a loyalty rewards program for our regular customers. Sign up to our newsletter to be the first to hear when it launches, and receive an exclusive welcome discount."
+          },
+          {
+            "q": "How can I provide feedback?",
+            "a": "We welcome all feedback! You can email us at info@saigonexpress.com.au, leave a review on Google or TripAdvisor, or speak with the manager at any of our locations. Your feedback helps us improve."
+          },
+          {
+            "q": "Do you have a mobile app?",
+            "a": "Yes! The Saigon Express app is available on the App Store and Google Play. Visit our 'Get the App' page for step-by-step installation instructions, including how to add it to your home screen for quick access."
+          },
+          {
+            "q": "Are gift cards available?",
+            "a": "Gift cards are coming soon. Sign up to our newsletter to be notified when they become available."
+          }
+        ]
+      }
+    ],
+    "form": {
+      "title": "Ask Us Anything",
+      "subtitle": "Can't find the answer you're looking for? Submit your question and our team will get back to you.",
+      "labelName": "Your Name *",
+      "placeholderName": " Nguyen Van A",
+      "labelEmail": "Email *",
+      "placeholderEmail": "your@email.com",
+      "labelQuestion": "Your Question *",
+      "placeholderQuestion": "e.g. Do you offer catering for large events? What are the minimum numbers?",
+      "btnSubmit": "Submit Question",
+      "btnSending": "Sending...",
+      "successTitle": "Question Received!",
+      "successText": "Thank you! We'll review your question and get back to you as soon as possible.",
+      "btnAnother": "Ask another question"
+    },
+    "stillHelp": {
+      "title": "Still Have a Question?",
+      "description": "Our team is here to help. Reach out via phone, email, or use the live chat button on any page.",
+      "btnFindStore": "Find a Store"
+    },
+    "errors": {
+      "length": "Please enter a question of at least 10 characters.",
+      "fallback": "Something went wrong. Please try again."
+    }
+  },
+  "Franchise": {
+    "hero": {
+      "badge": "FRANCHISE OPPORTUNITY",
+      "titleLine1": "Own a Saigon Express",
+      "titleLine2": "in Tasmania",
+      "description": "Join Tasmania's fastest-growing Vietnamese food franchise. Proven systems, central kitchen support, and a brand Tasmanians love.",
+      "ctaInterest": "Express Your Interest",
+      "ctaModels": "View Franchise Models"
+    },
+    "investmentStrip": [
+      { "num": "$30K", "label": "Franchise Licence Fee (+ GST)" },
+      { "num": "5%", "label": "Royalty Fee" },
+      { "num": "2%", "label": "Marketing Levy" },
+      { "num": "5 + 5", "label": "Year Contract Term" }
+    ],
+    "about": {
+      "label": "ABOUT THE OPPORTUNITY",
+      "titleLine1": "A Business Built",
+      "titleLine2": "on Real Food",
+      "desc1": "Saigon Express Tasmania is operated by TTH Enterprises Pty Ltd, led by Director Dr. Tien Ho. With 8 locations across Tasmania and a central kitchen in Hobart, we have built a franchise system designed for scalability and consistency.",
+      "desc2": "Our menu spans over 100 authentic Vietnamese dishes — from bánh mì and phở to rice paper rolls, bún bowls, and homemade drinks — all prepared from our central kitchen to ensure quality across every location.",
+      "checklist": [
+        "Trademark Pending Registration",
+        "Central Kitchen Support",
+        "8 Existing Tasmania Stores",
+        "Full Training Provided"
+      ],
+      "legalLabel": "Legal Entity:",
+      "legalValue": "Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
+      "addressLabel": "Registered Address:",
+      "addressValue": "Level 2, 86 Collins St, Hobart TAS 7000"
+    },
+    "benefits": {
+      "label": "FRANCHISE BENEFITS",
+      "titleLine1": "Everything You Need",
+      "titleLine2": "to Succeed",
+      "items": [
+        {
+          "key": "brand",
+          "title": "Proven Brand",
+          "desc": "Established Vietnamese food brand with loyal customers across Tasmania. Trademark pending for registration."
+        },
+        {
+          "key": "kitchen",
+          "title": "Central Kitchen",
+          "desc": "Centralised production kitchen ensures consistent quality and reduces your operational complexity."
+        },
+        {
+          "key": "training",
+          "title": "Full Training",
+          "desc": "Comprehensive onboarding covering food preparation, customer service, POS systems, and daily operations."
+        },
+        {
+          "key": "marketing",
+          "title": "Marketing Support",
+          "desc": "Branded marketing kits, social media templates, and national campaign materials from day one."
+        },
+        {
+          "key": "community",
+          "title": "Franchise Community",
+          "desc": "Join a growing network of Saigon Express franchise partners with regular meetings and knowledge sharing."
+        },
+        {
+          "key": "support",
+          "title": "Ongoing Support",
+          "desc": "Dedicated franchise support team available for operational, marketing, and business development guidance."
+        }
+      ]
+    },
+    "formats": {
+      "label": "FRANCHISE FORMATS",
+      "title": "Choose Your Model",
+      "description": "Three proven formats to suit different locations, budgets, and ambitions. Preferred model: Kiosk / Takeaway / Restaurant.",
+      "investmentLabel": "Total Investment",
+      "investmentNote": "Investment ranges are indicative and include fit-out, equipment, initial stock, and working capital. Excludes franchise licence fee. Subject to site assessment.",
+      "items": [
+        {
+          "name": "Kiosk",
+          "icon": "🏪",
+          "desc": "Compact format ideal for food courts and high-traffic locations. Low fit-out cost, fast setup.",
+          "investment": "$80K – $120K"
+        },
+        {
+          "name": "Takeaway",
+          "icon": "🥡",
+          "desc": "High-volume takeaway format with streamlined menu. Perfect for suburban strips and busy lunchtime trade.",
+          "investment": "$120K – $180K"
+        },
+        {
+          "name": "Restaurant",
+          "icon": "🍽️",
+          "desc": "Full dine-in experience with the complete Saigon Express menu. Ideal for high-street and lifestyle precincts.",
+          "investment": "$180K – $280K"
+        }
+      ]
+    },
+    "process": {
+      "label": "THE PROCESS",
+      "title": "From Enquiry to Opening",
+      "steps": [
+        {
+          "num": "01",
+          "title": "Submit Your Application",
+          "desc": "Complete the expression of interest form below. Our franchise team reviews all applications within 5 business days."
+        },
+        {
+          "num": "02",
+          "title": "Discovery Call",
+          "desc": "A 30-minute call with our Franchise Development Manager to discuss your goals, location, and investment capacity."
+        },
+        {
+          "num": "03",
+          "title": "Disclosure Document",
+          "desc": "Receive the Franchise Disclosure Document and review with your legal and financial advisors."
+        },
+        {
+          "num": "04",
+          "title": "Site Assessment",
+          "desc": "We help identify and assess your proposed location for foot traffic, demographics, and fit-out feasibility."
+        },
+        {
+          "num": "05",
+          "title": "Training & Onboarding",
+          "desc": "Complete our 4-week training program at our central kitchen and an existing Saigon Express store."
+        },
+        {
+          "num": "06",
+          "title": "Grand Opening",
+          "desc": "Launch your store with full marketing support, a dedicated opening team, and your first supply delivery."
+        }
+      ]
+    },
+    "consultBanner": {
+      "badge": "Free Consultation",
+      "title": "Book a Free Consultation",
+      "description": "Chat with our franchise team. We'll answer all your questions and help you decide if Saigon Express is the right opportunity for you.",
+      "btnBook": "Book a Free Consultation"
+    },
+    "interestForm": {
+      "label": "EXPRESSION OF INTEREST",
+      "title": "Take the First Step",
+      "description": "Complete the form and our Franchise Development Manager will be in touch within 5 business days to discuss your application in confidence.",
+      "checkpoints": [
+        "Confidential enquiry",
+        "No obligation to proceed",
+        "Response within 5 business days",
+        "Free discovery call included"
+      ],
+      "asideTitle": "Franchise enquiries:",
+      "inputName": "Full Name *",
+      "inputEmail": "Email *",
+      "inputPhone": "Phone",
+      "inputLocation": "Preferred Location",
+      "placeholderLocation": "e.g. Launceston, Devonport…",
+      "inputBudget": "Investment Budget",
+      "placeholderBudget": "Select range…",
+      "inputExperience": "Prior Business Experience?",
+      "experienceOptions": {
+        "no": "No prior experience",
+        "yes": "Yes — business/franchise experience"
+      },
+      "experiencePayloadYes": "Yes — prior business/franchise experience",
+      "experiencePayloadNo": "No prior franchise experience",
+      "inputAbout": "Tell Us About Yourself",
+      "placeholderAbout": "Your background, why you're interested in Saigon Express, any questions…",
+      "btnSubmit": "Submit Expression of Interest",
+      "btnSubmitting": "Submitting…",
+      "confidentialNote": "Your enquiry is treated in strict confidence. We do not share your information with third parties.",
+      "successTitle": "Application Received!",
+      "successText": "Our Franchise Development Manager will be in touch within 5 business days."
+    },
+    "consultModal": {
+      "title": "Book a Free Consultation",
+      "subtitle": "We'll get back to you within 24 hours",
+      "inputName": "Full Name *",
+      "placeholderName": "Your name",
+      "inputPhone": "Phone *",
+      "placeholderPhone": "0400 000 000",
+      "inputEmail": "Email Address *",
+      "placeholderEmail": "you@example.com",
+      "inputDate": "Preferred Date",
+      "inputTime": "Preferred Time",
+      "timeOptions": {
+        "any": "Any time",
+        "morning": "Morning (9am–12pm)",
+        "afternoon": "Afternoon (12pm–5pm)",
+        "evening": "Evening (5pm–7pm)"
+      },
+      "inputMessage": "Message (optional)",
+      "placeholderMessage": "Tell us a bit about yourself and your interest in franchising…",
+      "btnSubmit": "Book My Free Consultation",
+      "btnSubmitting": "Submitting…",
+      "successTitle": "Booking Received!",
+      "successText": "Thank you, {name}. Our franchise team will contact you at {email} within 24 hours.",
+      "btnClose": "Close"
+    },
+    "toasts": {
+      "error": "Something went wrong. Please try again.",
+      "requiredMain": "Name and email are required.",
+      "requiredConsult": "Name, email and phone are required."
+    }
+  },
+  "GetTheApp": {
+    "hero": {
+      "logoAlt": "Saigon Express Tasmania",
+      "badge": "Free · No App Store Needed",
+      "heading": "Get the Saigon Express App",
+      "subheading": "Faster ordering. Exclusive deals. Always ready. Add Saigon Express to your home screen — no App Store, no storage used. Just one tap to open anytime."
+    },
+    "benefits": [
+      {
+        "icon": "Zap",
+        "title": "Order in One Tap",
+        "desc": "Menu always ready — order faster than searching a browser."
+      },
+      {
+        "icon": "Star",
+        "title": "Exclusive Deals",
+        "desc": "App-only promotions and loyalty rewards before they run out."
+      },
+      {
+        "icon": "MapPin",
+        "title": "Find Stores Instantly",
+        "desc": "View all 8 Tasmania locations with hours and directions."
+      },
+      {
+        "icon": "Smartphone",
+        "title": "No App Store Needed",
+        "desc": "Installs directly from your browser. Zero storage used."
+      }
+    ],
+    "install": {
+      "eyebrow": "How to install",
+      "heading": "Add to Your Home Screen",
+      "subheading": "Choose your device and browser below.",
+      "tip": "Safari works best on iPhone — it installs in 3 steps instead of 5.",
+      "browsers": {
+        "iosSafari": {
+          "emoji": "🍎",
+          "label": "iPhone — Safari",
+          "meta": "Recommended · 3 steps"
+        },
+        "iosFirefox": {
+          "emoji": "🦊",
+          "label": "iPhone — Firefox",
+          "meta": "5 steps"
+        },
+        "android": {
+          "emoji": "🤖",
+          "label": "Android — Chrome",
+          "meta": "3 steps"
+        }
+      }
+    },
+    "stepsIosSafari": [
+      {
+        "num": "1",
+        "text": "Open saigonexpress.com.au in Safari (not Chrome or Firefox)."
+      },
+      {
+        "num": "2",
+        "text": "Tap the Share button ⬆ at the bottom centre of Safari — it looks like a box with an arrow pointing up."
+      },
+      {
+        "num": "3",
+        "text": "Scroll down in the share sheet and tap \"Add to Home Screen\" (with a ⊕ icon)."
+      },
+      {
+        "num": "!",
+        "text": "In the name field, make sure it says Saigon Express. If it shows something else, clear it and type Saigon Express."
+      },
+      {
+        "num": "✓",
+        "text": "Tap Add in the top-right corner — the Saigon Express icon appears on your home screen!"
+      }
+    ],
+    "stepsIosFirefox": [
+      {
+        "num": "1",
+        "text": "Open saigonexpress.com.au in Firefox."
+      },
+      {
+        "num": "2",
+        "text": "Tap the ⋯ menu button at the bottom-right of the screen."
+      },
+      {
+        "num": "3",
+        "text": "Tap Share from the menu that appears."
+      },
+      {
+        "num": "4",
+        "text": "In the iOS share sheet, tap \"View More\" then tap \"Add to Home Screen\"."
+      },
+      {
+        "num": "!",
+        "text": "In the name field, check it says Saigon Express. If not, clear it and type Saigon Express."
+      },
+      {
+        "num": "✓",
+        "text": "Tap Add — the Saigon Express icon appears on your home screen!"
+      }
+    ],
+    "stepsAndroid": [
+      {
+        "num": "1",
+        "text": "Open saigonexpress.com.au in Chrome."
+      },
+      {
+        "num": "2",
+        "text": "Tap the ⋮ menu in the top-right corner of Chrome."
+      },
+      {
+        "num": "3",
+        "text": "Select \"Add to Home Screen\"."
+      },
+      {
+        "num": "✓",
+        "text": "Tap Add — the Saigon Express icon appears on your home screen!"
+      }
+    ],
+    "share": {
+      "heading": "Open This Page on Your Phone",
+      "subheading": "Works on iPhone (Safari) and Android (Chrome) · No App Store needed",
+      "copyIdle": "Copy Link",
+      "copiedConfirm": "Copied!",
+      "whatsappLabel": "Share via WhatsApp",
+      "whatsappMessage": "Add Saigon Express Tasmania to your home screen: {appUrl}",
+      "toastSuccess": "Link copied!"
+    }
+  },
+  "Menu": {
+    "hero": {
+      "eyebrow": "Fresh Daily · Tasmania",
+      "heading": "Our Food",
+      "subheading": "From our signature Bánh Mì to hearty Phở and refreshing Rice Paper Rolls, every item is made fresh daily with authentic Vietnamese flavours.",
+      "ctaMenu": "🛒 View Menu",
+      "ctaStore": "📍 Find Your Nearest Store",
+      "ctaDelivery": "🚗 Order Delivery"
+    },
+    "search": {
+      "placeholder": "Search our menu…",
+      "clearLabel": "✕ Clear"
+    },
+    "allCategory": "All",
+    "empty": {
+      "headingSearch": "No results for \"{query}\"",
+      "headingCategory": "No items in this category",
+      "hintSearch": "Try a different keyword or clear the search.",
+      "hintCategory": "Try selecting a different category above.",
+      "clearSearch": "Clear search"
+    },
+    "card": {
+      "popularBadge": "★ Popular",
+      "unavailableBadge": "Temporarily Unavailable",
+      "addButton": "Add"
+    },
+    "storeStrip": {
+      "heading": "Find Your Nearest Store",
+      "subheading": "8 locations across Tasmania"
+    },
+    "checkoutBar": {
+      "heading": "Choose Your Store & Checkout",
+      "summary": "{count, plural, one {# item} other {# items}} · ${total}"
+    },
+    "toast": {
+      "addonAdded": "{name} added to your order!",
+      "addonDescription": "Great choice — enjoy your meal.",
+      "addonUndo": "Undo",
+      "addonRemoved": "{name} removed."
+    }
+  },
+  "NotFound": {
+    "code": "404",
+    "heading": "Page Not Found",
+    "body": "Sorry, the page you are looking for doesn't exist. It may have been moved or deleted.",
+    "goHome": "Go Home"
+  },
+  "OurStory": {
+    "hero": {
+      "eyebrow": "Our Story",
+      "heading": "From Mum's Recipe\nto Tasmania's Table",
+      "subheading": "Authentic Vietnamese food, made fresh every day — bringing the real flavours of home to every corner of Tasmania."
+    },
+    "founder": {
+      "eyebrow": "The Founder",
+      "heading": "Dr. Tien Ho — Founder",
+      "paragraph1": "Dr. Tien Ho came to Tasmania as a student and fell in love with the island. But one thing was missing — the food he grew up with. So in June 2016, he opened the first Saigon Express at 335 Elizabeth Street, North Hobart, on his own, with one simple idea:",
+      "quote": "\"From mum's cooking recipe to every Tasmanian table.\"",
+      "paragraph2": "Every dish is made fresh using quality Tasmanian produce — local vegetables, Tasmanian-grown herbs, and clean Tasmanian water. The food is honest, healthy, and true to the flavours he grew up eating at home in Vietnam.",
+      "paragraph3": "Ten years on, Saigon Express has grown to eight locations across Tasmania. The mission has never changed — bring real Vietnamese food to the community, celebrate Vietnamese culture, and show what a Vietnamese-Australian business can achieve.",
+      "badge": {
+        "years": "10",
+        "yearsLabel": "Years · 2016–2026 🎉",
+        "locations": "8+",
+        "locationsLabel": "Locations"
+      }
+    },
+    "timeline": {
+      "eyebrow": "Our Journey",
+      "heading": "A Decade of Growth — 2016 to 2026",
+      "subheading": "Select any milestone to explore the full story behind each chapter of Saigon Express.",
+      "readMore": "Read the full story",
+      "showLess": "Show less",
+      "items": [
+        {
+          "year": "2016",
+          "title": "Where It All Began",
+          "location": "North Hobart — 335 Elizabeth Street",
+          "highlight": "2 staff · First store · June 2016",
+          "description": "Dr. Tien Ho opened the very first Saigon Express in June 2016 with just two staff and a single-minded passion: to bring genuine Vietnamese street food to Tasmania. Inspired by his mother's home cooking recipes, he set out to bring those authentic flavours — fresh, healthy, and Vietnamese — to every Tasmanian table.",
+          "detail": "Starting from a modest shopfront at 335 Elizabeth Street, Dr. Tien Ho invested everything into a dream that many considered a long shot. Tasmania had virtually no Vietnamese restaurant scene at the time. Within months, word spread — the pho was the real thing, the banh mi were freshly baked, and the welcome was genuine. The tagline said it all: 'Fresh, healthy, Vietnamese — from mum's cooking recipe to your table.' That first store became the foundation of everything that followed.",
+          "stat": {
+            "value": "2",
+            "label": "Staff at opening"
+          }
+        },
+        {
+          "year": "2019",
+          "title": "The Lounge & Bar Arrives",
+          "location": "North Hobart — 329 Elizabeth Street",
+          "highlight": "Dine-in · Cocktail bar",
+          "description": "Four years after the original store proved there was a real appetite for Vietnamese food in Hobart, Dr. Tien Ho opened the O-Grill Restaurant Lounge & Bar just doors away. The new venue brought a relaxed dine-in experience, a cocktail bar, and an expanded menu — including the now-famous Kumquat Mojito.",
+          "detail": "The O-Grill Lounge & Bar at 329 Elizabeth Street transformed the Saigon Express experience from a quick-service takeaway into a destination. Guests could now linger over cocktails, share platters, and enjoy the full breadth of Vietnamese cuisine in a warm, contemporary setting. North Hobart became the undisputed heartbeat of the brand.",
+          "stat": {
+            "value": "2",
+            "label": "North Hobart venues"
+          }
+        },
+        {
+          "year": "2021",
+          "title": "Heading South",
+          "location": "Kingston Plaza — Channel Highway",
+          "highlight": "Southern suburbs · 3rd location",
+          "description": "Kingston became the third location, bringing Dr. Tien Ho's vision of accessible Vietnamese street food to Hobart's southern suburbs. The Kingston Plaza store introduced the brand to a new community of families and professionals, and proved that the appetite for fresh, affordable Vietnamese food extended well beyond the inner city.",
+          "detail": "Kingston Plaza was a deliberate move to test the brand's appeal beyond its North Hobart heartland. The response exceeded expectations — families, office workers, and students from the Channel Highway corridor embraced the menu enthusiastically. It confirmed that Saigon Express had outgrown its suburb and was ready to become a truly island-wide brand.",
+          "stat": {
+            "value": "3",
+            "label": "Locations"
+          }
+        },
+        {
+          "year": "2022",
+          "title": "Crossing to the Eastern Shore",
+          "location": "Glebe Hill Village — Howrah",
+          "highlight": "20+ staff · Eastern shore",
+          "description": "The Glebe Hill Village restaurant soft-opened in November 2022, bringing Saigon Express to Hobart's eastern shore for the first time. The team had now grown to over twenty staff, and the brand's reputation for fresh, consistent Vietnamese food was firmly established across the greater Hobart area.",
+          "detail": "Howrah marked a significant geographic milestone — for the first time, Saigon Express was serving customers on both sides of the Derwent River. The Glebe Hill Village location was designed with a larger dining room and an expanded dine-in menu, reflecting the brand's growing confidence and operational maturity.",
+          "stat": {
+            "value": "20+",
+            "label": "Team members"
+          }
+        },
+        {
+          "year": "2024",
+          "title": "Into the Heart of the City",
+          "location": "Hobart CBD — 95 Liverpool Street",
+          "highlight": "250+ dishes · City centre",
+          "description": "December 2024 marked a milestone: Saigon Express opened its sleekest venue yet in the Hobart city centre. With over 250 dishes on the menu — from banh mi and pho to bao buns, fried chicken burgers, and rice paper rolls — the CBD store brought Vietnamese flavours to the doorstep of Hobart's office workers, students, and visitors.",
+          "detail": "The CBD store at 95 Liverpool Street was the brand's most ambitious project to date — a high-footfall city-centre venue designed to serve the lunchtime crowd, evening diners, and weekend visitors alike. The menu was expanded to over 250 items, and the interior design reflected a more contemporary, urban aesthetic while honouring the brand's Vietnamese roots.",
+          "stat": {
+            "value": "250+",
+            "label": "Menu items"
+          }
+        },
+        {
+          "year": "2025",
+          "title": "Reaching Every Corner of Tasmania",
+          "location": "Sorell — Gateway Shopping Centre & Gordon Street",
+          "highlight": "Award-winning · 8+ locations",
+          "description": "The brand's reach extended to Sorell in 2025, with two new locations serving the Derwent Valley and Coal River Valley communities. Saigon Express was recognised as the Best Vietnamese Restaurant in Sorell Council by Quality Business Awards, achieving a quality score above 95%.",
+          "detail": "Sorell represented the brand's first foray beyond greater Hobart, signalling a genuine commitment to making Vietnamese food accessible to all Tasmanians regardless of where they live. The Quality Business Awards recognition — with a quality score above 95% — validated the brand's consistent standards across all locations. Sandy Bay was also announced as the next suburb to welcome Saigon Express.",
+          "stat": {
+            "value": "8+",
+            "label": "Locations"
+          }
+        }
+      ]
+    },
+    "food": {
+      "eyebrow": "The Food",
+      "heading": "Vietnamese Cuisine & Its Story",
+      "subheading": "Vietnamese cooking is defined by balance — between fresh and cooked, light and rich, familiar and surprising. Each dish carries centuries of history, geography, and culture.",
+      "dishes": [
+        {
+          "name": "Phở",
+          "description": "Vietnam's most iconic dish — a slow-simmered bone broth fragrant with star anise, cinnamon, and charred ginger, served with rice noodles and your choice of protein."
+        },
+        {
+          "name": "Bánh Mì",
+          "description": "A legacy of French colonial influence — a crisp baguette filled with Vietnamese-style meats, pickled daikon, fresh coriander, and chilli."
+        },
+        {
+          "name": "Cuốn (Rice Paper Rolls)",
+          "description": "Delicate rice paper wrapped around fresh herbs, vermicelli, and your choice of filling — a hands-on taste of Vietnamese tradition."
+        },
+        {
+          "name": "Bún (Vermicelli Salad)",
+          "description": "Cool rice vermicelli topped with grilled meats, fresh herbs, crushed peanuts, and a tangy nước chấm dressing — light, vibrant, and deeply satisfying."
+        }
+      ],
+      "pressQuote": "\"Vietnamese people can still find the 'essence' of home, while international guests feel a harmonious and accessible experience.\"",
+      "pressAttribution": "— VietnamPlus / SBS, February 2026",
+      "pressBody": "Saigon Express was featured by SBS Australia and VietnamPlus (Vietnam's national news agency) in February 2026 as a landmark story of Vietnamese entrepreneurship in Australia — proof that authentic Vietnamese cuisine has earned its place alongside Japanese, Korean, and Thai food in the everyday dining culture of Tasmania."
+    },
+    "anniversary": {
+      "eyebrow": "🎉 Celebrating 10 Years",
+      "heading": "2016 – 2026: A Decade of Flavour",
+      "body": "From a two-person kitchen in North Hobart to eight locations across Tasmania — this year marks ten years of bringing mum's recipes to your table.",
+      "quote": "\"Nay là được 10 năm đó em — mình có thể celebrate năm nay.\"",
+      "stats": [
+        {
+          "value": "10",
+          "label": "Years"
+        },
+        {
+          "value": "8+",
+          "label": "Locations"
+        },
+        {
+          "value": "100+",
+          "label": "Team Members"
+        },
+        {
+          "value": "250+",
+          "label": "Menu Items"
+        }
+      ]
+    },
+    "community": {
+      "eyebrow": "Community & Culture",
+      "heading": "More Than a Restaurant",
+      "paragraph1": "Saigon Express has always been as much about people as it is about food. The Vietnamese community in Hobart is small but tightly bonded, and the brand has become a gathering place — hosting Mid-Autumn Festival celebrations that draw hundreds of participants, and Lunar New Year dinners for those who cannot travel home.",
+      "paragraph2": "The team reflects this multicultural spirit — Vietnamese international students work alongside colleagues from Bangladesh, India, and across Australia, creating a kitchen as diverse as the dishes it produces.",
+      "paragraph3": "Tasmania, with its cool climate and unhurried pace, has become a true home for many of the team — a place that, in its own quiet way, echoes the highland landscapes of northern Vietnam."
+    },
+    "mission": {
+      "eyebrow": "Our Mission",
+      "quoteVi": "\"Mang hương vị ẩm thực Việt đích thực đến gần hơn với cộng đồng, lan tỏa văn hóa ẩm thực quê hương và khẳng định tinh thần khởi nghiệp của người Việt xa xứ.\"",
+      "quoteEn": "To bring authentic Vietnamese cuisine closer to the community, spread the food culture of the homeland, and affirm the entrepreneurial spirit of Vietnamese people living abroad.",
+      "pill1": "🍜 Familiar flavours, the true taste of home",
+      "pill2": "🤝 Building community, celebrating Vietnamese culture"
+    },
+    "values": {
+      "eyebrow": "What We Stand For",
+      "heading": "Our Values",
+      "items": [
+        {
+          "title": "Fresh Every Day",
+          "description": "Every dish is prepared from scratch each morning. No frozen shortcuts — just ingredients sourced fresh and cooked to order."
+        },
+        {
+          "title": "Rooted in Culture",
+          "description": "Our recipes carry the flavours of Vietnamese home kitchens and street stalls. From slow-simmered pho broth to hand-rolled rice paper rolls, every dish tells a story."
+        },
+        {
+          "title": "Community First",
+          "description": "We host Mid-Autumn Festival celebrations, Lunar New Year dinners, and community events because food is the most powerful bridge between cultures."
+        },
+        {
+          "title": "Accessible Authenticity",
+          "description": "Vietnamese food should be for everyone. We balance the 'essence of home' for Vietnamese diners with a welcoming experience for all Tasmanians."
+        },
+        {
+          "title": "Entrepreneurial Spirit",
+          "description": "From two staff in a North Hobart kitchen to eight locations across the island — our growth is proof that passion and community trust build something lasting."
+        },
+        {
+          "title": "Proudly Tasmanian",
+          "description": "Tasmania's cool climate and close-knit communities remind many of our team of home. We are proud to be part of this island's food story."
+        }
+      ]
+    },
+    "cta": {
+      "heading": "Come Experience the Story",
+      "subheading": "Eight locations across Tasmania. Dine in, take away, or order for pickup — the flavours of Vietnam are closer than you think.",
+      "findStore": "Find a Store",
+      "viewMenu": "View Our Menu"
+    }
+  },
+  "Promotions": {
+    "hero": {
+      "eyebrow": "Exclusive Deals",
+      "heading": "Current Promotions",
+      "subheading": "Fresh deals, loyalty rewards, and app-exclusive offers — updated regularly.",
+      "logoAlt": "Saigon Express"
+    },
+    "card": {
+      "defaultCta": "Order Now",
+      "expires": "Expires {date}"
+    },
+    "empty": {
+      "heading": "No active promotions right now",
+      "body": "Check back soon — new deals drop regularly!",
+      "browseMenu": "Browse the Menu"
+    },
+    "bottomCta": {
+      "nudge": "Want to be the first to know about new deals?",
+      "getApp": "Get the App for App-Only Deals",
+      "browseMenu": "Browse the Menu"
+    }
+  },
+  "StoreFinder": {
+    "hero": {
+      "eyebrow": "Find Us",
+      "heading": "8 Locations Across Tasmania",
+      "subheading": "From Hobart CBD to Sorell — fresh bánh mì is always nearby"
+    },
+    "list": {
+      "empty": "No active store locations available.",
+      "statusOpen": "OPEN",
+      "statusClosed": "CLOSED",
+      "halalBadge": "Halal"
+    },
+    "card": {
+      "getDirections": "Get Directions",
+      "orderDelivery": "🚗 Order Delivery",
+      "orderPickup": "🛒 Order Pickup"
+    },
+    "map": {
+      "infoGetDirections": "Get Directions ↗",
+      "infoOrderDelivery": "🚗 Order Delivery",
+      "infoStatusOpen": "OPEN",
+      "infoStatusClosed": "CLOSED"
+    },
+    "footer": {
+      "heading": "Can't find a store near you?",
+      "body": "We're expanding across Tasmania. Enquire about franchise opportunities.",
+      "cta": "Franchise Enquiry"
+    }
+  },
+  "Wholesale": {
+    "hero": {
+      "tag": "WHOLESALE FOOD SUPPLY TASMANIA",
+      "title": "Supply Fresh\nVietnamese Food",
+      "desc": "Partner with Saigon Express to stock authentic Vietnamese products. Competitive wholesale pricing, reliable weekly delivery, and automated invoicing.",
+      "ctaPrimary": "Become a Partner",
+      "ctaSecondary": "Browse Products",
+      "alt": "Wholesale Vietnamese food products"
+    },
+    "supplyTitle": "WHO WE SUPPLY",
+    "supplyList": [
+      { "emoji": "☕", "label": "Cafés & Coffee Shops" },
+      { "emoji": "🏪", "label": "Grocery & Deli Stores" },
+      { "emoji": "🏨", "label": "Hotels & Accommodation" },
+      { "emoji": "🏫", "label": "Schools & Universities" },
+      { "emoji": "🏥", "label": "Hospitals & Aged Care" },
+      { "emoji": "🎪", "label": "Events & Festivals" }
+    ],
+    "benefitsHeading": {
+      "tag": "PARTNER BENEFITS",
+      "title": "Why Partner With Us?"
+    },
+    "benefits": [
+      {
+        "icon": "TrendingDown",
+        "title": "Dynamic Bulk Pricing",
+        "desc": "Tiered discounts up to 25% for high-volume orders. The more you order, the more you save."
+      },
+      {
+        "icon": "FileText",
+        "title": "Automated Invoicing",
+        "desc": "Professional PDF invoices generated instantly for every order, ready for your accounts team."
+      },
+      {
+        "icon": "Truck",
+        "title": "Weekly Delivery",
+        "desc": "Scheduled weekly deliveries across Tasmania. Never run out of your best-selling items."
+      },
+      {
+        "icon": "Users",
+        "title": "Account Manager",
+        "desc": "A dedicated Saigon Express contact for all your ordering, billing, and product queries."
+      }
+    ],
+    "pricingHeading": {
+      "tag": "VOLUME DISCOUNTS",
+      "title": "Bulk Pricing Tiers",
+      "desc": "Discounts applied automatically at checkout based on order quantity",
+      "off": "off",
+      "disclaimer": "Prices exclude GST. Minimum order 10 units. Delivery charges may apply outside Greater Hobart."
+    },
+    "pricingTiers": [
+      {
+        "minQty": "200+ units",
+        "discountPct": 25,
+        "badge": "Best Value",
+        "highlight": true
+      },
+      {
+        "minQty": "100+ units",
+        "discountPct": 20,
+        "badge": "Popular",
+        "highlight": false
+      },
+      {
+        "minQty": "50+ units",
+        "discountPct": 15,
+        "badge": "",
+        "highlight": false
+      },
+      {
+        "minQty": "20+ units",
+        "discountPct": 10,
+        "badge": "",
+        "highlight": false
+      },
+      {
+        "minQty": "10+ units",
+        "discountPct": 5,
+        "badge": "",
+        "highlight": false
+      }
+    ],
+    "processHeading": {
+      "tag": "HOW IT WORKS",
+      "title": "Simple. Reliable.\nProfitable.",
+      "alt": "Saigon Express wholesale supply"
+    },
+    "howItWorks": [
+      {
+        "step": "01",
+        "title": "Submit Your Enquiry",
+        "desc": "Fill in the partner form below. We'll review your business and get back within 2 business days."
+      },
+      {
+        "step": "02",
+        "title": "Receive Your Quote",
+        "desc": "We'll send a tailored wholesale price list based on your product mix and estimated weekly volume."
+      },
+      {
+        "step": "03",
+        "title": "Place Your First Order",
+        "desc": "Access our Quick-Order portal, choose your products, and schedule your first delivery."
+      },
+      {
+        "step": "04",
+        "title": "Weekly Auto-Invoicing",
+        "desc": "Every order generates a professional PDF invoice automatically, sent to your accounts email."
+      }
+    ],
+    "partnerForm": {
+      "tag": "BECOME A PARTNER",
+      "title": "Start Your Wholesale Partnership",
+      "desc": "Join over 50 Tasmanian businesses already stocking Saigon Express products. Fill in the form and our wholesale team will be in touch within 2 business days.",
+      "perks": [
+        "No lock-in contracts",
+        "Flexible minimum orders",
+        "Dedicated account manager",
+        "Automated PDF invoicing"
+      ],
+      "contactInfo": {
+        "title": "Wholesale enquiries:"
+      },
+      "success": {
+        "title": "Application Received!",
+        "desc": "Our wholesale team will contact you within 2 business days to discuss pricing and delivery options."
+      },
+      "fields": {
+        "businessName": "Business Name",
+        "contactName": "Contact Name",
+        "email": "Email",
+        "phone": "Phone",
+        "businessType": {
+          "label": "Business Type",
+          "placeholder": "Select type…",
+          "options": [
+            "Café / Coffee Shop",
+            "Grocery / Deli Store",
+            "Hotel / Accommodation",
+            "School / University",
+            "Hospital / Aged Care",
+            "Events / Catering",
+            "Other"
+          ]
+        },
+        "weeklyVolume": {
+          "label": "Est. Weekly Volume",
+          "placeholder": "Select range…",
+          "options": [
+            "10–20 units",
+            "20–50 units",
+            "50–100 units",
+            "100–200 units",
+            "200+ units"
+          ]
+        },
+        "notes": "Additional Notes",
+        "notesPlaceholder": "Products you're interested in, delivery requirements, any questions…"
+      },
+      "submit": {
+        "default": "Submit Partnership Application",
+        "pending": "Submitting…"
+      },
+      "messages": {
+        "validation": "Please fill in all required fields.",
+        "error": "Failed to submit. Please try again."
+      }
+    }
+  },
+  "WholesaleShop": {
+    "header": {
+      "title": "Our Products",
+      "desc": "Explore our complete range of authentic Vietnamese food products for wholesale supply across Tasmania."
+    },
+    "banner": {
+      "title": "Wholesale Pricing — Members Only",
+      "desc": "Prices for all food products are available exclusively to approved wholesale clients. Register your business to unlock pricing and place orders.",
+      "perks": [
+        "Custom negotiated prices",
+        "Minimum order quantities",
+        "Priority support"
+      ],
+      "cta": "Register for Wholesale"
+    },
+    "notice": {
+      "title": "This page is for registered wholesale customers",
+      "desc": "Register to view wholesale pricing and place orders. If you already have a PIN, enter it to view prices now.",
+      "ctaRegister": "Register for Pricing",
+      "ctaPin": "Enter PIN"
+    },
+    "search": {
+      "placeholder": "Search products by name or description...",
+      "clear": "✕ Clear",
+      "itemsCount": "{count} items"
+    },
+    "productCard": {
+      "unitLabel": "Unit",
+      "priceLabel": "Price (ex GST)",
+      "minOrderLabel": "Min Order",
+      "priceValueLocked": "Members only",
+      "minOrderValue": "{qty} units",
+      "priceDisclaimer": "Wholesale pricing only",
+      "ctaPin": "🔑 Enter PIN",
+      "ctaRegister": "New? Register"
+    },
+    "noProducts": {
+      "title": "No products found for \"{search}\"",
+      "desc": "Try a different search term."
+    },
+    "pricingHeading": {
+      "tag": "BULK PRICING",
+      "title": "Volume Discount Tiers",
+      "desc": "Discounts apply per line item based on quantity ordered. Mix and match products to maximise your savings.",
+      "badgePopular": "MOST POPULAR",
+      "offLabel": "off",
+      "disclaimer": "Prices exclusive of GST. Minimum order value applies. Contact us for custom pricing on large accounts.",
+      "cta": "Register for Wholesale Access"
+    },
+    "pricingTiers": [
+      {
+        "label": "Standard",
+        "min": "1–9 units",
+        "discount": "0%",
+        "color": "from-white/5 to-white/10"
+      },
+      {
+        "label": "Bronze",
+        "min": "10–24 units",
+        "discount": "5% off",
+        "color": "from-amber-900/30 to-amber-800/20"
+      },
+      {
+        "label": "Silver",
+        "min": "25–49 units",
+        "discount": "10% off",
+        "color": "from-slate-600/30 to-slate-500/20"
+      },
+      {
+        "label": "Gold",
+        "min": "50–99 units",
+        "discount": "15% off",
+        "color": "from-yellow-700/30 to-yellow-600/20",
+        "popular": true
+      },
+      {
+        "label": "Platinum",
+        "min": "100+ units",
+        "discount": "25% off",
+        "color": "from-primary/30 to-primary/20"
+      }
+    ],
+    "categories": [
+      { "key": "All", "label": "All" },
+      { "key": "Dough", "label": "Dough" },
+      { "key": "Dried Foods", "label": "Dried Foods" },
+      { "key": "Equipment", "label": "Equipment" },
+      { "key": "Fresh Food", "label": "Fresh Food" },
+      { "key": "Frozen Food", "label": "Frozen Food" },
+      { "key": "Frozen Marinated Meat", "label": "Frozen Marinated Meat" },
+      { "key": "Packaging", "label": "Packaging" },
+      { "key": "Sauce", "label": "Sauce" },
+      { "key": "Pastry", "label": "Pastry" }
+    ]
+  },
+  "CartAddOnModal": {
+    "header": {
+      "template": "Added <brandRed>{itemName}</brandRed> — complete your meal?"
+    },
+    "actions": {
+      "add": "Add",
+      "added": "Added",
+      "unavailable": "Sold Out"
+    },
+    "aria": {
+      "close": "Close suggestion panel"
+    }
+  },
+  "CartDrawer": {
+    "header": {
+      "title": "Your Order"
+    },
+    "pickupBanner": {
+      "title": "In-Store Pickup Only",
+      "template": "Want delivery? <storeLink>Select your store →</storeLink>"
+    },
+    "emptyState": {
+      "title": "Your cart is empty",
+      "menuCta": "Browse the Menu →",
+      "deliveryCta": "Order delivery — select your nearest store"
+    },
+    "itemRow": {
+      "priceEach": "${price} each",
+      "customisationPrefix": {
+        "no": "No ",
+        "extra": "Extra ",
+        "well": "Well ",
+        "rare": "Rare "
+      }
+    },
+    "footer": {
+      "totalLabel": "Total",
+      "checkoutButton": "Proceed to Checkout",
+      "deliveryButton": "Order Delivery Instead"
+    }
+  },
+  "FloatingWidgets": {
+    "aria": {
+      "facebookCta": "Message Saigon Express on Facebook",
+      "openChat": "Chat with Saigon Express",
+      "closeChat": "Close chat",
+      "minimize": "Minimize chat panel"
+    },
+    "titles": {
+      "widgetBtn": "Chat With Us",
+      "brand": "Saigon Express Tasmania",
+      "status": "AI Assistant · Online now"
+    },
+    "chat": {
+      "inputPlaceholder": "Type a message...",
+      "welcomeMsg": "Xin chào! 👋 Welcome to Saigon Express Tasmania. How can I help you today? Ask me about our menu, store locations, catering, wholesale, or franchise opportunities!",
+      "errorMsg": "Sorry, I'm having trouble connecting right now. Please call us on 0416 036 016 or email info@saigonexpress.com.au."
+    },
+    "quickReplies": [
+      "What's on the menu?",
+      "Where are your stores?",
+      "Do you offer catering?",
+      "Halal options?",
+      "Franchise info"
+    ]
+  },
+  "GetApp": {
+    "brandName": "Saigon Express Tasmania",
+    "brandDomain": "saigonexpress.com.au",
+    "badge": "Free • No App Store needed",
+    "heading": "Get the SG App",
+    "subheading": "Faster. Easier. Always Ready.",
+    "description": "Add {brandName} to your home screen — no App Store, no storage used. Just one tap to open anytime.",
+    "tip": "💡 Tip: {safariTip} — it installs in 3 steps instead of 5.",
+    "tipSafariBold": "Safari works best on iPhone",
+    "shareLabel": "📲 Share this page with friends",
+    "shareFooterLine1": "Open this page on your phone to install the app.",
+    "shareFooterLine2": "Works on iPhone (Safari) and Android (Chrome) • No App Store needed",
+    "copyLink": "🔗 Copy Link",
+    "whatsapp": "WhatsApp",
+    "whatsappMessage": "Order Vietnamese food from Saigon Express Tasmania! Add it to your home screen: {siteOrigin}",
+    "benefits": [
+      {
+        "icon": "🎁",
+        "title": "Earn Stamps Faster",
+        "desc": "Open the app, scan QR at the counter — stamp added in seconds. No need to search for the website.",
+        "href": null
+      },
+      {
+        "icon": "⚡",
+        "title": "Order in One Tap",
+        "desc": "Menu always ready, order 3× faster than a browser.",
+        "href": null
+      },
+      {
+        "icon": "🔔",
+        "title": "Exclusive Deals",
+        "desc": "Get promotions only for app users — before they run out.",
+        "href": "/promotions"
+      },
+      {
+        "icon": "📍",
+        "title": "Find Stores Offline",
+        "desc": "View addresses and opening hours even without internet.",
+        "href": null
+      }
+    ],
+    "instructions": {
+      "ios_safari": {
+        "platform": "🍎 iPhone — Safari browser",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Open {domain} in Safari (not Chrome or Firefox)",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap the {share} at the bottom centre of Safari (the box with an arrow pointing up)",
+            "boldPart": "Share button ↑"
+          },
+          {
+            "type": "numbered",
+            "text": "Scroll down in the share sheet and tap {action} (with a ⊕ icon)",
+            "boldPart": "“Add to Home Screen”"
+          },
+          {
+            "type": "warning",
+            "text": "In the name field, check it says {appName}. If it shows something else, clear it and type {appName}",
+            "boldPart": "Saigon Express"
+          },
+          {
+            "type": "success",
+            "text": "Tap {action} in the top-right corner — the SG icon appears on your home screen!",
+            "boldPart": "Add"
+          }
+        ]
+      },
+      "ios_firefox": {
+        "platform": "🦊 iPhone — Firefox browser",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Open {domain} in Firefox",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap the {menu} button at the bottom-right of the screen",
+            "boldPart": "⋯ menu"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap {action} from the menu that appears",
+            "boldPart": "Share"
+          },
+          {
+            "type": "numbered",
+            "text": "In the iOS share sheet, tap {viewMore} (bottom-right ↓ arrow), then tap {action}",
+            "boldPart": "“Add to Home Screen”"
+          },
+          {
+            "type": "warning",
+            "text": "In the name field, check it says {appName}. If it shows something else, clear it and type {appName}",
+            "boldPart": "Saigon Express"
+          },
+          {
+            "type": "success",
+            "text": "Tap {action} in the top-right corner — the SG icon appears on your home screen!",
+            "boldPart": "Add"
+          }
+        ]
+      },
+      "android_chrome": {
+        "platform": "🤖 Android — Chrome browser",
+        "steps": [
+          {
+            "type": "numbered",
+            "text": "Open {domain} in Chrome",
+            "boldPart": "saigonexpress.com.au"
+          },
+          {
+            "type": "numbered",
+            "text": "Tap the {menu} in the top-right corner of Chrome",
+            "boldPart": "⋮ menu"
+          },
+          {
+            "type": "numbered",
+            "text": "Select {action}",
+            "boldPart": "“Add to Home Screen”"
+          },
+          {
+            "type": "success",
+            "text": "Tap {action} — the SG icon appears on your home screen!",
+            "boldPart": "Add"
+          }
+        ]
+      }
+    }
+  },
+  "ItemCustomiseModal": {
+    "requiredBadge": "Required",
+    "chooseAny": "Choose any",
+    "specialInstructions": {
+      "title": "Special Instructions",
+      "optional": "Optional",
+      "placeholder": "e.g. No peanuts, extra sauce on the side, make it extra crispy...",
+      "charCount": "{count}/200"
+    },
+    "addToCart": "Add to Cart",
+    "proteinOptions": [
+      {
+        "id": "pork",
+        "label": "BBQ Pork (Xá Xíu)"
+      },
+      {
+        "id": "chicken",
+        "label": "Grilled Chicken"
+      },
+      {
+        "id": "prawn",
+        "label": "Prawn"
+      },
+      {
+        "id": "beef",
+        "label": "Beef (Bò)"
+      },
+      {
+        "id": "tofu",
+        "label": "Tofu (Vegetarian)"
+      },
+      {
+        "id": "pork_belly",
+        "label": "Crackling Pork Belly"
+      },
+      {
+        "id": "mixed",
+        "label": "Mixed Proteins"
+      }
+    ],
+    "unifiedExtras": [
+      {
+        "id": "extra_beef",
+        "label": "Extra Beef"
+      },
+      {
+        "id": "extra_chicken",
+        "label": "Extra Chicken"
+      },
+      {
+        "id": "extra_prawn",
+        "label": "Extra Prawn"
+      },
+      {
+        "id": "extra_seafood",
+        "label": "Extra Seafood"
+      },
+      {
+        "id": "extra_crispy_pork",
+        "label": "Extra Crispy Pork"
+      },
+      {
+        "id": "extra_veggies",
+        "label": "Extra Veggies"
+      },
+      {
+        "id": "extra_noodles",
+        "label": "Extra Noodles"
+      },
+      {
+        "id": "extra_fried_egg",
+        "label": "Extra Fried Egg"
+      },
+      {
+        "id": "extra_broth",
+        "label": "Extra Broth"
+      },
+      {
+        "id": "extra_chilli",
+        "label": "Extra Chilli"
+      },
+      {
+        "id": "extra_sauce",
+        "label": "Extra Sauce"
+      }
+    ],
+    "banhMiVeggies": [
+      {
+        "id": "no_coriander",
+        "label": "No Coriander"
+      },
+      {
+        "id": "no_spring_onion",
+        "label": "No Spring Onion"
+      },
+      {
+        "id": "no_daikon",
+        "label": "No Daikon & Carrot"
+      },
+      {
+        "id": "no_cucumber",
+        "label": "No Cucumber"
+      },
+      {
+        "id": "extra_veggies",
+        "label": "Extra Veggies"
+      },
+      {
+        "id": "extra_coriander",
+        "label": "Extra Coriander"
+      },
+      {
+        "id": "extra_cucumber",
+        "label": "Extra Cucumber"
+      },
+      {
+        "id": "no_veggies",
+        "label": "No Veggies at All"
+      }
+    ],
+    "spiceOptions": [
+      {
+        "id": "no_chilli",
+        "label": "No Chilli"
+      },
+      {
+        "id": "mild",
+        "label": "Mild"
+      },
+      {
+        "id": "medium",
+        "label": "Medium"
+      },
+      {
+        "id": "hot",
+        "label": "Hot 🌶️"
+      },
+      {
+        "id": "extra_hot",
+        "label": "Extra Hot 🌶️🌶️"
+      }
+    ],
+    "sauceOptions": [
+      {
+        "id": "sauce_mayo",
+        "label": "Sriracha Mayo"
+      },
+      {
+        "id": "sauce_hoisin",
+        "label": "Hoisin Sauce"
+      },
+      {
+        "id": "sauce_fish",
+        "label": "Fish Sauce Dressing"
+      },
+      {
+        "id": "sauce_soy",
+        "label": "Soy Sauce"
+      },
+      {
+        "id": "sauce_chilli",
+        "label": "Chilli Sauce"
+      },
+      {
+        "id": "no_sauce",
+        "label": "No Sauce"
+      }
+    ],
+    "groupTitles": {
+      "protein_banh_mi": "Choose Your Protein",
+      "protein_rice": "Protein Choice",
+      "extras": "Add Extras",
+      "veggies": "Veggies & Toppings",
+      "spice": "Spice Level",
+      "sauce_banh_mi": "Sauce",
+      "sauce_condiments": "Condiments"
+    }
+  },
+  "Jobs": {
+    "sectionLabel": "OPEN POSITIONS",
+    "heading": "Find Your Role",
+    "subheading": "We have {count} open positions across our Tasmanian locations. Click any role to read the full job description.",
+    "filterAll": "All",
+    "keyResponsibilities": "Key Responsibilities",
+    "lookingFor": "What We're Looking For",
+    "perksAndBenefits": "Perks & Benefits",
+    "applyButton": "Apply for This Role",
+    "applyFootnote": "Send your CV and cover letter to",
+    "applyEmail": "info@saigonexpress.com.au",
+    "emailSubject": "Application: {jobTitle}",
+    "emailBody": "Hi Saigon Express Team,%0D%0A%0D%0AI am applying for the {jobTitle} position.%0D%0A%0D%0APlease find my details below:%0D%0A%0D%0AName:%0D%0APhone:%0D%0AAvailability:%0D%0A%0D%0AThank you"
+  },
+  "Newsletter": {
+    "getInTouch": "Get in Touch",
+    "phoneLabel": "0416 036 016 (SMS only)",
+    "address": "Level 2, 86 Collins St\nHobart TAS 7000",
+    "stayUpdated": "Stay Updated",
+    "successMessage": "✓ You're on the list!",
+    "namePlaceholder": "Your name *",
+    "emailPlaceholder": "Email address *",
+    "subscribing": "Subscribing…",
+    "subscribe": "Subscribe"
+  },
+  "PickLocationModal": {
+    "heading": "Pick a Location",
+    "cartItems_one": "{count} item in your cart",
+    "cartItems_other": "{count} items in your cart",
+    "searchPlaceholder": "Search suburb or location...",
+    "noResults": "No locations match your search",
+    "openNow": "Open now",
+    "closed": "Closed",
+    "hoursUnavailable": "Hours unavailable",
+    "cartSummary_one": "{count} item",
+    "cartSummary_other": "{count} items"
+  },
+  "PopularSection": {
+    "sectionLabel": "Customer Favourites",
+    "heading": "Most Popular",
+    "viewFullMenu": "View Full Menu",
+    "popularBadge": "Popular",
+    "addToCart": "Add to Cart",
+    "unavailable": "Unavailable",
+    "removeLastCartLine": "Remove last cart line",
+    "addAnother": "Add another",
+    "viewCart": "View Cart ({count} items · ${total})"
+  },
+  "ReviewCard": {
+    "powered": "Reviews powered by Google"
+  },
+  "ShareDealButton": {
+    "triggerLabel": "Chia sẻ ưu đãi",
+    "popoverHeading": "Chia sẻ qua",
+    "shareText": "{title}{hasDescription, select, true { — {description}} other {}} 🍜 Saigon Express Tasmania",
+    "copyLink": "Sao chép liên kết",
+    "copyLinkCopied": "Đã sao chép!",
+    "channels": {
+      "facebook": "Facebook",
+      "twitter": "X (Twitter)",
+      "whatsapp": "WhatsApp"
+    },
+    "toast": {
+      "copySuccess": "Đã sao chép liên kết!",
+      "copySuccessDescription": "Chia sẻ ở bất kỳ đâu bạn muốn.",
+      "copyError": "Không thể sao chép liên kết."
     }
   }
 }

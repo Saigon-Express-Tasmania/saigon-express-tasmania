@@ -1,14 +1,14 @@
 export const NAV_LINKS = [
-  { href: '/', label: 'Home' },
-  { href: '/menu', label: 'Our Food' },
-  { href: '/our-story', label: 'Our Story' },
-  { href: '/wholesale-shop', label: 'Wholesale Shop' },
-  { href: '/franchise', label: 'Franchise' },
-  { href: '/faq', label: 'FAQ' },
+  { href: "/", key: "home" },
+  { href: "/menu", key: "our_food" },
+  { href: "/our-story", key: "our_story" },
+  { href: "/wholesale-shop", key: "wholesale" },
+  { href: "/franchise", key: "franchise" },
+  { href: "/faq", key: "faq" },
 ] as const;
 
 export const PORTAL_LINKS = [
-  { id: 'franchise', href: '/portals/franchise', icon: '🏪' },
-  { id: 'wholesale', href: '/portals/wholesale', icon: '📦' },
-  { id: 'warehouse', href: '/portals/warehouse', icon: '🏭' },
+  { id: "franchise", href: "/portals/franchise", icon: "🏪" },
+  { id: "wholesale", href: "/portals/wholesale", icon: "📦" },
+  { id: "warehouse", href: "/portals/warehouse", icon: "🏭" },
 ] as const;
