@@ -10,15 +10,19 @@ import {
   Plus,
   ShoppingCart,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { DEFAULT_LOCALE } from "@/config/localize";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
+import LazyImage from "@/components/LazyImage";
+import { getRelatedMenuItems } from "@/lib/menu-related-items";
+import { pickMenuImageUrl } from "@/types";
 import {
   ItemCustomiseModal,
   type ItemCustomisation,
 } from "@/components/ItemCustomiseModal";
 import PickLocationModal from "@/components/PickLocationModal";
 import { useCart, type MenuItem } from "@/contexts/CartContext";
-import type { FeaturedReview, SiteCategory, StoreLocation } from "@/types";
+import type { SiteCategory, StoreLocation } from "@/types";
 
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
 
@@ -27,7 +31,6 @@ type MenuItemViewProps = {
   menuItems: MenuItem[];
   categoriesContent: SiteCategory[];
   storeLocations: StoreLocation[];
-  featuredReviews: FeaturedReview[];
 };
 
 export default function MenuItemView({
@@ -35,10 +38,10 @@ export default function MenuItemView({
   menuItems,
   categoriesContent,
   storeLocations,
-  featuredReviews,
 }: MenuItemViewProps) {
   const t = useTranslations("MenuItem");
   const tMenu = useTranslations("Menu");
+  const locale = useLocale();
 
   const [qty, setQty] = useState(1);
   const [customiseOpen, setCustomiseOpen] = useState(false);
@@ -72,6 +75,17 @@ export default function MenuItemView({
 
   const priceLabel = `$${parseFloat(item.price).toFixed(2)}`;
 
+  const menuItemPath = useCallback(
+    (id: number) =>
+      locale === DEFAULT_LOCALE ? `/menu/${id}` : `/${locale}/menu/${id}`,
+    [locale],
+  );
+
+  const relatedItems = useMemo(
+    () => getRelatedMenuItems(item, menuItems),
+    [item, menuItems],
+  );
+
   const handleCustomiseConfirm = useCallback(
     (customisation: ItemCustomisation) => {
       addToCart(item, { ...customisation, qty }, qty, false);
@@ -86,36 +100,8 @@ export default function MenuItemView({
     setCustomiseOpen(true);
   };
 
-  const stars = (rating: number) =>
-    "★".repeat(Math.min(5, Math.max(0, Math.round(rating))));
-
   return (
-    <div className="min-h-screen bg-brand-cream pb-28 font-sans">
-      {/* Category strip — matches Menu.tsx */}
-      <div className="sticky top-16 z-40 border-b border-gray-100 bg-white">
-        <div className="mx-auto flex max-w-[1280px] flex-wrap gap-2 px-6 py-3">
-          <Link
-            href="/menu"
-            className="border border-gray-200 bg-transparent px-4 py-2 text-sm font-semibold text-brand-dark/60 transition-colors hover:border-brand-red/40 hover:text-brand-dark"
-          >
-            {tMenu("allCategory")}
-          </Link>
-          {categories.map((cat) => (
-            <Link
-              key={cat}
-              href="/menu"
-              className={`border px-4 py-2 text-sm font-semibold transition-colors ${
-                cat === item.category
-                  ? "border-brand-red bg-brand-red text-white"
-                  : "border-gray-200 bg-transparent text-brand-dark/60 hover:border-brand-red/40 hover:text-brand-dark"
-              }`}
-            >
-              {cat}
-            </Link>
-          ))}
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-brand-cream pb-28 font-sans">      
       <div className="mx-auto max-w-[1200px] px-5 py-8 md:px-6">
         <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:gap-12">
           {/* Media */}
@@ -201,30 +187,50 @@ export default function MenuItemView({
           </div>
         </div>
 
-        {/* Reviews */}
-        {featuredReviews.length > 0 ? (
+        {relatedItems.length > 0 ? (
           <section className="border-t border-gray-200 pt-8">
             <h2 className="mb-5 font-serif text-xl font-bold text-brand-dark">
-              {t("reviewsTitle")}
+              {t("relatedTitle")}
             </h2>
-            <div className="flex gap-5 overflow-x-auto pb-2">
-              {featuredReviews.map((review) => (
-                <article
-                  key={review.id}
-                  className="min-w-[280px] flex-1 rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {relatedItems.map((related) => (
+                <Link
+                  key={related.id}
+                  href={menuItemPath(related.id)}
+                  className="group overflow-hidden bg-white card-lift"
                 >
-                  <div className="mb-2 text-sm text-brand-amber">
-                    {stars(review.rating)}
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
+                    <LazyImage
+                      src={
+                        pickMenuImageUrl(related.imageUrls, [
+                          512,
+                          1024,
+                          1920,
+                          256,
+                        ]) ??
+                        related.imageUrl ??
+                        categoryImageMap[related.category] ??
+                        DEFAULT_IMG
+                      }
+                      alt={related.name}
+                      wrapperClassName="size-full"
+                      className="transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {related.isPopular ? (
+                      <span className="absolute top-2 left-2 bg-brand-red px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+                        {tMenu("card.popularBadge")}
+                      </span>
+                    ) : null}
                   </div>
-                  <p className="text-sm leading-relaxed text-brand-dark/70">
-                    &ldquo;{review.reviewText}&rdquo;
-                  </p>
-                  {review.reviewerName ? (
-                    <p className="mt-3 text-xs font-semibold text-brand-dark/50">
-                      — {review.reviewerName}
-                    </p>
-                  ) : null}
-                </article>
+                  <div className="p-4">
+                    <h3 className="font-serif text-lg leading-snug text-brand-dark transition-colors group-hover:text-brand-red">
+                      {related.name}
+                    </h3>
+                    <span className="mt-2 inline-block rounded-full bg-brand-red px-3 py-1.5 text-sm font-bold text-white">
+                      ${parseFloat(related.price).toFixed(2)}
+                    </span>
+                  </div>
+                </Link>
               ))}
             </div>
           </section>

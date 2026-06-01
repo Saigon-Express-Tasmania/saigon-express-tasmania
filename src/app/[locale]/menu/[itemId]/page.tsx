@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MenuItemView from "@/views/MenuItem";
 import { getCategories } from "@/lib/supabase/categories";
-import { getFeaturedReviews } from "@/lib/supabase/featured-reviews";
 import { getMenuItemById } from "@/lib/supabase/menu-item";
 import { getMenuItems } from "@/lib/supabase/menu";
 import { getStoreLocations } from "@/lib/supabase/store-locations";
@@ -40,13 +39,12 @@ export default async function LocaleMenuItemPage({ params }: PageProps) {
   const id = parseItemId(itemId);
   if (id === null) notFound();
 
-  const [item, menuItems, categoriesContent, storeLocations, featuredReviews] =
+  const [item, menuItems, categoriesContent, storeLocations] =
     await Promise.all([
       getMenuItemById(id),
       getMenuItems(),
       getCategories(),
       getStoreLocations(),
-      getFeaturedReviews(),
     ]);
 
   if (!item) notFound();
@@ -57,7 +55,6 @@ export default async function LocaleMenuItemPage({ params }: PageProps) {
       menuItems={menuItems}
       categoriesContent={categoriesContent}
       storeLocations={storeLocations}
-      featuredReviews={featuredReviews}
     />
   );
 }
