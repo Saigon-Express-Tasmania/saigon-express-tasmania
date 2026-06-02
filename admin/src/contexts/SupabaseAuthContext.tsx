@@ -67,12 +67,41 @@ export function SupabaseAuthProvider({
     if (error) throw error;
   };
 
+  const ensureAdminAccess = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('user_role')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      throw new Error('Unable to verify your account access.');
+    }
+
+    if (data?.user_role !== 'admin') {
+      throw new Error('Access denied. Admin account required.');
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) throw error;
+
+    const userId = data.user?.id;
+    if (!userId) {
+      await supabase.auth.signOut();
+      throw new Error('Sign-in failed. Please try again.');
+    }
+
+    try {
+      await ensureAdminAccess(userId);
+    } catch (adminCheckError) {
+      await supabase.auth.signOut();
+      throw adminCheckError;
+    }
   };
 
   const signOut = async () => {
