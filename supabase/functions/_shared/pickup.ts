@@ -29,7 +29,7 @@ export type PickupCheckoutInput = {
 
 export type PickupCheckoutResult = {
   url: string | null;
-  orderId: number;
+  draftOrderId: number;
   mode: StripePaymentMode;
 };
 
@@ -39,6 +39,27 @@ type StoreStripeRow = {
   stripe_connect_status: string | null;
   platform_fee_percent: string | null;
 };
+
+type DraftOrderItemRow = {
+  menuItemId: number;
+  qty: number;
+  unitPrice: number;
+  itemName: string;
+};
+
+type DraftOrderRow = {
+  id: number;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  store_id: number | null;
+  pickup_time: string | null;
+  total: number | string | null;
+  notes: string | null;
+  items: unknown;
+};
+
+type CreatePaidOrderWithItemsResponse = number;
 
 function randomHex(byteLength: number): string {
   const bytes = new Uint8Array(byteLength);
@@ -119,8 +140,8 @@ export async function createPickupCheckoutSession(
     throw new Error("Order total must be greater than zero");
   }
 
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
+  const { data: draftOrder, error: draftOrderError } = await supabase
+    .from("draft_orders")
     .insert({
       customer_name: input.customerName,
       customer_email: input.customerEmail,
@@ -129,33 +150,15 @@ export async function createPickupCheckoutSession(
       pickup_time: input.pickupTime,
       total: total.toFixed(2),
       notes: input.notes ?? null,
-      status: "pending",
-      payment_status: "unpaid",
-      stripe_mode: input.mode,
+      items: input.items,
     })
     .select("id")
     .single();
 
-  if (orderError || !order) {
-    throw new Error(orderError?.message ?? "Failed to create order");
+  if (draftOrderError || !draftOrder) {
+    throw new Error(draftOrderError?.message ?? "Failed to create draft order");
   }
-
-  const orderId = order.id as number;
-
-  const { error: itemsError } = await supabase.from("order_items").insert(
-    input.items.map((item) => ({
-      order_id: orderId,
-      menu_item_id: item.menuItemId,
-      qty: item.qty,
-      unit_price: item.unitPrice.toFixed(2),
-      item_name: item.itemName,
-    })),
-  );
-
-  if (itemsError) {
-    await supabase.from("orders").delete().eq("id", orderId);
-    throw new Error(itemsError.message);
-  }
+  const draftOrderId = draftOrder.id as number;
 
   const { data: store, error: storeError } = await supabase
     .from("store_locations")
@@ -188,7 +191,7 @@ export async function createPickupCheckoutSession(
   }));
 
   const stripeMetadata = {
-    orderId: String(orderId),
+    draftOrderId: String(draftOrderId),
     mode: input.mode,
     customerName: input.customerName,
     customerEmail: input.customerEmail,
@@ -201,13 +204,13 @@ export async function createPickupCheckoutSession(
     line_items: lineItems,
     mode: "payment",
     customer_email: input.customerEmail,
-    client_reference_id: String(orderId),
+    client_reference_id: String(draftOrderId),
     metadata: stripeMetadata,
     allow_promotion_codes: true,
-    success_url: `${input.origin}/checkout/success?orderId=${orderId}`,
+    success_url: `${input.origin}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
     cancel_url: `${input.origin}/checkout?cancelled=1`,
     payment_intent_data: {
-      metadata: { orderId: String(orderId), mode: input.mode },
+      metadata: { draftOrderId: String(draftOrderId), mode: input.mode },
       ...(connectAccountId && connectStatus === "active"
         ? {
             application_fee_amount: platformFeeCents,
@@ -219,62 +222,81 @@ export async function createPickupCheckoutSession(
 
   const session = await stripe.checkout.sessions.create(sessionParams);
 
-  const { error: updateError } = await supabase
-    .from("orders")
-    .update({ stripe_checkout_session_id: session.id })
-    .eq("id", orderId);
-
-  if (updateError) {
-    console.error("[checkout-pickup] Failed to save Stripe session id:", updateError.message);
-  }
-
-  return { url: session.url, orderId, mode: input.mode };
+  return { url: session.url, draftOrderId, mode: input.mode };
 }
 
 export async function markOrderPaidFromStripeSession(
   session: Stripe.Checkout.Session,
   paymentMode: StripePaymentMode,
 ): Promise<void> {
-  const orderId = session.metadata?.orderId ? parseInt(session.metadata.orderId, 10) : null;
-  if (!orderId || Number.isNaN(orderId)) return;
-
   const supabase = createServiceClient();
-  const cancelToken = randomHex(24);
-  const trackingToken = randomHex(24);
-
-  const { error } = await supabase
-    .from("orders")
-    .update({
-      payment_status: "paid",
-      status: "confirmed",
-      stripe_mode: paymentMode,
-      cancel_token: cancelToken,
-      tracking_token: trackingToken,
-      status_updated_at: new Date().toISOString(),
-    })
-    .eq("id", orderId);
-
-  if (error) {
-    console.error(`[stripe-webhook] Failed to update order #${orderId}:`, error.message);
-    throw error;
+  const existingOrderId = await findExistingOrderIdBySession(session.id, supabase);
+  if (existingOrderId) {
+    console.log(`[stripe-webhook] Session ${session.id} already mapped to order #${existingOrderId}`);
+    return;
+  }
+  const draftOrderId = getDraftOrderIdFromSession(session);
+  if (!draftOrderId) return;
+  const draftOrder = await fetchDraftOrder(draftOrderId, supabase);
+  if (!draftOrder) {
+    console.error(`[stripe-webhook] Draft order #${draftOrderId} not found`);
+    return;
   }
 
-  console.log(`[stripe-webhook] Order #${orderId} (${paymentMode}) marked as paid + confirmed`);
+  const total = Number(draftOrder.total ?? 0);
+  if (!Number.isFinite(total) || total <= 0) {
+    throw new Error(`Invalid draft order total for #${draftOrderId}`);
+  }
+  const parsedItems = parseDraftItems(draftOrder.items);
+  if (parsedItems.length === 0) {
+    throw new Error(`Draft order #${draftOrderId} has no valid items`);
+  }
+
+  const cancelToken = randomHex(24);
+  const trackingToken = randomHex(24);
+  const { data: createdOrderId, error: createOrderError } = await supabase.rpc(
+    "create_paid_order_with_items",
+    {
+      p_customer_name: draftOrder.customer_name ?? "",
+      p_customer_email: draftOrder.customer_email ?? "",
+      p_customer_phone: draftOrder.customer_phone ?? "",
+      p_store_id: draftOrder.store_id,
+      p_pickup_time: draftOrder.pickup_time ?? "",
+      p_total: total.toFixed(2),
+      p_notes: draftOrder.notes ?? null,
+      p_stripe_mode: paymentMode,
+      p_stripe_checkout_session_id: session.id,
+      p_cancel_token: cancelToken,
+      p_tracking_token: trackingToken,
+      p_status_updated_at: new Date().toISOString(),
+      p_items: parsedItems,
+    },
+  );
+
+  if (createOrderError || !createdOrderId) {
+    console.error(
+      `[stripe-webhook] Failed to create order from draft #${draftOrderId}:`,
+      createOrderError?.message,
+    );
+    throw createOrderError ?? new Error("Failed to create order from draft");
+  }
+  const orderId = Number(createdOrderId as CreatePaidOrderWithItemsResponse);
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    throw new Error(`Invalid order id returned for draft #${draftOrderId}`);
+  }
+
+  console.log(
+    `[stripe-webhook] Draft #${draftOrderId} converted to paid order #${orderId} (${paymentMode})`,
+  );
 }
 
 export async function cancelOrderPaymentFailed(
-  orderId: number,
+  draftOrderId: number,
   paymentMode: StripePaymentMode,
 ): Promise<void> {
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from("orders")
-    .update({ status: "cancelled", stripe_mode: paymentMode })
-    .eq("id", orderId);
-
-  if (error) {
-    console.error(`[stripe-webhook] Failed to cancel order #${orderId}:`, error.message);
-  }
+  console.warn(
+    `[stripe-webhook] Payment failed for draft #${draftOrderId} (${paymentMode}); keeping as draft`,
+  );
 }
 
 export async function getOrderTrackingToken(orderId: number): Promise<string | null> {
@@ -288,4 +310,77 @@ export async function getOrderTrackingToken(orderId: number): Promise<string | n
   if (error || !data) return null;
   if (data.payment_status !== "paid") return null;
   return (data.tracking_token as string | null) ?? null;
+}
+
+export async function getOrderTrackingTokenBySessionId(sessionId: string): Promise<string | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("tracking_token, payment_status")
+    .eq("stripe_checkout_session_id", sessionId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  if (data.payment_status !== "paid") return null;
+  return (data.tracking_token as string | null) ?? null;
+}
+
+function getDraftOrderIdFromSession(session: Stripe.Checkout.Session): number | null {
+  const fromMetadata = session.metadata?.draftOrderId;
+  const fromReference = session.client_reference_id;
+  const raw = fromMetadata ?? fromReference ?? "";
+  const parsed = parseInt(raw, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+async function findExistingOrderIdBySession(
+  sessionId: string | null,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<number | null> {
+  if (!sessionId) return null;
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("stripe_checkout_session_id", sessionId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return Number(data.id) || null;
+}
+
+async function fetchDraftOrder(
+  draftOrderId: number,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<DraftOrderRow | null> {
+  const { data, error } = await supabase
+    .from("draft_orders")
+    .select("id, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items")
+    .eq("id", draftOrderId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as DraftOrderRow;
+}
+
+function parseDraftItems(items: unknown): DraftOrderItemRow[] {
+  if (!Array.isArray(items)) return [];
+  const parsed: DraftOrderItemRow[] = [];
+
+  for (const raw of items) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const menuItemId = Number(item.menuItemId);
+    const qty = Number(item.qty);
+    const unitPrice = Number(item.unitPrice);
+    const itemName = String(item.itemName ?? "").trim();
+
+    if (!Number.isFinite(menuItemId) || menuItemId <= 0) continue;
+    if (!Number.isFinite(qty) || qty < 1) continue;
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) continue;
+    if (!itemName) continue;
+
+    parsed.push({ menuItemId, qty, unitPrice, itemName });
+  }
+
+  return parsed;
 }

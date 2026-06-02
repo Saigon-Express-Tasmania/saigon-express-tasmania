@@ -8,6 +8,9 @@ import { CateringBoxes } from '@/pages/CateringBoxes';
 import { StoreLocations } from '@/pages/StoreLocations';
 import { WholesaleProducts } from '@/pages/WholesaleProducts';
 import { Categories } from '@/pages/Categories';
+import { DraftOrders } from '@/pages/Sales/DraftOrders';
+import { Orders } from '@/pages/Sales/Orders';
+import { ArchivedOrders } from '@/pages/Sales/ArchivedOrders';
 import {
   Navigate,
   Route,
@@ -48,6 +51,9 @@ export function App() {
             <Route path="/store-locations" element={<StoreLocations />} />
             <Route path="/wholesale-products" element={<WholesaleProducts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
+            <Route path="/sales/orders" element={<Orders />} />
+            <Route path="/sales/draft-orders" element={<DraftOrders />} />
+            <Route path="/sales/archived-orders" element={<ArchivedOrders />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -147,6 +147,7 @@ export default function Checkout({
       const result = await invokeEdgeFunction<{
         url?: string | null;
         orderId?: number;
+        draftOrderId?: number;
       }>("checkout-pickup", {
         method: "POST",
         body: {

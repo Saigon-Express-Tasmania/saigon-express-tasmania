@@ -53,10 +53,10 @@ Deno.serve(async (req) => {
 
     if (event.type === "payment_intent.payment_failed") {
       const pi = event.data.object as Stripe.PaymentIntent;
-      const orderId = pi.metadata?.orderId ? parseInt(pi.metadata.orderId, 10) : null;
+      const draftOrderId = pi.metadata?.draftOrderId ? parseInt(pi.metadata.draftOrderId, 10) : null;
       const mode = paymentModeFromMetadata(pi.metadata ?? undefined) ?? paymentMode;
-      if (orderId && !Number.isNaN(orderId)) {
-        await cancelOrderPaymentFailed(orderId, mode);
+      if (draftOrderId && !Number.isNaN(draftOrderId)) {
+        await cancelOrderPaymentFailed(draftOrderId, mode);
       }
     }
 

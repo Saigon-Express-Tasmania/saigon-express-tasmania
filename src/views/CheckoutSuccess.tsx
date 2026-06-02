@@ -9,9 +9,10 @@ import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 
 type CheckoutSuccessProps = {
   orderId: number | null;
+  sessionId: string | null;
 };
 
-export default function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
+export default function CheckoutSuccess({ orderId, sessionId }: CheckoutSuccessProps) {
   const t = useTranslations("CheckoutSuccess");
   const { clearCart } = useCart();
   const [trackingToken, setTrackingToken] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export default function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
   }, [clearCart]);
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId && !sessionId) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -33,7 +34,7 @@ export default function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
           trackingToken?: string | null;
         }>("order-tracking-token", {
           method: "GET",
-          searchParams: { orderId: String(orderId) },
+          searchParams: sessionId ? { sessionId } : { orderId: String(orderId) },
         });
         if (!result.ok) return;
         if (result.data.trackingToken) {
@@ -54,7 +55,7 @@ export default function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [orderId, sessionId]);
 
   const trackingUrl = trackingToken ? `/order-tracking/${trackingToken}` : null;
 
