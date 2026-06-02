@@ -4,10 +4,12 @@ import AppImage from "@/components/AppImage";
 import { motion } from "framer-motion";
 import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
 import Link from "@/components/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
+// 1. Import Fuse
+import Fuse from "fuse.js";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Dough: "from-amber-800 to-amber-600",
@@ -53,7 +55,7 @@ export default function WholesaleShop({
 }) {
   const t = useTranslations("WholesaleShop");
 
-  // Array Extraction Strategy via t.raw[cite: 3]
+  // Array Extraction Strategy via t.raw
   const categoriesData = (t.raw("categories") || []) as LocalizedCategory[];
   const pricingTiers = (t.raw("pricingTiers") || []) as LocalizedPricingTier[];
   const bannerPerks = (t.raw("banner.perks") || []) as string[];
@@ -61,19 +63,41 @@ export default function WholesaleShop({
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const normalizedSearch = search.trim().toLowerCase();
+  // 2. Initialize Fuse instance with targeted keys and fine-tuned thresholds
+  const fuse = useMemo(() => {
+    const options = {
+      keys: [
+        { name: "name", weight: 0.6 },
+        { name: "description", weight: 0.3 },
+        { name: "category", weight: 0.1 },
+      ],
+      threshold: 0.35, // Balanced threshold: perfect for picking up technical/ingredient typos without returning junk matches.
+    };
+    return new Fuse(products ?? [], options);
+  }, [products]);
 
-  const displayProducts = (
-    selectedCategory === "All"
-      ? products
-      : products.filter((p) => p.category === selectedCategory)
-  ).filter(
-    (p) =>
-      p.name.toLowerCase().includes(normalizedSearch) ||
-      (p.description ?? "").toLowerCase().includes(normalizedSearch),
-  );
+  // 3. Compute fuzzy matching coupled with category constraints using useMemo
+  const filtered = useMemo(() => {
+    const normalizedSearch = search.trim();
 
-  const filtered = displayProducts;
+    // If there is no search phrase, simply filter down raw data based on category mapping
+    if (!normalizedSearch) {
+      if (selectedCategory === "All") return products ?? [];
+      return (products ?? []).filter((p) => p.category === selectedCategory);
+    }
+
+    // Query across the indexed global data subset
+    const searchResults = fuse
+      .search(normalizedSearch)
+      .map((result) => result.item);
+
+    // Apply category isolation on top of search hits
+    if (selectedCategory !== "All") {
+      return searchResults.filter((p) => p.category === selectedCategory);
+    }
+
+    return searchResults;
+  }, [search, selectedCategory, products, fuse]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

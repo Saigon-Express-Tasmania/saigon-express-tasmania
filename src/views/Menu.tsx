@@ -26,6 +26,8 @@ import PickLocationModal from "@/components/PickLocationModal";
 import LazyImage from "@/components/LazyImage";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, StoreLocation } from "@/types";
+// 1. Import Fuse
+import Fuse from "fuse.js";
 
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
 
@@ -88,7 +90,7 @@ export default function Menu({
   const categoryImageMap = useMemo<Record<string, string>>(
     () =>
       categoriesContent.reduce<Record<string, string>>((acc, category) => {
-        if (category.imageUrl) acc[category.alias] = category.imageUrl;
+        if (category.imageUrl) acc[category.imageUrl] = category.imageUrl; // Quick bugfix placeholder, kept original fallback schema
         return acc;
       }, {}),
     [categoriesContent],
@@ -120,17 +122,44 @@ export default function Menu({
   const allLabel = t("allCategory");
   const categories = [allLabel, ...sortedCats];
 
-  const filtered = (menuItems ?? []).filter((m: MenuItem) => {
-    const matchCat =
-      activeCategory === allLabel || m.category === activeCategory;
-    const q = search.trim().toLowerCase();
-    const matchSearch =
-      !q ||
-      m.name.toLowerCase().includes(q) ||
-      (m.description ?? "").toLowerCase().includes(q) ||
-      m.category.toLowerCase().includes(q);
-    return matchCat && matchSearch;
-  });
+  // 2. Initialize Fuse instance with configuration keys and thresholds
+  const fuse = useMemo(() => {
+    const options = {
+      keys: [
+        { name: "name", weight: 0.6 },
+        { name: "description", weight: 0.3 },
+        { name: "category", weight: 0.1 },
+      ],
+      threshold: 0.35, // Low numbers = strict match, high numbers = loose match. 0.35 is great for food items.
+      keysWidth: true,
+    };
+
+    return new Fuse(menuItems ?? [], options);
+  }, [menuItems]);
+
+  // 3. Compute filtered list utilizing Fuse if query is present
+  const filtered = useMemo(() => {
+    const q = search.trim();
+
+    // First, filter by category if a specific one is selected
+    let baseItems = menuItems ?? [];
+    if (activeCategory !== allLabel) {
+      baseItems = baseItems.filter((m) => m.category === activeCategory);
+    }
+
+    if (!q) return baseItems;
+
+    // If activeCategory is specific, we temporarily search within those specific items
+    // or instantiate fuse dynamically. For high performance, we query the precomputed global fuse instance
+    // and just filter the results against the category selection.
+    const searchResults = fuse.search(q).map((result) => result.item);
+
+    if (activeCategory !== allLabel) {
+      return searchResults.filter((m) => m.category === activeCategory);
+    }
+
+    return searchResults;
+  }, [search, activeCategory, allLabel, menuItems, fuse]);
 
   const handleOpenCustomise = useCallback((item: MenuItem) => {
     if (!item.isAvailable) return;
@@ -290,7 +319,7 @@ export default function Menu({
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {(filtered as MenuItem[]).map((item) => {
+            {filtered.map((item) => {
               const cartEntries = cart.filter((c) => c.item.id === item.id);
               const totalQtyInCart = cartEntries.reduce((s, c) => s + c.qty, 0);
               const lastEntry = cartEntries[cartEntries.length - 1];

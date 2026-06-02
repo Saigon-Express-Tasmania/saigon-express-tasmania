@@ -19,7 +19,7 @@ export default function MainHeader() {
 
   return (
     <>
-      <div className="topbar">
+      <div className="topbar sticky top-0 z-50">
         <div className="max-w-[1280px] mx-auto px-4 h-9 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
             {PORTAL_LINKS.map((p) => (
@@ -50,7 +50,7 @@ export default function MainHeader() {
           </div>
         </div>
       </div>
-      <header className="sticky-header-scroll-shadow sticky top-0 z-50 bg-white">
+      <header className="sticky-header-scroll-shadow sticky top-9 z-50 bg-white">
         <div className="max-w-[1280px] mx-auto px-4 h-16 flex items-center justify-between gap-6">
           <Link href="/" className="shrink-0">
             <AppImage
@@ -129,7 +129,7 @@ export default function MainHeader() {
         </div>
 
         {mobileOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
+          <div className="absolute top-full left-0 right-0 lg:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3 shadow-lg z-50">
             {NAV_LINKS.map((l) => (
               <Link
                 key={l.href}
@@ -137,7 +137,7 @@ export default function MainHeader() {
                 onClick={() => setMobileOpen(false)}
                 className="block text-sm font-medium text-brand-dark/80 hover:text-brand-red py-1"
               >
-                {l.label}
+                {tLinks(`${l.key}`)}
               </Link>
             ))}
             <div className="pt-2 border-t border-gray-100 space-y-2">

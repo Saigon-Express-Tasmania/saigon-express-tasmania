@@ -1684,8 +1684,7 @@
     },
     "mission": {
       "eyebrow": "Our Mission",
-      "quoteVi": "\"Mang hương vị ẩm thực Việt đích thực đến gần hơn với cộng đồng, lan tỏa văn hóa ẩm thực quê hương và khẳng định tinh thần khởi nghiệp của người Việt xa xứ.\"",
-      "quoteEn": "To bring authentic Vietnamese cuisine closer to the community, spread the food culture of the homeland, and affirm the entrepreneurial spirit of Vietnamese people living abroad.",
+      "quote": "\"Bringing authentic Vietnamese culinary flavors closer to the community, spreading the food culture of our homeland and affirming the entrepreneurial spirit of overseas Vietnamese.\"",
       "pill1": "🍜 Familiar flavours, the true taste of home",
       "pill2": "🤝 Building community, celebrating Vietnamese culture"
     },

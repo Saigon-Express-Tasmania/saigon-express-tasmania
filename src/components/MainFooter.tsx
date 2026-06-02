@@ -5,12 +5,14 @@ import { PORTAL_LINKS } from "@/config/nav-links";
 import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
+import { useCart } from "@/contexts/CartContext";
 
 const Newsletter = dynamic(() => import("@/components/Newsletter"));
 const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
 
 export default function MainFooter() {
   const t = useTranslations("Home");
+  const { cartCount } = useCart();
 
   const footerQuickLinks = [
     { href: "/menu", label: t("footer.quickLinks.ourFood") },
@@ -23,8 +25,10 @@ export default function MainFooter() {
   ] as const;
 
   return (
-    <footer className="bg-brand-dark text-white/70">
-      <div className="max-w-[1280px] mx-auto px-4 pt-16 pb-8">
+    <footer className={`bg-brand-dark text-white/70`}>
+      <div
+        className={`max-w-[1280px] mx-auto px-4 pt-16 ${cartCount > 0 ? "pb-32" : "pb-8"}`}
+      >
         <div className="grid md:grid-cols-[2fr_1fr_1fr_1fr] gap-10 mb-12">
           {/* Brand col */}
           <div>
