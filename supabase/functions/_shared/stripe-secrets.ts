@@ -49,14 +49,17 @@ export type VerifiedStripeEvent = {
  * Verify webhook signature using test or live webhook secret.
  * Prefers metadata.mode on the payload when present; otherwise uses event.livemode.
  */
-export function constructWebhookEvent(body: string, signature: string): VerifiedStripeEvent {
+export async function constructWebhookEvent(
+  body: string,
+  signature: string,
+): Promise<VerifiedStripeEvent> {
   const modes: StripePaymentMode[] = ["test", "live"];
   let lastError: Error | null = null;
 
   for (const mode of modes) {
     try {
       const secret = getWebhookSecret(mode);
-      const event = Stripe.webhooks.constructEvent(body, signature, secret);
+      const event = await Stripe.webhooks.constructEventAsync(body, signature, secret);
       const resolvedMode = resolveEventPaymentMode(event, mode);
       return { event, mode: resolvedMode };
     } catch (err) {

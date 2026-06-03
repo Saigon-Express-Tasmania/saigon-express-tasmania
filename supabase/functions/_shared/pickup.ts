@@ -61,6 +61,22 @@ type DraftOrderRow = {
 
 type CreatePaidOrderWithItemsResponse = number;
 
+type PaidOrdersTable = "orders" | "test_orders";
+
+function paidOrdersTable(mode: StripePaymentMode): PaidOrdersTable {
+  return mode === "test" ? "test_orders" : "orders";
+}
+
+function createPaidOrderRpc(mode: StripePaymentMode): string {
+  return mode === "test" ? "create_paid_test_order_with_items" : "create_paid_order_with_items";
+}
+
+function paymentModeFromStripeSessionId(sessionId: string): StripePaymentMode | null {
+  if (sessionId.startsWith("cs_test_")) return "test";
+  if (sessionId.startsWith("cs_live_")) return "live";
+  return null;
+}
+
 function randomHex(byteLength: number): string {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
@@ -230,9 +246,11 @@ export async function markOrderPaidFromStripeSession(
   paymentMode: StripePaymentMode,
 ): Promise<void> {
   const supabase = createServiceClient();
-  const existingOrderId = await findExistingOrderIdBySession(session.id, supabase);
+  const existingOrderId = await findExistingOrderIdBySession(session.id, paymentMode, supabase);
   if (existingOrderId) {
-    console.log(`[stripe-webhook] Session ${session.id} already mapped to order #${existingOrderId}`);
+    console.log(
+      `[stripe-webhook] Session ${session.id} already mapped to ${paymentMode} order #${existingOrderId}`,
+    );
     return;
   }
   const draftOrderId = getDraftOrderIdFromSession(session);
@@ -255,7 +273,7 @@ export async function markOrderPaidFromStripeSession(
   const cancelToken = randomHex(24);
   const trackingToken = randomHex(24);
   const { data: createdOrderId, error: createOrderError } = await supabase.rpc(
-    "create_paid_order_with_items",
+    createPaidOrderRpc(paymentMode),
     {
       p_customer_name: draftOrder.customer_name ?? "",
       p_customer_email: draftOrder.customer_email ?? "",
@@ -285,8 +303,9 @@ export async function markOrderPaidFromStripeSession(
     throw new Error(`Invalid order id returned for draft #${draftOrderId}`);
   }
 
+  const orderLabel = paymentMode === "test" ? "test order" : "order";
   console.log(
-    `[stripe-webhook] Draft #${draftOrderId} converted to paid order #${orderId} (${paymentMode})`,
+    `[stripe-webhook] Draft #${draftOrderId} converted to paid ${orderLabel} #${orderId} (${paymentMode})`,
   );
 }
 
@@ -301,28 +320,36 @@ export async function cancelOrderPaymentFailed(
 
 export async function getOrderTrackingToken(orderId: number): Promise<string | null> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("orders")
-    .select("tracking_token, payment_status")
-    .eq("id", orderId)
-    .maybeSingle();
-
-  if (error || !data) return null;
-  if (data.payment_status !== "paid") return null;
-  return (data.tracking_token as string | null) ?? null;
+  for (const table of ["test_orders", "orders"] as const) {
+    const token = await fetchPaidOrderTrackingToken(supabase, table, "id", orderId);
+    if (token) return token;
+  }
+  return null;
 }
 
 export async function getOrderTrackingTokenBySessionId(sessionId: string): Promise<string | null> {
+  const mode = paymentModeFromStripeSessionId(sessionId);
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("orders")
-    .select("tracking_token, payment_status")
-    .eq("stripe_checkout_session_id", sessionId)
-    .maybeSingle();
 
-  if (error || !data) return null;
-  if (data.payment_status !== "paid") return null;
-  return (data.tracking_token as string | null) ?? null;
+  if (mode) {
+    return fetchPaidOrderTrackingToken(
+      supabase,
+      paidOrdersTable(mode),
+      "stripe_checkout_session_id",
+      sessionId,
+    );
+  }
+
+  for (const table of ["test_orders", "orders"] as const) {
+    const token = await fetchPaidOrderTrackingToken(
+      supabase,
+      table,
+      "stripe_checkout_session_id",
+      sessionId,
+    );
+    if (token) return token;
+  }
+  return null;
 }
 
 function getDraftOrderIdFromSession(session: Stripe.Checkout.Session): number | null {
@@ -336,16 +363,34 @@ function getDraftOrderIdFromSession(session: Stripe.Checkout.Session): number | 
 
 async function findExistingOrderIdBySession(
   sessionId: string | null,
+  paymentMode: StripePaymentMode,
   supabase: ReturnType<typeof createServiceClient>,
 ): Promise<number | null> {
   if (!sessionId) return null;
   const { data, error } = await supabase
-    .from("orders")
+    .from(paidOrdersTable(paymentMode))
     .select("id")
     .eq("stripe_checkout_session_id", sessionId)
     .maybeSingle();
   if (error || !data) return null;
   return Number(data.id) || null;
+}
+
+async function fetchPaidOrderTrackingToken(
+  supabase: ReturnType<typeof createServiceClient>,
+  table: PaidOrdersTable,
+  column: "id" | "stripe_checkout_session_id",
+  value: number | string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from(table)
+    .select("tracking_token, payment_status")
+    .eq(column, value)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  if (data.payment_status !== "paid") return null;
+  return (data.tracking_token as string | null) ?? null;
 }
 
 async function fetchDraftOrder(

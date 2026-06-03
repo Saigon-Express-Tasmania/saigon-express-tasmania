@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   let paymentMode: StripePaymentMode;
 
   try {
-    const verified = constructWebhookEvent(body, signature);
+    const verified = await constructWebhookEvent(body, signature);
     event = verified.event;
     paymentMode = verified.mode;
   } catch (err) {

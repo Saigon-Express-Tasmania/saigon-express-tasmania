@@ -10,6 +10,7 @@ import { WholesaleProducts } from '@/pages/WholesaleProducts';
 import { Categories } from '@/pages/Categories';
 import { DraftOrders } from '@/pages/Sales/DraftOrders';
 import { Orders } from '@/pages/Sales/Orders';
+import { TestOrders } from '@/pages/Sales/TestOrders';
 import { ArchivedOrders } from '@/pages/Sales/ArchivedOrders';
 import {
   Navigate,
@@ -52,6 +53,7 @@ export function App() {
             <Route path="/wholesale-products" element={<WholesaleProducts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
             <Route path="/sales/orders" element={<Orders />} />
+            <Route path="/sales/test-orders" element={<TestOrders />} />
             <Route path="/sales/draft-orders" element={<DraftOrders />} />
             <Route path="/sales/archived-orders" element={<ArchivedOrders />} />
             <Route path="/settings" element={<Settings />} />
