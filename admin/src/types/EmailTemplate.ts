@@ -5,7 +5,9 @@ export type EmailTemplate = {
   name: string;
   subject: string;
   html_body: string;
+  html_extensions: string[];
   text_body: string | null;
+  text_extensions: string[];
   reference: EmailTemplateReference;
   created_at: string;
   updated_at: string;
@@ -15,7 +17,9 @@ export type EmailTemplateInput = {
   name: string;
   subject: string;
   html_body: string;
+  html_extensions: string[];
   text_body: string;
+  text_extensions: string[];
   reference: EmailTemplateReference;
 };
 
@@ -23,7 +27,9 @@ export const emptyEmailTemplateInput = (): EmailTemplateInput => ({
   name: '',
   subject: '',
   html_body: '',
+  html_extensions: [],
   text_body: '',
+  text_extensions: [],
   reference: {},
 });
 
@@ -42,6 +48,15 @@ export function normalizeEmailTemplateReference(
     result[trimmedKey] = String(raw ?? '');
   }
   return result;
+}
+
+export function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item ?? ''));
+}
+
+export function trimStringArray(values: string[]): string[] {
+  return values.map((item) => item.trim()).filter(Boolean);
 }
 
 export function referenceKeyFromFileName(fileName: string): string {

@@ -1,6 +1,6 @@
 import { EmailTemplateReferencesDialog } from '@/components/EmailTemplateReferencesDialog';
-import { HtmlSplitEditor } from '@/components/HtmlSplitEditor';
 import { SendEmailDialog } from '@/components/SendEmailDialog';
+import { TemplateExtensionsEditor } from '@/components/TemplateExtensionsEditor';
 import { DashboardLayout } from '@/components/layout';
 import {
   AlertDialog,
@@ -30,22 +30,24 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   EMAIL_TEMPLATE_BATCH_MAX,
   invokeEmailTemplateEdge,
   invokeEmailTemplateEdgeBatch,
 } from '@/lib/email-template-api';
+import { formatHtmlFields } from '@/lib/format-html';
 import supabase from '@/lib/supabase/client';
 import {
   emptyEmailTemplateInput,
   normalizeEmailTemplateReference,
+  normalizeStringArray,
   SES_TEMPLATE_NAME_PATTERN,
+  trimStringArray,
   type EmailTemplate,
   type EmailTemplateInput,
 } from '@/types/EmailTemplate';
-import { CloudUpload, ImageIcon, Loader2, Mail, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CloudUpload, ImageIcon, Loader2, Mail, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -54,7 +56,9 @@ function templateToInput(row: EmailTemplate): EmailTemplateInput {
     name: row.name,
     subject: row.subject,
     html_body: row.html_body,
+    html_extensions: normalizeStringArray(row.html_extensions),
     text_body: row.text_body ?? '',
+    text_extensions: normalizeStringArray(row.text_extensions),
     reference: normalizeEmailTemplateReference(row.reference),
   };
 }
@@ -77,6 +81,7 @@ export function Emails() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dialogSyncing, setDialogSyncing] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [batchSyncing, setBatchSyncing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -97,7 +102,9 @@ export function Emails() {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('email_templates')
-        .select('id, name, subject, html_body, text_body, reference, created_at, updated_at')
+        .select(
+          'id, name, subject, html_body, html_extensions, text_body, text_extensions, reference, created_at, updated_at',
+        )
         .order('name', { ascending: true });
 
       if (fetchError) throw fetchError;
@@ -136,7 +143,7 @@ export function Emails() {
   );
 
   const selectedCount = selectedTemplates.length;
-  const syncBusy = batchSyncing || syncingId !== null;
+  const syncBusy = batchSyncing || syncingId !== null || dialogSyncing;
 
   const toggleSelected = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -203,7 +210,9 @@ export function Emails() {
         name: form.name.trim(),
         subject: form.subject.trim(),
         html_body: form.html_body.trim(),
+        html_extensions: trimStringArray(form.html_extensions),
         text_body: form.text_body.trim() || null,
+        text_extensions: trimStringArray(form.text_extensions),
         reference: form.reference,
       };
 
@@ -232,6 +241,75 @@ export function Emails() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDialogFormatHtml = () => {
+    if (bodyEditorTab !== 'html') return;
+    const hasHtml =
+      form.html_body.trim() ||
+      form.html_extensions.some((part) => part.trim());
+    if (!hasHtml) {
+      toast.error('No HTML to format.');
+      return;
+    }
+
+    const [html_body, ...html_extensions] = formatHtmlFields([
+      form.html_body,
+      ...form.html_extensions,
+    ]);
+    setForm((f) => ({ ...f, html_body, html_extensions }));
+    toast.success('HTML formatted.');
+  };
+
+  const formToSyncTemplate = (): EmailTemplate => ({
+    id: editingId ?? '',
+    name: form.name.trim(),
+    subject: form.subject.trim(),
+    html_body: form.html_body.trim(),
+    html_extensions: form.html_extensions,
+    text_body: form.text_body.trim() || null,
+    text_extensions: form.text_extensions,
+    reference: form.reference,
+    created_at: '',
+    updated_at: '',
+  });
+
+  const handleDialogSync = async () => {
+    const name = form.name.trim();
+    if (!name) {
+      toast.error('Template name is required before syncing.');
+      return;
+    }
+    if (!SES_TEMPLATE_NAME_PATTERN.test(name)) {
+      toast.error(
+        'Name may only contain letters, numbers, underscores, and hyphens (AWS SES).',
+      );
+      return;
+    }
+    if (!form.subject.trim()) {
+      toast.error('Subject is required before syncing.');
+      return;
+    }
+    if (!form.html_body.trim()) {
+      toast.error('HTML body is required before syncing.');
+      return;
+    }
+
+    setDialogSyncing(true);
+    try {
+      const result = await invokeEmailTemplateEdge('sync', formToSyncTemplate());
+      if (result.failed && result.failed > 0) {
+        const detail = result.results?.find((r) => !r.ok)?.error;
+        throw new Error(detail ?? 'Sync failed');
+      }
+      toast.success(`Synced "${name}" to AWS SES.`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to sync template to SES.',
+      );
+    } finally {
+      setDialogSyncing(false);
     }
   };
 
@@ -537,6 +615,9 @@ export function Emails() {
                     setForm((f) => ({ ...f, subject: e.target.value }))
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  &nbsp;
+                </p>
               </div>
             </div>
 
@@ -566,59 +647,97 @@ export function Emails() {
               </div>
 
               <div className="min-h-0 flex-1 overflow-hidden">
-                {bodyEditorTab === 'html' && (
-                  <HtmlSplitEditor
-                    className="h-full"
-                    value={form.html_body}
-                    placeholder="<p>Hello {{customerName}}, …</p>"
-                    onChange={(html_body) =>
-                      setForm((f) => ({ ...f, html_body }))
-                    }
-                  />
-                )}
-
-                {bodyEditorTab === 'text' && (
-                  <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-                    <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                      <Textarea
-                        id="template-text"
-                        value={form.text_body}
-                        wrap="off"
-                        placeholder="Hello {{customerName}}, …"
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, text_body: e.target.value }))
-                        }
-                        className="min-h-full w-max min-w-full resize-none rounded-md border-0 font-mono text-sm whitespace-pre shadow-none focus-visible:ring-0"
-                      />
-                    </div>
-                    <p className="shrink-0 text-xs text-muted-foreground">
-                      Plain text is optional; leave empty if you only send HTML.
-                    </p>
-                  </div>
-                )}
+                <TemplateExtensionsEditor
+                  key={`${editingId ?? 'new'}-${bodyEditorTab}`}
+                  mode={bodyEditorTab}
+                  mainValue={
+                    bodyEditorTab === 'html' ? form.html_body : form.text_body
+                  }
+                  onMainChange={(value) =>
+                    setForm((f) =>
+                      bodyEditorTab === 'html'
+                        ? { ...f, html_body: value }
+                        : { ...f, text_body: value },
+                    )
+                  }
+                  extensions={
+                    bodyEditorTab === 'html'
+                      ? form.html_extensions
+                      : form.text_extensions
+                  }
+                  onExtensionsChange={(extensions) =>
+                    setForm((f) =>
+                      bodyEditorTab === 'html'
+                        ? { ...f, html_extensions: extensions }
+                        : { ...f, text_extensions: extensions },
+                    )
+                  }
+                  mainPlaceholder={
+                    bodyEditorTab === 'html'
+                      ? '<p>Hello {{customerName}}, …</p>'
+                      : 'Hello {{customerName}}, …'
+                  }
+                  extensionPlaceholder={
+                    bodyEditorTab === 'html'
+                      ? '<p>Extension HTML…</p>'
+                      : 'Extension plain text…'
+                  }
+                  className="h-full"
+                />
               </div>
             </div>
           </div>
 
           <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-between">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setReferencesDialogOpen(true)}
-            >
-              <ImageIcon className="mr-2 h-4 w-4" />
-              Asset references
-              {Object.keys(form.reference).length > 0 && (
-                <span className="ml-1 text-muted-foreground">
-                  ({Object.keys(form.reference).length})
-                </span>
-              )}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setReferencesDialogOpen(true)}
+              >
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Asset references
+                {Object.keys(form.reference).length > 0 && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({Object.keys(form.reference).length})
+                  </span>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={bodyEditorTab !== 'html' || saving || dialogSyncing}
+                onClick={handleDialogFormatHtml}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Format HTML
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving || syncBusy}
+                onClick={() => void handleDialogSync()}
+              >
+                {dialogSyncing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CloudUpload className="mr-2 h-4 w-4" />
+                )}
+                Sync to AWS SES
+              </Button>
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+                disabled={saving || dialogSyncing}
+              >
                 Cancel
               </Button>
-              <Button onClick={() => void handleSave()} disabled={saving}>
+              <Button
+                onClick={() => void handleSave()}
+                disabled={saving || dialogSyncing}
+              >
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save
               </Button>
