@@ -19,6 +19,7 @@ import {
   Routes,
 } from 'react-router-dom';
 import { useSupabaseAuth } from './hooks/useSupabaseAuth';
+import { Emails } from './pages/Emails';
 import { FeaturedReviewsPage } from './pages/FeaturedReviewsPage';
 import { LocalizationPage } from './pages/LocalizationPage';
 import { UserProfile } from './pages/UserProfile';
@@ -52,6 +53,7 @@ export function App() {
             <Route path="/store-locations" element={<StoreLocations />} />
             <Route path="/wholesale-products" element={<WholesaleProducts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
+            <Route path="/emails" element={<Emails />} />
             <Route path="/sales/orders" element={<Orders />} />
             <Route path="/sales/test-orders" element={<TestOrders />} />
             <Route path="/sales/draft-orders" element={<DraftOrders />} />

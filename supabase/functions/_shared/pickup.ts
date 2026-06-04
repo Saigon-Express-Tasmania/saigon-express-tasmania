@@ -4,7 +4,7 @@ import {
   createStripeClient,
   type StripePaymentMode,
   parsePaymentMode,
-} from "./stripe-secrets.ts";
+} from "./stripe.ts";
 
 export type { StripePaymentMode };
 

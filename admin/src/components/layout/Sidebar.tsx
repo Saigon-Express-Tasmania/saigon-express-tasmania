@@ -3,6 +3,7 @@ import {
   Home,
   Inbox,
   Languages,
+  Mail,
   MapPin,
   Megaphone,
   Package,
@@ -71,6 +72,11 @@ const navItems: NavItem[] = [
     title: "Featured Reviews",
     href: "/featured-reviews",
     icon: Star,
+  },
+  {
+    title: "Email templates",
+    href: "/emails",
+    icon: Mail,
   },
   {
     title: "Orders",

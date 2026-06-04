@@ -5,7 +5,7 @@ import {
   markOrderPaidFromStripeSession,
   type StripePaymentMode,
 } from "../_shared/pickup.ts";
-import { constructWebhookEvent } from "../_shared/stripe-secrets.ts";
+import { constructWebhookEvent } from "../_shared/stripe.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
 
 function paymentModeFromMetadata(metadata: Record<string, string> | null | undefined): StripePaymentMode | null {
