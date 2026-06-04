@@ -538,6 +538,18 @@
     min-width: 0;
   }
 
+  .flex-1 {
+    flex: 1;
+  }
+
+  .flex-direction-column {
+    flex-direction: column;
+  }
+
+  .flex-direction-row {
+    flex-direction: row;
+  }
+
   @media (min-width: 640px) {
     .container {
       padding-left: 1.5rem; /* 24px - tablet padding */

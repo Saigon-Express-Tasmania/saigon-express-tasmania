@@ -159,21 +159,24 @@ export default function MenuItemView({
   );
 
   const handleAddClick = useCallback(() => {
-    if (!item.isAvailable) return;
+    // TODO: for now, redirect to the headquarter site
+    window.location.href = "https://saigonexpressrestaurant.com.au";
+    
+    // if (!item.isAvailable) return;
 
-    const missing = getMissingRequiredOptionGroups(groups, selections);
-    if (missing.length > 0) {
-      setMissingRequiredIds(missing.map((group) => group.id));
-      customiseSectionRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-      return;
-    }
+    // const missing = getMissingRequiredOptionGroups(groups, selections);
+    // if (missing.length > 0) {
+    //   setMissingRequiredIds(missing.map((group) => group.id));
+    //   customiseSectionRef.current?.scrollIntoView({
+    //     behavior: "smooth",
+    //     block: "start",
+    //   });
+    //   return;
+    // }
 
-    setMissingRequiredIds([]);
-    addToCart(item, buildCustomisation(qty), qty, false);
-    setCartOpen(true);
+    // setMissingRequiredIds([]);
+    // addToCart(item, buildCustomisation(qty), qty, false);
+    // setCartOpen(true);
   }, [
     item,
     qty,
@@ -347,7 +350,8 @@ export default function MenuItemView({
               >
                 <span className="flex items-center gap-2">
                   <ShoppingCart size={16} />
-                  {t("addToOrder")}
+                  {/* {t("addToOrder")} */}
+                  Order Now
                 </span>
                 {item.isAvailable ? (
                   <span>${lineTotal.toFixed(2)}</span>

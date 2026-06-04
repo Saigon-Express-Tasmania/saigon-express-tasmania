@@ -162,8 +162,10 @@ export default function Menu({
   }, [search, activeCategory, allLabel, menuItems, fuse]);
 
   const handleOpenCustomise = useCallback((item: MenuItem) => {
-    if (!item.isAvailable) return;
-    setCustomiseItem(item);
+    // TODO: for now, redirect to the headquarter site
+    // if (!item.isAvailable) return;
+    // setCustomiseItem(item);    
+    window.location.href = "https://saigonexpressrestaurant.com.au";
   }, []);
 
   const handleCustomiseConfirm = useCallback(
@@ -329,7 +331,7 @@ export default function Menu({
               return (
                 <div
                   key={item.id}
-                  className={`group bg-white overflow-hidden card-lift ${!item.isAvailable ? "opacity-60" : ""}`}
+                  className={`flex flex-direction-column group bg-white overflow-hidden card-lift ${!item.isAvailable ? "opacity-60" : ""}`}
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                     <Link
@@ -412,6 +414,7 @@ export default function Menu({
                       </p>
                     )}
                   </Link>
+                  <div className="flex-1" />
                   <div className="px-4 pb-4">
                     <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
                       <span className="flex-shrink-0 bg-brand-red text-white text-sm font-bold px-3 py-2 rounded-full">
@@ -436,6 +439,8 @@ export default function Menu({
                           </button>
                         </div>
                       ) : (
+                        <>
+                        {/*
                         <button
                           onClick={() => handleOpenCustomise(item)}
                           disabled={!item.isAvailable}
@@ -447,6 +452,19 @@ export default function Menu({
                         >
                           <Plus size={13} /> {t("card.addButton")}
                         </button>
+                        */}
+                        <button
+                          onClick={() => handleOpenCustomise(item)}
+                          disabled={!item.isAvailable}
+                          className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-bold py-2 rounded-full transition-all duration-300 ${
+                            item.isAvailable
+                              ? "bg-brand-amber text-white hover:bg-brand-amber/90"
+                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          }`}
+                        >
+                          Order Now
+                        </button>
+                        </>
                       )}
                     </div>
                   </div>

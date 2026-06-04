@@ -1,5 +1,7 @@
-import { createPage } from "@/lib/create-page";
+import { getWholesaleProducts } from "@/lib/supabase/wholesale-products";
 import Wholesale from "@/views/Wholesale";
 
-export default createPage(Wholesale);
-
+export default async function WholesaleLocalePage() {
+  const products = await getWholesaleProducts();
+  return <Wholesale products={products} />;
+}
