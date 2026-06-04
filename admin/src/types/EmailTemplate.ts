@@ -1,4 +1,5 @@
 export type EmailTemplateReference = Record<string, string>;
+export type EmailTemplateTestData = Record<string, string>;
 
 export type EmailTemplate = {
   id: string;
@@ -9,6 +10,7 @@ export type EmailTemplate = {
   text_body: string | null;
   text_extensions: string[];
   reference: EmailTemplateReference;
+  test_data: EmailTemplateTestData;
   created_at: string;
   updated_at: string;
 };
@@ -57,6 +59,25 @@ export function normalizeStringArray(value: unknown): string[] {
 
 export function trimStringArray(values: string[]): string[] {
   return values.map((item) => item.trim()).filter(Boolean);
+}
+
+export function normalizeTestData(value: unknown): EmailTemplateTestData {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  const result: EmailTemplateTestData = {};
+  for (const [key, raw] of Object.entries(value)) {
+    const trimmedKey = key.trim();
+    if (!trimmedKey) continue;
+    const trimmedValue = String(raw ?? '').trim();
+    if (trimmedValue) result[trimmedKey] = trimmedValue;
+  }
+  return result;
+}
+
+/** Non-empty test values only, for persistence and dirty checks. */
+export function testDataForSave(data: EmailTemplateTestData): EmailTemplateTestData {
+  return normalizeTestData(data);
 }
 
 export function referenceKeyFromFileName(fileName: string): string {

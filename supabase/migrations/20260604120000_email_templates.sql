@@ -9,6 +9,7 @@ create table public.email_templates (
   text_body text,
   text_extensions text[] not null default '{}'::text[],
   reference jsonb not null default '{}'::jsonb,
+  test_data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint email_templates_name_format check (name ~ '^[A-Za-z0-9_-]+$'),

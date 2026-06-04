@@ -1,12 +1,25 @@
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  DEFAULT_PREVIEW_HIGHLIGHT_COLOR,
+  isPreviewHighlightDisabled,
+  PREVIEW_HIGHLIGHT_TRANSPARENT,
+  renderTemplateString,
+} from '@/lib/email-template-preview';
 import {
   injectInspectMarkers,
   readInspectSourceOffset,
   scrollTextareaToIndex,
 } from '@/lib/html-source-locate';
 import { cn } from '@/lib/utils';
-import { MousePointer2 } from 'lucide-react';
+import { Highlighter, MousePointer2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -19,6 +32,8 @@ type HtmlSplitEditorProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  /** Substituted in the preview pane only; source editor keeps raw placeholders. */
+  previewVariables?: Record<string, string>;
 };
 
 export function HtmlSplitEditor({
@@ -26,9 +41,17 @@ export function HtmlSplitEditor({
   onChange,
   placeholder,
   className,
+  previewVariables,
 }: HtmlSplitEditorProps) {
   const [leftPercent, setLeftPercent] = useState(DEFAULT_LEFT_PERCENT);
   const [inspectMode, setInspectMode] = useState(false);
+  const [highlightColor, setHighlightColor] = useState(
+    DEFAULT_PREVIEW_HIGHLIGHT_COLOR,
+  );
+  const [solidHighlightColor, setSolidHighlightColor] = useState(
+    DEFAULT_PREVIEW_HIGHLIGHT_COLOR,
+  );
+  const highlightDisabled = isPreviewHighlightDisabled(highlightColor);
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sourceScrollRef = useRef<HTMLDivElement>(null);
@@ -39,12 +62,22 @@ export function HtmlSplitEditor({
 
   inspectModeRef.current = inspectMode;
 
+  const hasPreviewVariables = useMemo(
+    () =>
+      Object.values(previewVariables ?? {}).some((v) => v.trim() !== ''),
+    [previewVariables],
+  );
+
   const previewHtml = useMemo(() => {
     const raw =
       value.trim() ||
       '<p style="color:#6b7280;margin:0">No HTML to preview.</p>';
-    return injectInspectMarkers(raw);
-  }, [value]);
+    const marked = injectInspectMarkers(raw);
+    if (!hasPreviewVariables) return marked;
+    return renderTemplateString(marked, previewVariables ?? {}, {
+      highlightColor,
+    });
+  }, [value, previewVariables, hasPreviewVariables, highlightColor]);
 
   const clearHoverHighlight = useCallback(() => {
     if (hoveredElRef.current) {
@@ -212,23 +245,85 @@ export function HtmlSplitEditor({
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-muted/40 px-3 py-1.5">
           <span className="text-xs font-medium text-muted-foreground">
-            Preview
+            {hasPreviewVariables ? 'Preview (test data)' : 'Preview'}
           </span>
-          <Button
-            type="button"
-            size="sm"
-            variant={inspectMode ? 'default' : 'outline'}
-            className="h-7 gap-1.5 px-2 text-xs"
-            title={
-              inspectMode
-                ? 'Click an element in the preview to jump to its tag in the source'
-                : 'Select elements in the preview to locate them in the HTML source'
-            }
-            onClick={() => setInspectMode((on) => !on)}
-          >
-            <MousePointer2 className="h-3.5 w-3.5" />
-            Inspect
-          </Button>
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 px-2 text-xs"
+                  title="Highlight color for substituted test data"
+                >
+                  <Highlighter className="h-3.5 w-3.5" />
+                  <span
+                    className={cn(
+                      'h-3.5 w-3.5 rounded-sm border border-border',
+                      highlightDisabled && 'border-dashed bg-transparent',
+                    )}
+                    style={
+                      highlightDisabled
+                        ? {
+                            backgroundImage:
+                              'linear-gradient(45deg,#d4d4d4 25%,transparent 25%),linear-gradient(-45deg,#d4d4d4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d4d4d4 75%),linear-gradient(-45deg,transparent 75%,#d4d4d4 75%)',
+                            backgroundSize: '6px 6px',
+                          }
+                        : { backgroundColor: highlightColor }
+                    }
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[70] w-52 p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  Highlight color
+                </p>
+                <input
+                  type="color"
+                  value={solidHighlightColor}
+                  aria-label="Highlight color"
+                  className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent p-0.5"
+                  onChange={(e) => {
+                    setSolidHighlightColor(e.target.value);
+                    setHighlightColor(e.target.value);
+                  }}
+                />
+                <DropdownMenuSeparator className="my-2" />
+                <DropdownMenuItem
+                  className="text-sm"
+                  onSelect={() =>
+                    setHighlightColor(PREVIEW_HIGHLIGHT_TRANSPARENT)
+                  }
+                >
+                  <span
+                    className="mr-2 h-4 w-4 shrink-0 rounded-sm border border-border"
+                    style={{
+                      backgroundImage:
+                        'linear-gradient(45deg,#d4d4d4 25%,transparent 25%),linear-gradient(-45deg,#d4d4d4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d4d4d4 75%),linear-gradient(-45deg,transparent 75%,#d4d4d4 75%)',
+                      backgroundSize: '6px 6px',
+                    }}
+                  />
+                  Transparent
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              type="button"
+              size="sm"
+              variant={inspectMode ? 'default' : 'outline'}
+              className="h-7 gap-1.5 px-2 text-xs"
+              title={
+                inspectMode
+                  ? 'Click an element in the preview to jump to its tag in the source'
+                  : 'Select elements in the preview to locate them in the HTML source'
+              }
+              onClick={() => setInspectMode((on) => !on)}
+            >
+              <MousePointer2 className="h-3.5 w-3.5" />
+              Inspect
+            </Button>
+          </div>
         </div>
         <div className="relative min-h-0 flex-1 overflow-auto bg-white">
           <div

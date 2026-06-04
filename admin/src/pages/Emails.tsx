@@ -1,4 +1,5 @@
 import { EmailTemplateReferencesDialog } from '@/components/EmailTemplateReferencesDialog';
+import { EmailTemplateTestDataDialog } from '@/components/EmailTemplateTestDataDialog';
 import { SendEmailDialog } from '@/components/SendEmailDialog';
 import { TemplateExtensionsEditor } from '@/components/TemplateExtensionsEditor';
 import { DashboardLayout } from '@/components/layout';
@@ -36,6 +37,7 @@ import {
   invokeEmailTemplateEdge,
   invokeEmailTemplateEdgeBatch,
 } from '@/lib/email-template-api';
+import { extractTemplateVariables } from '@/lib/email-template-preview';
 import { formatHtmlFields } from '@/lib/format-html';
 import supabase from '@/lib/supabase/client';
 import {
@@ -43,11 +45,14 @@ import {
   normalizeEmailTemplateReference,
   normalizeStringArray,
   SES_TEMPLATE_NAME_PATTERN,
+  normalizeTestData,
+  testDataForSave,
   trimStringArray,
   type EmailTemplate,
   type EmailTemplateInput,
+  type EmailTemplateTestData,
 } from '@/types/EmailTemplate';
-import { CloudUpload, ImageIcon, Loader2, Mail, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { CloudUpload, ImageIcon, Loader2, Mail, Pencil, Plus, Sparkles, TestTube2Icon, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -61,6 +66,29 @@ function templateToInput(row: EmailTemplate): EmailTemplateInput {
     text_extensions: normalizeStringArray(row.text_extensions),
     reference: normalizeEmailTemplateReference(row.reference),
   };
+}
+
+function buildPersistPayload(
+  form: EmailTemplateInput,
+  testData: EmailTemplateTestData,
+) {
+  return {
+    name: form.name.trim(),
+    subject: form.subject.trim(),
+    html_body: form.html_body.trim(),
+    html_extensions: trimStringArray(form.html_extensions),
+    text_body: form.text_body.trim() || null,
+    text_extensions: trimStringArray(form.text_extensions),
+    reference: form.reference,
+    test_data: testDataForSave(testData),
+  };
+}
+
+function snapshotDialogState(
+  form: EmailTemplateInput,
+  testData: EmailTemplateTestData,
+): string {
+  return JSON.stringify(buildPersistPayload(form, testData));
 }
 
 function validateForm(form: EmailTemplateInput): string | null {
@@ -95,6 +123,12 @@ export function Emails() {
   const [deleteTarget, setDeleteTarget] = useState<EmailTemplate | null>(null);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
+  const [testDataDialogOpen, setTestDataDialogOpen] = useState(false);
+  const [testTemplateData, setTestTemplateData] = useState<EmailTemplateTestData>(
+    {},
+  );
+  const [dialogBaseline, setDialogBaseline] = useState<string | null>(null);
+  const [unsavedConfirmOpen, setUnsavedConfirmOpen] = useState(false);
 
   const loadTemplates = useCallback(async () => {
     try {
@@ -103,7 +137,7 @@ export function Emails() {
       const { data, error: fetchError } = await supabase
         .from('email_templates')
         .select(
-          'id, name, subject, html_body, html_extensions, text_body, text_extensions, reference, created_at, updated_at',
+          'id, name, subject, html_body, html_extensions, text_body, text_extensions, reference, test_data, created_at, updated_at',
         )
         .order('name', { ascending: true });
 
@@ -183,38 +217,80 @@ export function Emails() {
     filteredTemplates.length > 0 &&
     filteredTemplates.every((t) => selectedIds.has(t.id));
 
+  const templateVariableKeys = useMemo(
+    () =>
+      extractTemplateVariables(
+        form.subject,
+        form.html_body,
+        ...form.html_extensions,
+        form.text_body,
+        ...form.text_extensions,
+      ),
+    [form],
+  );
+
+  const filledTestDataCount = useMemo(
+    () =>
+      templateVariableKeys.filter((key) => testTemplateData[key]?.trim()).length,
+    [templateVariableKeys, testTemplateData],
+  );
+
+  const isDialogDirty = useMemo(() => {
+    if (!dialogOpen || dialogBaseline === null) return false;
+    return snapshotDialogState(form, testTemplateData) !== dialogBaseline;
+  }, [dialogOpen, dialogBaseline, form, testTemplateData]);
+
   const openCreate = () => {
+    const empty = emptyEmailTemplateInput();
     setEditingId(null);
-    setForm(emptyEmailTemplateInput());
+    setForm(empty);
+    setTestTemplateData({});
+    setDialogBaseline(snapshotDialogState(empty, {}));
     setBodyEditorTab('html');
+    setUnsavedConfirmOpen(false);
     setDialogOpen(true);
   };
 
   const openEdit = (row: EmailTemplate) => {
+    const input = templateToInput(row);
+    const testData = normalizeTestData(row.test_data);
     setEditingId(row.id);
-    setForm(templateToInput(row));
+    setForm(input);
+    setTestTemplateData(testData);
+    setDialogBaseline(snapshotDialogState(input, testData));
     setBodyEditorTab('html');
+    setUnsavedConfirmOpen(false);
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const closeEditDialog = () => {
+    setDialogOpen(false);
+    setUnsavedConfirmOpen(false);
+    setDialogBaseline(null);
+  };
+
+  const handleEditDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+    if (!isDialogDirty) {
+      closeEditDialog();
+      return;
+    }
+    setUnsavedConfirmOpen(true);
+  };
+
+  const persistTemplate = async (): Promise<boolean> => {
     const validationError = validateForm(form);
     if (validationError) {
       toast.error(validationError);
-      return;
+      return false;
     }
 
     setSaving(true);
     try {
-      const payload = {
-        name: form.name.trim(),
-        subject: form.subject.trim(),
-        html_body: form.html_body.trim(),
-        html_extensions: trimStringArray(form.html_extensions),
-        text_body: form.text_body.trim() || null,
-        text_extensions: trimStringArray(form.text_extensions),
-        reference: form.reference,
-      };
+      const payload = buildPersistPayload(form, testTemplateData);
 
       if (editingId !== null) {
         const { error: updateError } = await supabase
@@ -233,14 +309,32 @@ export function Emails() {
         toast.success('Template saved. Use Sync to create it in AWS SES.');
       }
 
-      setDialogOpen(false);
-      await loadTemplates();
+      setDialogBaseline(snapshotDialogState(form, testTemplateData));
+      return true;
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to save email template.',
       );
+      return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    const ok = await persistTemplate();
+    if (ok) {
+      closeEditDialog();
+      await loadTemplates();
+    }
+  };
+
+  const handleSaveAndCloseFromUnsaved = async () => {
+    const ok = await persistTemplate();
+    if (ok) {
+      setUnsavedConfirmOpen(false);
+      closeEditDialog();
+      await loadTemplates();
     }
   };
 
@@ -271,6 +365,7 @@ export function Emails() {
     text_body: form.text_body.trim() || null,
     text_extensions: form.text_extensions,
     reference: form.reference,
+    test_data: testDataForSave(testTemplateData),
     created_at: '',
     updated_at: '',
   });
@@ -575,7 +670,7 @@ export function Emails() {
         </Card>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleEditDialogOpenChange}>
         <DialogContent className="fixed inset-0 top-0 left-0 z-50 flex h-[100dvh] w-screen max-h-[100dvh] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 shadow-lg sm:max-w-none">
           <DialogHeader className="shrink-0 border-b px-6 py-4">
             <DialogTitle>
@@ -683,6 +778,9 @@ export function Emails() {
                       : 'Extension plain text…'
                   }
                   className="h-full"
+                  previewVariables={
+                    bodyEditorTab === 'html' ? testTemplateData : undefined
+                  }
                 />
               </div>
             </div>
@@ -700,6 +798,19 @@ export function Emails() {
                 {Object.keys(form.reference).length > 0 && (
                   <span className="ml-1 text-muted-foreground">
                     ({Object.keys(form.reference).length})
+                  </span>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTestDataDialogOpen(true)}
+              >
+                <TestTube2Icon className="mr-2 h-4 w-4" />
+                Test data
+                {filledTestDataCount > 0 && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({filledTestDataCount})
                   </span>
                 )}
               </Button>
@@ -729,7 +840,7 @@ export function Emails() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => setDialogOpen(false)}
+                onClick={() => handleEditDialogOpenChange(false)}
                 disabled={saving || dialogSyncing}
               >
                 Cancel
@@ -756,11 +867,58 @@ export function Emails() {
         templateName={form.name.trim() || undefined}
       />
 
+      <EmailTemplateTestDataDialog
+        open={testDataDialogOpen}
+        onOpenChange={setTestDataDialogOpen}
+        variableKeys={templateVariableKeys}
+        testData={testTemplateData}
+        onTestDataChange={setTestTemplateData}
+      />
+
       <SendEmailDialog
         open={sendDialogOpen}
         onOpenChange={setSendDialogOpen}
         templates={templates}
       />
+
+      <AlertDialog
+        open={unsavedConfirmOpen}
+        onOpenChange={setUnsavedConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              This template has changes that are not saved yet, including test
+              data. Save before closing?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Keep editing</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => {
+                setUnsavedConfirmOpen(false);
+                closeEditDialog();
+              }}
+            >
+              Discard
+            </Button>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleSaveAndCloseFromUnsaved();
+              }}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteTarget !== null}

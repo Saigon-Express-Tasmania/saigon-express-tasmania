@@ -24,6 +24,7 @@ type TemplateExtensionsEditorProps = {
   mainPlaceholder?: string;
   extensionPlaceholder?: string;
   className?: string;
+  previewVariables?: Record<string, string>;
 };
 
 function targetToSelectValue(target: ContentTarget): string {
@@ -45,6 +46,7 @@ export function TemplateExtensionsEditor({
   mainPlaceholder,
   extensionPlaceholder,
   className,
+  previewVariables,
 }: TemplateExtensionsEditorProps) {
   const [target, setTarget] = useState<ContentTarget>('main');
 
@@ -143,6 +145,7 @@ export function TemplateExtensionsEditor({
             value={currentValue}
             placeholder={editorPlaceholder}
             onChange={handleChange}
+            previewVariables={previewVariables}
           />
         ) : (
           <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
