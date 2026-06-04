@@ -14,7 +14,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { LOGO_URL } from "@/lib/site-images";
+import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 
 const APP_URL = "https://www.saigonexpress.com.au/get-the-app";
 
@@ -137,10 +137,10 @@ export default function GetTheApp() {
             <AppImage
               src={LOGO_URL}
               alt={t("hero.logoAlt")}
-              width={220}
-              height={64}
+              width={LOGO_INTRINSIC.width}
+              height={LOGO_INTRINSIC.height}
               priority
-              className="h-16 w-auto object-contain mx-auto mb-6"
+              className={`h-16 ${LOGO_IMG_CLASS} mx-auto mb-6`}
             />
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/20 text-xs font-semibold text-white/60 mb-6">
               <Smartphone className="w-3.5 h-3.5" />

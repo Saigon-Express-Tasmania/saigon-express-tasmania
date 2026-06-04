@@ -7,7 +7,7 @@ import { X, Send, ChevronDown, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 
-const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
+import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 
 type Message = {
   id: string;
@@ -185,10 +185,10 @@ export function FloatingWidgets() {
               <AppImage
                 src={LOGO_URL}
                 alt="Saigon Express"
-                width={180}
-                height={40}
+                width={LOGO_INTRINSIC.width}
+                height={LOGO_INTRINSIC.height}
                 priority
-                className="h-9 w-auto object-contain"
+                className={`h-9 ${LOGO_IMG_CLASS}`}
               />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-white text-sm">
@@ -228,9 +228,9 @@ export function FloatingWidgets() {
                       <AppImage
                         src={LOGO_URL}
                         alt="SE"
-                        width={24}
-                        height={24}
-                        className="w-6 h-6 object-contain"
+                        width={LOGO_INTRINSIC.width}
+                        height={LOGO_INTRINSIC.height}
+                        className={`h-6 ${LOGO_IMG_CLASS}`}
                       />
                     </div>
                   )}
@@ -261,9 +261,9 @@ export function FloatingWidgets() {
                     <AppImage
                       src={LOGO_URL}
                       alt="SE"
-                      width={24}
-                      height={24}
-                      className="w-6 h-6 object-contain"
+                      width={LOGO_INTRINSIC.width}
+                      height={LOGO_INTRINSIC.height}
+                      className={`h-6 ${LOGO_IMG_CLASS}`}
                     />
                   </div>
                   <div className="bg-white border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">

@@ -2,7 +2,7 @@
 
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
-import { LOGO_URL } from "@/lib/site-images";
+import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 import { SITE_ORIGIN } from "@/lib/site-origin";
 import { useTranslations } from "next-intl";
 
@@ -137,10 +137,10 @@ export default function GetApp() {
           <AppImage
             src={LOGO_URL}
             alt={t("brandName")}
-            width={112}
-            height={112}
+            width={LOGO_INTRINSIC.width}
+            height={LOGO_INTRINSIC.height}
             priority
-            className="w-28 h-28 object-contain"
+            className={`h-28 ${LOGO_IMG_CLASS}`}
           />
         </div>
 

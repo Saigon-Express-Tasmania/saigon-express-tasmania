@@ -13,7 +13,6 @@ const ReviewsSection = dynamic(() => import("@/components/ReviewsSection"));
 
 // ── Uploaded food photography ─────────────────────────────────────────────────
 const IMGS = {
-  videoCover: "/manus-storage/saigo_express__video_cover.webp",
   ourFood: "/manus-storage/saigo_express__hero_Native_5d9afb69.webp",
   ourFood2a:
     "/manus-storage/saigo_express__Vietnamese_Roasted_pork_baguette_Native_81be063f.jpg",
@@ -84,13 +83,12 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
           muted
           loop
           playsInline
+          preload="metadata"
           className="absolute inset-0 w-full h-full object-cover"
-          poster={IMGS.videoCover}
+          poster="/images/intro-cover.jpg"
         >
-          <source
-            src="/manus-storage/BanhMi_web_03ab6374.mp4"
-            type="video/mp4"
-          />
+          <source src="/videos/intro.webm" type="video/webm" />
+          <source src="/videos/intro-960.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
 

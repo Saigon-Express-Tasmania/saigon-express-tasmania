@@ -32,13 +32,14 @@ export default async function RootLayout({
       <head>        
         <link
           rel="preload"
-          href="/manus-storage/saigo_express__video_cover.webp"
+          href="/images/intro-cover.jpg"
           as="image"
+          type="image/jpg"
           fetchPriority="high"
         />
         <link
           rel="preload"
-          href="/manus-storage/BanhMi_web_03ab6374.mp4"
+          href="/videos/intro-960.mp4"
           as="video"
           type="video/mp4"
         />

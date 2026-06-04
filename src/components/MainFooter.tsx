@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { useCart } from "@/contexts/CartContext";
 
 const Newsletter = dynamic(() => import("@/components/Newsletter"));
-const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
+import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 
 export default function MainFooter() {
   const t = useTranslations("Home");
@@ -35,9 +35,9 @@ export default function MainFooter() {
             <AppImage
               src={LOGO_URL}
               alt="Saigon Express Tasmania"
-              width={200}
-              height={48}
-              className="h-12 w-auto object-contain mb-5"
+              width={LOGO_INTRINSIC.width}
+              height={LOGO_INTRINSIC.height}
+              className={`h-12 ${LOGO_IMG_CLASS} mb-5`}
             />
             <p className="text-sm leading-relaxed text-white/55 mb-5 max-w-xs">
               {t("footer.brandDescription")}

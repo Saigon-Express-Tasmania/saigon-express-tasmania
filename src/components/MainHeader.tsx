@@ -7,8 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { MapPin, Menu, ShoppingCart, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
-
-const LOGO_URL = "/manus-storage/saigonexpresslogo_clean_719f26ac.png";
+import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 
 export default function MainHeader() {
   const tLinks = useTranslations("NavLinks");
@@ -56,13 +55,10 @@ export default function MainHeader() {
             <AppImage
               src={LOGO_URL}
               alt="Saigon Express Tasmania"
-              width={180}
-              height={40}
+              width={LOGO_INTRINSIC.width}
+              height={LOGO_INTRINSIC.height}
               priority
-              className="h-10 object-contain"
-              style={{
-                aspectRatio: "48/15",
-              }}
+              className={`h-10 ${LOGO_IMG_CLASS}`}
             />
           </Link>
 
