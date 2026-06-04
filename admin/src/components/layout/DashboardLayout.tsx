@@ -16,7 +16,7 @@ export function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden w-64 lg:block">
+      <aside className="hidden shrink-0 lg:block">
         <Sidebar />
       </aside>
 
