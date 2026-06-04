@@ -10,7 +10,7 @@ type MailtrapSendResponse = {
 
 export async function sendEmailWithMailtrap(opts: SendEmailOptions): Promise<SendEmailResult> {
   console.log(
-    `[send-email:mailtrap] Sending template ${opts.templateId} to ${opts.recipientEmail}`,
+    `[send-email:mailtrap] Sending template ${opts.templateId} to ${opts.recipientEmails.join(", ")}`,
   );
 
   const response = await fetch(MAILTRAP_SEND_URL, {
@@ -24,7 +24,7 @@ export async function sendEmailWithMailtrap(opts: SendEmailOptions): Promise<Sen
         email: opts.senderEmail,
         name: opts.senderName,
       },
-      to: [{ email: opts.recipientEmail }],
+      to: opts.recipientEmails.map((email) => ({ email })),
       ...(opts.cc?.length
         ? { cc: opts.cc.map((email) => ({ email })) }
         : {}),

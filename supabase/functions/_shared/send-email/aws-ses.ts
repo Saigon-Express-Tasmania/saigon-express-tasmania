@@ -88,7 +88,7 @@ export async function deleteSesEmailTemplate(name: string): Promise<void> {
 
 export async function sendEmailWithSes(opts: SendEmailOptions): Promise<SendEmailResult> {
   console.log(
-    `[send-email:ses] Sending template ${opts.templateId} to ${opts.recipientEmail}`,
+    `[send-email:ses] Sending template ${opts.templateId} to ${opts.recipientEmails.join(", ")}`,
   );
 
   const client = createSesClient();
@@ -97,7 +97,7 @@ export async function sendEmailWithSes(opts: SendEmailOptions): Promise<SendEmai
     CcAddresses?: string[];
     BccAddresses?: string[];
   } = {
-    ToAddresses: [opts.recipientEmail],
+    ToAddresses: opts.recipientEmails,
   };
   if (opts.cc?.length) destination.CcAddresses = opts.cc;
   if (opts.bcc?.length) destination.BccAddresses = opts.bcc;

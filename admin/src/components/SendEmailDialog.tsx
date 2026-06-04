@@ -183,7 +183,7 @@ export function SendEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[92vh] w-[95vw] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Send email</DialogTitle>
           <DialogDescription>
@@ -193,7 +193,7 @@ export function SendEmailDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-2 md:grid-cols-2">
-          <div className="grid gap-2 md:col-span-2">
+          <div className="grid gap-2">
             <Label>Template</Label>
             <Select
               value={form.templateId || undefined}
@@ -235,22 +235,25 @@ export function SendEmailDialog({
             </Select>
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid gap-2 md:col-span-2">
             <Label htmlFor="send-to">To</Label>
             <Input
               id="send-to"
-              type="email"
-              placeholder="recipient@example.com"
+              type="text"
+              placeholder="one@example.com; two@example.com"
               value={form.to}
               onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
             />
+            <p className="text-xs text-muted-foreground">
+              Separate multiple recipients with semicolons.
+            </p>
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="send-cc">CC</Label>
             <Input
               id="send-cc"
-              placeholder="cc1@example.com, cc2@example.com"
+              placeholder="cc1@example.com; cc2@example.com"
               value={form.cc}
               onChange={(e) => setForm((f) => ({ ...f, cc: e.target.value }))}
             />
@@ -260,7 +263,7 @@ export function SendEmailDialog({
             <Label htmlFor="send-bcc">BCC</Label>
             <Input
               id="send-bcc"
-              placeholder="bcc@example.com"
+              placeholder="bcc1@example.com; bcc2@example.com"
               value={form.bcc}
               onChange={(e) => setForm((f) => ({ ...f, bcc: e.target.value }))}
             />

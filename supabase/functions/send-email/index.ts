@@ -11,9 +11,9 @@ type SendEmailRequest = {
   method?: SendEmailOptions["method"];
   senderEmail?: string;
   senderName?: string;
-  to: string;
-  cc?: string[] | string;
-  bcc?: string[] | string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
   templateId: string;
   templateVariables?: Record<string, string | number | boolean>;
 };
@@ -24,14 +24,11 @@ function parseSendEmailRequest(body: unknown): SendEmailRequest {
   }
 
   const data = body as Record<string, unknown>;
-  const to = String(data.to ?? "").trim();
   const templateId = String(data.templateId ?? "").trim();
+  const to = parseEmailList(data.to, "to");
 
-  if (!to || !templateId) {
+  if (!to.length || !templateId) {
     throw new Error("to and templateId are required");
-  }
-  if (!isValidEmail(to)) {
-    throw new Error("to must be a valid email address");
   }
 
   const senderEmail = data.senderEmail != null ? String(data.senderEmail).trim() : undefined;
@@ -85,7 +82,7 @@ Deno.serve(async (req) => {
       method: payload.method,
       senderEmail: payload.senderEmail || DEFAULT_SENDER_EMAIL,
       senderName: payload.senderName || DEFAULT_SENDER_NAME,
-      recipientEmail: payload.to,
+      recipientEmails: payload.to,
       cc: payload.cc,
       bcc: payload.bcc,
       templateId: payload.templateId,

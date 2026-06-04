@@ -34,7 +34,7 @@ export async function invokeSendEmail(
       method: payload.method,
       senderEmail: payload.senderEmail?.trim() || undefined,
       senderName: payload.senderName?.trim() || undefined,
-      to: payload.to.trim(),
+      to: parseEmailAddressList(payload.to),
       cc: parseEmailAddressList(payload.cc ?? ''),
       bcc: parseEmailAddressList(payload.bcc ?? ''),
       templateId: payload.templateId,

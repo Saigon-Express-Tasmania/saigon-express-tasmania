@@ -2,7 +2,7 @@ export type SendEmailOptions = {
   method?: "ses" | "mailtrap";
   senderEmail: string;
   senderName: string;
-  recipientEmail: string;
+  recipientEmails: string[];
   cc?: string[];
   bcc?: string[];
   templateId: string;
