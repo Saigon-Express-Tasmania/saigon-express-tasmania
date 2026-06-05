@@ -54,6 +54,7 @@ type StoreLocationRow = {
   is_active: boolean;
   delivery_url: string | null;
   google_map_url: string | null;
+  external_order_url: string | null;
   is_franchise: boolean;
   franchise_owner_name: string | null;
   franchise_owner_email: string | null;
@@ -63,7 +64,7 @@ type StoreLocationRow = {
 };
 
 const SELECT_COLUMNS =
-  'id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
+  'id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url, google_map_url, external_order_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
 
 const emptyStoreLocationInput = (): StoreLocationRow => ({
   id: 0,
@@ -77,6 +78,7 @@ const emptyStoreLocationInput = (): StoreLocationRow => ({
   is_active: true,
   delivery_url: '',
   google_map_url: '',
+  external_order_url: '',
   is_franchise: false,
   franchise_owner_name: '',
   franchise_owner_email: '',
@@ -119,6 +121,7 @@ function rowToForm(row: StoreLocationRow): StoreLocationRow {
     is_active: row.is_active,
     delivery_url: row.delivery_url ?? '',
     google_map_url: row.google_map_url ?? '',
+    external_order_url: row.external_order_url ?? '',
     is_franchise: row.is_franchise,
     franchise_owner_name: row.franchise_owner_name ?? '',
     franchise_owner_email: row.franchise_owner_email ?? '',
@@ -150,6 +153,7 @@ function formToPayload(form: StoreLocationRow): StoreLocationRow {
     is_active: form.is_active,
     delivery_url: form.delivery_url?.trim() || null,
     google_map_url: form.google_map_url?.trim() || null,
+    external_order_url: form.external_order_url?.trim() || null,
     is_franchise: form.is_franchise,
     franchise_owner_name: form.franchise_owner_name?.trim() || null,
     franchise_owner_email: form.franchise_owner_email?.trim() || null,
@@ -280,6 +284,7 @@ export function StoreLocations() {
             is_active: payload.is_active,
             delivery_url: payload.delivery_url,
             google_map_url: payload.google_map_url,
+            external_order_url: payload.external_order_url,
             is_franchise: payload.is_franchise,
             franchise_owner_name: payload.franchise_owner_name,
             franchise_owner_email: payload.franchise_owner_email,
@@ -306,6 +311,7 @@ export function StoreLocations() {
             is_active: payload.is_active,
             delivery_url: payload.delivery_url,
             google_map_url: payload.google_map_url,
+            external_order_url: payload.external_order_url,
             is_franchise: payload.is_franchise,
             franchise_owner_name: payload.franchise_owner_name,
             franchise_owner_email: payload.franchise_owner_email,
@@ -438,6 +444,9 @@ export function StoreLocations() {
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Franchise
                       </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        External order
+                      </th>
                       <th className="px-4 py-3 text-right text-sm font-semibold">
                         Actions
                       </th>
@@ -476,6 +485,21 @@ export function StoreLocations() {
                           >
                             {loc.is_franchise ? 'Yes' : 'No'}
                           </Badge>
+                        </td>
+                        <td className="max-w-[12rem] px-4 py-3 text-sm">
+                          {loc.external_order_url?.trim() ? (
+                            <a
+                              href={loc.external_order_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block truncate text-primary underline-offset-4 hover:underline"
+                              title={loc.external_order_url}
+                            >
+                              {loc.external_order_url}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
@@ -632,6 +656,19 @@ export function StoreLocations() {
                   setForm((f) => ({ ...f, google_map_url: e.target.value }))
                 }
                 placeholder="https://maps.google.com/..."
+              />
+            </div>
+
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="loc-external-order">External order URL</Label>
+              <Input
+                id="loc-external-order"
+                type="url"
+                value={form.external_order_url ?? ''}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, external_order_url: e.target.value }))
+                }
+                placeholder="https://..."
               />
             </div>
 
