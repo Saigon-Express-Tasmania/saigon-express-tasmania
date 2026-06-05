@@ -10,6 +10,7 @@ export type StoreLocationRow = {
   hours: string | null;
   is_active: boolean;
   delivery_url: string | null;
+  google_map_url: string | null;
 };
 
 /** Store location used by UI components (camelCase). */
@@ -24,6 +25,7 @@ export type StoreLocation = {
   hours: string | null;
   isActive: boolean;
   deliveryUrl: string | null;
+  googleMapUrl: string | null;
 };
 
 export function mapStoreLocationRow(row: StoreLocationRow): StoreLocation {
@@ -38,6 +40,7 @@ export function mapStoreLocationRow(row: StoreLocationRow): StoreLocation {
     hours: row.hours,
     isActive: row.is_active,
     deliveryUrl: row.delivery_url,
+    googleMapUrl: row.google_map_url,
   };
 }
 
