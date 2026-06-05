@@ -1516,7 +1516,21 @@
     "backToMenuHint": "Browse all categories and dishes",
     "magnifierHint": "Hover to magnify",
     "additionalImagesTitle": "Additional images",
-    "additionalImagesSelect": "View image {index}"
+    "additionalImagesSelect": "View image {index}",
+    "ingredientsTitle": "Product information",
+    "contentsLabel": "Ingredients",
+    "foodHistoryLabel": "Food history",
+    "allergensLabel": "Allergens",
+    "storageInstructionsLabel": "Storage",
+    "preparationInstructionsLabel": "Preparation",
+    "cookingInstructionsLabel": "Cooking",
+    "servingInstructionsLabel": "Serving",
+    "servingSizeLabel": "Serving size",
+    "portionSizeLabel": "Portion size",
+    "nutritionTitle": "Nutritional information",
+    "nutritionNutrientLabel": "Nutrient",
+    "nutritionPerServing": "Per serving",
+    "nutritionPerPortion": "Per portion"
   },
   "NotFound": {
     "code": "404",

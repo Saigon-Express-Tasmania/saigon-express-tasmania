@@ -1517,7 +1517,21 @@
     "backToMenuHint": "Xem tất cả danh mục và món ăn",
     "magnifierHint": "Di chuột để phóng to",
     "additionalImagesTitle": "Hình ảnh thêm",
-    "additionalImagesSelect": "Xem hình {index}"
+    "additionalImagesSelect": "Xem hình {index}",
+    "ingredientsTitle": "Thông tin sản phẩm",
+    "contentsLabel": "Thành phần",
+    "foodHistoryLabel": "Lịch sử món ăn",
+    "allergensLabel": "Dị ứng",
+    "storageInstructionsLabel": "Bảo quản",
+    "preparationInstructionsLabel": "Chuẩn bị",
+    "cookingInstructionsLabel": "Nấu",
+    "servingInstructionsLabel": "Dùng bữa",
+    "servingSizeLabel": "Khẩu phần ăn",
+    "portionSizeLabel": "Kích thước phần",
+    "nutritionTitle": "Thông tin dinh dưỡng",
+    "nutritionNutrientLabel": "Chất dinh dưỡng",
+    "nutritionPerServing": "Mỗi khẩu phần",
+    "nutritionPerPortion": "Mỗi phần"
   },
   "NotFound": {
     "code": "404",

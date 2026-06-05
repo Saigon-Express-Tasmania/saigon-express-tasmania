@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "@/components/link";
 import {
   AlertCircle,
@@ -17,11 +17,6 @@ import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import LazyImage from "@/components/LazyImage";
 import { getRelatedMenuItems } from "@/lib/menu-related-items";
 import { pickMenuImageUrl } from "@/types";
-import ItemCustomiseDropdowns from "@/components/ItemCustomiseDropdowns";
-import {
-  getMissingRequiredOptionGroups,
-  useItemCustomisationState,
-} from "@/lib/item-customise-options";
 import PickLocationModal from "@/components/PickLocationModal";
 import { useCart, type MenuItem } from "@/contexts/CartContext";
 import type { SiteCategory, StoreLocation } from "@/types";
@@ -48,20 +43,9 @@ export default function MenuItemView({
   const [qty, setQty] = useState(1);
   const [selectedGalleryId, setSelectedGalleryId] = useState("primary");
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
-  const [missingRequiredIds, setMissingRequiredIds] = useState<string[]>([]);
-  const customiseSectionRef = useRef<HTMLDivElement>(null);
+  const extraPrice = 0;
 
-  const {
-    groups,
-    selections,
-    note,
-    setNote,
-    setGroupSelection,
-    extraPrice,
-    buildCustomisation,
-  } = useItemCustomisationState(item.category);
-
-  const { cartCount, cartTotal, addToCart, setCartOpen } = useCart();
+  const { cartCount, cartTotal } = useCart();
 
   const categoryImageMap = useMemo<Record<string, string>>(
     () =>
@@ -148,16 +132,6 @@ export default function MenuItemView({
     return (base + extraPrice) * qty;
   }, [item.price, extraPrice, qty]);
 
-  const handleSetGroupSelection = useCallback(
-    (groupId: string, ids: string[]) => {
-      setGroupSelection(groupId, ids);
-      if (ids.length > 0) {
-        setMissingRequiredIds((prev) => prev.filter((id) => id !== groupId));
-      }
-    },
-    [setGroupSelection],
-  );
-
   const handleAddClick = useCallback(() => {
     // TODO: for now, redirect to the headquarter site
     window.location.href = "https://saigonexpressrestaurant.com.au";
@@ -177,23 +151,122 @@ export default function MenuItemView({
     // setMissingRequiredIds([]);
     // addToCart(item, buildCustomisation(qty), qty, false);
     // setCartOpen(true);
-  }, [
-    item,
-    qty,
-    groups,
-    selections,
-    addToCart,
-    buildCustomisation,
-    setCartOpen,
-  ]);
+  }, [item]);
 
-  const requiredFieldsMessage = useMemo(() => {
-    if (missingRequiredIds.length === 0) return null;
-    const titles = groups
-      .filter((group) => missingRequiredIds.includes(group.id))
-      .map((group) => group.title);
-    return t("requiredFieldsReminder", { fields: titles.join(", ") });
-  }, [missingRequiredIds, groups, t]);
+  const ingredients = item.ingredients;
+  const nutrientRows = useMemo(
+    () =>
+      ingredients
+        ? Object.entries(ingredients.nutritionalInformation).filter(
+            ([, nutrient]) =>
+              nutrient.label.trim() ||
+              nutrient.perServing.trim() ||
+              nutrient.perPortion.trim(),
+          )
+        : [],
+    [ingredients],
+  );
+
+  type IngredientTextField = {
+    key: string;
+    labelKey:
+      | "contentsLabel"
+      | "foodHistoryLabel"
+      | "allergensLabel"
+      | "storageInstructionsLabel"
+      | "preparationInstructionsLabel"
+      | "cookingInstructionsLabel"
+      | "servingInstructionsLabel";
+    value: string;
+  };
+
+  const ingredientTextFields = useMemo((): IngredientTextField[] => {
+    if (!ingredients) return [];
+    const fields: IngredientTextField[] = [
+      { key: "contents", labelKey: "contentsLabel", value: ingredients.contents },
+      {
+        key: "foodHistory",
+        labelKey: "foodHistoryLabel",
+        value: ingredients.foodHistory,
+      },
+      { key: "allergens", labelKey: "allergensLabel", value: ingredients.allergens },
+      {
+        key: "storageInstructions",
+        labelKey: "storageInstructionsLabel",
+        value: ingredients.storageInstructions,
+      },
+      {
+        key: "preparationInstructions",
+        labelKey: "preparationInstructionsLabel",
+        value: ingredients.preparationInstructions,
+      },
+      {
+        key: "cookingInstructions",
+        labelKey: "cookingInstructionsLabel",
+        value: ingredients.cookingInstructions,
+      },
+      {
+        key: "servingInstructions",
+        labelKey: "servingInstructionsLabel",
+        value: ingredients.servingInstructions,
+      },
+    ];
+    return fields.filter((field) => field.value.trim());
+  }, [ingredients]);
+
+  const nutritionTableSection = useMemo(() => {
+    if (nutrientRows.length === 0 || !ingredients) return null;
+
+    return (
+      <div className="mt-6">
+        <h3 className="mb-3 text-sm font-semibold text-brand-dark">
+          {t("nutritionTitle")}
+        </h3>
+        <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+          <table className="w-full min-w-[20rem] text-sm">
+            <thead>
+              <tr className="border-b bg-brand-cream/80 text-left">
+                <th className="px-3 py-2 font-semibold text-brand-dark">
+                  {t("nutritionNutrientLabel")}
+                </th>
+                <th className="px-3 py-2 font-semibold text-brand-dark">
+                  <span className="block">{t("nutritionPerServing")}</span>
+                  {ingredients.servingSize.trim() ? (
+                    <span className="mt-0.5 block text-xs font-normal text-brand-dark/70">
+                      {ingredients.servingSize}
+                    </span>
+                  ) : null}
+                </th>
+                <th className="px-3 py-2 font-semibold text-brand-dark">
+                  <span className="block">{t("nutritionPerPortion")}</span>
+                  {ingredients.portionSize.trim() ? (
+                    <span className="mt-0.5 block text-xs font-normal text-brand-dark/70">
+                      {ingredients.portionSize}
+                    </span>
+                  ) : null}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {nutrientRows.map(([key, nutrient]) => (
+                <tr key={key} className="border-b last:border-b-0">
+                  <td className="px-3 py-2 text-brand-dark">
+                    {nutrient.label.trim() || key}
+                  </td>
+                  <td className="px-3 py-2 text-brand-dark/70">
+                    {nutrient.perServing.trim() || "—"}
+                  </td>
+                  <td className="px-3 py-2 text-brand-dark/70">
+                    {nutrient.perPortion.trim() || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }, [ingredients, nutrientRows, t]);
 
   return (
     <div className="min-h-screen bg-brand-cream pb-28 font-sans">      
@@ -254,6 +327,8 @@ export default function MenuItemView({
                 </div>
               </div>
             ) : null}
+
+            {nutritionTableSection}
           </div>
 
           {/* Info */}
@@ -289,35 +364,30 @@ export default function MenuItemView({
               </p>
             ) : null}
 
-            <div
-              ref={customiseSectionRef}
-              className="mb-6 border-t border-gray-200 pt-5"
-            >
-              <h2 className="mb-4 font-serif text-lg font-bold text-brand-dark">
-                {t("customiseTitle")}
-              </h2>
-              <ItemCustomiseDropdowns
-                groups={groups}
-                selections={selections}
-                onSetGroupSelection={handleSetGroupSelection}
-                note={note}
-                onNoteChange={setNote}
-                invalidGroupIds={missingRequiredIds}
-              />
-            </div>
+            {ingredientTextFields.length > 0 ? (
+              <section className="mb-6 border-t border-gray-200 pt-5">
+                <h2 className="mb-4 font-serif text-lg font-bold text-brand-dark">
+                  {t("ingredientsTitle")}
+                </h2>
 
-            {requiredFieldsMessage ? (
-              <p
-                role="alert"
-                className="mb-4 flex items-start gap-2 rounded-lg border border-brand-red/30 bg-brand-red/5 px-3 py-2.5 text-sm text-brand-red"
-              >
-                <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                <span>{requiredFieldsMessage}</span>
-              </p>
+                <div className="space-y-4">
+                  {ingredientTextFields.map((field) => (
+                    <div key={field.key}>
+                      <h3 className="mb-1 text-sm font-semibold text-brand-dark">
+                        {t(field.labelKey)}
+                      </h3>
+                      <p className="text-sm leading-relaxed text-brand-dark/70 whitespace-pre-line">
+                        {field.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
             ) : null}
 
             <div className="flex items-center gap-4 border-t border-gray-200 pt-5">
-              <div className="flex items-center overflow-hidden rounded border border-gray-200 bg-white">
+              {/* TODO: currently using external order POS, will consider adding quantity selector back in the future */}
+              {/* <div className="flex items-center overflow-hidden rounded border border-gray-200 bg-white">
                 <button
                   type="button"
                   onClick={() => setQty((n) => Math.max(1, n - 1))}
@@ -337,14 +407,14 @@ export default function MenuItemView({
                 >
                   <Plus size={16} />
                 </button>
-              </div>
+              </div> */}
               <button
                 type="button"
                 onClick={handleAddClick}
                 disabled={!item.isAvailable}
                 className={`flex h-10 flex-1 items-center justify-between rounded px-4 text-sm font-semibold transition-colors ${
                   item.isAvailable
-                    ? "bg-brand-dark text-white hover:bg-brand-dark/90"
+                    ? "bg-brand-amber text-white hover:bg-brand-amber/90"
                     : "cursor-not-allowed bg-gray-100 text-gray-400"
                 }`}
               >

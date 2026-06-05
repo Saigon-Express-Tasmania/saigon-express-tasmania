@@ -52,6 +52,81 @@ export type MenuItemIngredient = {
   portionSize: string;
 };
 
+export function emptyMenuItemIngredient(): MenuItemIngredient {
+  return {
+    nutritionalInformation: {},
+    contents: "",
+    foodHistory: "",
+    allergens: "",
+    storageInstructions: "",
+    preparationInstructions: "",
+    cookingInstructions: "",
+    servingInstructions: "",
+    servingSize: "",
+    portionSize: "",
+  };
+}
+
+export function parseMenuItemIngredient(value: unknown): MenuItemIngredient {
+  const empty = emptyMenuItemIngredient();
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return empty;
+  }
+
+  const row = value as Record<string, unknown>;
+  const nutritionalInformation: Record<string, MenuItemNutritionalInformation> =
+    {};
+
+  const rawNutrition = row.nutritionalInformation;
+  if (
+    rawNutrition &&
+    typeof rawNutrition === "object" &&
+    !Array.isArray(rawNutrition)
+  ) {
+    for (const [key, entry] of Object.entries(rawNutrition)) {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+      const nutrient = entry as Record<string, unknown>;
+      nutritionalInformation[key] = {
+        label: String(nutrient.label ?? ""),
+        perServing: String(nutrient.perServing ?? ""),
+        perPortion: String(nutrient.perPortion ?? ""),
+        servingSize: String(nutrient.servingSize ?? ""),
+        portionSize: String(nutrient.portionSize ?? ""),
+      };
+    }
+  }
+
+  return {
+    nutritionalInformation,
+    contents: String(row.contents ?? ""),
+    foodHistory: String(row.foodHistory ?? ""),
+    allergens: String(row.allergens ?? ""),
+    storageInstructions: String(row.storageInstructions ?? ""),
+    preparationInstructions: String(row.preparationInstructions ?? ""),
+    cookingInstructions: String(row.cookingInstructions ?? ""),
+    servingInstructions: String(row.servingInstructions ?? ""),
+    servingSize: String(row.servingSize ?? ""),
+    portionSize: String(row.portionSize ?? ""),
+  };
+}
+
+export function isMenuItemIngredientEmpty(
+  ingredients: MenuItemIngredient,
+): boolean {
+  if (Object.keys(ingredients.nutritionalInformation).length > 0) return false;
+  return !(
+    ingredients.contents.trim() ||
+    ingredients.foodHistory.trim() ||
+    ingredients.allergens.trim() ||
+    ingredients.storageInstructions.trim() ||
+    ingredients.preparationInstructions.trim() ||
+    ingredients.cookingInstructions.trim() ||
+    ingredients.servingInstructions.trim() ||
+    ingredients.servingSize.trim() ||
+    ingredients.portionSize.trim()
+  );
+}
+
 /** Row shape from `public.menu` (snake_case). */
 export type MenuItemRow = {
   id: number;
@@ -112,5 +187,6 @@ export function mapMenuItemRow(row: MenuItemRow): MenuItem {
     imageUrl: pickMenuImageUrl(imageUrls),
     sortOrder: row.sort_order,
     isPopular: row.is_popular,
+    ingredients: parseMenuItemIngredient(row.ingredients),
   };
 }

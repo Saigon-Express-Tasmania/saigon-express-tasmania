@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { toast } from "sonner";
 import type { ItemCustomisation } from "@/components/ItemCustomiseModal";
+import type { MenuItemIngredient } from "@/types/MenuItem";
 
 // ─── Shared MenuItem type ─────────────────────────────────────────────────────
 export type MenuItem = {
@@ -22,6 +23,7 @@ export type MenuItem = {
   imageUrl?: string | null;
   sortOrder?: number | null;
   isPopular?: boolean | number | null;
+  ingredients?: MenuItemIngredient;
 };
 
 export type CartItem = {
