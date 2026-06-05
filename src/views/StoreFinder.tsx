@@ -50,6 +50,7 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
   const t = useTranslations("StoreFinder");
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StoreLocation | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [markersAdded, setMarkersAdded] = useState(false);
 
@@ -159,7 +160,10 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
   const handleStoreClick = (storeId: number) => {
     const store = stores.find((s: StoreLocation) => s.id === storeId);
     if (!store) return;
+
     setSelectedId((prev) => (prev === storeId ? null : storeId));
+    setSelectedStore(store);
+
     if (mapInstance) {
       const lat = parseFloat(String(store.lat));
       const lng = parseFloat(String(store.lng));
@@ -170,7 +174,7 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
     }
   };
 
-  console.log(stores);
+  console.log(selectedStore);
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
@@ -334,7 +338,18 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
             className="lg:col-span-3 overflow-hidden border border-gray-200 shadow-lg"
             style={{ height: "calc(100vh - 220px)", minHeight: "500px" }}
           >
-            <MapView onMapReady={handleMapReadyFull} />
+            {selectedStore && selectedStore.googleMapUrl && (
+              <iframe
+                src={selectedStore.googleMapUrl}
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                style={{ border: 0 }}
+                allowFullScreen
+                aria-hidden="false"
+                tabIndex={0}
+              />
+            )}
           </div>
         </div>
       </div>

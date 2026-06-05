@@ -105,7 +105,7 @@ export async function fetchStoreLocationRows(): Promise<StoreLocationRow[]> {
   const { data, error } = await supabase
     .from("store_locations")
     .select(
-      "id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url",
+      "id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url, google_map_url",
     )
     .eq("is_active", true)
     .order("id", { ascending: true });
