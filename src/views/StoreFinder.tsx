@@ -174,8 +174,6 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
     }
   };
 
-  console.log(selectedStore);
-
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
