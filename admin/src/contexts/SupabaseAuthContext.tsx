@@ -50,7 +50,14 @@ export function SupabaseAuthProvider({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // Token refresh on window focus updates the session in the Supabase
+      // client already; avoid replacing `user` so profile/data hooks don't reload.
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(newSession);
+        return;
+      }
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setIsLoading(false);

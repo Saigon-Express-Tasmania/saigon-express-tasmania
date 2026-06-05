@@ -31,6 +31,27 @@ export function parseMenuImageMore(value: unknown): MenuImageMoreEntry[] {
     }));
 }
 
+export type MenuItemNutritionalInformation = {
+  label: string;
+  perServing: string;
+  perPortion: string;
+  servingSize: string;
+  portionSize: string;
+}
+
+export type MenuItemIngredient = {
+  nutritionalInformation: Record<string, MenuItemNutritionalInformation>;
+  contents: string;
+  foodHistory: string;
+  allergens: string;
+  storageInstructions: string;
+  preparationInstructions: string;
+  cookingInstructions: string;
+  servingInstructions: string;
+  servingSize: string;
+  portionSize: string;
+};
+
 /** Row shape from `public.menu` (snake_case). */
 export type MenuItemRow = {
   id: number;

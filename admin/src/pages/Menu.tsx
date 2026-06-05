@@ -1,6 +1,7 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
+import { MenuIngredientsEditor } from '@/components/MenuIngredientsEditor';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +54,13 @@ import supabase from '@/lib/supabase/client';
 import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import {
+  emptyMenuItemIngredient,
+  isMenuItemIngredientEmpty,
+  parseMenuItemIngredient,
+  serializeMenuItemIngredient,
+  type MenuItemIngredient,
+} from '@/types/MenuItem';
 
 const MENU_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1920] as const;
 const ADDITIONAL_IMAGE_SM = 256;
@@ -71,15 +79,13 @@ type MenuItemRow = {
   is_available: boolean;
   is_popular: boolean;
   sort_order: number;
-  // Stored as JSON in the DB; allow any here for flexibility.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ingredients: any;
+  ingredients: unknown;
 };
 
 type MenuItemInput = Omit<MenuItemRow, 'ingredients' | 'image_urls'> & {
   image_sizes: ImageUrlsMap;
   additional_images: MenuImageMoreEntry[];
-  ingredients: string;
+  ingredients: MenuItemIngredient;
 };
 
 const emptyMenuItemInput = (): MenuItemInput => ({
@@ -96,7 +102,7 @@ const emptyMenuItemInput = (): MenuItemInput => ({
   is_available: true,
   is_popular: false,
   sort_order: 0,
-  ingredients: '',
+  ingredients: emptyMenuItemIngredient(),
 });
 
 async function nextMenuId(): Promise<number> {
@@ -230,10 +236,7 @@ export function Menu() {
       is_available: item.is_available,
       is_popular: item.is_popular,
       sort_order: item.sort_order,
-      ingredients:
-        typeof item.ingredients === 'string'
-          ? item.ingredients
-          : JSON.stringify(item.ingredients ?? '', null, 2),
+      ingredients: parseMenuItemIngredient(item.ingredients),
     });
     setImagePreviewUrl(
       previewFromParsedMenuImages(parsedImages, [256, 512, 1024, 1920]),
@@ -353,15 +356,9 @@ export function Menu() {
       return;
     }
 
-    let ingredientsValue: unknown = null;
-    if (form.ingredients.trim()) {
-      try {
-        ingredientsValue = JSON.parse(form.ingredients);
-      } catch {
-        toast.error('Ingredients must be valid JSON (or left empty).');
-        return;
-      }
-    }
+    const ingredientsValue = isMenuItemIngredientEmpty(form.ingredients)
+      ? {}
+      : serializeMenuItemIngredient(form.ingredients);
 
     setSaving(true);
     try {
@@ -678,7 +675,7 @@ export function Menu() {
         }}
       >
         <DialogContent
-          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          className="sm:max-w-3xl max-w-3xl max-h-[90vh] overflow-y-auto"
           showCloseButton={!imageUploadBusy}
           onInteractOutside={(event) => {
             if (imageUploadBusy) event.preventDefault();
@@ -858,18 +855,14 @@ export function Menu() {
                 }
               />
             </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="menu-ingredients">
-                Ingredients (JSON, optional)
-              </Label>
-              <Textarea
-                id="menu-ingredients"
-                rows={4}
+            <div className="md:col-span-2">
+              <MenuIngredientsEditor
                 value={form.ingredients}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, ingredients: e.target.value }))
+                onChange={(ingredients) =>
+                  setForm((f) => ({ ...f, ingredients }))
                 }
-                placeholder='e.g. ["chicken", "lettuce", "chilli"] or an object'
+                disabled={saving || imageUploadBusy}
+                menuItemId={form.id}
               />
             </div>
           </div>

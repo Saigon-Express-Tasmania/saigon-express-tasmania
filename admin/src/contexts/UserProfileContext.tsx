@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -44,28 +45,36 @@ async function resolveAvatarPreview(
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const { user, isSignedIn } = useSupabaseAuth();
   const { getSignedUrl } = useSupabaseStorage();
+  const userId = user?.id;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasProfileRef = useRef(false);
+
+  useEffect(() => {
+    hasProfileRef.current = profile !== null;
+  }, [profile]);
 
   const refreshProfile = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setProfile(null);
       setAvatarPreviewUrl(null);
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    if (!hasProfileRef.current) {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
       const { data, error: fetchError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       if (fetchError) throw fetchError;
@@ -82,17 +91,18 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [getSignedUrl, user]);
+  }, [getSignedUrl, userId]);
 
   useEffect(() => {
-    if (isSignedIn) {
+    if (isSignedIn && userId) {
       void refreshProfile();
-    } else {
-      setProfile(null);
-      setAvatarPreviewUrl(null);
-      setIsLoading(false);
+      return;
     }
-  }, [isSignedIn, refreshProfile, user?.id]);
+
+    setProfile(null);
+    setAvatarPreviewUrl(null);
+    setIsLoading(false);
+  }, [isSignedIn, refreshProfile, userId]);
 
   const updateProfile = useCallback(
     async (updates: UserProfileUpdate) => {

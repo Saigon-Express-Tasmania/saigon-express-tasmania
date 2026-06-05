@@ -13,9 +13,9 @@ import { Orders } from '@/pages/Sales/Orders';
 import { TestOrders } from '@/pages/Sales/TestOrders';
 import { ArchivedOrders } from '@/pages/Sales/ArchivedOrders';
 import {
+  HashRouter as Router,
   Navigate,
   Route,
-  BrowserRouter as Router,
   Routes,
 } from 'react-router-dom';
 import { useSupabaseAuth } from './hooks/useSupabaseAuth';
