@@ -2457,6 +2457,18 @@
     "subscribing": "Subscribing…",
     "subscribe": "Subscribe"
   },
+  "StoreLocationsDialog": {
+    "heading": "Choose a Location",
+    "subheading": "Order pickup or delivery from your nearest store",
+    "closeLabel": "Close",
+    "orderTypeLabel": "How would you like to order?",
+    "pickup": "Pickup",
+    "delivery": "Delivery",
+    "locationLabel": "Select a location",
+    "actionPickup": "Order Pickup",
+    "actionDelivery": "Order Delivery",
+    "selectLocation": "Select a location to continue"
+  },
   "PickLocationModal": {
     "heading": "Pick a Location",
     "cartItems_one": "{count} item in your cart",

@@ -7,22 +7,27 @@ import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import { FloatingWidgets } from "@/components/FloatingWidgets";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
-import type { SiteContentSnapshot } from "@/types";
+import type { SiteContentSnapshot, StoreLocation } from "@/types";
 import MainHeader from "@/components/MainHeader";
 import MainFooter from "@/components/MainFooter";
 
 interface ProvidersProps {
   children: React.ReactNode;
   siteContent: SiteContentSnapshot;
+  storeLocations: StoreLocation[];
 }
 
-export function Providers({ children, siteContent }: ProvidersProps) {
+export function Providers({
+  children,
+  siteContent,
+  storeLocations,
+}: ProvidersProps) {
   return (
     <SiteContentProvider initialData={siteContent}>
       <ThemeProvider defaultTheme="light">
         <CartProvider>
           <TooltipProvider>
-            <MainHeader />
+            <MainHeader storeLocations={storeLocations} />
             {children}
             <MainFooter />
             <CartDrawer />

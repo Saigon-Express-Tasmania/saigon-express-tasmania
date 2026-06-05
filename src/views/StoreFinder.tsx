@@ -50,7 +50,9 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
   const t = useTranslations("StoreFinder");
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [selectedStore, setSelectedStore] = useState<StoreLocation | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StoreLocation | null>(
+    null,
+  );
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [markersAdded, setMarkersAdded] = useState(false);
 
@@ -314,14 +316,17 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
                               {t("card.orderDelivery")}
                             </a>
                           )}
-                          <Link
-                            href="/menu"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-brand-dark text-white px-3 py-1.5 hover:bg-brand-dark/80 transition-colors cursor-pointer">
+                          {store.deliveryUrl && (
+                            <a
+                              href={store.deliveryUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold bg-brand-dark text-white px-3 py-1.5 hover:bg-brand-dark/80 transition-colors cursor-pointer"
+                            >
                               {t("card.orderPickup")}
-                            </span>
-                          </Link>
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}

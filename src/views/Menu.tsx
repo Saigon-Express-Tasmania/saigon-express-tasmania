@@ -23,6 +23,7 @@ import {
 } from "@/components/ItemCustomiseModal";
 import { useCart, type MenuItem } from "@/contexts/CartContext";
 import PickLocationModal from "@/components/PickLocationModal";
+import StoreLocationsDialog from "@/components/StoreLocationsDialog";
 import LazyImage from "@/components/LazyImage";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, StoreLocation } from "@/types";
@@ -76,6 +77,7 @@ export default function Menu({
   } | null>(null);
   const [customiseItem, setCustomiseItem] = useState<MenuItem | null>(null);
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
+  const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
 
   // ─── Shared cart ─────────────────────────────────────────────────────────
   const {
@@ -162,10 +164,13 @@ export default function Menu({
   }, [search, activeCategory, allLabel, menuItems, fuse]);
 
   const handleOpenCustomise = useCallback((item: MenuItem) => {
-    // TODO: for now, redirect to the headquarter site
-    // if (!item.isAvailable) return;
-    // setCustomiseItem(item);    
-    window.location.href = "https://saigonexpressrestaurant.com.au";
+    if (!item.isAvailable) return;
+    setCustomiseItem(item);
+  }, []);
+
+  const handleOrderNow = useCallback((item: MenuItem) => {
+    if (!item.isAvailable) return;
+    setOrderLocationsOpen(true);
   }, []);
 
   const handleCustomiseConfirm = useCallback(
@@ -380,22 +385,24 @@ export default function Menu({
                         <span className="w-7 text-center text-sm font-bold text-brand-dark">
                           {totalQtyInCart}
                         </span>
-                        <button
+                        {/* <button
                           type="button"
                           onClick={() => handleOpenCustomise(item)}
                           className="w-8 h-8 flex items-center justify-center bg-brand-red text-white hover:bg-brand-red/90 transition-colors"
                         >
                           <Plus size={13} />
-                        </button>
+                        </button> */}
                       </div>
                     ) : (
-                      <button
+                      <>
+                      {/* <button
                         type="button"
                         onClick={() => handleOpenCustomise(item)}
                         className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center bg-brand-red text-white opacity-0 shadow-lg transition-all hover:bg-brand-red/90 group-hover:opacity-100"
                       >
                         <Plus size={16} />
-                      </button>
+                      </button> */}
+                      </>
                     )}
                   </div>
                   <Link
@@ -454,7 +461,7 @@ export default function Menu({
                         </button>
                         */}
                         <button
-                          onClick={() => handleOpenCustomise(item)}
+                          onClick={() => handleOrderNow(item)}
                           disabled={!item.isAvailable}
                           className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-bold py-2 rounded-full transition-all duration-300 ${
                             item.isAvailable
@@ -490,6 +497,13 @@ export default function Menu({
           </div>
         </Link>
       </main>
+
+      {/* Order location picker (compact store list) */}
+      <StoreLocationsDialog
+        open={orderLocationsOpen}
+        onClose={() => setOrderLocationsOpen(false)}
+        stores={storeLocations}
+      />
 
       {/* Pick Location modal */}
       <PickLocationModal

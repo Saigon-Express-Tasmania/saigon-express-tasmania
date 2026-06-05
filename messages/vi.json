@@ -2458,6 +2458,18 @@
     "subscribing": "Đang đăng ký…",
     "subscribe": "Đăng Ký"
   },
+  "StoreLocationsDialog": {
+    "heading": "Chọn Địa Điểm",
+    "subheading": "Đặt mang về hoặc giao hàng từ cửa hàng gần bạn",
+    "closeLabel": "Đóng",
+    "orderTypeLabel": "Bạn muốn đặt theo hình thức nào?",
+    "pickup": "Mang về",
+    "delivery": "Giao hàng",
+    "locationLabel": "Chọn địa điểm",
+    "actionPickup": "Đặt Mang Về",
+    "actionDelivery": "Đặt Giao Hàng",
+    "selectLocation": "Chọn địa điểm để tiếp tục"
+  },
   "PickLocationModal": {
     "heading": "Chọn Chi Nhánh",
     "cartItems_one": "{count} món trong giỏ hàng",

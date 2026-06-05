@@ -18,6 +18,7 @@ import LazyImage from "@/components/LazyImage";
 import { getRelatedMenuItems } from "@/lib/menu-related-items";
 import { pickMenuImageUrl } from "@/types";
 import PickLocationModal from "@/components/PickLocationModal";
+import StoreLocationsDialog from "@/components/StoreLocationsDialog";
 import { useCart, type MenuItem } from "@/contexts/CartContext";
 import type { SiteCategory, StoreLocation } from "@/types";
 
@@ -43,6 +44,7 @@ export default function MenuItemView({
   const [qty, setQty] = useState(1);
   const [selectedGalleryId, setSelectedGalleryId] = useState("primary");
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
+  const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
   const extraPrice = 0;
 
   const { cartCount, cartTotal } = useCart();
@@ -132,26 +134,25 @@ export default function MenuItemView({
     return (base + extraPrice) * qty;
   }, [item.price, extraPrice, qty]);
 
+  const handleOrderNow = useCallback(() => {
+    if (!item.isAvailable) return;
+    setOrderLocationsOpen(true);
+  }, [item.isAvailable]);
+
+  /** @deprecated Previous add-to-cart / external POS handlers — kept for future refactors */
   const handleAddClick = useCallback(() => {
-    // TODO: for now, redirect to the headquarter site
-    window.location.href = "https://saigonexpressrestaurant.com.au";
-    
+    // Previous: redirect to external POS
+    // window.location.href = "https://saigonexpressrestaurant.com.au";
+
+    // Previous: in-app customise + cart flow
     // if (!item.isAvailable) return;
-
     // const missing = getMissingRequiredOptionGroups(groups, selections);
-    // if (missing.length > 0) {
-    //   setMissingRequiredIds(missing.map((group) => group.id));
-    //   customiseSectionRef.current?.scrollIntoView({
-    //     behavior: "smooth",
-    //     block: "start",
-    //   });
-    //   return;
-    // }
-
-    // setMissingRequiredIds([]);
+    // if (missing.length > 0) { ... }
     // addToCart(item, buildCustomisation(qty), qty, false);
     // setCartOpen(true);
-  }, [item]);
+
+    handleOrderNow();
+  }, [handleOrderNow]);
 
   const ingredients = item.ingredients;
   const nutrientRows = useMemo(
@@ -410,7 +411,7 @@ export default function MenuItemView({
               </div> */}
               <button
                 type="button"
-                onClick={handleAddClick}
+                onClick={handleOrderNow}
                 disabled={!item.isAvailable}
                 className={`flex h-10 flex-1 items-center justify-between rounded px-4 text-sm font-semibold transition-colors ${
                   item.isAvailable
@@ -480,6 +481,12 @@ export default function MenuItemView({
           </section>
         ) : null}        
       </div>
+
+      <StoreLocationsDialog
+        open={orderLocationsOpen}
+        onClose={() => setOrderLocationsOpen(false)}
+        stores={storeLocations}
+      />
 
       <PickLocationModal
         open={pickLocationOpen}

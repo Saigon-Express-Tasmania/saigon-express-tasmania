@@ -5,6 +5,7 @@ import "./globals.css";
 import { notoSans, notoSerif } from "@/app/fonts";
 import { Providers } from "@/components/providers";
 import { getSiteContentSnapshot } from "@/lib/supabase/site-content";
+import { getStoreLocations } from "@/lib/supabase/store-locations";
 
 export const metadata: Metadata = {
   title: "Saigon Express Tasmania | Authentic Vietnamese Food",
@@ -17,10 +18,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [siteContent, locale, messages] = await Promise.all([
+  const [siteContent, locale, messages, storeLocations] = await Promise.all([
     getSiteContentSnapshot(),
     getLocale(),
     getMessages(),
+    getStoreLocations(),
   ]);
 
   return (
@@ -46,7 +48,9 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <Providers siteContent={siteContent}>{children}</Providers>
+          <Providers siteContent={siteContent} storeLocations={storeLocations}>
+            {children}
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

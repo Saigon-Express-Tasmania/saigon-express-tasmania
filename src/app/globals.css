@@ -291,6 +291,59 @@
   .animate-slide-up {
     animation: slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
   }
+
+  @keyframes store-locations-dialog-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  @keyframes store-locations-dialog-out {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+  @keyframes store-locations-backdrop-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes store-locations-backdrop-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  .animate-store-locations-dialog-in {
+    animation: store-locations-dialog-in var(--store-locations-anim-ms, 300ms)
+      cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .animate-store-locations-dialog-out {
+    animation: store-locations-dialog-out var(--store-locations-anim-ms, 300ms)
+      cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .animate-store-locations-backdrop-in {
+    animation: store-locations-backdrop-in var(--store-locations-anim-ms, 300ms)
+      ease-out both;
+  }
+  .animate-store-locations-backdrop-out {
+    animation: store-locations-backdrop-out var(--store-locations-anim-ms, 300ms)
+      ease-out both;
+  }
   @keyframes shrink-width {
     from { width: 100%; }
     to { width: 0%; }

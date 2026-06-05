@@ -1,20 +1,33 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "@/components/link";
 import { useCart } from "@/contexts/CartContext";
 import { MapPin, Menu, ShoppingCart, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
+import StoreLocationsDialog from "@/components/StoreLocationsDialog";
+import type { StoreLocation } from "@/types";
 
-export default function MainHeader() {
+type MainHeaderProps = {
+  storeLocations: StoreLocation[];
+};
+
+export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const tLinks = useTranslations("NavLinks");
   const t = useTranslations("Home");
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
   const { cartCount, setCartOpen } = useCart();
+
+  const handleOrderOnlineClick = useCallback(() => {
+    // Previous: navigate to menu categories anchor
+    // href="/menu#categories"
+    setOrderLocationsOpen(true);
+  }, []);
 
   return (
     <>
@@ -105,13 +118,14 @@ export default function MainHeader() {
                 })}
               </button>
             ) : (
-              <Link
-                href="/menu#categories"
-                className="btn-red text-sm py-2 px-4"
+              <button
+                type="button"
+                onClick={handleOrderOnlineClick}
+                className="btn-red text-sm py-2 px-4 flex items-center gap-1.5"
               >
                 <ShoppingCart size={15} />
                 {tLinks("order_online")}
-              </Link>
+              </button>
             )}
             <button
               className="lg:hidden p-2 text-brand-dark"
@@ -151,6 +165,12 @@ export default function MainHeader() {
           </div>
         )}
       </header>
+
+      <StoreLocationsDialog
+        open={orderLocationsOpen}
+        onClose={() => setOrderLocationsOpen(false)}
+        stores={storeLocations}
+      />
     </>
   );
 }

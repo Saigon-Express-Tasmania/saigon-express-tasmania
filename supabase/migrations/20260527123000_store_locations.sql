@@ -19,8 +19,7 @@ create table public.store_locations (
   stripe_connect_account_id text,
   stripe_connect_status text,
   platform_fee_percent text,
-  google_map_url text,
-  external_order_url text
+  google_map_url text
 );
 
 comment on table public.store_locations is
