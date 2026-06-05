@@ -227,7 +227,8 @@ export function CateringBoxes() {
     setDialogOpen(true);
   };
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (fileInputs: File | File[]) => {
+    const file = Array.isArray(fileInputs) ? fileInputs[0] : fileInputs;
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const slugPart =
       form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'catering-box';

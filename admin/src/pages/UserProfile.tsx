@@ -134,7 +134,8 @@ export function UserProfile() {
     }
   };
 
-  const handleAvatarUpload = async (file: File) => {
+  const handleAvatarUpload = async (fileInputs: File | File[]) => {
+    const file = Array.isArray(fileInputs) ? fileInputs[0] : fileInputs;
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     try {
       const { path, signedUrl } = await uploadMedia(file, {

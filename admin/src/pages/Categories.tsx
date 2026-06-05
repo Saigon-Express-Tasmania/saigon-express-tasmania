@@ -142,7 +142,8 @@ export function Categories() {
     setDialogOpen(true);
   };
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (fileInputs: File | File[]) => {
+    const file = Array.isArray(fileInputs) ? fileInputs[0] : fileInputs;
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const aliasPart = form.alias.trim().toLowerCase().replace(/\s+/g, '-') || 'category';
     const fileName = `${aliasPart}-${Date.now()}.${ext}`;
