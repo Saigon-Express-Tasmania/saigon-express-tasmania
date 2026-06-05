@@ -53,6 +53,7 @@ type StoreLocationRow = {
   hours: string | null;
   is_active: boolean;
   delivery_url: string | null;
+  google_map_url: string | null;
   is_franchise: boolean;
   franchise_owner_name: string | null;
   franchise_owner_email: string | null;
@@ -62,7 +63,7 @@ type StoreLocationRow = {
 };
 
 const SELECT_COLUMNS =
-  'id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
+  'id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
 
 const emptyStoreLocationInput = (): StoreLocationRow => ({
   id: 0,
@@ -75,6 +76,7 @@ const emptyStoreLocationInput = (): StoreLocationRow => ({
   hours: '',
   is_active: true,
   delivery_url: '',
+  google_map_url: '',
   is_franchise: false,
   franchise_owner_name: '',
   franchise_owner_email: '',
@@ -116,6 +118,7 @@ function rowToForm(row: StoreLocationRow): StoreLocationRow {
     hours: formatHoursForEdit(row.hours),
     is_active: row.is_active,
     delivery_url: row.delivery_url ?? '',
+    google_map_url: row.google_map_url ?? '',
     is_franchise: row.is_franchise,
     franchise_owner_name: row.franchise_owner_name ?? '',
     franchise_owner_email: row.franchise_owner_email ?? '',
@@ -146,6 +149,7 @@ function formToPayload(form: StoreLocationRow): StoreLocationRow {
     hours: hoursValue,
     is_active: form.is_active,
     delivery_url: form.delivery_url?.trim() || null,
+    google_map_url: form.google_map_url?.trim() || null,
     is_franchise: form.is_franchise,
     franchise_owner_name: form.franchise_owner_name?.trim() || null,
     franchise_owner_email: form.franchise_owner_email?.trim() || null,
@@ -275,6 +279,7 @@ export function StoreLocations() {
             hours: payload.hours,
             is_active: payload.is_active,
             delivery_url: payload.delivery_url,
+            google_map_url: payload.google_map_url,
             is_franchise: payload.is_franchise,
             franchise_owner_name: payload.franchise_owner_name,
             franchise_owner_email: payload.franchise_owner_email,
@@ -300,6 +305,7 @@ export function StoreLocations() {
             hours: payload.hours,
             is_active: payload.is_active,
             delivery_url: payload.delivery_url,
+            google_map_url: payload.google_map_url,
             is_franchise: payload.is_franchise,
             franchise_owner_name: payload.franchise_owner_name,
             franchise_owner_email: payload.franchise_owner_email,
@@ -500,7 +506,7 @@ export function StoreLocations() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingId !== null ? 'Edit store location' : 'Add store location'}
@@ -613,6 +619,19 @@ export function StoreLocations() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, delivery_url: e.target.value }))
                 }
+              />
+            </div>
+
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="loc-google-map">Google Map URL</Label>
+              <Input
+                id="loc-google-map"
+                type="url"
+                value={form.google_map_url ?? ''}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, google_map_url: e.target.value }))
+                }
+                placeholder="https://maps.google.com/..."
               />
             </div>
 
