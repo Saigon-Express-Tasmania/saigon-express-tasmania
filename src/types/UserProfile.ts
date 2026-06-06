@@ -17,6 +17,9 @@ export type UserProfile = {
   state: string | null;
   postal_code: string | null;
   country: string | null;
+  business_name: string | null;
+  abn: string | null;
+  business_category: string | null;
   avatar_url: string | null;
   user_role: UserRole;
   business_type: BusinessType;

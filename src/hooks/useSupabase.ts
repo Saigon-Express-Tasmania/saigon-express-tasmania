@@ -8,6 +8,7 @@ export {
   getAuthErrorMessage,
   isAlreadyRegisteredAuthError,
   registerWholesaleMemberApplication,
+  type WholesaleRegistrationResult,
   signInWithEmail,
   signOut,
   signUpWithEmail,

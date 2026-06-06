@@ -1,5 +1,7 @@
 export type UserRole = 'none' | 'user' | 'admin' | 'partner';
 
+export type BusinessType = 'personal' | 'wholesale' | 'warehouse' | 'franchise';
+
 export type UserProfile = {
   id: string;
   email: string | null;
@@ -15,8 +17,13 @@ export type UserProfile = {
   state: string | null;
   postal_code: string | null;
   country: string | null;
+  business_name: string | null;
+  abn: string | null;
+  business_category: string | null;
   avatar_url: string | null;
   user_role: UserRole;
+  business_type: BusinessType;
+  is_verified: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -24,3 +31,29 @@ export type UserProfile = {
 export type UserProfileUpdate = Partial<
   Omit<UserProfile, 'id' | 'display_name' | 'created_at' | 'updated_at' | 'user_role'>
 >;
+
+export type AdminUserProfileUpdate = Partial<
+  Omit<UserProfile, 'id' | 'display_name' | 'created_at' | 'updated_at'>
+>;
+
+export type PartnerBusinessType = Extract<BusinessType, 'wholesale' | 'warehouse'>;
+
+export type AdminPartnerInput = {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  suburb: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  business_name: string;
+  abn: string;
+  business_category: string;
+  business_type: PartnerBusinessType;
+  user_role: UserRole;
+  is_verified: boolean;
+  date_of_birth: string;
+};

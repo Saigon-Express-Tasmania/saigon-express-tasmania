@@ -28,6 +28,9 @@ create table public.user_profiles (
   state text,
   postal_code text,
   country text default 'AU',
+  business_name text,
+  abn text,
+  business_category text,
   avatar_url text,
   user_role public.user_role not null default 'user',
   business_type public.business_type not null default 'personal',
@@ -88,23 +91,71 @@ end;
 $$;
 comment on function public.sync_auth_user_role_metadata(uuid, public.user_role) is
   'Writes user_role into auth.users app_metadata and user_metadata (JWT claims).';
--- New auth user → profile row + metadata
+-- New auth user → profile row populated from signup metadata + role sync
 create or replace function public.handle_new_auth_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public, auth
 as $$
+declare
+  meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
+  profile_business_type public.business_type := 'personal'::public.business_type;
+  meta_business_type text;
 begin
-  insert into public.user_profiles (id, email, user_role)
+  meta_business_type := nullif(trim(meta ->> 'business_type'), '');
+
+  if meta_business_type is not null
+    and meta_business_type in ('personal', 'wholesale', 'warehouse', 'franchise')
+  then
+    profile_business_type := meta_business_type::public.business_type;
+  end if;
+
+  insert into public.user_profiles (
+    id,
+    email,
+    user_role,
+    first_name,
+    last_name,
+    phone,
+    address_line1,
+    business_name,
+    abn,
+    business_category,
+    business_type
+  )
   values (
     new.id,
     lower(new.email),
-    'user'::public.user_role
+    'user'::public.user_role,
+    nullif(trim(meta ->> 'first_name'), ''),
+    nullif(trim(meta ->> 'last_name'), ''),
+    nullif(trim(meta ->> 'phone'), ''),
+    nullif(trim(meta ->> 'address_line1'), ''),
+    nullif(trim(meta ->> 'business_name'), ''),
+    nullif(trim(meta ->> 'abn'), ''),
+    nullif(trim(meta ->> 'business_category'), ''),
+    profile_business_type
   )
   on conflict (id) do update
   set
     email = excluded.email,
+    first_name = coalesce(excluded.first_name, public.user_profiles.first_name),
+    last_name = coalesce(excluded.last_name, public.user_profiles.last_name),
+    phone = coalesce(excluded.phone, public.user_profiles.phone),
+    address_line1 = coalesce(excluded.address_line1, public.user_profiles.address_line1),
+    business_name = coalesce(excluded.business_name, public.user_profiles.business_name),
+    abn = coalesce(excluded.abn, public.user_profiles.abn),
+    business_category = coalesce(
+      excluded.business_category,
+      public.user_profiles.business_category
+    ),
+    business_type = case
+      when excluded.business_type = 'personal'::public.business_type
+        and public.user_profiles.business_type <> 'personal'::public.business_type
+      then public.user_profiles.business_type
+      else excluded.business_type
+    end,
     updated_at = now();
 
   perform public.sync_auth_user_role_metadata(new.id, 'user'::public.user_role);
@@ -112,6 +163,8 @@ begin
   return new;
 end;
 $$;
+comment on function public.handle_new_auth_user() is
+  'Creates user_profiles from auth.users signup metadata (business/contact fields).';
 create trigger on_auth_user_created
   after insert on auth.users
   for each row
@@ -212,15 +265,20 @@ language plpgsql
 as $$
 begin
   if new.user_role is distinct from old.user_role then
-    if auth.role() is distinct from 'service_role' and not public.is_admin() then
-      raise exception 'Only admins can change user_role'
-        using errcode = '42501';
+    -- service_role and JWT admins (public.is_admin) may change user_role
+    if auth.role() = 'service_role' or public.is_admin() then
+      return new;
     end if;
+
+    raise exception 'Only admins can change user_role'
+      using errcode = '42501';
   end if;
 
   return new;
 end;
 $$;
+comment on function public.enforce_user_role_change_policy() is
+  'user_role may be changed by service_role or users whose JWT role is admin (public.is_admin).';
 create trigger user_profiles_enforce_role_change
   before update of user_role on public.user_profiles
   for each row

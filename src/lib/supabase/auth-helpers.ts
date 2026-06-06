@@ -5,17 +5,27 @@ import type { BusinessType } from "@/types/UserProfile";
 
 export type WholesaleMemberMetadata = {
   business_name: string;
+  business_type: BusinessType;
+  first_name: string;
+  last_name: string | null;
+  contact_name: string;
+  phone?: string;
+  address_line1?: string;
   abn?: string;
   business_category?: string;
-  portal_type: "wholesale" | "warehouse";
 };
 
-export type WholesaleMemberRegistration = WholesaleMemberMetadata & {
+/** Form payload for wholesale/warehouse member registration. */
+export type WholesaleMemberRegistration = {
+  business_name: string;
+  contactName: string;
   email: string;
   password: string;
-  contactName: string;
   phone?: string;
+  abn?: string;
+  business_category?: string;
   address?: string;
+  business_type: Extract<BusinessType, "wholesale" | "warehouse">;
 };
 
 export function splitContactName(contactName: string): {
@@ -135,24 +145,52 @@ export async function signOut(): Promise<void> {
   }
 }
 
-export async function registerWholesaleMemberApplication(
+export type WholesaleRegistrationResult = {
+  userId: string;
+};
+
+function buildWholesaleMemberAuthMetadata(
   input: WholesaleMemberRegistration,
-): Promise<void> {
+): Record<string, unknown> {
   const { first_name, last_name } = splitContactName(input.contactName);
-  const businessType = input.portal_type as BusinessType;
 
   const metadata: Record<string, unknown> = {
-    business_name: input.business_name,
-    portal_type: input.portal_type,
+    business_name: input.business_name.trim(),
+    business_type: input.business_type,
+    first_name,
+    last_name,
+    contact_name: input.contactName.trim(),
   };
 
-  if (input.abn) metadata.abn = input.abn;
-  if (input.business_category) metadata.business_category = input.business_category;
+  const phone = input.phone?.trim();
+  if (phone) metadata.phone = phone;
+
+  const address = input.address?.trim();
+  if (address) metadata.address_line1 = address;
+
+  const abn = input.abn?.trim();
+  if (abn) metadata.abn = abn;
+
+  const businessCategory = input.business_category?.trim();
+  if (businessCategory) metadata.business_category = businessCategory;
+
+  return metadata;
+}
+
+export async function registerWholesaleMemberApplication(
+  input: WholesaleMemberRegistration,
+): Promise<WholesaleRegistrationResult> {
+  const { first_name, last_name } = splitContactName(input.contactName);
+  const businessType = input.business_type as BusinessType;
+
+  const metadata = buildWholesaleMemberAuthMetadata(input);
 
   const { session } = await signUpWithEmail(input.email, input.password, metadata);
 
   if (!session?.user) {
-    return;
+    throw new Error(
+      "Registration could not be completed. Please try again or contact support.",
+    );
   }
 
   await updateUserProfile(session.user.id, {
@@ -160,7 +198,14 @@ export async function registerWholesaleMemberApplication(
     last_name,
     phone: input.phone ?? null,
     address_line1: input.address ?? null,
-    address_line2: input.business_name,
+    business_name: input.business_name,
+    abn: input.abn ?? null,
+    business_category: input.business_category ?? null,
     business_type: businessType,
   });
+
+  // Sign out so the member cannot access the portal until an admin confirms them.
+  await signOut();
+
+  return { userId: session.user.id };
 }

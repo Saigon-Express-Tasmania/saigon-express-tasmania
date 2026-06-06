@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { SalesOrderModeSwitch } from "@/components/layout/SalesOrderModeSwitch";
+import { useSalesOrderMode } from "@/contexts/SalesOrderModeContext";
 import { cn } from "@/lib/utils";
 import {
   Archive,
@@ -17,6 +19,7 @@ import {
   Star,
   Tags,
   Truck,
+  UserSquare2Icon,
   Utensils,
   type LucideIcon,
 } from "lucide-react";
@@ -30,6 +33,7 @@ interface NavItem {
   href: string;
   icon: LucideIcon;
   group?: string;
+  isOrderPage?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -48,36 +52,48 @@ const navItems: NavItem[] = [
     href: "/sales/orders/catering",
     icon: ShoppingCart,
     group: "Catering",
+    isOrderPage: true,
   },
   {
     title: "Draft Orders",
     href: "/sales/draft-orders/catering",
     icon: FilePen,
     group: "Catering",
+    isOrderPage: true,
   },
   {
     title: "Archived Orders",
     href: "/sales/archived-orders/wholesale",
     icon: Archive,
     group: "Catering",
+    isOrderPage: true,
+  },
+  {
+    title: "Partners",
+    href: "/partners/wholesale",
+    icon: UserSquare2Icon,
+    group: "Wholesale",
   },
   {
     title: "Orders",
     href: "/sales/orders/wholesale",
     icon: ShoppingCart,
     group: "Wholesale",
+    isOrderPage: true,
   },
   {
     title: "Draft Orders",
     href: "/sales/draft-orders/wholesale",
     icon: FilePen,
     group: "Wholesale",
+    isOrderPage: true,
   },
   {
     title: "Archived Orders",
     href: "/sales/archived-orders/catering",
     icon: Archive,
     group: "Wholesale",
+    isOrderPage: true,
   },
   {
     title: "Categories",
@@ -183,26 +199,39 @@ function buildNavSections(items: NavItem[]): NavSection[] {
   return sections;
 }
 
+function getNavTitle(item: NavItem, testMode: boolean): string {
+  if (testMode && item.isOrderPage) {
+    return `${item.title} Test`;
+  }
+  return item.title;
+}
+
 function NavItemLink({
   item,
   compact,
+  testMode,
 }: {
   item: NavItem;
   compact: boolean;
+  testMode: boolean;
 }) {
+  const title = getNavTitle(item, testMode);
+
   return (
     <NavLink
       to={item.href}
       className={navLinkClassName(compact)}
-      title={compact ? item.title : undefined}
+      title={compact ? title : undefined}
     >
       <item.icon className="h-5 w-5 shrink-0" />
-      {!compact && <span>{item.title}</span>}
+      {!compact && <span>{title}</span>}
     </NavLink>
   );
 }
 
 export function Sidebar() {
+  const { mode } = useSalesOrderMode();
+  const testMode = mode === 'test';
   const [compact, setCompact] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_COMPACT_KEY) === "true";
@@ -248,11 +277,16 @@ export function Sidebar() {
           compact ? "p-2 pt-3" : "p-4",
         )}
       >
-        <NavItemLink item={dashboard} compact={compact} />
+        <NavItemLink item={dashboard} compact={compact} testMode={testMode} />
 
         {sections.map((section) =>
           section.kind === "link" ? (
-            <NavItemLink key={section.item.href} item={section.item} compact={compact} />
+            <NavItemLink
+              key={section.item.href}
+              item={section.item}
+              compact={compact}
+              testMode={testMode}
+            />
           ) : (
             <div key={section.name} className="space-y-1">
               {!compact && (
@@ -261,36 +295,46 @@ export function Sidebar() {
                 </p>
               )}
               {section.items.map((item) => (
-                <NavItemLink key={item.href} item={item} compact={compact} />
+                <NavItemLink
+                  key={item.href}
+                  item={item}
+                  compact={compact}
+                  testMode={testMode}
+                />
               ))}
             </div>
           ),
         )}
       </nav>
 
-      <div className={cn("shrink-0 border-t", compact ? "p-2" : "p-4")}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={cn("w-full", compact ? "h-9 px-0" : "justify-start")}
-          onClick={toggleCompact}
-          title={compact ? "Expand sidebar" : "Compact sidebar"}
-        >
-          {compact ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <>
-              <ChevronLeft className="h-4 w-4" />
-              <span>Compact</span>
-            </>
-          )}
-        </Button>
+      <div className={cn("shrink-0 border-t", compact ? "p-2" : "p-4", "w-full")}>        
+        <div className="mb-2 flex justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(compact ? "h-9 px-0" : "justify-start")}
+            onClick={toggleCompact}
+            title={compact ? "Expand sidebar" : "Compact sidebar"}
+          >
+            {compact ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <>
+                <ChevronLeft className="h-4 w-4" />
+                <span>Compact</span>
+              </>
+            )}
+          </Button>
+          <div className="mb-2">
+            <SalesOrderModeSwitch />
+          </div>
+        </div>
         {!compact && (
           <p className="mt-3 text-xs text-muted-foreground">
             © 2026 CalyxGuru Admin
           </p>
-        )}
+        )}        
       </div>
     </div>
   );

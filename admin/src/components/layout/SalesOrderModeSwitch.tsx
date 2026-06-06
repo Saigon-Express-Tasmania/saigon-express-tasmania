@@ -7,20 +7,13 @@ const MODES: { value: SalesOrderMode; label: string; compactLabel: string }[] = 
   { value: 'test', label: 'Test', compactLabel: 'T' },
 ];
 
-export function SalesOrderModeSwitch({
-  compact = false,
-  className,
-}: {
-  compact?: boolean;
-  className?: string;
-}) {
+export function SalesOrderModeSwitch({ className }: { className?: string }) {
   const { mode, setMode } = useSalesOrderMode();
 
   return (
     <div
       className={cn(
-        'flex rounded-lg border bg-background p-0.5',
-        compact ? 'w-full justify-center' : 'w-full',
+        'inline-flex rounded border bg-background p-px shadow-sm',
         className,
       )}
       role="group"
@@ -32,14 +25,11 @@ export function SalesOrderModeSwitch({
           type="button"
           size="sm"
           variant={mode === option.value ? 'default' : 'ghost'}
-          className={cn(
-            'h-7 flex-1 px-2 text-xs',
-            compact && 'min-w-0',
-          )}
+          className="h-5 min-w-5 px-1 text-[10px] leading-none font-medium"
           onClick={() => setMode(option.value)}
-          title={compact ? `${option.label} orders` : undefined}
+          title={`${option.label} orders`}
         >
-          {compact ? option.compactLabel : option.label}
+          {option.compactLabel}
         </Button>
       ))}
     </div>

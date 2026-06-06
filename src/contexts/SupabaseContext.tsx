@@ -27,7 +27,7 @@ export type SupabaseContextValue = {
   profile: UserProfile | null;
   isLoading: boolean;
   isSignedIn: boolean;
-  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<UserProfile>;
   signUpWithPassword: (
     email: string,
     password: string,
@@ -122,6 +122,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
     const row = await fetchUserProfile(nextSession.user.id);
     setProfile(row);
+    if (!row) {
+      throw new Error("Unable to load your profile. Please try again.");
+    }
+    return row;
   }, []);
 
   const signUpWithPassword = useCallback(

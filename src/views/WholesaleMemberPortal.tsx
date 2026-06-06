@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
@@ -13,6 +13,16 @@ import {
   registerWholesaleMemberApplication,
   useSupabase,
 } from "@/hooks/useSupabase";
+import {
+  buildWholesaleRegistrationStatus,
+  clearWholesaleRegistrationStatus,
+  getWholesaleRegistrationStatus,
+  isWholesaleMemberPendingConfirmation,
+  resolveWholesaleRegistrationStatus,
+  saveWholesaleRegistrationStatus,
+  WHOLESALE_REGISTRATION_MESSAGES,
+  type WholesaleRegistrationStatus,
+} from "@/lib/wholesale-registration-status";
 import { toast } from "sonner";
 import {
   Eye,
@@ -26,6 +36,7 @@ import {
   User,
   FileText,
   ArrowRight,
+  X,
 } from "lucide-react";
 
 type LoginFieldErrors = {
@@ -127,11 +138,32 @@ function WholesaleMemberPortalContent() {
     | ""
   >("");
 
-  const { signInWithPassword } = useSupabase();
+  const { signInWithPassword, signOut, profile, isSignedIn } = useSupabase();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginErrors, setLoginErrors] = useState<LoginFieldErrors>({});
   const [registerErrors, setRegisterErrors] = useState<RegisterFieldErrors>({});
+  const [registrationStatus, setRegistrationStatus] =
+    useState<WholesaleRegistrationStatus | null>(null);
+
+  useEffect(() => {
+    const stored = getWholesaleRegistrationStatus();
+    setRegistrationStatus(
+      resolveWholesaleRegistrationStatus(stored, profile),
+    );
+  }, [profile]);
+
+  useEffect(() => {
+    if (isSignedIn && profile?.is_verified) {
+      clearWholesaleRegistrationStatus();
+      setRegistrationStatus(null);
+    }
+  }, [isSignedIn, profile?.is_verified]);
+
+  const handleDismissRegistrationStatus = () => {
+    clearWholesaleRegistrationStatus();
+    setRegistrationStatus(null);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +176,12 @@ function WholesaleMemberPortalContent() {
 
     setIsSigningIn(true);
     try {
-      await signInWithPassword(loginEmail, loginPassword);
+      const signedInProfile = await signInWithPassword(loginEmail, loginPassword);
+      if (isWholesaleMemberPendingConfirmation(signedInProfile)) {
+        await signOut();
+        toast.error(WHOLESALE_REGISTRATION_MESSAGES.login_blocked);
+        return;
+      }
       toast.success("Welcome back! Redirecting to your account...");
       router.push("/wholesale-member-dashboard");
     } catch (error) {
@@ -185,11 +222,18 @@ function WholesaleMemberPortalContent() {
         business_category: regBusinessType || undefined,
         address: regAddress || undefined,
         password: regPassword,
-        portal_type: portalType,
+        business_type: portalType,
       });
-      toast.success(
-        "Registration submitted! We'll review your application and send your login details.",
-      );
+
+      const status = buildWholesaleRegistrationStatus({
+        email: regEmail,
+        businessName: regBusinessName,
+        businessType: portalType,
+      });
+      saveWholesaleRegistrationStatus(status);
+      setRegistrationStatus(status);
+
+      toast.success(status.message);
       setRegisterErrors({});
       setMode("login");
     } catch (error) {
@@ -251,6 +295,30 @@ function WholesaleMemberPortalContent() {
           </h1>
           <p className="text-sm text-gray-500">Wholesale & Warehouse Members</p>
         </div>
+
+        {registrationStatus && (
+          <div className="relative mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 pr-10 text-sm text-amber-900">
+            <button
+              type="button"
+              onClick={handleDismissRegistrationStatus}
+              className="absolute top-3 right-3 rounded-md p-0.5 text-amber-700/70 hover:bg-amber-100 hover:text-amber-900 transition-colors"
+              aria-label="Dismiss registration message"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <p className="font-semibold">Awaiting confirmation</p>
+            <p className="mt-1 leading-relaxed">{registrationStatus.message}</p>
+            <p className="mt-2 text-xs opacity-80">
+              {registrationStatus.businessName} · {registrationStatus.email} ·{" "}
+              {registrationStatus.businessType === "wholesale"
+                ? "Wholesale"
+                : "Warehouse"}
+            </p>
+            <p className="mt-3 text-xs opacity-70 leading-relaxed">
+              Not your account? You can ignore this message or dismiss it.
+            </p>
+          </div>
+        )}
 
         <div className="flex rounded-xl bg-gray-100 p-1 mb-7">
           {(["login", "register"] as const).map((tab) => (
@@ -677,9 +745,9 @@ function WholesaleMemberPortalContent() {
             </div>
 
             <p className="text-xs text-gray-400 leading-relaxed">
-              Applications are reviewed within 1–2 business days. Once approved,
-              you&apos;ll receive an email confirmation and can log in to view
-              pricing and place orders.
+              Registrations are confirmed by our team within 1–2 business days.
+              No confirmation email is sent — you can sign in once your account
+              has been confirmed.
             </p>
 
             <Button

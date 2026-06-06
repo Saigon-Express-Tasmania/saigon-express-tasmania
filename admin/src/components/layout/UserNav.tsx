@@ -11,7 +11,6 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { LogOut, Settings, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { SalesOrderModeSwitch } from './SalesOrderModeSwitch';
 
 export function UserNav() {
   const { user, signOut } = useSupabaseAuth();
@@ -55,9 +54,7 @@ export function UserNav() {
     'User';
 
   return (
-    <div className="flex items-center gap-3">
-      <SalesOrderModeSwitch className="w-28" />
-      <DropdownMenu>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -104,6 +101,5 @@ export function UserNav() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-    </div>
   );
 }
