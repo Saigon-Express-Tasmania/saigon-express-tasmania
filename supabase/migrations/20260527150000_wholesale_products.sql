@@ -1,4 +1,4 @@
--- Wholesale catalogue items (public wholesale shop /wholesale-shop).
+-- Wholesale catalogue items (public wholesale shop /wholesale/shop).
 
 create table public.wholesale_products (
   id bigint primary key,
@@ -17,7 +17,7 @@ create table public.wholesale_products (
 );
 
 comment on table public.wholesale_products is
-  'Wholesale products shown on the public /wholesale-shop catalogue.';
+  'Wholesale products shown on the public /wholesale/shop catalogue.';
 
 create index wholesale_products_is_available_category_idx
   on public.wholesale_products (is_available, category, id);

@@ -6,6 +6,8 @@
 create type public.user_role as enum ('none', 'user', 'admin', 'partner');
 comment on type public.user_role is
   'Application role: none (no access), user (default), admin, partner.';
+
+create type public.business_type as enum ('personal', 'wholesale', 'warehouse', 'franchise');
 -- ---------------------------------------------------------------------------
 -- Profiles table
 -- ---------------------------------------------------------------------------
@@ -28,6 +30,8 @@ create table public.user_profiles (
   country text default 'AU',
   avatar_url text,
   user_role public.user_role not null default 'user',
+  business_type public.business_type not null default 'personal',
+  is_verified boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint user_profiles_email_lowercase check (
@@ -221,6 +225,37 @@ create trigger user_profiles_enforce_role_change
   before update of user_role on public.user_profiles
   for each row
   execute function public.enforce_user_role_change_policy();
+
+create or replace function public.enforce_is_verified_change_policy()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.is_verified is distinct from old.is_verified then
+    -- service_role and JWT admins (public.is_admin) may approve/revoke verification
+    if auth.role() = 'service_role' or public.is_admin() then
+      return new;
+    end if;
+
+    raise exception 'Only admins can change is_verified'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.enforce_is_verified_change_policy() is
+  'is_verified may be changed by service_role or users whose JWT role is admin (public.is_admin).';
+
+drop trigger if exists user_profiles_enforce_is_verified_change on public.user_profiles;
+
+create trigger user_profiles_enforce_is_verified_change
+  before update of is_verified on public.user_profiles
+  for each row
+  execute function public.enforce_is_verified_change_policy();
+
+
 -- ---------------------------------------------------------------------------
 -- Row Level Security
 -- ---------------------------------------------------------------------------

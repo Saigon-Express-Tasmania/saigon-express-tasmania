@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import { FloatingWidgets } from "@/components/FloatingWidgets";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
+import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import type { SiteContentSnapshot, StoreLocation } from "@/types";
 import MainHeader from "@/components/MainHeader";
 import MainFooter from "@/components/MainFooter";
@@ -24,18 +25,20 @@ export function Providers({
 }: ProvidersProps) {
   return (
     <SiteContentProvider initialData={siteContent}>
-      <ThemeProvider defaultTheme="light">
-        <CartProvider>
-          <TooltipProvider>
-            <MainHeader storeLocations={storeLocations} />
-            {children}
-            <MainFooter />
-            <CartDrawer />
-            <FloatingWidgets />
-            <Toaster />
-          </TooltipProvider>
-        </CartProvider>
-      </ThemeProvider>
+      <SupabaseProvider>
+        <ThemeProvider defaultTheme="light">
+          <CartProvider>
+            <TooltipProvider>
+              <MainHeader storeLocations={storeLocations} />
+              {children}
+              <MainFooter />
+              <CartDrawer />
+              <FloatingWidgets />
+              <Toaster />
+            </TooltipProvider>
+          </CartProvider>
+        </ThemeProvider>
+      </SupabaseProvider>
     </SiteContentProvider>
   );
 }

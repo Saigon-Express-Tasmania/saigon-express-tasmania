@@ -448,7 +448,7 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
                 </span>
               ))}
             </div>
-            <Link href="/wholesale-shop" className="btn-red">
+            <Link href="/wholesale/shop" className="btn-red">
               {t("wholesale.cta")} <ChevronRight size={16} />
             </Link>
           </div>
@@ -530,7 +530,7 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
             {t("partner.description")}
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/wholesale-shop" className="btn-outline-white">
+            <Link href="/wholesale/shop" className="btn-outline-white">
               {t("partner.wholesale")}
             </Link>
             <Link href="/franchise" className="btn-outline-white">

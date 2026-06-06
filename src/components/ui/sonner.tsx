@@ -18,6 +18,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "animate-toast-slide-down",
+          error: "toast-error",
+          success: "toast-success",
         },
       }}
       {...props}

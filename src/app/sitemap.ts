@@ -15,7 +15,7 @@ const STATIC_PATHS = [
   "/promotions",
   "/franchise",
   "/careers",
-  "/wholesale-shop",
+  "/wholesale/shop",
   "/get-the-app",
 ] as const;
 

@@ -31,3 +31,9 @@ export {
 } from "./WholesaleProduct";
 export type { SiteContentSnapshot, LocalizationValue } from "./SiteContent";
 export type { SiteCategory } from "./Category";
+export type {
+  BusinessType,
+  UserProfile,
+  UserProfileSelfUpdate,
+  UserRole,
+} from "./UserProfile";

@@ -18,7 +18,7 @@ export default function MainFooter() {
     { href: "/menu", label: t("footer.quickLinks.ourFood") },
     { href: "/our-story", label: t("footer.quickLinks.ourStory") },
     { href: "/catering", label: t("footer.quickLinks.catering") },
-    { href: "/wholesale-shop", label: t("footer.quickLinks.wholesaleShop") },
+    { href: "/wholesale", label: t("footer.quickLinks.wholesaleShop") },
     { href: "/franchise", label: t("footer.quickLinks.franchise") },
     { href: "/careers", label: t("footer.quickLinks.careers") },
     { href: "/faq", label: t("footer.quickLinks.faq") },

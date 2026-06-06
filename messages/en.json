@@ -3,7 +3,7 @@
     "home": "Home",
     "our_food": "Our Food",
     "our_story": "Our Story",
-    "wholesale": "Wholesale Shop",
+    "wholesale": "Wholesale",
     "franchise": "Franchise",
     "faq": "FAQ",
     "find_us": "Find Us",
@@ -1016,7 +1016,7 @@
           },
           {
             "q": "How do I place a wholesale order?",
-            "a": "Once your wholesale account is approved, log in to the Wholesale Portal at saigonexpress.com.au/wholesale-shop. Browse the full product catalogue, add items to your cart, and proceed to checkout. You can pay securely by credit/debit card or Apple Pay. Orders placed before 12pm AEST on business days are typically dispatched the same day; orders after 12pm are dispatched the following business day. You will receive an automated order confirmation and a PDF invoice by email immediately after checkout."
+            "a": "Once your wholesale account is approved, log in to the Wholesale Portal at saigonexpress.com.au/wholesale/shop. Browse the full product catalogue, add items to your cart, and proceed to checkout. You can pay securely by credit/debit card or Apple Pay. Orders placed before 12pm AEST on business days are typically dispatched the same day; orders after 12pm are dispatched the following business day. You will receive an automated order confirmation and a PDF invoice by email immediately after checkout."
           },
           {
             "q": "What are the requirements to place a wholesale order?",

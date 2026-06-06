@@ -137,7 +137,7 @@ export default function Wholesale({
               {t("hero.ctaPrimary")} <ChevronRight size={15} />
             </a>
             <Link
-              href="/wholesale-shop"
+              href="/wholesale/shop"
               className="border border-white text-white px-6 py-3 font-semibold text-sm hover:bg-white hover:text-brand-dark transition-colors cursor-pointer"
             >
               {t("hero.ctaSecondary")}
