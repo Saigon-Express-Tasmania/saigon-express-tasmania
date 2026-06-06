@@ -212,7 +212,7 @@ function WholesaleMemberPortalContent() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: SubmitEvent) => {
     e.preventDefault();
     const errors = validateRegisterFields(
       regBusinessName,

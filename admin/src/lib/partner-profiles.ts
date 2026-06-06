@@ -72,6 +72,12 @@ export async function confirmPartnerProfile(
   partner: Pick<UserProfile, 'id' | 'business_type'>,
 ): Promise<void> {
   await updateUserMetadata(partner.id, getPartnerConfirmUpdates(partner.business_type));
+
+  const { error: syncError } = await supabase.rpc('sync_user_auth_metadata', {
+    target_user_id: partner.id,
+  });
+
+  if (syncError) throw syncError;
 }
 
 export async function fetchPendingPartners(input: {

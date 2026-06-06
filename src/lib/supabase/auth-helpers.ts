@@ -159,7 +159,7 @@ function buildWholesaleMemberAuthMetadata(
     business_type: input.business_type,
     first_name,
     last_name,
-    contact_name: input.contactName.trim(),
+    contact_name: input.contactName.trim()
   };
 
   const phone = input.phone?.trim();

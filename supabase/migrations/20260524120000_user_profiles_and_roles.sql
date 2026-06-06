@@ -171,14 +171,16 @@ stable
 security invoker
 set search_path = public
 as $$
-  select coalesce(
-    nullif(auth.jwt() -> 'app_metadata' ->> 'user_role', ''),
-    nullif(auth.jwt() -> 'user_metadata' ->> 'user_role', ''),
-    'none'
-  );
+  select case
+    when coalesce(nullif(auth.jwt() -> 'app_metadata' ->> 'user_role', ''), 'none') = 'admin'
+      then 'admin'
+    when coalesce((auth.jwt() -> 'app_metadata' ->> 'is_verified')::boolean, false)
+      then coalesce(nullif(auth.jwt() -> 'app_metadata' ->> 'user_role', ''), 'none')
+    else 'none'
+  end;
 $$;
 comment on function public.auth_user_role() is
-  'Role from JWT app_metadata/user_metadata; defaults to none if missing.';
+  'Role from JWT app_metadata; requires is_verified=true (admin role exempt).';
 create or replace function public.is_admin()
 returns boolean
 language sql
