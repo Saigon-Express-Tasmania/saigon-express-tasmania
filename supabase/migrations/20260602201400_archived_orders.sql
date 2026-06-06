@@ -3,6 +3,7 @@
 create table public.archived_orders (
   id bigint generated always as identity primary key,
   original_order_id bigint references public.orders (id) on delete set null,
+  order_type public.order_type not null,
   customer_name text,
   customer_email text,
   customer_phone text,
@@ -18,11 +19,6 @@ create table public.archived_orders (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
-create index archived_orders_original_order_id_idx on public.archived_orders (original_order_id);
-create index archived_orders_store_id_idx on public.archived_orders (store_id);
-create index archived_orders_archived_at_idx on public.archived_orders (archived_at);
-create index archived_orders_customer_email_idx on public.archived_orders (customer_email) where customer_email is not null;
 
 comment on table public.archived_orders is
   'Historical order records moved out of active orders.';

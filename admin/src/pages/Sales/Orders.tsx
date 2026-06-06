@@ -40,8 +40,9 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useSalesOrderType } from './useSalesOrderType';
 
 type OrderStatus =
   | 'pending'
@@ -204,6 +205,7 @@ function parseOrderItems(input: string): OrderItemForm[] {
 export function Orders() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = profile?.user_role === 'admin';
+  const { orderType, pageTitle, tableTitle, redirectTo } = useSalesOrderType('orders', 'Orders');
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,12 +220,15 @@ export function Orders() {
   const [deleteTarget, setDeleteTarget] = useState<OrderRow | null>(null);
 
   const loadOrders = useCallback(async () => {
+    if (!orderType) return;
+
     try {
       setError(null);
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('orders')
         .select(ORDER_COLUMNS)
+        .eq('order_type', orderType)
         .order('id', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -235,15 +240,15 @@ export function Orders() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [orderType]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && orderType) {
       void loadOrders();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadOrders]);
+  }, [isAdmin, loadOrders, orderType]);
 
   const filteredOrders = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -285,6 +290,8 @@ export function Orders() {
   };
 
   const handleSave = async () => {
+    if (!orderType) return;
+
     if (!form.customer_name.trim()) {
       toast.error('Customer name is required.');
       return;
@@ -318,6 +325,7 @@ export function Orders() {
     setSaving(true);
     try {
       const orderPayload = {
+        order_type: orderType,
         customer_name: form.customer_name.trim(),
         customer_email: form.customer_email.trim(),
         customer_phone: form.customer_phone.trim(),
@@ -403,9 +411,11 @@ export function Orders() {
     }
   };
 
+  if (redirectTo) return <Navigate to={redirectTo} replace />;
+
   if (profileLoading) {
     return (
-      <DashboardLayout title="Orders">
+      <DashboardLayout title={pageTitle}>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -415,7 +425,7 @@ export function Orders() {
 
   if (!isAdmin) {
     return (
-      <DashboardLayout title="Orders">
+      <DashboardLayout title={pageTitle}>
         <Card>
           <CardHeader>
             <CardTitle>Admin access required</CardTitle>
@@ -427,12 +437,12 @@ export function Orders() {
   }
 
   return (
-    <DashboardLayout title="Orders">
+    <DashboardLayout title={pageTitle}>
       <div className="space-y-6">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
-              <CardTitle>Orders</CardTitle>
+              <CardTitle>{tableTitle}</CardTitle>
               <CardDescription>Manage confirmed and historical orders.</CardDescription>
             </div>
             <Button onClick={openCreate} disabled={loading}>
@@ -525,13 +535,6 @@ export function Orders() {
           </CardContent>
         </Card>
       </div>
-
-      <Link
-        to="/sales/test-orders"
-        className="inline-block text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline mt-4"
-      >
-        Test Mode
-      </Link>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

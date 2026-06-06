@@ -2,6 +2,7 @@
 
 create table public.test_orders (
   id bigint generated always as identity primary key,
+  order_type public.order_type not null,
   customer_name text not null,
   customer_email text not null,
   customer_phone text not null,
@@ -36,6 +37,7 @@ create unique index test_orders_stripe_checkout_session_id_uidx
   on public.test_orders (stripe_checkout_session_id)
   where stripe_checkout_session_id is not null;
 create index test_order_items_order_id_idx on public.test_order_items (order_id);
+create index test_orders_order_type_idx on public.test_orders (order_type);
 
 create or replace function public.create_paid_test_order_with_items(
   p_customer_name text,

@@ -30,7 +30,9 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { Loader2, Pencil, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useSalesOrderType } from './useSalesOrderType';
 
 type OrderStatus =
   | 'pending'
@@ -175,6 +177,10 @@ function parseArchivedItems(itemsJson: string): ArchivedOrderItem[] {
 export function ArchivedOrders() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = profile?.user_role === 'admin';
+  const { orderType, pageTitle, tableTitle, redirectTo } = useSalesOrderType(
+    'archived-orders',
+    'Archived Orders',
+  );
 
   const [rows, setRows] = useState<ArchivedOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,12 +193,15 @@ export function ArchivedOrders() {
   const [form, setForm] = useState<ArchivedOrderForm>(emptyArchivedOrderForm());
 
   const loadRows = useCallback(async () => {
+    if (!orderType) return;
+
     try {
       setError(null);
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('archived_orders')
         .select(ARCHIVED_ORDER_COLUMNS)
+        .eq('order_type', orderType)
         .order('id', { ascending: false });
       if (fetchError) throw fetchError;
       setRows((data ?? []) as ArchivedOrderRow[]);
@@ -203,15 +212,15 @@ export function ArchivedOrders() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [orderType]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && orderType) {
       void loadRows();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadRows]);
+  }, [isAdmin, loadRows, orderType]);
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -240,6 +249,8 @@ export function ArchivedOrders() {
   };
 
   const handleSave = async () => {
+    if (!orderType) return;
+
     const parsedTotal = Number(form.total);
     if (!Number.isFinite(parsedTotal) || parsedTotal < 0) {
       toast.error('Total must be a valid non-negative number.');
@@ -257,6 +268,7 @@ export function ArchivedOrders() {
     setSaving(true);
     try {
       const payload = {
+        order_type: orderType,
         original_order_id: form.original_order_id,
         customer_name: form.customer_name.trim() || null,
         customer_email: form.customer_email.trim() || null,
@@ -301,9 +313,11 @@ export function ArchivedOrders() {
     }
   };
 
+  if (redirectTo) return <Navigate to={redirectTo} replace />;
+
   if (profileLoading) {
     return (
-      <DashboardLayout title="Archived Orders">
+      <DashboardLayout title={pageTitle}>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -313,7 +327,7 @@ export function ArchivedOrders() {
 
   if (!isAdmin) {
     return (
-      <DashboardLayout title="Archived Orders">
+      <DashboardLayout title={pageTitle}>
         <Card>
           <CardHeader>
             <CardTitle>Admin access required</CardTitle>
@@ -325,12 +339,12 @@ export function ArchivedOrders() {
   }
 
   return (
-    <DashboardLayout title="Archived Orders">
+    <DashboardLayout title={pageTitle}>
       <div className="space-y-6">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
-              <CardTitle>Archived Orders</CardTitle>
+              <CardTitle>{tableTitle}</CardTitle>
               <CardDescription>Read and update archived order records.</CardDescription>
             </div>
             <Button onClick={openCreate} disabled={loading}>

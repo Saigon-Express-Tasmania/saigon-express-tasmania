@@ -2,6 +2,7 @@
 
 create table public.draft_orders (
   id bigint generated always as identity primary key,
+  order_type public.order_type not null,
   customer_name text,
   customer_email text,
   customer_phone text,
@@ -18,6 +19,7 @@ create table public.draft_orders (
 create index draft_orders_store_id_idx on public.draft_orders (store_id);
 create index draft_orders_expires_at_idx on public.draft_orders (expires_at);
 create index draft_orders_customer_email_idx on public.draft_orders (customer_email) where customer_email is not null;
+create index draft_orders_order_type_idx on public.draft_orders (order_type);
 
 comment on table public.draft_orders is
   'Temporary unpaid orders saved before checkout is completed.';

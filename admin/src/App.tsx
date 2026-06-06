@@ -9,9 +9,10 @@ import { StoreLocations } from '@/pages/StoreLocations';
 import { WholesaleProducts } from '@/pages/WholesaleProducts';
 import { Categories } from '@/pages/Categories';
 import { DraftOrders } from '@/pages/Sales/DraftOrders';
-import { Orders } from '@/pages/Sales/Orders';
-import { TestOrders } from '@/pages/Sales/TestOrders';
+import { SalesOrdersPage } from '@/pages/Sales/SalesOrdersPage';
+import { RedirectTestOrdersToSalesOrders } from '@/pages/Sales/RedirectTestOrdersToSalesOrders';
 import { ArchivedOrders } from '@/pages/Sales/ArchivedOrders';
+import { SalesOrderModeProvider } from '@/contexts/SalesOrderModeContext';
 import {
   HashRouter as Router,
   Navigate,
@@ -40,6 +41,7 @@ export function App() {
 
   return (
     <Router>
+      <SalesOrderModeProvider>
       <Routes>
         {user ? (
           <>
@@ -54,10 +56,26 @@ export function App() {
             <Route path="/wholesale-products" element={<WholesaleProducts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
             <Route path="/emails" element={<Emails />} />
-            <Route path="/sales/orders" element={<Orders />} />
-            <Route path="/sales/test-orders" element={<TestOrders />} />
-            <Route path="/sales/draft-orders" element={<DraftOrders />} />
-            <Route path="/sales/archived-orders" element={<ArchivedOrders />} />
+            <Route path="/sales/orders" element={<Navigate to="/sales/orders/pickup" replace />} />
+            <Route path="/sales/orders/:orderType" element={<SalesOrdersPage />} />
+            <Route
+              path="/sales/test-orders/:orderType"
+              element={<RedirectTestOrdersToSalesOrders />}
+            />
+            <Route
+              path="/sales/test-orders"
+              element={<Navigate to="/sales/orders/pickup" replace />}
+            />
+            <Route
+              path="/sales/draft-orders"
+              element={<Navigate to="/sales/draft-orders/pickup" replace />}
+            />
+            <Route path="/sales/draft-orders/:orderType" element={<DraftOrders />} />
+            <Route
+              path="/sales/archived-orders"
+              element={<Navigate to="/sales/archived-orders/pickup" replace />}
+            />
+            <Route path="/sales/archived-orders/:orderType" element={<ArchivedOrders />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -73,6 +91,7 @@ export function App() {
           </>
         )}
       </Routes>
+      </SalesOrderModeProvider>
     </Router>
   );
 }

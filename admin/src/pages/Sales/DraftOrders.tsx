@@ -32,7 +32,9 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useSalesOrderType } from './useSalesOrderType';
 
 type DraftOrderItem = {
   menuItemId: number;
@@ -141,6 +143,10 @@ function parseDraftItems(itemsJson: string): DraftOrderItem[] {
 export function DraftOrders() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = profile?.user_role === 'admin';
+  const { orderType, pageTitle, tableTitle, redirectTo } = useSalesOrderType(
+    'draft-orders',
+    'Draft Orders',
+  );
 
   const [rows, setRows] = useState<DraftOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,12 +160,15 @@ export function DraftOrders() {
   const [deleteTarget, setDeleteTarget] = useState<DraftOrderRow | null>(null);
 
   const loadRows = useCallback(async () => {
+    if (!orderType) return;
+
     try {
       setError(null);
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('draft_orders')
         .select(DRAFT_ORDER_COLUMNS)
+        .eq('order_type', orderType)
         .order('id', { ascending: false });
       if (fetchError) throw fetchError;
       setRows((data ?? []) as DraftOrderRow[]);
@@ -170,15 +179,15 @@ export function DraftOrders() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [orderType]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && orderType) {
       void loadRows();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadRows]);
+  }, [isAdmin, loadRows, orderType]);
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -206,6 +215,8 @@ export function DraftOrders() {
   };
 
   const handleSave = async () => {
+    if (!orderType) return;
+
     if (form.total.trim()) {
       const total = Number(form.total);
       if (!Number.isFinite(total) || total < 0) {
@@ -225,6 +236,7 @@ export function DraftOrders() {
     setSaving(true);
     try {
       const payload = {
+        order_type: orderType,
         customer_name: form.customer_name.trim() || null,
         customer_email: form.customer_email.trim() || null,
         customer_phone: form.customer_phone.trim() || null,
@@ -285,9 +297,11 @@ export function DraftOrders() {
     }
   };
 
+  if (redirectTo) return <Navigate to={redirectTo} replace />;
+
   if (profileLoading) {
     return (
-      <DashboardLayout title="Draft Orders">
+      <DashboardLayout title={pageTitle}>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -297,7 +311,7 @@ export function DraftOrders() {
 
   if (!isAdmin) {
     return (
-      <DashboardLayout title="Draft Orders">
+      <DashboardLayout title={pageTitle}>
         <Card>
           <CardHeader>
             <CardTitle>Admin access required</CardTitle>
@@ -309,12 +323,12 @@ export function DraftOrders() {
   }
 
   return (
-    <DashboardLayout title="Draft Orders">
+    <DashboardLayout title={pageTitle}>
       <div className="space-y-6">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
-              <CardTitle>Draft Orders</CardTitle>
+              <CardTitle>{tableTitle}</CardTitle>
               <CardDescription>Manage unpaid or abandoned checkout drafts.</CardDescription>
             </div>
             <Button onClick={openCreate} disabled={loading}>

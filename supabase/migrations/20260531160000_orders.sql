@@ -9,10 +9,13 @@ create type public.order_status as enum (
   'cancelled'
 );
 
+create type public.order_type as enum ('delivery', 'pickup', 'catering', 'wholesale');
+
 create type public.payment_status as enum ('unpaid', 'paid', 'refunded');
 
 create table public.orders (
   id bigint generated always as identity primary key,
+  order_type public.order_type not null,
   customer_name text not null,
   customer_email text not null,
   customer_phone text not null,
@@ -47,6 +50,7 @@ create unique index orders_stripe_checkout_session_id_uidx
   on public.orders (stripe_checkout_session_id)
   where stripe_checkout_session_id is not null;
 create index order_items_order_id_idx on public.order_items (order_id);
+create index orders_order_type_idx on public.orders (order_type);
 
 create or replace function public.create_paid_order_with_items(
   p_customer_name text,
