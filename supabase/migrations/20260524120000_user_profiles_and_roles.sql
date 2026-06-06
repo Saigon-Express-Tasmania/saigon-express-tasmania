@@ -1,4 +1,4 @@
--- User profiles, roles, auth metadata sync, and JWT role helpers.
+-- User profiles, JWT role helpers, and auth signup sync.
 
 -- ---------------------------------------------------------------------------
 -- Enum
@@ -32,9 +32,7 @@ create table public.user_profiles (
   abn text,
   business_category text,
   avatar_url text,
-  user_role public.user_role not null default 'user',
   business_type public.business_type not null default 'personal',
-  is_verified boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint user_profiles_email_lowercase check (
@@ -46,8 +44,7 @@ create table public.user_profiles (
   )
 );
 comment on table public.user_profiles is
-  'Extended profile for auth.users; user_role is mirrored into auth JWT metadata.';
-create index user_profiles_user_role_idx on public.user_profiles (user_role);
+  'Extended profile for auth.users (contact, business, and address fields).';
 create index user_profiles_email_idx on public.user_profiles (email);
 -- ---------------------------------------------------------------------------
 -- updated_at
@@ -66,32 +63,8 @@ create trigger user_profiles_set_updated_at
   for each row
   execute function public.set_updated_at();
 -- ---------------------------------------------------------------------------
--- Auth metadata sync (app + user metadata for JWT claims)
+-- New auth user → profile row populated from signup metadata
 -- ---------------------------------------------------------------------------
-create or replace function public.sync_auth_user_role_metadata(
-  target_user_id uuid,
-  role public.user_role
-)
-returns void
-language plpgsql
-security definer
-set search_path = public, auth
-as $$
-declare
-  role_text text := role::text;
-begin
-  update auth.users
-  set
-    raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
-      || jsonb_build_object('user_role', role_text),
-    raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb)
-      || jsonb_build_object('user_role', role_text)
-  where id = target_user_id;
-end;
-$$;
-comment on function public.sync_auth_user_role_metadata(uuid, public.user_role) is
-  'Writes user_role into auth.users app_metadata and user_metadata (JWT claims).';
--- New auth user → profile row populated from signup metadata + role sync
 create or replace function public.handle_new_auth_user()
 returns trigger
 language plpgsql
@@ -114,7 +87,6 @@ begin
   insert into public.user_profiles (
     id,
     email,
-    user_role,
     first_name,
     last_name,
     phone,
@@ -127,7 +99,6 @@ begin
   values (
     new.id,
     lower(new.email),
-    'user'::public.user_role,
     nullif(trim(meta ->> 'first_name'), ''),
     nullif(trim(meta ->> 'last_name'), ''),
     nullif(trim(meta ->> 'phone'), ''),
@@ -158,8 +129,6 @@ begin
     end,
     updated_at = now();
 
-  perform public.sync_auth_user_role_metadata(new.id, 'user'::public.user_role);
-
   return new;
 end;
 $$;
@@ -169,25 +138,6 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row
   execute function public.handle_new_auth_user();
--- Profile role change → auth metadata
-create or replace function public.handle_user_profile_role_change()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, auth
-as $$
-begin
-  if tg_op = 'UPDATE' and new.user_role is distinct from old.user_role then
-    perform public.sync_auth_user_role_metadata(new.id, new.user_role);
-  end if;
-
-  return new;
-end;
-$$;
-create trigger on_user_profile_role_change
-  after update of user_role on public.user_profiles
-  for each row
-  execute function public.handle_user_profile_role_change();
 -- Keep profile email in sync when auth email changes
 create or replace function public.handle_auth_user_email_change()
 returns trigger
@@ -258,62 +208,6 @@ as $$
 $$;
 comment on function public.is_admin() is 'True when JWT user_role is admin.';
 comment on function public.is_partner() is 'True when JWT user_role is partner.';
--- Only admins (or service role) may change user_role via API
-create or replace function public.enforce_user_role_change_policy()
-returns trigger
-language plpgsql
-as $$
-begin
-  if new.user_role is distinct from old.user_role then
-    -- service_role and JWT admins (public.is_admin) may change user_role
-    if auth.role() = 'service_role' or public.is_admin() then
-      return new;
-    end if;
-
-    raise exception 'Only admins can change user_role'
-      using errcode = '42501';
-  end if;
-
-  return new;
-end;
-$$;
-comment on function public.enforce_user_role_change_policy() is
-  'user_role may be changed by service_role or users whose JWT role is admin (public.is_admin).';
-create trigger user_profiles_enforce_role_change
-  before update of user_role on public.user_profiles
-  for each row
-  execute function public.enforce_user_role_change_policy();
-
-create or replace function public.enforce_is_verified_change_policy()
-returns trigger
-language plpgsql
-as $$
-begin
-  if new.is_verified is distinct from old.is_verified then
-    -- service_role and JWT admins (public.is_admin) may approve/revoke verification
-    if auth.role() = 'service_role' or public.is_admin() then
-      return new;
-    end if;
-
-    raise exception 'Only admins can change is_verified'
-      using errcode = '42501';
-  end if;
-
-  return new;
-end;
-$$;
-
-comment on function public.enforce_is_verified_change_policy() is
-  'is_verified may be changed by service_role or users whose JWT role is admin (public.is_admin).';
-
-drop trigger if exists user_profiles_enforce_is_verified_change on public.user_profiles;
-
-create trigger user_profiles_enforce_is_verified_change
-  before update of is_verified on public.user_profiles
-  for each row
-  execute function public.enforce_is_verified_change_policy();
-
-
 -- ---------------------------------------------------------------------------
 -- Row Level Security
 -- ---------------------------------------------------------------------------
@@ -328,11 +222,6 @@ create policy "Admins can view all profiles"
   for select
   to authenticated
   using (public.is_admin());
-create policy "Partners can view all profiles"
-  on public.user_profiles
-  for select
-  to authenticated
-  using (public.is_partner());
 create policy "Users can update own profile"
   on public.user_profiles
   for update
@@ -355,5 +244,3 @@ grant execute on function public.auth_user_role() to anon, authenticated, servic
 grant execute on function public.is_admin() to anon, authenticated, service_role;
 grant execute on function public.is_partner() to anon, authenticated, service_role;
 grant execute on function public.is_user() to anon, authenticated, service_role;
-grant execute on function public.sync_auth_user_role_metadata(uuid, public.user_role)
-  to service_role;

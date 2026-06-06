@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { SubmitEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
@@ -17,6 +17,7 @@ import {
   buildWholesaleRegistrationStatus,
   clearWholesaleRegistrationStatus,
   getWholesaleRegistrationStatus,
+  isWholesaleMemberConfirmed,
   isWholesaleMemberPendingConfirmation,
   resolveWholesaleRegistrationStatus,
   saveWholesaleRegistrationStatus,
@@ -138,7 +139,8 @@ function WholesaleMemberPortalContent() {
     | ""
   >("");
 
-  const { signInWithPassword, signOut, profile, isSignedIn } = useSupabase();
+  const { signInWithPassword, signOut, profile, authMetadata, isSignedIn } =
+    useSupabase();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginErrors, setLoginErrors] = useState<LoginFieldErrors>({});
@@ -147,25 +149,36 @@ function WholesaleMemberPortalContent() {
     useState<WholesaleRegistrationStatus | null>(null);
 
   useEffect(() => {
-    const stored = getWholesaleRegistrationStatus();
-    setRegistrationStatus(
-      resolveWholesaleRegistrationStatus(stored, profile),
-    );
-  }, [profile]);
-
-  useEffect(() => {
-    if (isSignedIn && profile?.is_verified) {
+    if (isSignedIn && isWholesaleMemberConfirmed(profile, authMetadata)) {
       clearWholesaleRegistrationStatus();
       setRegistrationStatus(null);
+      return;
     }
-  }, [isSignedIn, profile?.is_verified]);
+
+    const stored = getWholesaleRegistrationStatus();
+    const resolved = resolveWholesaleRegistrationStatus(
+      stored,
+      profile,
+      authMetadata,
+    );
+    if (resolved) {
+      setRegistrationStatus(resolved);
+    }
+  }, [authMetadata, isSignedIn, profile]);
+
+  const restoreRegistrationStatus = () => {
+    const stored = getWholesaleRegistrationStatus();
+    if (stored) {
+      setRegistrationStatus(stored);
+    }
+  };
 
   const handleDismissRegistrationStatus = () => {
     clearWholesaleRegistrationStatus();
     setRegistrationStatus(null);
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: SubmitEvent) => {
     e.preventDefault();
     const errors = validateLoginFields(loginEmail, loginPassword);
     setLoginErrors(errors);
@@ -176,15 +189,18 @@ function WholesaleMemberPortalContent() {
 
     setIsSigningIn(true);
     try {
-      const signedInProfile = await signInWithPassword(loginEmail, loginPassword);
-      if (isWholesaleMemberPendingConfirmation(signedInProfile)) {
+      const { profile: signedInProfile, authMetadata: signedInAuth } =
+        await signInWithPassword(loginEmail, loginPassword);
+      if (isWholesaleMemberPendingConfirmation(signedInProfile, signedInAuth)) {
         await signOut();
+        restoreRegistrationStatus();
         toast.error(WHOLESALE_REGISTRATION_MESSAGES.login_blocked);
         return;
       }
       toast.success("Welcome back! Redirecting to your account...");
       router.push("/wholesale-member-dashboard");
     } catch (error) {
+      restoreRegistrationStatus();
       toast.error(
         getAuthErrorMessage(
           error,

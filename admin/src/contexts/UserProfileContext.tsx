@@ -27,6 +27,8 @@ export type UserProfileContextValue = {
 
 export const UserProfileContext = createContext<UserProfileContextValue | null>(null);
 
+type ProfileRow = Omit<UserProfile, 'user_role' | 'is_verified'>;
+
 async function resolveAvatarPreview(
   avatarPath: string | null | undefined,
   getSignedUrl: (path: string) => Promise<string>,
@@ -40,6 +42,17 @@ async function resolveAvatarPreview(
   } catch {
     return null;
   }
+}
+
+function mergeAdminProfile(
+  profile: ProfileRow,
+  metadata: { user_role: UserProfile['user_role']; is_verified: boolean } | null,
+): UserProfile {
+  return {
+    ...profile,
+    user_role: metadata?.user_role ?? 'user',
+    is_verified: metadata?.is_verified ?? false,
+  };
 }
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
@@ -71,15 +84,20 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const [{ data: profileData, error: profileError }, { data: metadataData, error: metadataError }] =
+        await Promise.all([
+          supabase.from('user_profiles').select('*').eq('id', userId).single(),
+          supabase
+            .from('user_metadata')
+            .select('user_role, is_verified')
+            .eq('id', userId)
+            .maybeSingle(),
+        ]);
 
-      if (fetchError) throw fetchError;
+      if (profileError) throw profileError;
+      if (metadataError) throw metadataError;
 
-      const row = data as UserProfile;
+      const row = mergeAdminProfile(profileData as ProfileRow, metadataData);
       setProfile(row);
       setAvatarPreviewUrl(await resolveAvatarPreview(row.avatar_url, getSignedUrl));
     } catch (err) {
@@ -112,9 +130,11 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
-        const { user_role: _role, ...safeUpdates } = updates as UserProfileUpdate & {
-          user_role?: unknown;
-        };
+        const { user_role: _role, is_verified: _verified, ...safeUpdates } =
+          updates as UserProfileUpdate & {
+            user_role?: unknown;
+            is_verified?: unknown;
+          };
 
         const { data, error: updateError } = await supabase
           .from('user_profiles')
@@ -125,7 +145,10 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
         if (updateError) throw updateError;
 
-        const row = data as UserProfile;
+        const row = mergeAdminProfile(data as ProfileRow, profile ? {
+          user_role: profile.user_role,
+          is_verified: profile.is_verified,
+        } : null);
         setProfile(row);
         if (updates.avatar_url !== undefined) {
           setAvatarPreviewUrl(await resolveAvatarPreview(row.avatar_url, getSignedUrl));
@@ -140,7 +163,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         setIsSaving(false);
       }
     },
-    [getSignedUrl, user],
+    [getSignedUrl, profile, user],
   );
 
   const value = useMemo(

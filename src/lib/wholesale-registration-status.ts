@@ -1,4 +1,4 @@
-import type { BusinessType, UserProfile } from "@/types/UserProfile";
+import type { BusinessType, UserAuthMetadata, UserProfile } from "@/types/UserProfile";
 
 const STORAGE_KEY = "saigon_wholesale_registration_status";
 
@@ -22,14 +22,34 @@ export const WHOLESALE_REGISTRATION_MESSAGES = {
     "Your account is pending administrator confirmation. Please try again once your registration has been confirmed.",
 } as const;
 
-export function isWholesaleMemberPendingConfirmation(
-  profile: Pick<UserProfile, "is_verified" | "business_type"> | null,
+export function isWholesaleMemberConfirmed(
+  profile: Pick<UserProfile, "business_type"> | null,
+  authMetadata: UserAuthMetadata,
 ): boolean {
-  if (!profile || profile.is_verified) return false;
-  return (
+  if (!profile) return false;
+
+  if (profile.business_type === "wholesale") {
+    return authMetadata.user_role === "partner" || authMetadata.is_verified;
+  }
+
+  if (profile.business_type === "warehouse") {
+    return authMetadata.is_verified;
+  }
+
+  return false;
+}
+
+export function isWholesaleMemberPendingConfirmation(
+  profile: Pick<UserProfile, "business_type"> | null,
+  authMetadata: UserAuthMetadata,
+): boolean {
+  if (!profile) return false;
+
+  const isWholesaleAccount =
     profile.business_type === "wholesale" ||
-    profile.business_type === "warehouse"
-  );
+    profile.business_type === "warehouse";
+
+  return isWholesaleAccount && !isWholesaleMemberConfirmed(profile, authMetadata);
 }
 
 export function saveWholesaleRegistrationStatus(
@@ -74,12 +94,13 @@ export function buildWholesaleRegistrationStatus(input: {
 export function resolveWholesaleRegistrationStatus(
   stored: WholesaleRegistrationStatus | null,
   profile: UserProfile | null,
+  authMetadata: UserAuthMetadata,
 ): WholesaleRegistrationStatus | null {
-  if (profile?.is_verified) {
+  if (isWholesaleMemberConfirmed(profile, authMetadata)) {
     return null;
   }
 
-  if (isWholesaleMemberPendingConfirmation(profile)) {
+  if (isWholesaleMemberPendingConfirmation(profile, authMetadata)) {
     return {
       email: profile!.email ?? stored?.email ?? "",
       businessName: profile!.business_name ?? stored?.businessName ?? "",

@@ -2,6 +2,12 @@ export type UserRole = "none" | "user" | "admin" | "partner";
 
 export type BusinessType = "personal" | "wholesale" | "warehouse" | "franchise";
 
+/** Role and verification from JWT app_metadata (stored in user_metadata). */
+export type UserAuthMetadata = {
+  user_role: UserRole;
+  is_verified: boolean;
+};
+
 export type UserProfile = {
   id: string;
   email: string | null;
@@ -21,22 +27,12 @@ export type UserProfile = {
   abn: string | null;
   business_category: string | null;
   avatar_url: string | null;
-  user_role: UserRole;
   business_type: BusinessType;
-  is_verified: boolean;
   created_at: string;
   updated_at: string;
 };
 
-/** Fields a signed-in user may update on their own row (role/verification excluded). */
+/** Fields a signed-in user may update on their own profile row. */
 export type UserProfileSelfUpdate = Partial<
-  Omit<
-    UserProfile,
-    | "id"
-    | "display_name"
-    | "created_at"
-    | "updated_at"
-    | "user_role"
-    | "is_verified"
-  >
+  Omit<UserProfile, "id" | "display_name" | "created_at" | "updated_at">
 >;

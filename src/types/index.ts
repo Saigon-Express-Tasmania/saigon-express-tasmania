@@ -33,6 +33,7 @@ export type { SiteContentSnapshot, LocalizationValue } from "./SiteContent";
 export type { SiteCategory } from "./Category";
 export type {
   BusinessType,
+  UserAuthMetadata,
   UserProfile,
   UserProfileSelfUpdate,
   UserRole,

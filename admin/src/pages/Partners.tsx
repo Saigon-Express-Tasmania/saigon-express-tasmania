@@ -50,6 +50,7 @@ import {
   formatPartnerDate,
   partnerDisplayName,
 } from '@/lib/partner-profiles';
+import { updateUserMetadata } from '@/lib/user-metadata';
 import supabase from '@/lib/supabase/client';
 import type {
   AdminPartnerInput,
@@ -162,9 +163,14 @@ function formToProfilePayload(form: PartnerFormState) {
     abn: nullable(form.abn),
     business_category: nullable(form.business_category),
     business_type: form.business_type,
+    date_of_birth: nullable(form.date_of_birth),
+  };
+}
+
+function formToMetadataPayload(form: PartnerFormState) {
+  return {
     user_role: form.user_role,
     is_verified: form.is_verified,
-    date_of_birth: nullable(form.date_of_birth),
   };
 }
 
@@ -257,12 +263,15 @@ export function Partners() {
 
       setSaving(true);
       try {
-        const { error } = await supabase
+        const { error: profileError } = await supabase
           .from('user_profiles')
           .update(formToProfilePayload(form))
           .eq('id', editingPartner.id);
 
-        if (error) throw error;
+        if (profileError) throw profileError;
+
+        await updateUserMetadata(editingPartner.id, formToMetadataPayload(form));
+
         toast.success('Partner updated.');
         setDialogOpen(false);
         await loadPartners();

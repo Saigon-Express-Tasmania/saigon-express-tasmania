@@ -19,15 +19,29 @@ import {
   fetchUserProfile,
   updateUserProfile,
 } from "@/lib/supabase/user-profiles";
-import type { UserProfile, UserProfileSelfUpdate } from "@/types/UserProfile";
+import {
+  DEFAULT_USER_AUTH_METADATA,
+  fetchUserAuthMetadata,
+} from "@/lib/supabase/user-metadata";
+import type {
+  UserAuthMetadata,
+  UserProfile,
+  UserProfileSelfUpdate,
+} from "@/types/UserProfile";
+
+export type SignInResult = {
+  profile: UserProfile;
+  authMetadata: UserAuthMetadata;
+};
 
 export type SupabaseContextValue = {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
+  authMetadata: UserAuthMetadata;
   isLoading: boolean;
   isSignedIn: boolean;
-  signInWithPassword: (email: string, password: string) => Promise<UserProfile>;
+  signInWithPassword: (email: string, password: string) => Promise<SignInResult>;
   signUpWithPassword: (
     email: string,
     password: string,
@@ -44,18 +58,37 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [authMetadata, setAuthMetadata] = useState<UserAuthMetadata>(
+    DEFAULT_USER_AUTH_METADATA,
+  );
   const [isLoading, setIsLoading] = useState(true);
 
+  const clearSignedInUser = useCallback(() => {
+    setProfile(null);
+    setAuthMetadata(DEFAULT_USER_AUTH_METADATA);
+  }, []);
+
+  const loadSignedInUser = useCallback(async (activeSession: Session) => {
+    const userId = activeSession.user.id;
+    const [row, metadata] = await Promise.all([
+      fetchUserProfile(userId),
+      fetchUserAuthMetadata(userId, activeSession.user.app_metadata),
+    ]);
+
+    setProfile(row);
+    setAuthMetadata(metadata);
+
+    return { profile: row, authMetadata: metadata };
+  }, []);
+
   const refreshProfile = useCallback(async () => {
-    const userId = user?.id;
-    if (!userId) {
-      setProfile(null);
+    if (!user?.id || !session) {
+      clearSignedInUser();
       return;
     }
 
-    const row = await fetchUserProfile(userId);
-    setProfile(row);
-  }, [user?.id]);
+    await loadSignedInUser(session);
+  }, [clearSignedInUser, loadSignedInUser, session, user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -72,8 +105,9 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         setUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
-          const row = await fetchUserProfile(initialSession.user.id);
-          if (mounted) setProfile(row);
+          await loadSignedInUser(initialSession);
+        } else {
+          clearSignedInUser();
         }
       } catch (error) {
         console.error("Error initializing Supabase session:", error);
@@ -98,14 +132,13 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
       if (newSession?.user) {
         try {
-          const row = await fetchUserProfile(newSession.user.id);
-          setProfile(row);
+          await loadSignedInUser(newSession);
         } catch (error) {
           console.error("Error loading profile after auth change:", error);
-          setProfile(null);
+          clearSignedInUser();
         }
       } else {
-        setProfile(null);
+        clearSignedInUser();
       }
     });
 
@@ -113,20 +146,22 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [clearSignedInUser, loadSignedInUser]);
 
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     const nextSession = await signInWithEmail(email, password);
     setSession(nextSession);
     setUser(nextSession.user);
 
-    const row = await fetchUserProfile(nextSession.user.id);
-    setProfile(row);
+    const { profile: row, authMetadata: metadata } =
+      await loadSignedInUser(nextSession);
+
     if (!row) {
       throw new Error("Unable to load your profile. Please try again.");
     }
-    return row;
-  }, []);
+
+    return { profile: row, authMetadata: metadata };
+  }, [loadSignedInUser]);
 
   const signUpWithPassword = useCallback(
     async (
@@ -139,22 +174,20 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       if (result.session) {
         setSession(result.session);
         setUser(result.session.user);
-
-        const row = await fetchUserProfile(result.session.user.id);
-        setProfile(row);
+        await loadSignedInUser(result.session);
       }
 
       return result;
     },
-    [],
+    [loadSignedInUser],
   );
 
   const signOut = useCallback(async () => {
     await authSignOut();
     setSession(null);
     setUser(null);
-    setProfile(null);
-  }, []);
+    clearSignedInUser();
+  }, [clearSignedInUser]);
 
   const updateOwnProfile = useCallback(
     async (updates: UserProfileSelfUpdate) => {
@@ -174,6 +207,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       user,
       session,
       profile,
+      authMetadata,
       isLoading,
       isSignedIn: Boolean(session?.user),
       signInWithPassword,
@@ -183,6 +217,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       updateOwnProfile,
     }),
     [
+      authMetadata,
       user,
       session,
       profile,

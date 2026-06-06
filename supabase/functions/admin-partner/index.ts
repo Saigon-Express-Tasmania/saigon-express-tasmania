@@ -126,8 +126,6 @@ async function handleCreate(body: Record<string, unknown>) {
       abn: profile.abn,
       business_category: profile.business_category,
       business_type: profile.business_type,
-      user_role: profile.user_role ?? "user",
-      is_verified: profile.is_verified ?? false,
       date_of_birth: profile.date_of_birth,
     })
     .eq("id", userId)
@@ -137,6 +135,19 @@ async function handleCreate(body: Record<string, unknown>) {
   if (updateError) {
     await service.auth.admin.deleteUser(userId);
     throw updateError;
+  }
+
+  const { error: metadataError } = await service
+    .from("user_metadata")
+    .update({
+      user_role: profile.user_role ?? "user",
+      is_verified: profile.is_verified ?? false,
+    })
+    .eq("id", userId);
+
+  if (metadataError) {
+    await service.auth.admin.deleteUser(userId);
+    throw metadataError;
   }
 
   return { userId: updatedProfile.id };

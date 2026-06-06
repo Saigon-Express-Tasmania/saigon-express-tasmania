@@ -1,4 +1,5 @@
 import supabase from '@/lib/supabase/client';
+import { parseUserRole } from '@/lib/user-metadata';
 import { type Session, type User } from '@supabase/supabase-js';
 import React, { createContext, useEffect, useState } from 'react';
 
@@ -74,18 +75,10 @@ export function SupabaseAuthProvider({
     if (error) throw error;
   };
 
-  const ensureAdminAccess = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('user_role')
-      .eq('id', userId)
-      .single();
+  const ensureAdminAccess = async (session: Session) => {
+    const userRole = parseUserRole(session.user.app_metadata?.user_role);
 
-    if (error) {
-      throw new Error('Unable to verify your account access.');
-    }
-
-    if (data?.user_role !== 'admin') {
+    if (userRole !== 'admin') {
       throw new Error('Access denied. Admin account required.');
     }
   };
@@ -98,13 +91,13 @@ export function SupabaseAuthProvider({
     if (error) throw error;
 
     const userId = data.user?.id;
-    if (!userId) {
+    if (!userId || !data.session) {
       await supabase.auth.signOut();
       throw new Error('Sign-in failed. Please try again.');
     }
 
     try {
-      await ensureAdminAccess(userId);
+      await ensureAdminAccess(data.session);
     } catch (adminCheckError) {
       await supabase.auth.signOut();
       throw adminCheckError;

@@ -1,14 +1,33 @@
 import supabase from '@/lib/supabase/client';
-import type { PartnerBusinessType, UserProfile } from '@/types/UserProfile';
+import {
+  fetchUnverifiedUserIds,
+  fetchUserMetadataByIds,
+  fetchVerifiedUserIds,
+  updateUserMetadata,
+} from '@/lib/user-metadata';
+import type { PartnerBusinessType, UserProfile, UserRole } from '@/types/UserProfile';
 
 export const DASHBOARD_PENDING_PARTNERS_LIMIT = 10;
 export const PARTNERS_PAGE_PENDING_LIMIT = 25;
 
-export const PENDING_PARTNER_SELECT =
-  'id, email, first_name, last_name, display_name, phone, business_name, business_type, created_at, is_verified';
+export const PENDING_PARTNER_PROFILE_SELECT =
+  'id, email, first_name, last_name, display_name, phone, business_name, business_type, created_at';
 
-export const PARTNER_SELECT =
-  'id, email, first_name, last_name, display_name, phone, address_line1, address_line2, city, suburb, state, postal_code, country, business_name, abn, business_category, business_type, user_role, is_verified, date_of_birth, created_at, updated_at';
+export const PARTNER_PROFILE_SELECT =
+  'id, email, first_name, last_name, display_name, phone, address_line1, address_line2, city, suburb, state, postal_code, country, business_name, abn, business_category, business_type, date_of_birth, created_at, updated_at';
+
+type PartnerProfileRow = Omit<UserProfile, 'user_role' | 'is_verified'>;
+
+function mergePartnerProfile(
+  profile: PartnerProfileRow,
+  metadata: { user_role: UserRole; is_verified: boolean } | undefined,
+): UserProfile {
+  return {
+    ...profile,
+    user_role: metadata?.user_role ?? 'user',
+    is_verified: metadata?.is_verified ?? false,
+  };
+}
 
 export function partnerDisplayName(
   profile: Pick<
@@ -52,30 +71,35 @@ export function getPartnerConfirmUpdates(
 export async function confirmPartnerProfile(
   partner: Pick<UserProfile, 'id' | 'business_type'>,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('user_profiles')
-    .update(getPartnerConfirmUpdates(partner.business_type))
-    .eq('id', partner.id);
-
-  if (error) throw error;
+  await updateUserMetadata(partner.id, getPartnerConfirmUpdates(partner.business_type));
 }
 
 export async function fetchPendingPartners(input: {
   businessType: PartnerBusinessType;
   limit: number;
 }): Promise<{ items: UserProfile[]; totalCount: number }> {
+  const unverifiedIds = await fetchUnverifiedUserIds();
+  if (unverifiedIds.length === 0) {
+    return { items: [], totalCount: 0 };
+  }
+
   const { data, error, count } = await supabase
     .from('user_profiles')
-    .select(PENDING_PARTNER_SELECT, { count: 'exact' })
+    .select(PENDING_PARTNER_PROFILE_SELECT, { count: 'exact' })
     .eq('business_type', input.businessType)
-    .eq('is_verified', false)
+    .in('id', unverifiedIds)
     .order('created_at', { ascending: false })
     .limit(input.limit);
 
   if (error) throw error;
 
+  const profiles = (data as PartnerProfileRow[] | null) ?? [];
+  const metadataById = await fetchUserMetadataByIds(profiles.map((profile) => profile.id));
+
   return {
-    items: (data as UserProfile[] | null) ?? [],
+    items: profiles.map((profile) =>
+      mergePartnerProfile(profile, metadataById.get(profile.id)),
+    ),
     totalCount: count ?? 0,
   };
 }
@@ -83,13 +107,22 @@ export async function fetchPendingPartners(input: {
 export async function fetchConfirmedPartners(
   businessType: PartnerBusinessType,
 ): Promise<UserProfile[]> {
+  const verifiedIds = await fetchVerifiedUserIds();
+  if (verifiedIds.length === 0) return [];
+
   const { data, error } = await supabase
     .from('user_profiles')
-    .select(PARTNER_SELECT)
+    .select(PARTNER_PROFILE_SELECT)
     .eq('business_type', businessType)
-    .eq('is_verified', true)
+    .in('id', verifiedIds)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data as UserProfile[] | null) ?? [];
+
+  const profiles = (data as PartnerProfileRow[] | null) ?? [];
+  const metadataById = await fetchUserMetadataByIds(profiles.map((profile) => profile.id));
+
+  return profiles.map((profile) =>
+    mergePartnerProfile(profile, metadataById.get(profile.id)),
+  );
 }
