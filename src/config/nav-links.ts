@@ -8,7 +8,7 @@ export const NAV_LINKS = [
 ] as const;
 
 export const PORTAL_LINKS = [
-  { id: "franchise", href: "/portals/franchise", icon: "🏪" },
-  { id: "wholesale", href: "/portals/wholesale", icon: "📦" },
-  { id: "warehouse", href: "/portals/warehouse", icon: "🏭" },
+  { id: "franchise", href: "/franchise/dashboard", icon: "🏪" },
+  { id: "wholesale", href: "/wholesale/dashboard", icon: "📦" },
+  { id: "warehouse", href: "/warehouse/dashboard", icon: "🏭" },
 ] as const;

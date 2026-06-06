@@ -4,6 +4,7 @@ import AppImage from "@/components/AppImage";
 import { useCallback, useState } from "react";
 import Link from "@/components/link";
 import { useCart } from "@/contexts/CartContext";
+import { useSupabase } from "@/hooks/useSupabase";
 import { MapPin, Menu, ShoppingCart, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
@@ -22,6 +23,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
   const { cartCount, setCartOpen } = useCart();
+  const { isSignedIn, isLoading, signOut } = useSupabase();
 
   const handleOrderOnlineClick = useCallback(() => {
     // Previous: navigate to menu categories anchor
@@ -101,12 +103,23 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
             >
               🍱 {tLinks("catering")}
             </Link>
-            <Link
-              href="/user-portal"
-              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
-            >
-              👤 {tLinks("my_account")}
-            </Link>
+            {!isLoading && !isSignedIn ? (
+              <Link
+                href="/user-portal"
+                className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
+              >
+                👤 {tLinks("my_account")}
+              </Link>
+            ) : null}
+            {isSignedIn ? (
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
+              >
+                {tLinks("sign_out")}
+              </button>
+            ) : null}
             {cartCount > 0 ? (
               <button
                 onClick={() => setCartOpen(true)}

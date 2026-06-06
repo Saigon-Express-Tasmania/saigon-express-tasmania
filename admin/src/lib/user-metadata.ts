@@ -5,9 +5,10 @@ export type UserMetadataRow = {
   id: string;
   user_role: UserRole;
   is_verified: boolean;
+  membership_level: number;
 };
 
-export const USER_METADATA_SELECT = 'id, user_role, is_verified';
+export const USER_METADATA_SELECT = 'id, user_role, is_verified, membership_level';
 
 export function parseUserRole(value: unknown): UserRole {
   if (
@@ -63,7 +64,9 @@ export async function fetchVerifiedUserIds(): Promise<string[]> {
 
 export async function updateUserMetadata(
   userId: string,
-  updates: Partial<Pick<UserMetadataRow, 'user_role' | 'is_verified'>>,
+  updates: Partial<
+    Pick<UserMetadataRow, 'user_role' | 'is_verified' | 'membership_level'>
+  >,
 ): Promise<void> {
   const { error } = await supabase
     .from('user_metadata')

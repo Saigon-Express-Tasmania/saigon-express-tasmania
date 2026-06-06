@@ -16,16 +16,22 @@ export const PENDING_PARTNER_PROFILE_SELECT =
 export const PARTNER_PROFILE_SELECT =
   'id, email, first_name, last_name, display_name, phone, address_line1, address_line2, city, suburb, state, postal_code, country, business_name, abn, business_category, business_type, date_of_birth, created_at, updated_at';
 
-type PartnerProfileRow = Omit<UserProfile, 'user_role' | 'is_verified'>;
+type PartnerProfileRow = Omit<
+  UserProfile,
+  'user_role' | 'is_verified' | 'membership_level'
+>;
 
 function mergePartnerProfile(
   profile: PartnerProfileRow,
-  metadata: { user_role: UserRole; is_verified: boolean } | undefined,
+  metadata:
+    | { user_role: UserRole; is_verified: boolean; membership_level: number }
+    | undefined,
 ): UserProfile {
   return {
     ...profile,
     user_role: metadata?.user_role ?? 'user',
     is_verified: metadata?.is_verified ?? false,
+    membership_level: metadata?.membership_level ?? 0,
   };
 }
 

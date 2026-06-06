@@ -90,6 +90,7 @@ const BUSINESS_CATEGORY_OPTIONS = [
 type PartnerFormState = AdminPartnerInput & {
   email: string;
   password: string;
+  membership_level: number;
 };
 
 function emptyPartnerForm(businessType: PartnerBusinessType): PartnerFormState {
@@ -113,6 +114,7 @@ function emptyPartnerForm(businessType: PartnerBusinessType): PartnerFormState {
     user_role: 'user',
     is_verified: false,
     date_of_birth: '',
+    membership_level: 0,
   };
 }
 
@@ -138,6 +140,7 @@ function profileToForm(profile: UserProfile): PartnerFormState {
     user_role: profile.user_role,
     is_verified: profile.is_verified,
     date_of_birth: profile.date_of_birth ?? '',
+    membership_level: profile.membership_level ?? 0,
   };
 }
 
@@ -171,6 +174,7 @@ function formToMetadataPayload(form: PartnerFormState) {
   return {
     user_role: form.user_role,
     is_verified: form.is_verified,
+    membership_level: form.membership_level,
   };
 }
 
@@ -792,6 +796,25 @@ export function Partners() {
                 </SelectContent>
               </Select>
             </div>
+            {editingPartner ? (
+              <div className="grid gap-2">
+                <Label htmlFor="partner-membership-level">Membership level</Label>
+                <Input
+                  id="partner-membership-level"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.membership_level}
+                  onChange={(e) =>
+                    setField(
+                      'membership_level',
+                      Math.max(0, Number.parseInt(e.target.value, 10) || 0),
+                    )
+                  }
+                  disabled={saving}
+                />
+              </div>
+            ) : null}
           </div>
 
           <DialogFooter>

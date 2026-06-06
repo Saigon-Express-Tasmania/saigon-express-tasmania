@@ -4,7 +4,8 @@ import AppImage from "@/components/AppImage";
 import { motion } from "framer-motion";
 import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
 import Link from "@/components/link";
-import { useState, useMemo } from "react";
+import { useSupabase } from "@/hooks/useSupabase";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
@@ -54,6 +55,9 @@ export default function WholesaleShop({
   products: WholesaleProduct[];
 }) {
   const t = useTranslations("WholesaleShop");
+  const { profile, isSignedIn } = useSupabase();
+  const canViewPrices =
+    isSignedIn && profile?.business_type === "wholesale";
 
   // Array Extraction Strategy via t.raw
   const categoriesData = (t.raw("categories") || []) as LocalizedCategory[];
@@ -241,7 +245,7 @@ export default function WholesaleShop({
                 [t("productCard.unitLabel"), p.unit],
                 [
                   t("productCard.priceLabel"),
-                  p.unitPrice
+                  canViewPrices && p.unitPrice
                     ? `$${Number(p.unitPrice).toFixed(2)}`
                     : t("productCard.priceValueLocked"),
                 ],
@@ -310,26 +314,29 @@ export default function WholesaleShop({
                       ))}
                     </div>
 
-                    {/* Price locked */}
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-                      <Lock className="w-3.5 h-3.5 shrink-0" />
-                      <span>{t("productCard.priceDisclaimer")}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link href="/wholesale/member" className="flex-1">
-                        <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
-                          {t("productCard.ctaPin")}
-                        </button>
-                      </Link>
-                      <Link
-                        href="/wholesale/member?mode=register"
-                        className="flex-1"
-                      >
-                        <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
-                          {t("productCard.ctaRegister")}
-                        </button>
-                      </Link>
-                    </div>
+                    {!canViewPrices ? (
+                      <>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                          <Lock className="w-3.5 h-3.5 shrink-0" />
+                          <span>{t("productCard.priceDisclaimer")}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Link href="/wholesale/member" className="flex-1">
+                            <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
+                              {t("productCard.ctaPin")}
+                            </button>
+                          </Link>
+                          <Link
+                            href="/wholesale/member#register"
+                            className="flex-1"
+                          >
+                            <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
+                              {t("productCard.ctaRegister")}
+                            </button>
+                          </Link>
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 </motion.div>
               );

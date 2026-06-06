@@ -1,7 +1,7 @@
 "use client";
 
-import { SubmitEvent, Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { SubmitEvent, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
@@ -104,12 +104,30 @@ function validateRegisterFields(
   return errors;
 }
 
+function modeFromHash(hash: string): "login" | "register" {
+  if (hash === "#register") return "register";
+  return "login";
+}
+
+function hashFromMode(mode: "login" | "register"): string {
+  return mode === "register" ? "#register" : "#sign-in";
+}
+
+function replaceModeHash(mode: "login" | "register") {
+  const nextHash = hashFromMode(mode);
+  if (window.location.hash === nextHash) return;
+
+  const url = `${window.location.pathname}${window.location.search}${nextHash}`;
+  window.history.replaceState(null, "", url);
+}
+
 function WholesaleMemberPortalContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [mode, setMode] = useState<"login" | "register">(() =>
-    searchParams.get("mode") === "register" ? "register" : "login"
-  );
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const setModeWithHash = useCallback((nextMode: "login" | "register") => {
+    setMode(nextMode);
+    replaceModeHash(nextMode);
+  }, []);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -147,6 +165,16 @@ function WholesaleMemberPortalContent() {
   const [registerErrors, setRegisterErrors] = useState<RegisterFieldErrors>({});
   const [registrationStatus, setRegistrationStatus] =
     useState<WholesaleRegistrationStatus | null>(null);
+
+  useEffect(() => {
+    const syncModeFromHash = () => {
+      setMode(modeFromHash(window.location.hash));
+    };
+
+    syncModeFromHash();
+    window.addEventListener("hashchange", syncModeFromHash);
+    return () => window.removeEventListener("hashchange", syncModeFromHash);
+  }, []);
 
   useEffect(() => {
     if (isSignedIn && isWholesaleMemberConfirmed(profile, authMetadata)) {
@@ -198,7 +226,7 @@ function WholesaleMemberPortalContent() {
         return;
       }
       toast.success("Welcome back! Redirecting to your account...");
-      router.push("/wholesale-member-dashboard");
+      router.push("/wholesale/dashboard");
     } catch (error) {
       restoreRegistrationStatus();
       toast.error(
@@ -251,7 +279,7 @@ function WholesaleMemberPortalContent() {
 
       toast.success(status.message);
       setRegisterErrors({});
-      setMode("login");
+      setModeWithHash("login");
     } catch (error) {
       toast.error(
         getAuthErrorMessage(error, "Registration failed. Please try again."),
@@ -342,7 +370,7 @@ function WholesaleMemberPortalContent() {
               key={tab}
               type="button"
               onClick={() => {
-                setMode(tab);
+                setModeWithHash(tab);
                 setLoginErrors({});
                 setRegisterErrors({});
               }}
@@ -811,25 +839,6 @@ function WholesaleMemberPortalContent() {
   );
 }
 
-function WholesaleMemberPortalFallback() {
-  return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-start justify-center pt-24 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 px-8 py-10 animate-pulse">
-        <div className="h-10 w-48 bg-gray-100 rounded-lg mx-auto mb-6" />
-        <div className="h-8 bg-gray-100 rounded-lg mb-2" />
-        <div className="h-4 bg-gray-100 rounded-lg w-2/3 mx-auto mb-8" />
-        <div className="h-10 bg-gray-100 rounded-xl mb-4" />
-        <div className="h-10 bg-gray-100 rounded-xl mb-4" />
-        <div className="h-11 bg-gray-100 rounded-xl" />
-      </div>
-    </div>
-  );
-}
-
 export default function WholesaleMemberPortal() {
-  return (
-    <Suspense fallback={<WholesaleMemberPortalFallback />}>
-      <WholesaleMemberPortalContent />
-    </Suspense>
-  );
+  return <WholesaleMemberPortalContent />;
 }

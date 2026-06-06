@@ -27,7 +27,7 @@ export type UserProfileContextValue = {
 
 export const UserProfileContext = createContext<UserProfileContextValue | null>(null);
 
-type ProfileRow = Omit<UserProfile, 'user_role' | 'is_verified'>;
+type ProfileRow = Omit<UserProfile, 'user_role' | 'is_verified' | 'membership_level'>;
 
 async function resolveAvatarPreview(
   avatarPath: string | null | undefined,
@@ -46,12 +46,17 @@ async function resolveAvatarPreview(
 
 function mergeAdminProfile(
   profile: ProfileRow,
-  metadata: { user_role: UserProfile['user_role']; is_verified: boolean } | null,
+  metadata: {
+    user_role: UserProfile['user_role'];
+    is_verified: boolean;
+    membership_level: number;
+  } | null,
 ): UserProfile {
   return {
     ...profile,
     user_role: metadata?.user_role ?? 'user',
     is_verified: metadata?.is_verified ?? false,
+    membership_level: metadata?.membership_level ?? 0,
   };
 }
 
@@ -89,7 +94,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
           supabase.from('user_profiles').select('*').eq('id', userId).single(),
           supabase
             .from('user_metadata')
-            .select('user_role, is_verified')
+            .select('user_role, is_verified, membership_level')
             .eq('id', userId)
             .maybeSingle(),
         ]);
@@ -148,6 +153,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         const row = mergeAdminProfile(data as ProfileRow, profile ? {
           user_role: profile.user_role,
           is_verified: profile.is_verified,
+          membership_level: profile.membership_level,
         } : null);
         setProfile(row);
         if (updates.avatar_url !== undefined) {

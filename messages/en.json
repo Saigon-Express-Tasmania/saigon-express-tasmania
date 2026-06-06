@@ -9,6 +9,7 @@
     "find_us": "Find Us",
     "catering": "Catering",
     "my_account": "My Account",
+    "sign_out": "Sign out",
     "order": "Order {count}",
     "order_online": "Order Online"
   },

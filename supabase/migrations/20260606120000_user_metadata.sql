@@ -8,6 +8,7 @@ create table public.user_metadata (
   id uuid primary key references auth.users (id) on delete cascade,
   user_role public.user_role not null default 'user',
   is_verified boolean not null default false,
+  membership_level integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
