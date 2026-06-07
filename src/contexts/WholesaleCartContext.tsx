@@ -125,16 +125,19 @@ export function WholesaleCartProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [isHydrated, setIsHydrated] = useState(
-    () => useWholesaleCartStore.persist.hasHydrated(),
-  );
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    const unsub = useWholesaleCartStore.persist.onFinishHydration(() => {
+    const { persist } = useWholesaleCartStore;
+    if (!persist) {
+      setIsHydrated(true);
+      return;
+    }
+
+    setIsHydrated(persist.hasHydrated());
+    return persist.onFinishHydration(() => {
       setIsHydrated(true);
     });
-    setIsHydrated(useWholesaleCartStore.persist.hasHydrated());
-    return unsub;
   }, []);
 
   const {

@@ -1,7 +1,12 @@
 import WholesaleDashboard from "@/views/WholesaleDashboard";
-import { getWholesaleProducts } from "@/lib/supabase/wholesale-products";
+import { loadWholesalePageData } from "@/lib/wholesale-page";
 
 export default async function LocaleWholesaleDashboardPage() {
-  const products = await getWholesaleProducts();
-  return <WholesaleDashboard products={products} />;
+  const { products, categoriesContent } = await loadWholesalePageData();
+  return (
+    <WholesaleDashboard
+      products={products}
+      categoriesContent={categoriesContent}
+    />
+  );
 }

@@ -7,46 +7,12 @@ import WholesaleHeader from "@/components/WholesaleHeader";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
-import type { UserProfile, WholesaleProduct } from "@/types";
+import type { SiteCategory, UserProfile, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
 import { Plus, Package, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Dough: "from-amber-800 to-amber-600",
-  "Dried Foods": "from-yellow-800 to-yellow-600",
-  Equipment: "from-slate-700 to-slate-500",
-  "Fresh Food": "from-green-800 to-green-600",
-  "Frozen Food": "from-blue-800 to-blue-600",
-  "Frozen Marinated Meat": "from-red-900 to-red-700",
-  Packaging: "from-stone-700 to-stone-500",
-  Sauce: "from-orange-800 to-orange-600",
-  Pastry: "from-amber-700 to-amber-500",
-};
-
-const CATEGORY_ICONS: Record<string, string> = {
-  Dough: "🥖",
-  "Dried Foods": "🌾",
-  Equipment: "🔧",
-  "Fresh Food": "🥗",
-  "Frozen Food": "❄️",
-  "Frozen Marinated Meat": "🥩",
-  Packaging: "📦",
-  Sauce: "🫙",
-  Pastry: "🥐",
-};
-
-const ALL_CATEGORIES = [
-  "All",
-  "Dough",
-  "Dried Foods",
-  "Equipment",
-  "Fresh Food",
-  "Frozen Food",
-  "Frozen Marinated Meat",
-  "Packaging",
-  "Sauce",
-];
+const ALL_CATEGORY = "All";
 
 type DashboardProduct = {
   id: number;
@@ -87,14 +53,34 @@ function getContactName(profile: UserProfile): string {
 
 export default function WholesaleDashboard({
   products,
+  categoriesContent,
 }: {
   products: WholesaleProduct[];
+  categoriesContent: SiteCategory[];
 }) {
   const router = useRouter();
   const { profile, authMetadata, isLoading, signOut } = useSupabase();
   const { addToCart, getCartQty } = useWholesaleCart();
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
+
+  const categoryStyleMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        if (category.style) acc[category.name] = category.style;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const categoryIconMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        if (category.icon) acc[category.name] = category.icon;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
 
   const me = useMemo(() => {
     if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
@@ -119,7 +105,7 @@ export default function WholesaleDashboard({
     const normalizedSearch = search.toLowerCase();
     return allProducts.filter((p) => {
       const matchesCategory =
-        selectedCategory === "All" || p.category === selectedCategory;
+        selectedCategory === ALL_CATEGORY || p.category === selectedCategory;
       const matchesSearch =
         !normalizedSearch ||
         p.name.toLowerCase().includes(normalizedSearch) ||
@@ -185,18 +171,29 @@ export default function WholesaleDashboard({
         </div>
 
         <div className="flex flex-wrap gap-2 mb-6">
-          {ALL_CATEGORIES.map((cat) => (
+          <button
+            type="button"
+            onClick={() => setSelectedCategory(ALL_CATEGORY)}
+            className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
+              selectedCategory === ALL_CATEGORY
+                ? "bg-white text-black border-white"
+                : "border-white/20 text-white/50 hover:border-white/50 hover:text-white"
+            }`}
+          >
+            {ALL_CATEGORY}
+          </button>
+          {categoriesContent.map((category) => (
             <button
-              key={cat}
+              key={category.id}
               type="button"
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => setSelectedCategory(category.name)}
               className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                selectedCategory === cat
+                selectedCategory === category.name
                   ? "bg-white text-black border-white"
                   : "border-white/20 text-white/50 hover:border-white/50 hover:text-white"
               }`}
             >
-              {cat}
+              {category.name}
             </button>
           ))}
         </div>
@@ -205,8 +202,8 @@ export default function WholesaleDashboard({
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filtered.map((product) => {
             const gradientClass =
-              CATEGORY_COLORS[product.category] ?? "from-gray-800 to-gray-600";
-            const icon = CATEGORY_ICONS[product.category] ?? "📦";
+              categoryStyleMap[product.category] ?? "from-gray-800 to-gray-600";
+            const icon = categoryIconMap[product.category] ?? "📦";
             const cartQty = getCartQty(product.id);
             const outOfStock =
               !product.isAvailable || product.stockQty === 0;

@@ -1,5 +1,5 @@
 import Menu from "@/views/Menu";
-import { getCategories } from "@/lib/supabase/categories";
+import { getCategoriesByKind } from "@/lib/supabase/categories";
 import { getMenuItems } from "@/lib/supabase/menu";
 import { getStoreLocations } from "@/lib/supabase/store-locations";
 
@@ -10,7 +10,7 @@ export default async function LocaleMenuPage() {
   const [menuItems, storeLocations, categoriesContent] = await Promise.all([
     getMenuItems(),
     getStoreLocations(),
-    getCategories(),
+    getCategoriesByKind('menu'),
   ]);
   return (
     <Menu

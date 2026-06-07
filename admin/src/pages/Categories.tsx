@@ -28,38 +28,102 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+const CATEGORY_KINDS = ['menu', 'wholesale', 'catering'] as const;
+type CategoryKind = (typeof CATEGORY_KINDS)[number];
+
+type SortColumn = 'id' | 'alias' | 'kind';
+type SortDirection = 'asc' | 'desc';
+
 type CategoryRow = {
   id: number;
+  kind: CategoryKind;
   alias: string;
   name: string;
   description: string | null;
   imageUrl: string | null;
   addon: string[];
+  style: string | null;
+  icon: string | null;
 };
 
 type CategoryInput = {
+  kind: CategoryKind;
   alias: string;
   name: string;
   description: string;
   imageUrl: string;
   addon: string;
+  style: string;
+  icon: string;
 };
 
 const emptyCategoryInput = (): CategoryInput => ({
+  kind: 'menu',
   alias: '',
   name: '',
   description: '',
   imageUrl: '',
   addon: '',
+  style: '',
+  icon: '',
 });
+
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+}) {
+  const isActive = sortColumn === column;
+  const Icon = isActive
+    ? sortDirection === 'asc'
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+
+  return (
+    <th className="px-4 py-3 text-left text-sm font-semibold">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-foreground/80"
+        onClick={() => onSort(column)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </th>
+  );
+}
 
 export function Categories() {
   const { profile, isLoading: profileLoading } = useUserProfile();
@@ -78,6 +142,9 @@ export function Categories() {
 
   const [deleteTarget, setDeleteTarget] = useState<CategoryRow | null>(null);
   const [search, setSearch] = useState('');
+  const [kindFilter, setKindFilter] = useState<string>('all');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('alias');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const loadCategories = useCallback(async () => {
     try {
@@ -85,7 +152,7 @@ export function Categories() {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('categories')
-        .select('id, alias, name, description, imageUrl, addon')
+        .select('id, kind, alias, name, description, imageUrl, addon, style, icon')
         .order('id', { ascending: true });
 
       if (fetchError) throw fetchError;
@@ -108,23 +175,50 @@ export function Categories() {
     }
   }, [isAdmin, loadCategories]);
 
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection('asc');
+  };
+
   const filteredCategories = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return categories;
-    return categories.filter((cat) => {
+    const filtered = categories.filter((cat) => {
+      if (kindFilter !== 'all' && cat.kind !== kindFilter) {
+        return false;
+      }
+      if (!term) return true;
       return (
+        cat.kind.toLowerCase().includes(term) ||
         cat.alias.toLowerCase().includes(term) ||
         cat.name.toLowerCase().includes(term) ||
         (cat.description ?? '').toLowerCase().includes(term) ||
         (cat.imageUrl ?? '').toLowerCase().includes(term) ||
+        (cat.style ?? '').toLowerCase().includes(term) ||
+        (cat.icon ?? '').toLowerCase().includes(term) ||
         cat.addon.join(' ').toLowerCase().includes(term)
       );
     });
-  }, [categories, search]);
+
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortColumn === 'id') {
+        return (a.id - b.id) * direction;
+      }
+      return a[sortColumn].localeCompare(b[sortColumn]) * direction;
+    });
+  }, [categories, search, kindFilter, sortColumn, sortDirection]);
 
   const openCreate = () => {
     setEditing(null);
-    setForm(emptyCategoryInput());
+    setForm({
+      ...emptyCategoryInput(),
+      kind:
+        kindFilter !== 'all' ? (kindFilter as CategoryKind) : 'menu',
+    });
     setImagePreviewUrl(null);
     setDialogOpen(true);
   };
@@ -132,11 +226,14 @@ export function Categories() {
   const openEdit = (category: CategoryRow) => {
     setEditing(category);
     setForm({
+      kind: category.kind,
       alias: category.alias,
       name: category.name,
       description: category.description ?? '',
       imageUrl: category.imageUrl ?? '',
       addon: category.addon.join(', '),
+      style: category.style ?? '',
+      icon: category.icon ?? '',
     });
     setImagePreviewUrl(category.imageUrl ?? null);
     setDialogOpen(true);
@@ -188,11 +285,14 @@ export function Categories() {
     setSaving(true);
     try {
       const payload = {
+        kind: form.kind,
         alias: form.alias.trim(),
         name: form.name.trim(),
         description: form.description.trim() || null,
         imageUrl: form.imageUrl.trim() || null,
         addon: addonValues,
+        style: form.style.trim() || null,
+        icon: form.icon.trim() || null,
       };
 
       if (editing) {
@@ -295,12 +395,35 @@ export function Categories() {
               </div>
             )}
 
-            <Input
-              placeholder="Search alias, name, description, image or add-ons…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Input
+                placeholder="Search kind, alias, name, style, icon or add-ons…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="cat-kind-filter" className="whitespace-nowrap">
+                  Kind
+                </Label>
+                <Select
+                  value={kindFilter}
+                  onValueChange={(value) => setKindFilter(value)}
+                >
+                  <SelectTrigger id="cat-kind-filter" className="w-40">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {CATEGORY_KINDS.map((kind) => (
+                      <SelectItem key={kind} value={kind}>
+                        {kind}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -315,14 +438,35 @@ export function Categories() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Alias
-                      </th>
+                      <SortableHeader
+                        label="ID"
+                        column="id"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Kind"
+                        column="kind"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Alias"
+                        column="alias"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Style
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Icon
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Add-ons
@@ -342,11 +486,20 @@ export function Categories() {
                         className="border-b transition-colors hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 font-mono text-sm">{cat.id}</td>
+                        <td className="px-4 py-3 text-sm capitalize text-muted-foreground">
+                          {cat.kind}
+                        </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {cat.alias}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {cat.name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {cat.style ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {cat.icon ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {cat.addon.length > 0 ? cat.addon.join(', ') : '—'}
@@ -407,6 +560,26 @@ export function Categories() {
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="cat-kind">Kind</Label>
+              <Select
+                value={form.kind}
+                onValueChange={(value) =>
+                  setForm((f) => ({ ...f, kind: value as CategoryKind }))
+                }
+              >
+                <SelectTrigger id="cat-kind">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_KINDS.map((kind) => (
+                    <SelectItem key={kind} value={kind}>
+                      {kind}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="cat-alias">Alias</Label>
               <Input
                 id="cat-alias"
@@ -433,6 +606,26 @@ export function Categories() {
                 value={form.imageUrl}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, imageUrl: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="cat-style">Style</Label>
+              <Input
+                id="cat-style"
+                value={form.style}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, style: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="cat-icon">Icon</Label>
+              <Input
+                id="cat-icon"
+                value={form.icon}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, icon: e.target.value }))
                 }
               />
             </div>

@@ -1,4 +1,4 @@
-import { getCategories } from "@/lib/supabase/categories";
+import { getCategoriesByKind } from "@/lib/supabase/categories";
 import { getMenuItemFromParam } from "@/lib/supabase/menu-item";
 import { getMenuItems } from "@/lib/supabase/menu";
 import { getStoreLocations } from "@/lib/supabase/store-locations";
@@ -20,7 +20,7 @@ export async function loadMenuItemPageData(
 
   const [menuItems, categoriesContent, storeLocations] = await Promise.all([
     getMenuItems(),
-    getCategories(),
+    getCategoriesByKind('menu'),
     getStoreLocations(),
   ]);
 

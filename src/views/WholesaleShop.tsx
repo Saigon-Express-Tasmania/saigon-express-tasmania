@@ -7,39 +7,12 @@ import Link from "@/components/link";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { WholesaleProduct } from "@/types";
+import type { SiteCategory, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
 // 1. Import Fuse
 import Fuse from "fuse.js";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Dough: "from-amber-800 to-amber-600",
-  "Dried Foods": "from-yellow-800 to-yellow-600",
-  Equipment: "from-slate-700 to-slate-500",
-  "Fresh Food": "from-green-800 to-green-600",
-  "Frozen Food": "from-blue-800 to-blue-600",
-  "Frozen Marinated Meat": "from-red-900 to-red-700",
-  Packaging: "from-stone-700 to-stone-500",
-  Sauce: "from-orange-800 to-orange-600",
-  Pastry: "from-amber-700 to-amber-500",
-};
-
-const CATEGORY_ICONS: Record<string, string> = {
-  Dough: "🥖",
-  "Dried Foods": "🌾",
-  Equipment: "🔧",
-  "Fresh Food": "🥗",
-  "Frozen Food": "❄️",
-  "Frozen Marinated Meat": "🥩",
-  Packaging: "📦",
-  Sauce: "🫙",
-  Pastry: "🥐",
-};
-
-interface LocalizedCategory {
-  key: string;
-  label: string;
-}
+const ALL_CATEGORY = "All";
 
 interface LocalizedPricingTier {
   label: string;
@@ -51,21 +24,39 @@ interface LocalizedPricingTier {
 
 export default function WholesaleShop({
   products,
+  categoriesContent,
 }: {
   products: WholesaleProduct[];
+  categoriesContent: SiteCategory[];
 }) {
   const t = useTranslations("WholesaleShop");
   const { profile, isSignedIn } = useSupabase();
   const canViewPrices =
     isSignedIn && profile?.business_type === "wholesale";
 
-  // Array Extraction Strategy via t.raw
-  const categoriesData = (t.raw("categories") || []) as LocalizedCategory[];
   const pricingTiers = (t.raw("pricingTiers") || []) as LocalizedPricingTier[];
   const bannerPerks = (t.raw("banner.perks") || []) as string[];
 
+  const categoryStyleMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        if (category.style) acc[category.name] = category.style;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const categoryIconMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        if (category.icon) acc[category.name] = category.icon;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
 
   // 2. Initialize Fuse instance with targeted keys and fine-tuned thresholds
   const fuse = useMemo(() => {
@@ -86,7 +77,7 @@ export default function WholesaleShop({
 
     // If there is no search phrase, simply filter down raw data based on category mapping
     if (!normalizedSearch) {
-      if (selectedCategory === "All") return products ?? [];
+      if (selectedCategory === ALL_CATEGORY) return products ?? [];
       return (products ?? []).filter((p) => p.category === selectedCategory);
     }
 
@@ -96,7 +87,7 @@ export default function WholesaleShop({
       .map((result) => result.item);
 
     // Apply category isolation on top of search hits
-    if (selectedCategory !== "All") {
+    if (selectedCategory !== ALL_CATEGORY) {
       return searchResults.filter((p) => p.category === selectedCategory);
     }
 
@@ -210,17 +201,29 @@ export default function WholesaleShop({
 
           {/* Category filter pills */}
           <div className="flex flex-wrap gap-2 mb-6">
-            {categoriesData.map((cat) => (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(ALL_CATEGORY)}
+              className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
+                selectedCategory === ALL_CATEGORY
+                  ? "bg-foreground text-background border-foreground"
+                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary bg-transparent"
+              }`}
+            >
+              {ALL_CATEGORY}
+            </button>
+            {categoriesContent.map((category) => (
               <button
-                key={cat.key}
-                onClick={() => setSelectedCategory(cat.key)}
+                key={category.id}
+                type="button"
+                onClick={() => setSelectedCategory(category.name)}
                 className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                  selectedCategory === cat.key
+                  selectedCategory === category.name
                     ? "bg-foreground text-background border-foreground"
                     : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary bg-transparent"
                 }`}
               >
-                {cat.label}
+                {category.name}
               </button>
             ))}
             <span className="ml-2 text-sm text-muted-foreground self-center">
@@ -236,8 +239,8 @@ export default function WholesaleShop({
                 [512, 1024, 256, 1448],
               );
               const gradientClass =
-                CATEGORY_COLORS[p.category] ?? "from-gray-800 to-gray-600";
-              const catIcon = CATEGORY_ICONS[p.category] ?? "📦";
+                categoryStyleMap[p.category] ?? "from-gray-800 to-gray-600";
+              const catIcon = categoryIconMap[p.category] ?? "📦";
               const desc = p.description ?? "";
               const badge: string | null = null;
 
