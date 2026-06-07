@@ -1,5 +1,5 @@
 import { handleCors, jsonResponse } from "../_shared/cors.ts";
-import { getOrderTrackingToken, getOrderTrackingTokenBySessionId } from "../_shared/pickup.ts";
+import { getOrderTrackingToken, getOrderTrackingTokenBySessionId } from "../_shared/order.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);

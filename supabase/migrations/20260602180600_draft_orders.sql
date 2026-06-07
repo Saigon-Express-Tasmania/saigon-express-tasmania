@@ -3,6 +3,7 @@
 create table public.draft_orders (
   id bigint generated always as identity primary key,
   order_type public.order_type not null,
+  customer_account uuid references public.user_profiles (id) on delete set null,
   customer_name text,
   customer_email text,
   customer_phone text,

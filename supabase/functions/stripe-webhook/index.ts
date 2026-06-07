@@ -4,7 +4,7 @@ import {
   cancelOrderPaymentFailed,
   markOrderPaidFromStripeSession,
   type StripePaymentMode,
-} from "../_shared/pickup.ts";
+} from "../_shared/order.ts";
 import { constructWebhookEvent } from "../_shared/stripe.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
 

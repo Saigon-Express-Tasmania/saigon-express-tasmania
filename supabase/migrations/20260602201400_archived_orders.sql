@@ -3,6 +3,7 @@
 create table public.archived_orders (
   id bigint generated always as identity primary key,
   original_order_id bigint references public.orders (id) on delete set null,
+  customer_account uuid references public.user_profiles (id) on delete set null,
   order_type public.order_type not null,
   customer_name text,
   customer_email text,

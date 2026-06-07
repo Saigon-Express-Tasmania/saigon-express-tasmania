@@ -3,6 +3,7 @@
 create table public.test_orders (
   id bigint generated always as identity primary key,
   order_type public.order_type not null,
+  customer_account uuid references public.user_profiles (id) on delete set null,
   customer_name text not null,
   customer_email text not null,
   customer_phone text not null,
@@ -39,7 +40,9 @@ create unique index test_orders_stripe_checkout_session_id_uidx
 create index test_order_items_order_id_idx on public.test_order_items (order_id);
 create index test_orders_order_type_idx on public.test_orders (order_type);
 
+-- Align test-order RPC with live orders: persist customer_account on paid test orders.
 create or replace function public.create_paid_test_order_with_items(
+  p_customer_account uuid,
   p_customer_name text,
   p_customer_email text,
   p_customer_phone text,
@@ -82,6 +85,7 @@ begin
 
   begin
     insert into public.test_orders (
+      customer_account,
       customer_name,
       customer_email,
       customer_phone,
@@ -98,6 +102,7 @@ begin
       status_updated_at
     )
     values (
+      p_customer_account,
       p_customer_name,
       p_customer_email,
       p_customer_phone,
@@ -153,6 +158,7 @@ begin
   return v_order_id;
 end;
 $$;
+
 
 comment on table public.test_orders is
   'Customer pickup orders paid via Stripe test mode (isolated from live orders).';

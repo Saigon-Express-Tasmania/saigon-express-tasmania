@@ -8,15 +8,16 @@ import {
 
 export type { StripePaymentMode };
 
-export type PickupCheckoutItem = {
+export type OrderCheckoutItem = {
   menuItemId: number;
   qty: number;
   unitPrice: number;
   itemName: string;
 };
 
-export type PickupCheckoutInput = {
+export type OrderCheckoutInput = {
   mode: StripePaymentMode;
+  customerAccount?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -24,10 +25,10 @@ export type PickupCheckoutInput = {
   pickupTime: string;
   notes?: string;
   origin: string;
-  items: PickupCheckoutItem[];
+  items: OrderCheckoutItem[];
 };
 
-export type PickupCheckoutResult = {
+export type OrderCheckoutResult = {
   url: string | null;
   draftOrderId: number;
   mode: StripePaymentMode;
@@ -49,6 +50,7 @@ type DraftOrderItemRow = {
 
 type DraftOrderRow = {
   id: number;
+  customer_account: string | null;
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
@@ -87,7 +89,31 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function validatePickupCheckoutInput(body: unknown): PickupCheckoutInput {
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+function parseOptionalCustomerAccount(value: unknown): string | null {
+  if (value == null) return null;
+  const account = String(value).trim();
+  if (!account) return null;
+  if (!isValidUuid(account)) throw new Error("Invalid customer account");
+  return account;
+}
+
+function resolveCustomerAccount(
+  draftOrder: Pick<DraftOrderRow, "customer_account">,
+  session: Stripe.Checkout.Session,
+): string | null {
+  for (const value of [draftOrder.customer_account, session.metadata?.customerAccount]) {
+    if (typeof value === "string" && isValidUuid(value)) return value;
+  }
+  return null;
+}
+
+export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   if (!body || typeof body !== "object") {
     throw new Error("Invalid request body");
   }
@@ -101,6 +127,7 @@ export function validatePickupCheckoutInput(body: unknown): PickupCheckoutInput 
   const pickupTime = String(data.pickupTime ?? "").trim();
   const origin = String(data.origin ?? "").trim();
   const notes = data.notes != null ? String(data.notes).trim() : undefined;
+  const customerAccount = parseOptionalCustomerAccount(data.customerAccount);
 
   if (!customerName) throw new Error("Please enter your name");
   if (!customerEmail || !isValidEmail(customerEmail)) {
@@ -118,7 +145,7 @@ export function validatePickupCheckoutInput(body: unknown): PickupCheckoutInput 
     throw new Error("Your cart is empty");
   }
 
-  const items: PickupCheckoutItem[] = rawItems.map((raw) => {
+  const items: OrderCheckoutItem[] = rawItems.map((raw) => {
     const row = raw as Record<string, unknown>;
     const menuItemId = Number(row.menuItemId);
     const qty = Number(row.qty);
@@ -135,6 +162,7 @@ export function validatePickupCheckoutInput(body: unknown): PickupCheckoutInput 
 
   return {
     mode,
+    customerAccount,
     customerName,
     customerEmail,
     customerPhone,
@@ -146,9 +174,9 @@ export function validatePickupCheckoutInput(body: unknown): PickupCheckoutInput 
   };
 }
 
-export async function createPickupCheckoutSession(
-  input: PickupCheckoutInput,
-): Promise<PickupCheckoutResult> {
+export async function createOrderCheckoutSession(
+  input: OrderCheckoutInput,
+): Promise<OrderCheckoutResult> {
   const supabase = createServiceClient();
   const total = input.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
 
@@ -159,6 +187,7 @@ export async function createPickupCheckoutSession(
   const { data: draftOrder, error: draftOrderError } = await supabase
     .from("draft_orders")
     .insert({
+      customer_account: input.customerAccount ?? null,
       customer_name: input.customerName,
       customer_email: input.customerEmail,
       customer_phone: input.customerPhone,
@@ -206,7 +235,7 @@ export async function createPickupCheckoutSession(
     quantity: item.qty,
   }));
 
-  const stripeMetadata = {
+  const stripeMetadata: Record<string, string> = {
     draftOrderId: String(draftOrderId),
     mode: input.mode,
     customerName: input.customerName,
@@ -214,6 +243,9 @@ export async function createPickupCheckoutSession(
     pickupTime: input.pickupTime,
     storeId: String(input.storeId),
   };
+  if (input.customerAccount) {
+    stripeMetadata.customerAccount = input.customerAccount;
+  }
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     payment_method_types: ["card"],
@@ -272,9 +304,11 @@ export async function markOrderPaidFromStripeSession(
 
   const cancelToken = randomHex(24);
   const trackingToken = randomHex(24);
+  const customerAccount = resolveCustomerAccount(draftOrder, session);
   const { data: createdOrderId, error: createOrderError } = await supabase.rpc(
     createPaidOrderRpc(paymentMode),
     {
+      p_customer_account: customerAccount,
       p_customer_name: draftOrder.customer_name ?? "",
       p_customer_email: draftOrder.customer_email ?? "",
       p_customer_phone: draftOrder.customer_phone ?? "",
@@ -399,7 +433,9 @@ async function fetchDraftOrder(
 ): Promise<DraftOrderRow | null> {
   const { data, error } = await supabase
     .from("draft_orders")
-    .select("id, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items")
+    .select(
+      "id, customer_account, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items",
+    )
     .eq("id", draftOrderId)
     .maybeSingle();
 

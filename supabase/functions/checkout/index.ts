@@ -1,8 +1,8 @@
 import { handleCors, jsonResponse } from "../_shared/cors.ts";
 import {
-  createPickupCheckoutSession,
-  validatePickupCheckoutInput,
-} from "../_shared/pickup.ts";
+  createOrderCheckoutSession,
+  validateOrderCheckoutInput,
+} from "../_shared/order.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -14,8 +14,8 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const input = validatePickupCheckoutInput(body);
-    const result = await createPickupCheckoutSession(input);
+    const input = validateOrderCheckoutInput(body);
+    const result = await createOrderCheckoutSession(input);
     return jsonResponse(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create checkout";
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       message.includes("empty") || message.includes("Please") || message.includes("Invalid")
         ? 400
         : 500;
-    console.error("[checkout-pickup]", err);
+    console.error("[checkout]", err);
     return jsonResponse({ error: message }, status);
   }
 });

@@ -16,6 +16,7 @@ create type public.payment_status as enum ('unpaid', 'paid', 'refunded');
 create table public.orders (
   id bigint generated always as identity primary key,
   order_type public.order_type not null,
+  customer_account uuid references public.user_profiles (id) on delete set null,
   customer_name text not null,
   customer_email text not null,
   customer_phone text not null,
@@ -53,6 +54,7 @@ create index order_items_order_id_idx on public.order_items (order_id);
 create index orders_order_type_idx on public.orders (order_type);
 
 create or replace function public.create_paid_order_with_items(
+  p_customer_account uuid,
   p_customer_name text,
   p_customer_email text,
   p_customer_phone text,
@@ -95,6 +97,7 @@ begin
 
   begin
     insert into public.orders (
+      customer_account,
       customer_name,
       customer_email,
       customer_phone,
@@ -111,6 +114,7 @@ begin
       status_updated_at
     )
     values (
+      p_customer_account,
       p_customer_name,
       p_customer_email,
       p_customer_phone,

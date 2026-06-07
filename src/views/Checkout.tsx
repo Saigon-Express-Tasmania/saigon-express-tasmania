@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/contexts/CartContext";
+import { useSupabase } from "@/hooks/useSupabase";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import type { StoreLocation } from "@/types";
@@ -63,6 +64,7 @@ export default function Checkout({
   const t = useTranslations("Checkout");
   const stores = storeLocations;
   const { cart, cartTotal, removeFromCart, updateQty, clearCart } = useCart();
+  const { user } = useSupabase();
 
   // Load dynamically localized strings for date mapping runtime utilities
   const dateConfig: DateConfig = t.raw("dateStrings");
@@ -148,10 +150,11 @@ export default function Checkout({
         url?: string | null;
         orderId?: number;
         draftOrderId?: number;
-      }>("checkout-pickup", {
+      }>("checkout", {
         method: "POST",
         body: {
           mode: getClientStripeMode(),
+          customerAccount: user?.id ?? null,
           customerName: name,
           customerEmail: email,
           customerPhone: phone,
