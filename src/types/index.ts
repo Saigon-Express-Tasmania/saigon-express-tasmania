@@ -32,6 +32,11 @@ export {
 export type { SiteContentSnapshot, LocalizationValue } from "./SiteContent";
 export type { SiteCategory } from "./Category";
 export type {
+  WholesalePricingTier,
+  WholesaleTierRow,
+} from "./WholesaleTier";
+export { mapWholesaleTierRow } from "./WholesaleTier";
+export type {
   BusinessType,
   UserAuthMetadata,
   UserProfile,

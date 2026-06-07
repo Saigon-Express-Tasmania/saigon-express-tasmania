@@ -21,6 +21,7 @@ export const CACHE_TAGS = {
   cateringBoxes: "catering-boxes",
   storeLocations: "store-locations",
   wholesaleProducts: "wholesale-products",
+  wholesaleTiers: "wholesale-tiers",
   settings: "settings",
   localization: "localization",
 } as const;

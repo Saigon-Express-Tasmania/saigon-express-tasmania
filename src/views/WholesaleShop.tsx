@@ -7,34 +7,31 @@ import Link from "@/components/link";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { SiteCategory, WholesaleProduct } from "@/types";
+import type {
+  SiteCategory,
+  WholesalePricingTier,
+  WholesaleProduct,
+} from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
 // 1. Import Fuse
 import Fuse from "fuse.js";
 
 const ALL_CATEGORY = "All";
 
-interface LocalizedPricingTier {
-  label: string;
-  min: string;
-  discount: string;
-  color: string;
-  popular?: boolean;
-}
-
 export default function WholesaleShop({
   products,
   categoriesContent,
+  pricingTiers,
 }: {
   products: WholesaleProduct[];
   categoriesContent: SiteCategory[];
+  pricingTiers: WholesalePricingTier[];
 }) {
   const t = useTranslations("WholesaleShop");
   const { profile, isSignedIn } = useSupabase();
   const canViewPrices =
     isSignedIn && profile?.business_type === "wholesale";
 
-  const pricingTiers = (t.raw("pricingTiers") || []) as LocalizedPricingTier[];
   const bannerPerks = (t.raw("banner.perks") || []) as string[];
 
   const categoryStyleMap = useMemo(
@@ -376,7 +373,7 @@ export default function WholesaleShop({
           <div className="flex flex-wrap justify-center gap-4 max-w-3xl mx-auto">
             {pricingTiers.map((tier, i) => (
               <motion.div
-                key={tier.label}
+                key={tier.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}

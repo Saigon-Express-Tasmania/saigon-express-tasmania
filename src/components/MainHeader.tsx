@@ -1,7 +1,7 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "@/components/link";
 import { useCart } from "@/contexts/CartContext";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
+import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { StoreLocation } from "@/types";
 
 type MainHeaderProps = {
@@ -23,7 +24,15 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
   const { cartCount, setCartOpen } = useCart();
-  const { isSignedIn, isLoading, signOut } = useSupabase();
+  const { isSignedIn, profile, authMetadata } = useSupabase();
+
+  const myAccountHref = useMemo(() => {
+    if (!isSignedIn) return "/member";
+    if (!isWholesaleMemberConfirmed(profile, authMetadata)) return "/member";
+    if (profile?.business_type === "wholesale") return "/wholesale/dashboard";
+    if (profile?.business_type === "warehouse") return "/warehouse/dashboard";
+    return "/member";
+  }, [authMetadata, isSignedIn, profile]);
 
   const handleOrderOnlineClick = useCallback(() => {
     // Previous: navigate to menu categories anchor
@@ -103,23 +112,12 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
             >
               🍱 {tLinks("catering")}
             </Link>
-            {!isLoading && !isSignedIn ? (
-              <Link
-                href="/member"
-                className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
-              >
-                👤 {tLinks("my_account")}
-              </Link>
-            ) : null}
-            {isSignedIn ? (
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
-              >
-                {tLinks("sign_out")}
-              </button>
-            ) : null}
+            <Link
+              href={myAccountHref}
+              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
+            >
+              👤 {tLinks("my_account")}
+            </Link>
             {cartCount > 0 ? (
               <button
                 onClick={() => setCartOpen(true)}

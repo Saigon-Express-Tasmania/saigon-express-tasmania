@@ -14,6 +14,7 @@ import {
   Mail,
   MapPin,
   Megaphone,
+  Percent,
   Settings,
   ShoppingCart,
   Star,
@@ -129,6 +130,12 @@ const navItems: NavItem[] = [
     title: "Wholesale Products",
     href: "/wholesale-products",
     icon: Truck,
+    group: "Content",
+  },
+  {
+    title: "Wholesale Tiers",
+    href: "/wholesale-tiers",
+    icon: Percent,
     group: "Content",
   },
   {

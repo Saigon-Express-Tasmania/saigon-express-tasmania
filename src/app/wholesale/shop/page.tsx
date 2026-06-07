@@ -2,8 +2,13 @@ import WholesaleShop from "@/views/WholesaleShop";
 import { loadWholesalePageData } from "@/lib/wholesale-page";
 
 export default async function WholesaleShopPage() {
-  const { products, categoriesContent } = await loadWholesalePageData();
+  const { products, categoriesContent, pricingTiers } =
+    await loadWholesalePageData();
   return (
-    <WholesaleShop products={products} categoriesContent={categoriesContent} />
+    <WholesaleShop
+      products={products}
+      categoriesContent={categoriesContent}
+      pricingTiers={pricingTiers}
+    />
   );
 }

@@ -7,6 +7,7 @@ import { CateringPacks } from '@/pages/CateringPacks';
 import { CateringBoxes } from '@/pages/CateringBoxes';
 import { StoreLocations } from '@/pages/StoreLocations';
 import { WholesaleProducts } from '@/pages/WholesaleProducts';
+import { WholesaleTiers } from '@/pages/WholesaleTiers';
 import { Categories } from '@/pages/Categories';
 import { DraftOrders } from '@/pages/Sales/DraftOrders';
 import { SalesOrdersPage } from '@/pages/Sales/SalesOrdersPage';
@@ -55,6 +56,7 @@ export function App() {
             <Route path="/catering-boxes" element={<CateringBoxes />} />
             <Route path="/store-locations" element={<StoreLocations />} />
             <Route path="/wholesale-products" element={<WholesaleProducts />} />
+            <Route path="/wholesale-tiers" element={<WholesaleTiers />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
             <Route path="/emails" element={<Emails />} />
             <Route path="/partners" element={<Navigate to="/partners/wholesale" replace />} />
