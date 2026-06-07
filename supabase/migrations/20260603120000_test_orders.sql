@@ -42,6 +42,7 @@ create index test_orders_order_type_idx on public.test_orders (order_type);
 
 -- Align test-order RPC with live orders: persist customer_account on paid test orders.
 create or replace function public.create_paid_test_order_with_items(
+  p_order_type public.order_type,
   p_customer_account uuid,
   p_customer_name text,
   p_customer_email text,
@@ -55,7 +56,8 @@ create or replace function public.create_paid_test_order_with_items(
   p_cancel_token text,
   p_tracking_token text,
   p_status_updated_at timestamptz,
-  p_items jsonb
+  p_items jsonb,
+  p_draft_order_id bigint default null
 )
 returns bigint
 language plpgsql
@@ -71,6 +73,9 @@ begin
     limit 1;
 
     if v_order_id is not null then
+      if p_draft_order_id is not null then
+        delete from public.draft_orders where id = p_draft_order_id;
+      end if;
       return v_order_id;
     end if;
   end if;
@@ -85,6 +90,7 @@ begin
 
   begin
     insert into public.test_orders (
+      order_type,
       customer_account,
       customer_name,
       customer_email,
@@ -102,6 +108,7 @@ begin
       status_updated_at
     )
     values (
+      p_order_type,
       p_customer_account,
       p_customer_name,
       p_customer_email,
@@ -128,6 +135,9 @@ begin
       limit 1;
 
       if v_order_id is not null then
+        if p_draft_order_id is not null then
+          delete from public.draft_orders where id = p_draft_order_id;
+        end if;
         return v_order_id;
       end if;
 
@@ -137,14 +147,14 @@ begin
   insert into public.test_order_items (order_id, menu_item_id, qty, unit_price, item_name)
   select
     v_order_id,
-    (item ->> 'menuItemId')::bigint,
+    coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint),
     (item ->> 'qty')::integer,
     (item ->> 'unitPrice')::numeric(8, 2),
     item ->> 'itemName'
   from jsonb_array_elements(p_items) as item
   where
     jsonb_typeof(item) = 'object'
-    and coalesce((item ->> 'menuItemId')::bigint, 0) > 0
+    and coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint, 0) > 0
     and coalesce((item ->> 'qty')::integer, 0) >= 1
     and coalesce((item ->> 'unitPrice')::numeric, -1) >= 0
     and nullif(trim(item ->> 'itemName'), '') is not null;
@@ -153,6 +163,10 @@ begin
     select 1 from public.test_order_items where order_id = v_order_id
   ) then
     raise exception 'No valid order items found';
+  end if;
+
+  if p_draft_order_id is not null then
+    delete from public.draft_orders where id = p_draft_order_id;
   end if;
 
   return v_order_id;
@@ -205,3 +219,31 @@ grant all on public.test_order_items to service_role;
 grant select, insert, update, delete on public.test_orders to authenticated;
 grant select, insert, update, delete on public.test_order_items to authenticated;
 grant execute on function public.create_paid_test_order_with_items to service_role;
+
+
+create index if not exists test_orders_customer_account_idx
+  on public.test_orders (customer_account, created_at desc)
+  where customer_account is not null;
+
+create policy "Partners read own wholesale test orders"
+  on public.test_orders
+  for select
+  to authenticated
+  using (
+    customer_account = auth.uid()
+    and order_type = 'wholesale'::public.order_type
+  );
+
+create policy "Partners read own wholesale test order items"
+  on public.test_order_items
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.test_orders as o
+      where o.id = test_order_items.order_id
+        and o.customer_account = auth.uid()
+        and o.order_type = 'wholesale'::public.order_type
+    )
+  );

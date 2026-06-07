@@ -7,7 +7,7 @@ export function shouldHideMainHeader(pathname: string): boolean {
   if (HEADERLESS_PATHS.has(path)) return true;
 
   for (const locale of SUPPORTED_LOCALES) {
-    if (path === `/${locale}/wholesale/dashboard`) return true;
+    if (path.endsWith('/wholesale/dashboard') || path.endsWith('/wholesale/orders') || path.endsWith('/wholesale/profile')) return true;
   }
 
   return false;
