@@ -121,7 +121,7 @@ function replaceModeHash(mode: "login" | "register") {
   window.history.replaceState(null, "", url);
 }
 
-function WholesaleMemberPortalContent() {
+function MemberPortalContent() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const setModeWithHash = useCallback((nextMode: "login" | "register") => {
@@ -305,14 +305,14 @@ function WholesaleMemberPortalContent() {
         }}
       />
 
-      <button
+      {/* <button
         type="button"
         onClick={() => router.push("/")}
         className="absolute top-6 left-6 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors z-10"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to site
-      </button>
+      </button> */}
 
       <Link
         href="/wholesale/shop"
@@ -839,6 +839,6 @@ function WholesaleMemberPortalContent() {
   );
 }
 
-export default function WholesaleMemberPortal() {
-  return <WholesaleMemberPortalContent />;
+export default function MemberPortal() {
+  return <MemberPortalContent />;
 }

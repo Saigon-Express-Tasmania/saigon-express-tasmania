@@ -142,7 +142,7 @@ export default function WholesaleShop({
                   </div>
                 </div>
               </div>
-              <Link href="/wholesale/member">
+              <Link href="/member">
                 <button className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap">
                   {t("banner.cta")} <ChevronRight className="w-4 h-4" />
                 </button>
@@ -170,7 +170,7 @@ export default function WholesaleShop({
               </div>
             </div>
             <div className="flex gap-2 shrink-0">
-              <Link href="/wholesale/member">
+              <Link href="/member">
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
                   {t("notice.ctaRegister")}
                 </button>
@@ -321,13 +321,13 @@ export default function WholesaleShop({
                           <span>{t("productCard.priceDisclaimer")}</span>
                         </div>
                         <div className="flex gap-2">
-                          <Link href="/wholesale/member" className="flex-1">
+                          <Link href="/member" className="flex-1">
                             <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
                               {t("productCard.ctaPin")}
                             </button>
                           </Link>
                           <Link
-                            href="/wholesale/member#register"
+                            href="/member#register"
                             className="flex-1"
                           >
                             <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
@@ -401,7 +401,7 @@ export default function WholesaleShop({
             {t("pricingHeading.disclaimer")}
           </p>
           <div className="text-center mt-8">
-            <Link href="/wholesale/member">
+            <Link href="/member">
               <button className="inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors">
                 {t("pricingHeading.cta")} <ChevronRight className="w-4 h-4" />
               </button>

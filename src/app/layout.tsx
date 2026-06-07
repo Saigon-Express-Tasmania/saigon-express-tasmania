@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { headers } from "next/headers";
 import "./globals.css";
 import { notoSans, notoSerif } from "@/app/fonts";
 import { Providers } from "@/components/providers";
@@ -18,12 +19,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [siteContent, locale, messages, storeLocations] = await Promise.all([
-    getSiteContentSnapshot(),
-    getLocale(),
-    getMessages(),
-    getStoreLocations(),
-  ]);
+  const [siteContent, locale, messages, storeLocations, requestHeaders] =
+    await Promise.all([
+      getSiteContentSnapshot(),
+      getLocale(),
+      getMessages(),
+      getStoreLocations(),
+      headers(),
+    ]);
+
+  const initialPathname = requestHeaders.get("x-pathname") ?? "";
 
   return (
     <html
@@ -48,7 +53,11 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <Providers siteContent={siteContent} storeLocations={storeLocations}>
+          <Providers
+            siteContent={siteContent}
+            storeLocations={storeLocations}
+            initialPathname={initialPathname}
+          >
             {children}
           </Providers>
         </NextIntlClientProvider>

@@ -1,41 +1,46 @@
 "use client";
 
+import AppChrome from "@/components/AppChrome";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
-import CartDrawer from "@/components/CartDrawer";
-import { FloatingWidgets } from "@/components/FloatingWidgets";
+import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
+import WholesaleShoppingCart from "@/components/WholesaleShoppingCart";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import type { SiteContentSnapshot, StoreLocation } from "@/types";
-import MainHeader from "@/components/MainHeader";
-import MainFooter from "@/components/MainFooter";
 
 interface ProvidersProps {
   children: React.ReactNode;
   siteContent: SiteContentSnapshot;
   storeLocations: StoreLocation[];
+  initialPathname: string;
 }
 
 export function Providers({
   children,
   siteContent,
   storeLocations,
+  initialPathname,
 }: ProvidersProps) {
   return (
     <SiteContentProvider initialData={siteContent}>
       <SupabaseProvider>
         <ThemeProvider defaultTheme="light">
           <CartProvider>
-            <TooltipProvider>
-              <MainHeader storeLocations={storeLocations} />
-              {children}
-              <MainFooter />
-              <CartDrawer />
-              <FloatingWidgets />
-              <Toaster />
-            </TooltipProvider>
+            <WholesaleCartProvider>
+              <TooltipProvider>
+                <AppChrome
+                  storeLocations={storeLocations}
+                  initialPathname={initialPathname}
+                >
+                  {children}
+                </AppChrome>
+                <WholesaleShoppingCart />
+                <Toaster />
+              </TooltipProvider>
+            </WholesaleCartProvider>
           </CartProvider>
         </ThemeProvider>
       </SupabaseProvider>

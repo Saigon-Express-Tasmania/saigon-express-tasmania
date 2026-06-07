@@ -3,25 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppImage from "@/components/AppImage";
-import Link from "@/components/link";
+import WholesaleHeader from "@/components/WholesaleHeader";
+import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
-import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { UserProfile, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
+import { Plus, Package, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
-import {
-  ShoppingCart,
-  Plus,
-  Minus,
-  Trash2,
-  CreditCard,
-  LogOut,
-  Package,
-  ChevronRight,
-  Building2,
-  Search,
-} from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Dough: "from-amber-800 to-amber-600",
@@ -73,14 +62,6 @@ type DashboardProduct = {
   stockQty: number;
 };
 
-type CartItem = {
-  id: number;
-  productId: number;
-  productName: string;
-  qty: number;
-  unitPrice: number;
-};
-
 function mapProduct(p: WholesaleProduct): DashboardProduct {
   return {
     id: p.id,
@@ -111,10 +92,9 @@ export default function WholesaleDashboard({
 }) {
   const router = useRouter();
   const { profile, authMetadata, isLoading, signOut } = useSupabase();
+  const { addToCart, getCartQty } = useWholesaleCart();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [cartOpen, setCartOpen] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
 
   const me = useMemo(() => {
     if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
@@ -129,7 +109,7 @@ export default function WholesaleDashboard({
 
   useEffect(() => {
     if (!isLoading && !me) {
-      router.push("/wholesale/member");
+      router.push("/member");
     }
   }, [me, isLoading, router]);
 
@@ -148,138 +128,23 @@ export default function WholesaleDashboard({
     });
   }, [allProducts, search, selectedCategory]);
 
-  const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
-  const cartTotal = cart.reduce(
-    (sum, c) => sum + Number(c.unitPrice) * c.qty,
-    0,
-  );
-
-  const addToCart = (product: DashboardProduct) => {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.productId === product.id);
-      if (existing) {
-        return prev.map((c) =>
-          c.productId === product.id ? { ...c, qty: c.qty + 1 } : c,
-        );
-      }
-      return [
-        ...prev,
-        {
-          id: product.id,
-          productId: product.id,
-          productName: product.name,
-          qty: 1,
-          unitPrice: product.priceExGst,
-        },
-      ];
-    });
-    toast.success(`${product.name} added to cart`);
-  };
-
-  const updateQty = (
-    productId: number,
-    productName: string,
-    unitPrice: number,
-    delta: number,
-  ) => {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.productId === productId);
-      const newQty = Math.max(0, (existing?.qty ?? 0) + delta);
-      if (newQty === 0) {
-        return prev.filter((c) => c.productId !== productId);
-      }
-      if (existing) {
-        return prev.map((c) =>
-          c.productId === productId ? { ...c, qty: newQty } : c,
-        );
-      }
-      return [
-        ...prev,
-        {
-          id: productId,
-          productId,
-          productName,
-          qty: newQty,
-          unitPrice,
-        },
-      ];
-    });
-  };
-
-  const clearCart = () => {
-    setCart([]);
-  };
-
-  const handleCheckout = () => {
-    if (cart.length === 0) {
-      toast.error("Your cart is empty.");
-      return;
-    }
-  };
-
   const handleLogout = async () => {
     await signOut();
     toast.success("Signed out.");
-    router.push("/wholesale/member");
+    router.push("/member");
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!me) return null;
+  const handleAddToCart = (product: DashboardProduct) => {
+    addToCart({
+      productId: product.id,
+      productName: product.name,
+      unitPrice: product.priceExGst,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-50 bg-black/95 backdrop-blur-md border-b border-white/10">
-        <div className="container flex items-center justify-between h-16">
-          <Link href="/">
-            <AppImage
-              src={LOGO_URL}
-              alt="Saigon Express"
-              width={LOGO_INTRINSIC.width}
-              height={LOGO_INTRINSIC.height}
-              className={`h-9 ${LOGO_IMG_CLASS}`}
-            />
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-right">
-              <div className="text-xs font-semibold text-white">
-                {me.businessName}
-              </div>
-              <div className="text-xs text-white/40 capitalize">
-                {me.portalType} member
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCartOpen(true)}
-              className="relative flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-colors"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span className="text-sm font-semibold">Cart</span>
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="p-2 text-white/40 hover:text-white transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <WholesaleHeader member={me} onLogout={() => void handleLogout()} />
 
       {/* Welcome banner */}
       <div className="border-b border-white/10 py-6">
@@ -288,16 +153,18 @@ export default function WholesaleDashboard({
             <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
               <Building2 className="w-6 h-6 text-primary" />
             </div>
-            <div>
-              <h1 className="font-serif text-2xl font-bold text-white">
-                Welcome, {me.contactName}
-              </h1>
-              <p className="text-white/45 text-sm">
-                {me.businessName} ·{" "}
-                {me.portalType === "wholesale" ? "Wholesale" : "Warehouse"}{" "}
-                Member
-              </p>
-            </div>
+            {me ? (
+              <div>
+                <h1 className="font-serif text-2xl font-bold text-white">
+                  Welcome, {me.contactName}
+                </h1>
+                <p className="text-white/45 text-sm">
+                  {me.businessName} ·{" "}
+                  {me.portalType === "wholesale" ? "Wholesale" : "Warehouse"}{" "}
+                  Member
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -340,7 +207,7 @@ export default function WholesaleDashboard({
             const gradientClass =
               CATEGORY_COLORS[product.category] ?? "from-gray-800 to-gray-600";
             const icon = CATEGORY_ICONS[product.category] ?? "📦";
-            const inCart = cart.find((c) => c.productId === product.id);
+            const cartQty = getCartQty(product.id);
             const outOfStock =
               !product.isAvailable || product.stockQty === 0;
             return (
@@ -363,18 +230,18 @@ export default function WholesaleDashboard({
                       <span className="text-5xl opacity-80">{icon}</span>
                     </div>
                   )}
-                  {product.badge && (
+                  {product.badge ? (
                     <div className="absolute top-3 left-3 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-primary text-white">
                       {product.badge}
                     </div>
-                  )}
-                  {outOfStock && (
+                  ) : null}
+                  {outOfStock ? (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <span className="text-white font-semibold text-sm">
                         Out of Stock
                       </span>
                     </div>
-                  )}
+                  ) : null}
                   <div className="absolute top-3 right-3 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-black/60 text-white backdrop-blur-sm">
                     {product.category}
                   </div>
@@ -387,7 +254,6 @@ export default function WholesaleDashboard({
                     {product.description}
                   </p>
 
-                  {/* Price — visible to members */}
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <div className="text-lg font-bold text-white">
@@ -397,16 +263,16 @@ export default function WholesaleDashboard({
                         per {product.unit} ex GST
                       </div>
                     </div>
-                    {inCart && (
+                    {cartQty > 0 ? (
                       <div className="text-xs font-semibold text-primary bg-primary/15 px-2 py-1 rounded-lg">
-                        {inCart.qty} in cart
+                        {cartQty} in cart
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => addToCart(product)}
+                    onClick={() => handleAddToCart(product)}
                     disabled={outOfStock}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                   >
@@ -419,164 +285,13 @@ export default function WholesaleDashboard({
           })}
         </div>
 
-        {filtered.length === 0 && (
+        {filtered.length === 0 ? (
           <div className="text-center py-20 text-white/30">
             <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p className="font-medium">No products found</p>
           </div>
-        )}
+        ) : null}
       </div>
-
-      {/* Cart Drawer */}
-      {cartOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <button
-            type="button"
-            aria-label="Close cart"
-            className="flex-1 bg-black/60 backdrop-blur-sm"
-            onClick={() => setCartOpen(false)}
-          />
-          <div className="w-full sm:max-w-md bg-black border-l border-white/10 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-              <h2 className="font-serif text-xl font-bold text-white flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-primary" /> Your Cart
-              </h2>
-              <div className="flex items-center gap-3">
-                {cart.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearCart}
-                    className="text-xs text-white/30 hover:text-red-400 transition-colors"
-                  >
-                    Clear all
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setCartOpen(false)}
-                  className="text-white/40 hover:text-white transition-colors text-2xl leading-none"
-                >
-                  &times;
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              {cart.length === 0 ? (
-                <div className="text-center py-16 text-white/30">
-                  <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Your cart is empty</p>
-                  <p className="text-xs mt-1">Add products to get started</p>
-                </div>
-              ) : (
-                cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white leading-snug">
-                        {item.productName}
-                      </p>
-                      <p className="text-xs text-white/40 mt-0.5">
-                        ${Number(item.unitPrice).toFixed(2)} ex GST
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateQty(
-                              item.productId,
-                              item.productName,
-                              Number(item.unitPrice),
-                              -1,
-                            )
-                          }
-                          className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-sm font-bold text-white w-6 text-center">
-                          {item.qty}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateQty(
-                              item.productId,
-                              item.productName,
-                              Number(item.unitPrice),
-                              1,
-                            )
-                          }
-                          className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-white">
-                        ${(Number(item.unitPrice) * item.qty).toFixed(2)}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateQty(
-                            item.productId,
-                            item.productName,
-                            Number(item.unitPrice),
-                            -item.qty,
-                          )
-                        }
-                        className="mt-2 text-white/30 hover:text-red-400 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {cart.length > 0 && (
-              <div className="px-6 py-5 border-t border-white/10 space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/60">Subtotal (ex GST)</span>
-                  <span className="font-bold text-white">
-                    ${cartTotal.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/60">GST (10%)</span>
-                  <span className="font-bold text-white">
-                    ${(cartTotal * 0.1).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-base font-bold border-t border-white/10 pt-3">
-                  <span className="text-white">Total (inc GST)</span>
-                  <span className="text-primary">
-                    ${(cartTotal * 1.1).toFixed(2)}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCheckout}
-                  className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  Checkout with Card / Apple Pay
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <p className="text-xs text-white/30 text-center">
-                  Secure payment via Stripe · Card & Apple Pay accepted
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

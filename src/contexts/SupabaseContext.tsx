@@ -112,6 +112,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Error initializing Supabase session:", error);
       } finally {
+        console.log("isLoading", isLoading);
         if (mounted) setIsLoading(false);
       }
     };
@@ -128,7 +129,6 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      setIsLoading(false);
 
       if (newSession?.user) {
         try {
@@ -140,6 +140,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       } else {
         clearSignedInUser();
       }
+
+      setIsLoading(false);
     });
 
     return () => {

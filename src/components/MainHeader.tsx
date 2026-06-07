@@ -105,7 +105,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
             </Link>
             {!isLoading && !isSignedIn ? (
               <Link
-                href="/user-portal"
+                href="/member"
                 className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
               >
                 👤 {tLinks("my_account")}
