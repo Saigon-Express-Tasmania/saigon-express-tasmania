@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import WholesaleHeader from "@/components/WholesaleHeader";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
@@ -59,8 +59,10 @@ export default function WholesaleDashboard({
   categoriesContent: SiteCategory[];
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { profile, authMetadata, isLoading, signOut } = useSupabase();
-  const { addToCart, getCartQty } = useWholesaleCart();
+  const { addToCart, getCartQty, clearCart } = useWholesaleCart();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
 
@@ -98,6 +100,22 @@ export default function WholesaleDashboard({
       router.push("/member");
     }
   }, [me, isLoading, router]);
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (!checkout) return;
+
+    if (checkout === "success") {
+      clearCart();
+      toast.success("Payment successful! Your wholesale order has been placed.");
+    } else if (checkout === "cancelled") {
+      toast.error("Checkout was cancelled. Your cart is unchanged.");
+    } else if (checkout === "failed") {
+      toast.error("Payment failed. Please try again.");
+    }
+
+    router.replace(pathname, { scroll: false });
+  }, [searchParams, router, pathname, clearCart]);
 
   const allProducts = useMemo(() => products.map(mapProduct), [products]);
 

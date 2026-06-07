@@ -154,6 +154,7 @@ export default function Checkout({
         method: "POST",
         body: {
           mode: getClientStripeMode(),
+          orderType: "pickup",
           customerAccount: user?.id ?? null,
           customerName: name,
           customerEmail: email,

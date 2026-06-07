@@ -42,25 +42,25 @@ const useWholesaleCartStore = create<WholesaleCartStore>()(
           const existing = state.cart.find(
             (item) => item.productId === product.productId,
           );
-          if (existing) {
-            return {
-              cart: state.cart.map((item) =>
+          const nextCart = existing
+            ? state.cart.map((item) =>
                 item.productId === product.productId
                   ? { ...item, qty: item.qty + 1 }
                   : item,
-              ),
-            };
-          }
+              )
+            : [
+                ...state.cart,
+                {
+                  productId: product.productId,
+                  productName: product.productName,
+                  qty: 1,
+                  unitPrice: product.unitPrice,
+                },
+              ];
+
           return {
-            cart: [
-              ...state.cart,
-              {
-                productId: product.productId,
-                productName: product.productName,
-                qty: 1,
-                unitPrice: product.unitPrice,
-              },
-            ],
+            cart: nextCart,
+            ...(options?.silent ? {} : { cartOpen: true }),
           };
         });
         if (!options?.silent) {

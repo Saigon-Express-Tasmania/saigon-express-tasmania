@@ -8,6 +8,8 @@ import {
 
 export type { StripePaymentMode };
 
+export type OrderType = "pickup" | "wholesale";
+
 export type OrderCheckoutItem = {
   menuItemId: number;
   qty: number;
@@ -17,14 +19,16 @@ export type OrderCheckoutItem = {
 
 export type OrderCheckoutInput = {
   mode: StripePaymentMode;
+  orderType: OrderType;
   customerAccount?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  storeId: number;
-  pickupTime: string;
+  storeId?: number | null;
+  pickupTime?: string;
   notes?: string;
   origin: string;
+  returnTo?: string;
   items: OrderCheckoutItem[];
 };
 
@@ -50,6 +54,7 @@ type DraftOrderItemRow = {
 
 type DraftOrderRow = {
   id: number;
+  order_type: OrderType;
   customer_account: string | null;
   customer_name: string | null;
   customer_email: string | null;
@@ -103,6 +108,36 @@ function parseOptionalCustomerAccount(value: unknown): string | null {
   return account;
 }
 
+function parseOrderType(value: unknown): OrderType {
+  const raw = String(value ?? "pickup").trim().toLowerCase();
+  if (raw === "wholesale") return "wholesale";
+  if (raw === "pickup") return "pickup";
+  throw new Error("Invalid order type");
+}
+
+function parseOptionalStoreId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const storeId = Number(value);
+  if (!Number.isFinite(storeId) || storeId <= 0) {
+    throw new Error("Invalid store");
+  }
+  return storeId;
+}
+
+function checkoutReturnUrls(origin: string, returnTo?: string) {
+  if (returnTo) {
+    const path = returnTo.startsWith("/") ? returnTo : `/${returnTo}`;
+    return {
+      successUrl: `${origin}${path}?checkout=success&sessionId={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${origin}${path}?checkout=cancelled`,
+    };
+  }
+  return {
+    successUrl: `${origin}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${origin}/checkout?cancelled=1`,
+  };
+}
+
 function resolveCustomerAccount(
   draftOrder: Pick<DraftOrderRow, "customer_account">,
   session: Stripe.Checkout.Session,
@@ -120,25 +155,34 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
 
   const data = body as Record<string, unknown>;
   const mode = parsePaymentMode(data.mode);
+  const orderType = parseOrderType(data.orderType);
   const customerName = String(data.customerName ?? "").trim();
   const customerEmail = String(data.customerEmail ?? "").trim();
   const customerPhone = String(data.customerPhone ?? "").trim();
-  const storeId = Number(data.storeId);
-  const pickupTime = String(data.pickupTime ?? "").trim();
+  const storeId = parseOptionalStoreId(data.storeId);
+  const pickupTimeRaw = data.pickupTime != null ? String(data.pickupTime).trim() : "";
   const origin = String(data.origin ?? "").trim();
   const notes = data.notes != null ? String(data.notes).trim() : undefined;
   const customerAccount = parseOptionalCustomerAccount(data.customerAccount);
+  const returnTo = data.returnTo != null ? String(data.returnTo).trim() : undefined;
 
   if (!customerName) throw new Error("Please enter your name");
   if (!customerEmail || !isValidEmail(customerEmail)) {
     throw new Error("Please enter a valid email");
   }
   if (!customerPhone) throw new Error("Please enter your phone number");
-  if (!Number.isFinite(storeId) || storeId <= 0) {
-    throw new Error("Please select a pickup store");
+  if (orderType === "pickup") {
+    if (storeId == null) throw new Error("Please select a pickup store");
+    if (!pickupTimeRaw) throw new Error("Please select a pickup time");
   }
-  if (!pickupTime) throw new Error("Please select a pickup time");
   if (!origin) throw new Error("Missing site origin");
+
+  const pickupTime =
+    pickupTimeRaw || (orderType === "wholesale" ? "To be arranged" : "");
+
+  if (orderType === "wholesale" && !customerAccount) {
+    throw new Error("Please sign in to place a wholesale order");
+  }
 
   const rawItems = data.items;
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
@@ -147,7 +191,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
 
   const items: OrderCheckoutItem[] = rawItems.map((raw) => {
     const row = raw as Record<string, unknown>;
-    const menuItemId = Number(row.menuItemId);
+    const menuItemId = Number(row.menuItemId ?? row.productId);
     const qty = Number(row.qty);
     const unitPrice = Number(row.unitPrice);
     const itemName = String(row.itemName ?? "").trim();
@@ -162,6 +206,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
 
   return {
     mode,
+    orderType,
     customerAccount,
     customerName,
     customerEmail,
@@ -170,6 +215,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     pickupTime,
     notes: notes || undefined,
     origin,
+    returnTo: returnTo || undefined,
     items,
   };
 }
@@ -187,12 +233,13 @@ export async function createOrderCheckoutSession(
   const { data: draftOrder, error: draftOrderError } = await supabase
     .from("draft_orders")
     .insert({
+      order_type: input.orderType,
       customer_account: input.customerAccount ?? null,
       customer_name: input.customerName,
       customer_email: input.customerEmail,
       customer_phone: input.customerPhone,
-      store_id: input.storeId,
-      pickup_time: input.pickupTime,
+      store_id: input.storeId ?? null,
+      pickup_time: input.pickupTime ?? null,
       total: total.toFixed(2),
       notes: input.notes ?? null,
       items: input.items,
@@ -205,20 +252,26 @@ export async function createOrderCheckoutSession(
   }
   const draftOrderId = draftOrder.id as number;
 
-  const { data: store, error: storeError } = await supabase
-    .from("store_locations")
-    .select("id, stripe_connect_account_id, stripe_connect_status, platform_fee_percent")
-    .eq("id", input.storeId)
-    .maybeSingle();
+  let connectAccountId: string | null = null;
+  let connectStatus: string | null = null;
+  let platformFeePercent = 5;
 
-  if (storeError) {
-    throw new Error(storeError.message);
+  if (input.storeId != null) {
+    const { data: store, error: storeError } = await supabase
+      .from("store_locations")
+      .select("id, stripe_connect_account_id, stripe_connect_status, platform_fee_percent")
+      .eq("id", input.storeId)
+      .maybeSingle();
+
+    if (storeError) {
+      throw new Error(storeError.message);
+    }
+
+    const storeRow = store as StoreStripeRow | null;
+    connectAccountId = storeRow?.stripe_connect_account_id ?? null;
+    connectStatus = storeRow?.stripe_connect_status ?? null;
+    platformFeePercent = parseFloat(storeRow?.platform_fee_percent ?? "5.00");
   }
-
-  const storeRow = store as StoreStripeRow | null;
-  const connectAccountId = storeRow?.stripe_connect_account_id ?? null;
-  const connectStatus = storeRow?.stripe_connect_status ?? null;
-  const platformFeePercent = parseFloat(storeRow?.platform_fee_percent ?? "5.00");
   const totalCents = Math.round(total * 100);
   const platformFeeCents =
     connectAccountId && connectStatus === "active"
@@ -238,14 +291,17 @@ export async function createOrderCheckoutSession(
   const stripeMetadata: Record<string, string> = {
     draftOrderId: String(draftOrderId),
     mode: input.mode,
+    orderType: input.orderType,
     customerName: input.customerName,
     customerEmail: input.customerEmail,
-    pickupTime: input.pickupTime,
-    storeId: String(input.storeId),
+    pickupTime: input.pickupTime ?? "",
+    storeId: input.storeId != null ? String(input.storeId) : "",
   };
   if (input.customerAccount) {
     stripeMetadata.customerAccount = input.customerAccount;
   }
+
+  const { successUrl, cancelUrl } = checkoutReturnUrls(input.origin, input.returnTo);
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     payment_method_types: ["card"],
@@ -255,8 +311,8 @@ export async function createOrderCheckoutSession(
     client_reference_id: String(draftOrderId),
     metadata: stripeMetadata,
     allow_promotion_codes: true,
-    success_url: `${input.origin}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${input.origin}/checkout?cancelled=1`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     payment_intent_data: {
       metadata: { draftOrderId: String(draftOrderId), mode: input.mode },
       ...(connectAccountId && connectStatus === "active"
@@ -278,14 +334,17 @@ export async function markOrderPaidFromStripeSession(
   paymentMode: StripePaymentMode,
 ): Promise<void> {
   const supabase = createServiceClient();
+  const draftOrderId = getDraftOrderIdFromSession(session);
   const existingOrderId = await findExistingOrderIdBySession(session.id, paymentMode, supabase);
   if (existingOrderId) {
+    if (draftOrderId) {
+      await supabase.from("draft_orders").delete().eq("id", draftOrderId);
+    }
     console.log(
       `[stripe-webhook] Session ${session.id} already mapped to ${paymentMode} order #${existingOrderId}`,
     );
     return;
   }
-  const draftOrderId = getDraftOrderIdFromSession(session);
   if (!draftOrderId) return;
   const draftOrder = await fetchDraftOrder(draftOrderId, supabase);
   if (!draftOrder) {
@@ -308,6 +367,7 @@ export async function markOrderPaidFromStripeSession(
   const { data: createdOrderId, error: createOrderError } = await supabase.rpc(
     createPaidOrderRpc(paymentMode),
     {
+      p_order_type: draftOrder.order_type,
       p_customer_account: customerAccount,
       p_customer_name: draftOrder.customer_name ?? "",
       p_customer_email: draftOrder.customer_email ?? "",
@@ -322,6 +382,7 @@ export async function markOrderPaidFromStripeSession(
       p_tracking_token: trackingToken,
       p_status_updated_at: new Date().toISOString(),
       p_items: parsedItems,
+      p_draft_order_id: draftOrderId,
     },
   );
 
@@ -434,7 +495,7 @@ async function fetchDraftOrder(
   const { data, error } = await supabase
     .from("draft_orders")
     .select(
-      "id, customer_account, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items",
+      "id, order_type, customer_account, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items",
     )
     .eq("id", draftOrderId)
     .maybeSingle();

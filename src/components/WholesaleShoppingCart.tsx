@@ -1,6 +1,14 @@
 "use client";
 
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
+import { useSupabase } from "@/hooks/useSupabase";
+import { getClientStripeMode } from "@/lib/stripe-mode";
+import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
+import { useLocale } from "next-intl";
+import { DEFAULT_LOCALE } from "@/config/localize";
+import type { UserProfile } from "@/types";
 import {
   ChevronRight,
   CreditCard,
@@ -11,6 +19,41 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const CART_ANIMATION_DURATION = 0.24;
+
+const backdropMotion = {
+  initial: {
+    opacity: 0,
+    backdropFilter: "blur(0px)",
+    WebkitBackdropFilter: "blur(0px)",
+  },
+  animate: {
+    opacity: 1,
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+  },
+  exit: {
+    opacity: 0,
+    backdropFilter: "blur(0px)",
+    WebkitBackdropFilter: "blur(0px)",
+  },
+  transition: { duration: CART_ANIMATION_DURATION, ease: "easeOut" as const },
+};
+
+const panelMotion = {
+  initial: { x: "100%" },
+  animate: { x: 0 },
+  exit: { x: "100%" },
+  transition: { duration: CART_ANIMATION_DURATION, ease: "easeOut" as const },
+};
+
+function getContactName(profile: UserProfile): string {
+  if (profile.display_name?.trim()) return profile.display_name.trim();
+  const parts = [profile.first_name, profile.last_name].filter(Boolean);
+  if (parts.length > 0) return parts.join(" ");
+  return profile.email ?? "Member";
+}
+
 export default function WholesaleShoppingCart() {
   const {
     cart,
@@ -20,25 +63,98 @@ export default function WholesaleShoppingCart() {
     updateQty,
     clearCart,
   } = useWholesaleCart();
+  const { profile, user } = useSupabase();
+  const locale = useLocale();
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  const handleCheckout = () => {
+  const wholesaleDashboardPath =
+    locale === DEFAULT_LOCALE
+      ? "/wholesale/dashboard"
+      : `/${locale}/wholesale/dashboard`;
+
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Your cart is empty.");
       return;
     }
+
+    if (!user || !profile) {
+      toast.error("Please sign in to checkout.");
+      return;
+    }
+
+    const customerName = getContactName(profile);
+    const customerEmail = profile.email?.trim() ?? user.email?.trim() ?? "";
+    const customerPhone = profile.phone?.trim() ?? "";
+
+    if (!customerEmail) {
+      toast.error("Please add an email to your profile before checkout.");
+      return;
+    }
+    if (!customerPhone) {
+      toast.error("Please add a phone number to your profile before checkout.");
+      return;
+    }
+
+    setIsCheckingOut(true);
+    try {
+      const result = await invokeEdgeFunction<{ url?: string | null }>("checkout", {
+        method: "POST",
+        body: {
+          mode: getClientStripeMode(),
+          orderType: "wholesale",
+          customerAccount: profile.id,
+          customerName,
+          customerEmail,
+          customerPhone,
+          origin: window.location.origin,
+          returnTo: wholesaleDashboardPath,
+          items: cart.map((item) => ({
+            productId: item.productId,
+            qty: item.qty,
+            unitPrice: Number((Number(item.unitPrice) * 1.1).toFixed(2)),
+            itemName: item.productName,
+          })),
+        },
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error || "Checkout failed");
+      }
+
+      const checkoutUrl = result.data.url;
+      if (!checkoutUrl) {
+        throw new Error("No checkout URL returned");
+      }
+
+      setCartOpen(false);
+      toast.success("Redirecting to secure payment…");
+      window.location.href = checkoutUrl;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Checkout failed";
+      toast.error(message);
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
-  if (!cartOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <button
-        type="button"
-        aria-label="Close cart"
-        className="flex-1 bg-black/60 backdrop-blur-sm"
-        onClick={() => setCartOpen(false)}
-      />
-      <div className="w-full sm:max-w-md bg-black border-l border-white/10 flex flex-col shadow-2xl">
+    <AnimatePresence>
+      {cartOpen ? (
+        <>
+          <motion.button
+            key="wholesale-cart-backdrop"
+            type="button"
+            aria-label="Close cart"
+            className="fixed inset-0 z-50 bg-black/60"
+            onClick={() => setCartOpen(false)}
+            {...backdropMotion}
+          />
+          <motion.div
+            key="wholesale-cart-panel"
+            className="fixed inset-y-0 right-0 z-[51] flex w-full flex-col border-l border-white/10 bg-black shadow-2xl sm:max-w-md"
+            {...panelMotion}
+          >
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
           <h2 className="font-serif text-xl font-bold text-white flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-primary" /> Your Cart
@@ -143,19 +259,31 @@ export default function WholesaleShoppingCart() {
 
             <button
               type="button"
-              onClick={handleCheckout}
+              onClick={() => void handleCheckout()}
+              disabled={isCheckingOut}
               className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
-              <CreditCard className="w-4 h-4" />
-              Checkout with Card / Apple Pay
-              <ChevronRight className="w-4 h-4" />
+              {isCheckingOut ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing…
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4" />
+                  Checkout with Card / Apple Pay
+                  <ChevronRight className="w-4 h-4" />
+                </>
+              )}
             </button>
             <p className="text-xs text-white/30 text-center">
               Secure payment via Stripe · Card & Apple Pay accepted
             </p>
           </div>
         ) : null}
-      </div>
-    </div>
+          </motion.div>
+        </>
+      ) : null}
+    </AnimatePresence>
   );
 }

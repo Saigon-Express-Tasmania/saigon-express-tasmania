@@ -1,8 +1,9 @@
 import { useSalesOrderMode } from '@/contexts/SalesOrderModeContext';
-import { Orders } from './Orders';
-import { TestOrders } from './TestOrders';
+import { LIVE_ORDERS_DATASET, TEST_ORDERS_DATASET } from './salesOrderShared';
+import { SalesOrdersManager } from './SalesOrdersManager';
 
 export function SalesOrdersPage() {
   const { mode } = useSalesOrderMode();
-  return mode === 'test' ? <TestOrders /> : <Orders />;
+  const dataset = mode === 'test' ? TEST_ORDERS_DATASET : LIVE_ORDERS_DATASET;
+  return <SalesOrdersManager dataset={dataset} />;
 }
