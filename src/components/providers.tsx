@@ -9,6 +9,7 @@ import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
 import WholesaleShoppingCart from "@/components/WholesaleShoppingCart";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
+import { SupabaseStorageProvider } from "@/contexts/SupabaseStorageContext";
 import type { SiteContentSnapshot, StoreLocation } from "@/types";
 
 interface ProvidersProps {
@@ -27,22 +28,24 @@ export function Providers({
   return (
     <SiteContentProvider initialData={siteContent}>
       <SupabaseProvider>
-        <ThemeProvider defaultTheme="light">
-          <CartProvider>
-            <WholesaleCartProvider>
-              <TooltipProvider>
-                <AppChrome
-                  storeLocations={storeLocations}
-                  initialPathname={initialPathname}
-                >
-                  {children}
-                </AppChrome>
-                <WholesaleShoppingCart />
-                <Toaster />
-              </TooltipProvider>
-            </WholesaleCartProvider>
-          </CartProvider>
-        </ThemeProvider>
+        <SupabaseStorageProvider>
+          <ThemeProvider defaultTheme="light">
+            <CartProvider>
+              <WholesaleCartProvider>
+                <TooltipProvider>
+                  <AppChrome
+                    storeLocations={storeLocations}
+                    initialPathname={initialPathname}
+                  >
+                    {children}
+                  </AppChrome>
+                  <WholesaleShoppingCart />
+                  <Toaster />
+                </TooltipProvider>
+              </WholesaleCartProvider>
+            </CartProvider>
+          </ThemeProvider>
+        </SupabaseStorageProvider>
       </SupabaseProvider>
     </SiteContentProvider>
   );

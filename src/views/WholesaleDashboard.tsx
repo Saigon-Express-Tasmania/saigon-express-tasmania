@@ -92,6 +92,7 @@ export default function WholesaleDashboard({
       businessName: profile.business_name ?? "Your Business",
       contactName: getContactName(profile),
       portalType: profile.business_type as "wholesale" | "warehouse",
+      avatarUrl: profile.avatar_url?.trim() || null,
     };
   }, [profile, authMetadata]);
 

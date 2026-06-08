@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import WholesaleFormSelect, {
@@ -8,10 +8,15 @@ import WholesaleFormSelect, {
 } from "@/components/WholesaleFormSelect";
 import WholesaleHeader from "@/components/WholesaleHeader";
 import { useSupabase } from "@/hooks/useSupabase";
+import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
+import { resizeImageFile } from "@/lib/image-resize";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { UserProfile, UserProfileSelfUpdate } from "@/types";
-import { Loader2, User } from "lucide-react";
+import { Loader2, Upload, User, X } from "lucide-react";
 import { toast } from "sonner";
+
+const AVATAR_MAX_SIZE_PX = 256;
+const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
 const BUSINESS_CATEGORIES = [
   { value: "restaurant", label: "Restaurant" },
@@ -51,7 +56,7 @@ const INPUT_CLASS =
 const LABEL_CLASS = "text-xs font-medium text-white/80";
 
 function getContactName(profile: UserProfile): string {
-  if (profile.display_name?.trim()) return profile.display_name.trim();
+  if (profile.business_name?.trim()) return profile.business_name.trim();
   const parts = [profile.first_name, profile.last_name].filter(Boolean);
   if (parts.length > 0) return parts.join(" ");
   return profile.email ?? "Member";
@@ -105,6 +110,23 @@ function profileToForm(profile: UserProfile): ProfileFormState {
   };
 }
 
+function fileMatchesAccept(file: File, accept: string): boolean {
+  const type = file.type.toLowerCase();
+  if (!type) return false;
+
+  return accept
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+    .some((accepted) => {
+      if (accepted.endsWith("/*")) {
+        const prefix = accepted.slice(0, -1);
+        return type.startsWith(prefix);
+      }
+      return type === accepted;
+    });
+}
+
 function formToUpdate(form: ProfileFormState): UserProfileSelfUpdate {
   const trim = (value: string) => value.trim() || null;
   return {
@@ -129,8 +151,11 @@ export default function WholesaleProfile() {
   const router = useRouter();
   const { profile, authMetadata, isLoading, signOut, updateOwnProfile } =
     useSupabase();
+  const { uploadMedia, isUploading } = useSupabaseStorage();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<ProfileFormState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
 
   const me = useMemo(() => {
     if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
@@ -140,8 +165,9 @@ export default function WholesaleProfile() {
       businessName: profile.business_name ?? "Your Business",
       contactName: getContactName(profile),
       portalType: profile.business_type as "wholesale" | "warehouse",
+      avatarUrl: profile.avatar_url?.trim() || avatarPreviewUrl,
     };
-  }, [profile, authMetadata]);
+  }, [profile, authMetadata, avatarPreviewUrl]);
 
   useEffect(() => {
     if (!isLoading && !me) {
@@ -152,8 +178,57 @@ export default function WholesaleProfile() {
   useEffect(() => {
     if (profile) {
       setForm(profileToForm(profile));
+      setAvatarPreviewUrl(profile.avatar_url);
     }
   }, [profile]);
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!fileMatchesAccept(file, AVATAR_ACCEPT)) {
+      toast.error("Please choose a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+
+    try {
+      const resized = await resizeImageFile(file, AVATAR_MAX_SIZE_PX);
+      const ext = resized.name.split(".").pop()?.toLowerCase() || "jpg";
+      const { publicUrl } = await uploadMedia(resized, {
+        folder: "avatars",
+        fileName: `avatar.${ext}`,
+        upsert: true,
+      });
+      await updateOwnProfile({ avatar_url: publicUrl });
+      setAvatarPreviewUrl(publicUrl);
+      toast.success("Avatar updated.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to upload avatar.",
+      );
+    } finally {
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleAvatarClear = async () => {
+    try {
+      await updateOwnProfile({ avatar_url: null });
+      setAvatarPreviewUrl(null);
+      toast.success("Avatar removed.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to remove avatar.",
+      );
+    }
+  };
+
+  const handleAvatarInputChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleAvatarUpload(file);
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -282,24 +357,61 @@ export default function WholesaleProfile() {
         <form onSubmit={(event) => void handleSubmit(event)}>
           <div className="mb-6 grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center lg:h-full lg:justify-center">
+              <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-flex-start lg:h-full lg:justify-flex_start">
                 <div className="text-center">
-                  <div className="mx-auto mb-2 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-primary/20">
-                    {profile.avatar_url ? (
+                  <div className="relative mx-auto mb-3 flex h-50 w-50 p-1 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/20">
+                    {avatarPreviewUrl ? (
                       <AppImage
-                        src={profile.avatar_url}
+                        src={avatarPreviewUrl}
                         alt={displayName}
                         width={80}
                         height={80}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
                     ) : (
                       <span className="text-2xl font-semibold text-primary">
                         {getInitials(profile)}
                       </span>
                     )}
+                    {isUploading ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      </div>
+                    ) : null}
                   </div>
-                  <span className="text-xs text-white/35">Avatar coming soon</span>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={isUploading || isSaving}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      {avatarPreviewUrl ? "Replace" : "Upload"}
+                    </button>
+                    {avatarPreviewUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleAvatarClear()}
+                        disabled={isUploading || isSaving}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-xs text-white/35">
+                    JPEG, PNG, WebP or GIF.
+                  </p>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept={AVATAR_ACCEPT}
+                    className="sr-only"
+                    disabled={isUploading || isSaving}
+                    onChange={(event) => void handleAvatarInputChange(event)}
+                  />
                 </div>
                 <div>
                   <div className="mb-2 font-serif text-2xl text-white">
@@ -485,7 +597,7 @@ export default function WholesaleProfile() {
                       />
                     </div>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label htmlFor="country" className={LABEL_CLASS}>
                         Country
@@ -499,19 +611,7 @@ export default function WholesaleProfile() {
                         options={countryOptions}
                         placeholder="Select country"
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label htmlFor="country_code" className={LABEL_CLASS}>
-                        Code
-                      </label>
-                      <input
-                        id="country_code"
-                        type="text"
-                        value={form.country}
-                        disabled
-                        className={INPUT_CLASS}
-                      />
-                    </div>
+                    </div>                    
                   </div>
                 </div>
               </section>              
@@ -520,7 +620,7 @@ export default function WholesaleProfile() {
             <div className="space-y-6">
               <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <h2 className="mb-5 text-base font-semibold text-white">
-                  Wholesale Account Information
+                  Business Information
                 </h2>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -568,19 +668,7 @@ export default function WholesaleProfile() {
                       allowEmpty
                       emptyLabel="Select business category"
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="account_type" className={LABEL_CLASS}>
-                      Account Type
-                    </label>
-                    <input
-                      id="account_type"
-                      type="text"
-                      value={businessTypeLabel(profile.business_type)}
-                      disabled
-                      className={INPUT_CLASS}
-                    />
-                  </div>
+                  </div>                  
                 </div>
               </section>
               

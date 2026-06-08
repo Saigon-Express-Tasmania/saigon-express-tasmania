@@ -18,6 +18,7 @@ const NAV_LINKS = [
 export type WholesaleHeaderMember = {
   businessName: string;
   portalType: string;
+  avatarUrl?: string | null;
 };
 
 type WholesaleHeaderProps = {
@@ -89,13 +90,26 @@ export default function WholesaleHeader({
 
         <div className="flex items-center gap-4 shrink-0">
           {member ? (
-            <div className="hidden sm:block text-right">
-              <div className="text-xs font-semibold text-white">
-                {member.businessName}
+            <div className="hidden sm:flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-xs font-semibold text-white">
+                  {member.businessName}
+                </div>
+                <div className="text-xs text-white/40 capitalize">
+                  {member.portalType} member
+                </div>
               </div>
-              <div className="text-xs text-white/40 capitalize">
-                {member.portalType} member
-              </div>
+              {member.avatarUrl ? (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-white/15 bg-white/5">
+                  <AppImage
+                    src={member.avatarUrl}
+                    alt={member.businessName}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
           {showCart ? (
