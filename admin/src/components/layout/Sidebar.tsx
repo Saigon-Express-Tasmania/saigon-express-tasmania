@@ -4,7 +4,6 @@ import { useSalesOrderMode } from "@/contexts/SalesOrderModeContext";
 import { cn } from "@/lib/utils";
 import {
   Archive,
-  Box,
   ChevronLeft,
   ChevronRight,
   FilePen,
@@ -112,12 +111,6 @@ const navItems: NavItem[] = [
     title: "Catering Packs",
     href: "/catering-packs",
     icon: Gift,
-    group: "Content",
-  },
-  {
-    title: "Catering Boxes",
-    href: "/catering-boxes",
-    icon: Box,
     group: "Content",
   },
   {

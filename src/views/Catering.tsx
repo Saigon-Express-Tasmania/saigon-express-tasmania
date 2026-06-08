@@ -14,12 +14,13 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
-import type { CateringPack } from "@/lib/supabase/catering-packs";
-import type { CateringBox } from "@/lib/supabase/catering-boxes";
+import {
+  FEATURED_CATERING_PACK_CATEGORY,
+  type CateringPack,
+} from "@/lib/supabase/catering-packs";
 
 type CateringProps = {
   packs: CateringPack[];
-  boxes: CateringBox[];
 };
 
 interface WhyUsItem {
@@ -33,7 +34,7 @@ interface StatItem {
   label: string;
 }
 
-export default function Catering({ packs, boxes }: CateringProps) {
+export default function Catering({ packs }: CateringProps) {
   const t = useTranslations("Catering");
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
@@ -50,12 +51,12 @@ export default function Catering({ packs, boxes }: CateringProps) {
   const whyUsList: WhyUsItem[] = t.raw("whyUs.items");
   const statsList: StatItem[] = t.raw("stats");
 
-  const handleEnquireBox = (boxName: string, price: string) => {
+  const handleEnquireItem = (itemName: string, price: string) => {
     setForm((prev) => ({
       ...prev,
       message: prev.message
         ? prev.message
-        : t("form.enquireTemplate", { boxName, price }),
+        : t("form.enquireTemplate", { boxName: itemName, price }),
     }));
     const el = document.getElementById("catering-enquiry-form");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -81,19 +82,26 @@ export default function Catering({ packs, boxes }: CateringProps) {
     });
   };
 
-  const boxGroups = boxes.reduce<
-    Array<{ category: string; items: CateringBox[] }>
-  >((groups, item) => {
-    const existingGroup = groups.find(
-      (group) => group.category === item.category,
+  const featuredPacks = packs.filter(
+    (pack) => pack.category === FEATURED_CATERING_PACK_CATEGORY,
+  );
+
+  const menuGroups = packs
+    .filter((pack) => pack.category !== FEATURED_CATERING_PACK_CATEGORY)
+    .reduce<Array<{ category: string; items: CateringPack[] }>>(
+      (groups, item) => {
+        const existingGroup = groups.find(
+          (group) => group.category === item.category,
+        );
+        if (existingGroup) {
+          existingGroup.items.push(item);
+        } else {
+          groups.push({ category: item.category, items: [item] });
+        }
+        return groups;
+      },
+      [],
     );
-    if (existingGroup) {
-      existingGroup.items.push(item);
-    } else {
-      groups.push({ category: item.category, items: [item] });
-    }
-    return groups;
-  }, []);
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
@@ -195,12 +203,12 @@ export default function Catering({ packs, boxes }: CateringProps) {
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            {packs.length === 0 ? (
+            {featuredPacks.length === 0 ? (
               <div className="md:col-span-2 text-center text-sm text-brand-dark/55 py-8">
                 {t("packs.empty")}
               </div>
             ) : (
-              packs.map((pack) => (
+              featuredPacks.map((pack) => (
                 <div
                   key={pack.id}
                   className="bg-white overflow-hidden hover:shadow-lg transition-shadow duration-300"
@@ -230,7 +238,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                         </div>
                         <div className="text-xs text-brand-dark/40 flex items-center gap-1 justify-end mt-0.5">
                           <Users size={11} />{" "}
-                          {t("packs.serves", { serves: pack.serves })}
+                          {t("packs.serves", { serves: pack.serves ?? "" })}
                         </div>
                       </div>
                     </div>
@@ -287,12 +295,12 @@ export default function Catering({ packs, boxes }: CateringProps) {
             </p>
           </div>
 
-          {boxGroups.length === 0 ? (
+          {menuGroups.length === 0 ? (
             <div className="text-center text-sm text-brand-dark/55 py-6">
               {t("menu.empty")}
             </div>
           ) : (
-            boxGroups.map((group, groupIndex) => (
+            menuGroups.map((group, groupIndex) => (
               <div key={group.category}>
                 <div className="mb-4">
                   <h3 className="font-serif text-brand-dark text-2xl mb-6 pb-2 border-b border-brand-cream">
@@ -300,7 +308,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                   </h3>
                 </div>
                 <div
-                  className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${groupIndex === boxGroups.length - 1 ? "mb-10" : "mb-12"}`}
+                  className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${groupIndex === menuGroups.length - 1 ? "mb-10" : "mb-12"}`}
                 >
                   {group.items.map((item) => (
                     <div
@@ -370,7 +378,7 @@ export default function Catering({ packs, boxes }: CateringProps) {
                         )}
                         <button
                           onClick={() =>
-                            handleEnquireBox(
+                            handleEnquireItem(
                               item.name,
                               item.price ??
                                 item.prices[0]?.price ??
