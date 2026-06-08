@@ -1118,7 +1118,9 @@
       "btnSending": "Đang gửi...",
       "successTitle": "Đã nhận câu hỏi!",
       "successText": "Cảm ơn bạn! Chúng tôi sẽ xem xét nội dung câu hỏi và phản hồi lại bạn trong thời gian sớm nhất có thể.",
-      "btnAnother": "Đặt câu hỏi khác"
+      "btnAnother": "Đặt câu hỏi khác",
+      "cooldownTitle": "Vui lòng đợi một chút",
+      "cooldownText": "Bạn có thể gửi câu hỏi tiếp theo sau {time}."
     },
     "stillHelp": {
       "title": "Bạn vẫn còn câu hỏi thắc mắc?",
@@ -1127,7 +1129,8 @@
     },
     "errors": {
       "length": "Vui lòng nhập nội dung câu hỏi có độ dài tối thiểu từ 10 ký tự trở lên.",
-      "fallback": "Đã xảy ra sự cố lỗi hệ thống. Vui lòng thử lại sau."
+      "fallback": "Đã xảy ra sự cố lỗi hệ thống. Vui lòng thử lại sau.",
+      "rateLimit": "Bạn vừa gửi câu hỏi gần đây. Vui lòng đợi trước khi gửi câu hỏi khác."
     }
   },
   "Franchise": {

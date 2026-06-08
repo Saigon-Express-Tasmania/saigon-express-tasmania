@@ -23,6 +23,7 @@ import { useSupabaseAuth } from './hooks/useSupabaseAuth';
 import { Emails } from './pages/Emails';
 import { BlogPosts } from './pages/BlogPosts';
 import { FeaturedReviewsPage } from './pages/FeaturedReviewsPage';
+import { Feedbacks } from './pages/Feedbacks';
 import { LocalizationPage } from './pages/LocalizationPage';
 import { UserProfile } from './pages/UserProfile';
 import { Partners } from './pages/Partners';
@@ -58,6 +59,7 @@ export function App() {
             <Route path="/wholesale-tiers" element={<WholesaleTiers />} />
             <Route path="/blog-posts" element={<BlogPosts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
+            <Route path="/feedbacks" element={<Feedbacks />} />
             <Route path="/emails" element={<Emails />} />
             <Route path="/partners" element={<Navigate to="/partners/wholesale" replace />} />
             <Route path="/partners/:partnerType" element={<Partners />} />

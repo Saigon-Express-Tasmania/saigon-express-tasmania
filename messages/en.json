@@ -1117,7 +1117,9 @@
       "btnSending": "Sending...",
       "successTitle": "Question Received!",
       "successText": "Thank you! We'll review your question and get back to you as soon as possible.",
-      "btnAnother": "Ask another question"
+      "btnAnother": "Ask another question",
+      "cooldownTitle": "Please wait a moment",
+      "cooldownText": "You can submit another question in {time}."
     },
     "stillHelp": {
       "title": "Still Have a Question?",
@@ -1126,7 +1128,8 @@
     },
     "errors": {
       "length": "Please enter a question of at least 10 characters.",
-      "fallback": "Something went wrong. Please try again."
+      "fallback": "Something went wrong. Please try again.",
+      "rateLimit": "You've submitted recently. Please wait before sending another question."
     }
   },
   "Franchise": {

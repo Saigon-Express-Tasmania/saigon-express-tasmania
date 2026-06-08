@@ -13,6 +13,7 @@ import {
   Mail,
   MapPin,
   Megaphone,
+  MessageSquare,
   Newspaper,
   Percent,
   Settings,
@@ -142,6 +143,12 @@ const navItems: NavItem[] = [
     title: "Featured Reviews",
     href: "/featured-reviews",
     icon: Star,
+    group: "Content",
+  },
+  {
+    title: "Feedbacks",
+    href: "/feedbacks",
+    icon: MessageSquare,
     group: "Content",
   },
   {

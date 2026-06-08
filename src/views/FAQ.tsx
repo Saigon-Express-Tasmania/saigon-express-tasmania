@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "@/components/link";
 import { useTranslations } from "next-intl";
 import {
@@ -12,8 +12,14 @@ import {
   MapPin,
   Send,
   CheckCircle2,
+  Clock,
 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import {
+  FEEDBACK_COOLDOWN_MS,
+  formatCooldownRemaining,
+  getFeedbackCooldownEnd,
+  recordFeedbackSubmit,
+} from "@/lib/feedback-rate-limit";
 
 interface QuestionItem {
   q: string;
@@ -170,39 +176,110 @@ export default function FAQ() {
   );
 }
 
+function useFeedbackCooldown() {
+  const [cooldownEnd, setCooldownEnd] = useState<number | null>(() =>
+    getFeedbackCooldownEnd(),
+  );
+  const [remainingMs, setRemainingMs] = useState(0);
+
+  useEffect(() => {
+    const end = cooldownEnd ?? getFeedbackCooldownEnd();
+    if (!end) {
+      setRemainingMs(0);
+      return;
+    }
+
+    const tick = () => {
+      const ms = end - Date.now();
+      if (ms <= 0) {
+        setCooldownEnd(null);
+        setRemainingMs(0);
+        return;
+      }
+      setRemainingMs(ms);
+    };
+
+    tick();
+    const intervalId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [cooldownEnd]);
+
+  const startCooldown = () => {
+    recordFeedbackSubmit();
+    setCooldownEnd(Date.now() + FEEDBACK_COOLDOWN_MS);
+  };
+
+  return {
+    isCoolingDown: remainingMs > 0,
+    remainingMs,
+    startCooldown,
+  };
+}
+
 function SubmitQuestionForm() {
   const t = useTranslations("FAQ");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [question, setQuestion] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const { isCoolingDown, remainingMs, startCooldown } = useFeedbackCooldown();
 
-  const submitMutation = trpc.public.submitFaqQuestion.useMutation({
-    onSuccess: () => {
-      setSubmitted(true);
-      setName("");
-      setEmail("");
-      setQuestion("");
-      setFormError("");
-    },
-    onError: (err: { message?: string }) => {
-      setFormError(err.message || t("errors.fallback"));
-    },
-  });
+  useEffect(() => {
+    if (!isCoolingDown && justSubmitted) {
+      setJustSubmitted(false);
+    }
+  }, [isCoolingDown, justSubmitted]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCoolingDown) return;
+
     if (question.trim().length < 10) {
       setFormError(t("errors.length"));
       return;
     }
+
     setFormError("");
-    submitMutation.mutate({
-      name: name.trim(),
-      email: email.trim() || undefined,
-      question: question.trim(),
-    });
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim() || undefined,
+          question: question.trim(),
+          source: "faq",
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        if (response.status === 429 || payload?.error === "rate_limited") {
+          startCooldown();
+          setFormError(t("errors.rateLimit"));
+          return;
+        }
+        throw new Error(payload?.error ?? "submit_failed");
+      }
+
+      setName("");
+      setEmail("");
+      setQuestion("");
+      setFormError("");
+      setJustSubmitted(true);
+      startCooldown();
+    } catch {
+      setFormError(t("errors.fallback"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -218,19 +295,29 @@ function SubmitQuestionForm() {
           <p className="text-stone-500 leading-relaxed">{t("form.subtitle")}</p>
         </div>
 
-        {submitted ? (
-          <div className="bg-white border border-green-200 rounded-2xl p-8 text-center shadow-sm">
-            <CheckCircle2 className="mx-auto text-green-600 mb-3" size={40} />
-            <h3 className="font-semibold text-xl text-stone-900 mb-2">
-              {t("form.successTitle")}
-            </h3>
-            <p className="text-stone-500 mb-6">{t("form.successText")}</p>
-            <button
-              onClick={() => setSubmitted(false)}
-              className="text-red-700 font-semibold hover:underline text-sm"
-            >
-              {t("form.btnAnother")}
-            </button>
+        {isCoolingDown ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center shadow-sm">
+            {justSubmitted ? (
+              <>
+                <CheckCircle2 className="mx-auto text-green-600 mb-3" size={40} />
+                <h3 className="font-semibold text-xl text-stone-900 mb-2">
+                  {t("form.successTitle")}
+                </h3>
+                <p className="text-stone-500 mb-6">{t("form.successText")}</p>
+              </>
+            ) : (
+              <>
+                <Clock className="mx-auto text-stone-400 mb-3" size={40} />
+                <h3 className="font-semibold text-xl text-stone-900 mb-2">
+                  {t("form.cooldownTitle")}
+                </h3>
+              </>
+            )}
+            <p className="text-stone-500 text-sm">
+              {t("form.cooldownText", {
+                time: formatCooldownRemaining(remainingMs),
+              })}
+            </p>
           </div>
         ) : (
           <form
@@ -291,19 +378,15 @@ function SubmitQuestionForm() {
             )}
             <button
               type="submit"
-              disabled={
-                submitMutation.isPending || !name.trim() || !question.trim()
-              }
+              disabled={isSubmitting || !name.trim() || !question.trim()}
               className="w-full flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-colors text-sm"
             >
-              {submitMutation.isPending ? (
+              {isSubmitting ? (
                 <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
               ) : (
                 <Send size={15} />
               )}
-              {submitMutation.isPending
-                ? t("form.btnSending")
-                : t("form.btnSubmit")}
+              {isSubmitting ? t("form.btnSending") : t("form.btnSubmit")}
             </button>
           </form>
         )}
