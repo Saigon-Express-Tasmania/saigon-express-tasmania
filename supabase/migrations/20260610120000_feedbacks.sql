@@ -36,23 +36,6 @@ create policy "Admins can read feedbacks"
   to authenticated
   using (public.is_admin());
 
--- Rate-limit keys for feedback submissions (one row per ip hash).
-create table public.feedback_rate_limits (
-  ip_hash text not null primary key,
-  last_submitted_at timestamptz not null default now()
-);
-
-comment on table public.feedback_rate_limits is
-  'Rate-limit keys for feedback submissions (ip hash).';
-
-create index feedback_rate_limits_last_submitted_at_idx
-  on public.feedback_rate_limits (last_submitted_at);
-
-alter table public.feedback_rate_limits enable row level security;
-
-revoke all on public.feedback_rate_limits from anon, authenticated;
-grant all on public.feedback_rate_limits to service_role;
-
 create or replace function public.submit_feedback(
   p_name text,
   p_email text,
@@ -70,7 +53,7 @@ declare
   v_email text := nullif(trim(p_email), '');
   v_question text := nullif(trim(p_question), '');
   v_source text := coalesce(nullif(trim(p_source), ''), 'faq');
-  v_last_submitted_at timestamptz;
+  v_last_action_at timestamptz;
   v_feedback_id bigint;
 begin
   if v_name is null
@@ -89,23 +72,27 @@ begin
     raise exception 'invalid request' using errcode = '22023';
   end if;
 
-  select last_submitted_at
-  into v_last_submitted_at
-  from public.feedback_rate_limits
-  where ip_hash = p_ip_hash
+  select last_action_at
+  into v_last_action_at
+  from public.rate_limits
+  where action = 'feedback_submit'
+    and ip_hash = p_ip_hash
+    and slug = ''
   for update;
 
-  if found and v_last_submitted_at >= now() - interval '5 minutes' then
+  if found and v_last_action_at >= now() - interval '5 minutes' then
     raise exception 'rate_limited' using errcode = 'P0001';
   end if;
 
   if not found then
-    insert into public.feedback_rate_limits (ip_hash, last_submitted_at)
-    values (p_ip_hash, now());
+    insert into public.rate_limits (action, ip_hash, slug, last_action_at)
+    values ('feedback_submit', p_ip_hash, '', now());
   else
-    update public.feedback_rate_limits
-    set last_submitted_at = now()
-    where ip_hash = p_ip_hash;
+    update public.rate_limits
+    set last_action_at = now()
+    where action = 'feedback_submit'
+      and ip_hash = p_ip_hash
+      and slug = '';
   end if;
 
   insert into public.feedbacks (name, email, question, source, ip_hash)

@@ -1,22 +1,31 @@
--- Blog post view counting: rate limits, server-secret-gated RPC, remove public increment.
-create table public.blog_post_view_rate_limits (
+-- Blog post view counting: unified rate limits, server-secret-gated RPC, remove public increment.
+create table public.rate_limits (
+  action text not null,
   ip_hash text not null,
-  slug text not null,
-  last_counted_at timestamptz not null default now(),
-  primary key (ip_hash, slug)
+  slug text not null default '',
+  last_action_at timestamptz not null default now(),
+  primary key (action, ip_hash, slug),
+  constraint rate_limits_action_allowed check (
+    action in ('blog_post_view', 'feedback_submit')
+  )
 );
 
-comment on table public.blog_post_view_rate_limits is
-  'Rate-limit keys for blog view increments (ip hash + slug).';
+comment on table public.rate_limits is
+  'Rate-limit keys for public RPCs (action + ip hash + optional slug).';
+comment on column public.rate_limits.action is
+  'Rate-limit scope, e.g. blog_post_view or feedback_submit.';
+comment on column public.rate_limits.slug is
+  'Resource key when the action is per-resource (empty for global per-IP limits).';
+comment on column public.rate_limits.last_action_at is
+  'Last time the action was allowed for this key.';
 
-create index blog_post_view_rate_limits_last_counted_at_idx
-  on public.blog_post_view_rate_limits (last_counted_at);
+create index rate_limits_last_action_at_idx
+  on public.rate_limits (last_action_at);
 
-alter table public.blog_post_view_rate_limits enable row level security;
+alter table public.rate_limits enable row level security;
 
-
-revoke all on public.blog_post_view_rate_limits from anon, authenticated;
-grant all on public.blog_post_view_rate_limits to service_role;
+revoke all on public.rate_limits from anon, authenticated;
+grant all on public.rate_limits to service_role;
 
 -- Per-post counting_secret on blog_posts; drop global config table.
 create or replace function public.record_blog_post_view(
@@ -31,7 +40,7 @@ set search_path = public
 as $$
 declare
   v_post_secret text;
-  v_last_counted_at timestamptz;
+  v_last_action_at timestamptz;
   v_counted boolean := false;
   v_view_count integer := 0;
 begin
@@ -54,21 +63,23 @@ begin
     raise exception 'unauthorized' using errcode = '42501';
   end if;
 
-  select last_counted_at
-  into v_last_counted_at
-  from public.blog_post_view_rate_limits
-  where ip_hash = p_ip_hash
+  select last_action_at
+  into v_last_action_at
+  from public.rate_limits
+  where action = 'blog_post_view'
+    and ip_hash = p_ip_hash
     and slug = p_slug
   for update;
 
   if not found then
-    insert into public.blog_post_view_rate_limits (ip_hash, slug, last_counted_at)
-    values (p_ip_hash, p_slug, now());
+    insert into public.rate_limits (action, ip_hash, slug, last_action_at)
+    values ('blog_post_view', p_ip_hash, p_slug, now());
     v_counted := true;
-  elsif v_last_counted_at < now() - interval '1 minute' then
-    update public.blog_post_view_rate_limits
-    set last_counted_at = now()
-    where ip_hash = p_ip_hash
+  elsif v_last_action_at < now() - interval '1 minute' then
+    update public.rate_limits
+    set last_action_at = now()
+    where action = 'blog_post_view'
+      and ip_hash = p_ip_hash
       and slug = p_slug;
     v_counted := true;
   end if;
