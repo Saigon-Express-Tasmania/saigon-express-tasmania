@@ -185,7 +185,7 @@ export async function fetchBlogPostBySlug(
   const { data, error } = await supabase
     .from("blog_posts")
     .select(
-      "id, slug, title, excerpt, content, category, featured_image_url, tags, published_at, view_count, show_wholesale_cta",
+      "id, slug, title, excerpt, content, category, featured_image_url, tags, published_at, view_count, show_wholesale_cta, counting_secret",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -195,6 +195,23 @@ export async function fetchBlogPostBySlug(
   }
 
   return (data as BlogPostDetailRow | null) ?? null;
+}
+
+export async function fetchBlogPostCountingSecret(
+  slug: string,
+): Promise<string | null> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select("counting_secret")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`blog_posts counting_secret: ${error.message}`);
+  }
+
+  return data?.counting_secret ?? null;
 }
 
 export async function fetchRelatedBlogPostRows(

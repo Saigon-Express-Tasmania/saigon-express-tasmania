@@ -6,9 +6,12 @@ import { ShareDealButton } from "@/components/ShareDealButton";
 import type { BlogPost, BlogPostDetail } from "@/types";
 import { ArrowLeft, ArrowRight, Calendar, Eye } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 const FALLBACK_IMAGE =
   "/manus-storage/news-story-began_47dbdf79.jpg";
+
+const viewedStorageKey = (slug: string) => `blog-viewed:${slug}`;
 
 function formatPublishedDate(
   iso: string | null,
@@ -57,9 +60,64 @@ function RelatedPostCard({ post }: { post: BlogPost }) {
 export default function NewsItem({ post }: { post: BlogPostDetail }) {
   const t = useTranslations("News");
   const locale = useLocale();
+  const [displayViewCount, setDisplayViewCount] = useState(post.viewCount);
+
+  useEffect(() => {
+    setDisplayViewCount(post.viewCount);
+  }, [post.viewCount]);
+
+  useEffect(() => {
+    const storageKey = viewedStorageKey(post.slug);
+    try {
+      if (sessionStorage.getItem(storageKey)) {
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await fetch(`/api/news/${post.slug}/view`, {
+          method: "POST",
+        });
+
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          counted?: boolean;
+          viewCount?: number;
+        };
+
+        try {
+          sessionStorage.setItem(storageKey, "1");
+        } catch {
+          // ignore storage errors
+        }
+
+        if (
+          typeof data.viewCount === "number" &&
+          data.counted === true &&
+          !cancelled
+        ) {
+          setDisplayViewCount(data.viewCount);
+        }
+      } catch {
+        // fire-and-forget; approximate counts only
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [post.slug]);
 
   const publishedLabel = formatPublishedDate(post.publishedAt, locale);
-  const viewsLabel = t("card.views", { count: post.viewCount });
+  const viewsLabel = t("card.views", { count: displayViewCount });
 
   return (
     <div className="min-h-screen bg-brand-cream">

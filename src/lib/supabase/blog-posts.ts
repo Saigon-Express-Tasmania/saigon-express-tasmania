@@ -8,7 +8,7 @@ import {
   mapBlogPostDetailRow,
   mapBlogPostRow,
   type BlogPost,
-  type BlogPostDetail,
+  type BlogPostDetailWithSecret,
 } from "@/types";
 import {
   fetchBlogPostBySlug,
@@ -23,7 +23,9 @@ async function loadBlogPosts(): Promise<BlogPost[]> {
   return rows.map(mapBlogPostRow);
 }
 
-async function loadBlogPostBySlug(slug: string): Promise<BlogPostDetail | null> {
+async function loadBlogPostBySlug(
+  slug: string,
+): Promise<BlogPostDetailWithSecret | null> {
   const row = await fetchBlogPostBySlug(slug);
   if (!row) {
     return null;
@@ -44,7 +46,7 @@ export const getBlogPosts = unstable_cache(loadBlogPosts, [CACHE_TAG], {
 });
 
 /**
- * Single published blog post by slug, cached for one week.
+ * Single published blog post by slug, cached for one day.
  */
 export const getBlogPostBySlug = unstable_cache(
   loadBlogPostBySlug,

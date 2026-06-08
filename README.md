@@ -50,18 +50,28 @@ values ('saigon-express-tasmania', 'saigon-express-tasmania', true)
 on conflict (id) do update set public = excluded.public;
 
 -- Admin full access (SELECT + INSERT + UPDATE + DELETE; upsert needs all three write-related ops)
+-- Admin storage bucket policies (idempotent).
+-- Required for upload/delete in the admin dashboard, including blog post editor assets.
+
+insert into storage.buckets (id, name, public)
+values ('saigon-express-tasmania', 'saigon-express-tasmania', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "Admins can read saigon-express-tasmania" on storage.objects;
 create policy "Admins can read saigon-express-tasmania"
   on storage.objects
   for select
   to authenticated
   using (bucket_id = 'saigon-express-tasmania' and public.is_admin());
 
+drop policy if exists "Admins can insert saigon-express-tasmania" on storage.objects;
 create policy "Admins can insert saigon-express-tasmania"
   on storage.objects
   for insert
   to authenticated
   with check (bucket_id = 'saigon-express-tasmania' and public.is_admin());
 
+drop policy if exists "Admins can update saigon-express-tasmania" on storage.objects;
 create policy "Admins can update saigon-express-tasmania"
   on storage.objects
   for update
@@ -69,11 +79,13 @@ create policy "Admins can update saigon-express-tasmania"
   using (bucket_id = 'saigon-express-tasmania' and public.is_admin())
   with check (bucket_id = 'saigon-express-tasmania' and public.is_admin());
 
+drop policy if exists "Admins can delete saigon-express-tasmania" on storage.objects;
 create policy "Admins can delete saigon-express-tasmania"
   on storage.objects
   for delete
   to authenticated
   using (bucket_id = 'saigon-express-tasmania' and public.is_admin());
+
 ```
 
 ### Customer bucket: `saigon-express-tasmania-customers`

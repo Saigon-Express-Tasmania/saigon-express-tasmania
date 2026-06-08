@@ -6,9 +6,14 @@ export type {
   BlogPost,
   BlogPostDetail,
   BlogPostDetailRow,
+  BlogPostDetailWithSecret,
   BlogPostRow,
 } from "./BlogPost";
-export { mapBlogPostDetailRow, mapBlogPostRow } from "./BlogPost";
+export {
+  mapBlogPostDetailRow,
+  mapBlogPostRow,
+  toPublicBlogPostDetail,
+} from "./BlogPost";
 export type {
   MenuImageMoreEntry,
   MenuImageUrls,

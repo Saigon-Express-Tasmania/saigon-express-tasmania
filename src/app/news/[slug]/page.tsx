@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getBlogPostBySlug } from "@/lib/supabase/blog-posts";
+import { toPublicBlogPostDetail } from "@/types";
 import NewsItem from "@/views/NewsItem";
 
 type PageProps = {
@@ -33,5 +34,5 @@ export default async function NewsItemPage({ params }: PageProps) {
     notFound();
   }
 
-  return <NewsItem post={post} />;
+  return <NewsItem post={toPublicBlogPostDetail(post)} />;
 }

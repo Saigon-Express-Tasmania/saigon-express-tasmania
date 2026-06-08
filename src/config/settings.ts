@@ -11,9 +11,9 @@ export const SHORT_REVALIDATE_SECONDS = 60 * 60;
 export const LONG_REVALIDATE_SECONDS = 24 * 60 * 60;
 
 /**
- * Blog post detail pages — stable content, revalidate weekly.
+ * Blog post detail pages — stable content, revalidate daily.
  */
-export const BLOG_POST_DETAIL_REVALIDATE_SECONDS = 7 * 24 * 60 * 60;
+export const BLOG_POST_DETAIL_REVALIDATE_SECONDS = LONG_REVALIDATE_SECONDS;
 
 /**
  * Cache tags used by Next.js data cache entries.

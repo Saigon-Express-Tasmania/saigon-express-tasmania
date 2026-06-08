@@ -1,6 +1,8 @@
 'use client';
 
 import { STORAGE_BUCKET } from '@/constants';
+import { generateStorageFileName } from '@/lib/storage-file-name';
+import { normalizeStoragePath } from '@/lib/storage-path';
 import supabase from '@/lib/supabase/client';
 import {
   createContext,
@@ -27,8 +29,14 @@ export type UploadMediaResult = {
   publicUrl: string;
 };
 
+export type DeleteMediaResult = {
+  path: string;
+  deleted: boolean;
+};
+
 export type SupabaseStorageContextValue = {
   uploadMedia: (file: File, options?: UploadMediaOptions) => Promise<UploadMediaResult>;
+  deleteMedia: (path: string) => Promise<DeleteMediaResult>;
   getSignedUrl: (path: string, expiresInSeconds?: number) => Promise<string>;
   getPublicUrl: (path: string) => string;
   isUploading: boolean;
@@ -67,6 +75,56 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
     return data.publicUrl;
   }, []);
 
+  const deleteMedia = useCallback(async (path: string): Promise<DeleteMediaResult> => {
+    if (!STORAGE_BUCKET) {
+      throw new Error('Storage bucket is not configured.');
+    }
+
+    const objectPath = normalizeStoragePath(path);
+    if (!objectPath) {
+      throw new Error('Storage path is required.');
+    }
+
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([objectPath]);
+
+    if (error) throw error;
+
+    const fileName = objectPath.split('/').pop() ?? objectPath;
+    const deleted = (data ?? []).some((item) => {
+      const deletedPath = normalizeStoragePath(item.name);
+      return deletedPath === objectPath || deletedPath === fileName;
+    });
+
+    if (!deleted) {
+      const parentFolder = objectPath.includes('/')
+        ? objectPath.slice(0, objectPath.lastIndexOf('/'))
+        : '';
+
+      const { data: listed, error: listError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .list(parentFolder, { search: fileName });
+
+      if (listError) throw listError;
+
+      const stillExists = (listed ?? []).some((item) => {
+        const fullPath = parentFolder
+          ? `${parentFolder}/${item.name}`
+          : item.name;
+        return normalizeStoragePath(fullPath) === objectPath;
+      });
+
+      if (stillExists) {
+        throw new Error(
+          'Storage did not delete the file. Check admin storage delete permissions.',
+        );
+      }
+    }
+
+    return { path: objectPath, deleted: true };
+  }, []);
+
   const uploadMedia = useCallback(
     async (file: File, options?: UploadMediaOptions) => {
       const {
@@ -79,7 +137,7 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
 
       const folder = options?.folder ?? 'media';
       const ext = extensionFromFile(file);
-      const fileName = options?.fileName ?? `${Date.now()}.${ext}`;
+      const fileName = options?.fileName ?? generateStorageFileName(ext);
       const path = `${folder}/${user.id}/${fileName}`;
 
       setIsUploading(true);
@@ -106,11 +164,12 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       uploadMedia,
+      deleteMedia,
       getSignedUrl,
       getPublicUrl,
       isUploading,
     }),
-    [getPublicUrl, getSignedUrl, isUploading, uploadMedia],
+    [deleteMedia, getPublicUrl, getSignedUrl, isUploading, uploadMedia],
   );
 
   return (

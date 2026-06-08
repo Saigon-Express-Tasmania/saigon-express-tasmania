@@ -19,6 +19,8 @@ create table public.blog_posts (
   show_wholesale_cta boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  reference jsonb not null default '{}'::jsonb,
+  counting_secret text not null default substr(md5(random()::text), 1, 12)::text,
   constraint blog_posts_slug_format check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
   constraint blog_posts_slug_unique unique (slug),
   constraint blog_posts_view_count_non_negative check (view_count >= 0)
@@ -38,6 +40,10 @@ comment on column public.blog_posts.tags is
   'Hashtags or topic labels for the article.';
 comment on column public.blog_posts.show_wholesale_cta is
   'Whether to show the wholesale registration CTA block at the bottom of the article.';
+comment on column public.blog_posts.counting_secret is
+  'Per-post token for record_blog_post_view; not critical if exposed but omitted from public page props.';
+comment on column public.blog_posts.reference is
+  'Admin asset tracking JSON, e.g. {"uploaded":[{"path","publicUrl","fileName","uploadedAt"}]}.';
 
 create index blog_posts_published_idx
   on public.blog_posts (is_published, published_at desc, id desc);

@@ -10,11 +10,12 @@ export type BlogPostRow = {
   view_count: number;
 };
 
-/** Full row from `public.blog_posts` including article body. */
+/** Full row from `public.blog_posts` including article body (server fetch). */
 export type BlogPostDetailRow = BlogPostRow & {
   content: string;
   tags: string[];
   show_wholesale_cta: boolean;
+  counting_secret: string;
 };
 
 /** Blog post summary for listing pages (camelCase). */
@@ -29,12 +30,17 @@ export type BlogPost = {
   viewCount: number;
 };
 
-/** Blog post detail for article pages (camelCase). */
+/** Blog post detail for article pages (camelCase, safe for client). */
 export type BlogPostDetail = BlogPost & {
   content: string;
   tags: string[];
   showWholesaleCta: boolean;
   relatedPosts: BlogPost[];
+};
+
+/** SSR-only detail including counting secret (strip before client render). */
+export type BlogPostDetailWithSecret = BlogPostDetail & {
+  countingSecret: string;
 };
 
 export function mapBlogPostRow(row: BlogPostRow): BlogPost {
@@ -50,12 +56,22 @@ export function mapBlogPostRow(row: BlogPostRow): BlogPost {
   };
 }
 
-export function mapBlogPostDetailRow(row: BlogPostDetailRow): BlogPostDetail {
+export function mapBlogPostDetailRow(
+  row: BlogPostDetailRow,
+): BlogPostDetailWithSecret {
   return {
     ...mapBlogPostRow(row),
     content: row.content,
     tags: row.tags,
     showWholesaleCta: row.show_wholesale_cta,
+    countingSecret: row.counting_secret,
     relatedPosts: [],
   };
+}
+
+export function toPublicBlogPostDetail(
+  post: BlogPostDetailWithSecret,
+): BlogPostDetail {
+  const { countingSecret: _countingSecret, ...publicPost } = post;
+  return publicPost;
 }

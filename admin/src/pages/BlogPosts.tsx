@@ -1,3 +1,5 @@
+import { BlogPostAssetReferencesDialog } from '@/components/BlogPostAssetReferencesDialog';
+import { HtmlRichTextEditor } from '@/components/HtmlRichTextEditor';
 import { DashboardLayout } from '@/components/layout';
 import {
   AlertDialog,
@@ -30,18 +32,77 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { generateExcerptFromBlogPost } from '@/lib/blog-excerpt';
+import { generateTagsFromBlogPost } from '@/lib/blog-tag-keywords';
 import supabase from '@/lib/supabase/client';
 import {
+  appendUploadedAsset,
   emptyBlogPostInput,
+  normalizeBlogPostReference,
   type BlogPost,
   type BlogPostInput,
+  type BlogPostReference,
 } from '@/types/BlogPost';
-import { Loader2, Newspaper, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ImageIcon,
+  Loader2,
+  Newspaper,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+const DEFAULT_EDITOR_SIDEBAR_WIDTH = 384;
+const MIN_EDITOR_SIDEBAR_WIDTH = 240;
+const MAX_EDITOR_SIDEBAR_WIDTH = 640;
+const CONTENT_AUTO_SAVE_MS = 3000;
+
 const BLOG_POST_COLUMNS =
-  'id, slug, title, excerpt, content, category, featured_image_url, tags, published_at, view_count, is_published, show_wholesale_cta, created_at, updated_at';
+  'id, slug, title, excerpt, content, category, featured_image_url, tags, published_at, view_count, is_published, show_wholesale_cta, reference, created_at, updated_at';
+
+type SortColumn = 'id' | 'title' | 'category';
+type SortDirection = 'asc' | 'desc';
+
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+}) {
+  const isActive = sortColumn === column;
+  const Icon = isActive
+    ? sortDirection === 'asc'
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+
+  return (
+    <th className="px-4 py-3 text-left text-sm font-semibold">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-foreground/80"
+        onClick={() => onSort(column)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </th>
+  );
+}
 
 function slugify(text: string): string {
   return text
@@ -49,6 +110,10 @@ function slugify(text: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function randomInitialViewCount(): number {
+  return Math.floor(Math.random() * 231) + 20;
 }
 
 function toDatetimeLocalValue(iso: string | null): string {
@@ -77,6 +142,79 @@ function formatTags(tags: string[]): string {
   return tags.join(', ');
 }
 
+function normalizeTag(tag: string): string {
+  return tag.trim().replace(/^#/, '').toLowerCase();
+}
+
+function tagOverlapScore(postTags: string[], queryTags: string[]): number {
+  const query = new Set(queryTags.map(normalizeTag));
+  return postTags.filter((tag) => query.has(normalizeTag(tag))).length;
+}
+
+function findRelatedPostIdsByTags(
+  posts: BlogPost[],
+  editingId: number | null,
+  queryTags: string[],
+  limit = 5,
+): number[] {
+  const normalizedQuery = queryTags.map(normalizeTag).filter(Boolean);
+  if (normalizedQuery.length === 0) {
+    return [];
+  }
+
+  return posts
+    .filter((post) => post.id !== editingId)
+    .map((post) => ({
+      id: post.id,
+      score: tagOverlapScore(post.tags, normalizedQuery),
+    }))
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score || b.id - a.id)
+    .slice(0, limit)
+    .map((candidate) => candidate.id);
+}
+
+function postMatchesRelatedSearch(post: BlogPost, term: string): boolean {
+  if (!term) return true;
+  const haystack = [
+    post.title,
+    post.slug,
+    post.category,
+    post.excerpt ?? '',
+    formatTags(post.tags),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(term);
+}
+
+function canPersistBlogPost(form: BlogPostInput): boolean {
+  const slug = form.slug.trim();
+  return (
+    Boolean(form.title.trim()) &&
+    Boolean(slug) &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) &&
+    Boolean(form.content.trim())
+  );
+}
+
+function buildBlogPostPayload(form: BlogPostInput) {
+  return {
+    slug: form.slug.trim(),
+    title: form.title.trim(),
+    excerpt: form.excerpt.trim() || null,
+    content: form.content.trim(),
+    category: form.category.trim() || 'News',
+    featured_image_url: form.featured_image_url.trim() || null,
+    tags: parseTags(form.tags),
+    published_at: form.published_at,
+    view_count: Math.max(0, Number(form.view_count) || 0),
+    is_published: form.is_published,
+    show_wholesale_cta: form.show_wholesale_cta,
+    reference: form.reference,
+  };
+}
+
 function postToInput(
   post: BlogPost,
   relatedPostIds: number[],
@@ -93,6 +231,7 @@ function postToInput(
     view_count: post.view_count,
     is_published: post.is_published,
     show_wholesale_cta: post.show_wholesale_cta,
+    reference: normalizeBlogPostReference(post.reference),
     related_post_ids: relatedPostIds,
   };
 }
@@ -142,13 +281,69 @@ export function BlogPosts() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('id');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<BlogPostInput>(emptyBlogPostInput());
   const [slugTouched, setSlugTouched] = useState(false);
+  const [relatedSearch, setRelatedSearch] = useState('');
 
   const [deleteTarget, setDeleteTarget] = useState<BlogPost | null>(null);
+  const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
+
+  const formRef = useRef(form);
+  formRef.current = form;
+  const editingIdRef = useRef(editingId);
+  editingIdRef.current = editingId;
+  const contentSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const lastSavedContentRef = useRef<string | null>(null);
+
+  const clearContentAutoSaveTimer = useCallback(() => {
+    if (contentSaveTimerRef.current) {
+      clearTimeout(contentSaveTimerRef.current);
+      contentSaveTimerRef.current = null;
+    }
+  }, []);
+
+  const editorSplitRef = useRef<HTMLDivElement>(null);
+  const sidebarDraggingRef = useRef(false);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_EDITOR_SIDEBAR_WIDTH);
+
+  const handleSidebarMouseMove = useCallback((event: MouseEvent) => {
+    if (!sidebarDraggingRef.current || !editorSplitRef.current) return;
+    const rect = editorSplitRef.current.getBoundingClientRect();
+    const width = event.clientX - rect.left;
+    const maxWidth = Math.min(MAX_EDITOR_SIDEBAR_WIDTH, rect.width * 0.55);
+    setSidebarWidth(
+      Math.min(maxWidth, Math.max(MIN_EDITOR_SIDEBAR_WIDTH, width)),
+    );
+  }, []);
+
+  const handleSidebarMouseUp = useCallback(() => {
+    sidebarDraggingRef.current = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
+
+  const startSidebarResize = (event: React.MouseEvent) => {
+    event.preventDefault();
+    sidebarDraggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousemove', handleSidebarMouseMove);
+    document.addEventListener('mouseup', handleSidebarMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleSidebarMouseMove);
+      document.removeEventListener('mouseup', handleSidebarMouseUp);
+    };
+  }, [handleSidebarMouseMove, handleSidebarMouseUp]);
 
   const loadPosts = useCallback(async () => {
     try {
@@ -161,7 +356,14 @@ export function BlogPosts() {
         .order('id', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setPosts((data ?? []) as BlogPost[]);
+      setPosts(
+        (data ?? []).map((row) => ({
+          ...(row as BlogPost),
+          reference: normalizeBlogPostReference(
+            (row as { reference?: unknown }).reference,
+          ),
+        })),
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load blog posts.';
@@ -180,35 +382,81 @@ export function BlogPosts() {
     }
   }, [isAdmin, loadPosts]);
 
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection(column === 'id' ? 'desc' : 'asc');
+  };
+
   const filteredPosts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return posts;
-    return posts.filter((post) => {
+    const filtered = posts.filter((post) => {
+      if (!term) return true;
       return (
         post.title.toLowerCase().includes(term) ||
         post.slug.toLowerCase().includes(term) ||
         post.category.toLowerCase().includes(term) ||
-        (post.excerpt ?? '').toLowerCase().includes(term)
+        (post.excerpt ?? '').toLowerCase().includes(term) ||
+        String(post.id).includes(term)
       );
     });
-  }, [posts, search]);
 
-  const relatedPostOptions = useMemo(() => {
-    return posts.filter((post) => post.id !== editingId);
-  }, [posts, editingId]);
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortColumn === 'id') {
+        return (a.id - b.id) * direction;
+      }
+      if (sortColumn === 'title') {
+        return a.title.localeCompare(b.title) * direction;
+      }
+      return a.category.localeCompare(b.category) * direction;
+    });
+  }, [posts, search, sortColumn, sortDirection]);
+
+  const selectedRelatedPosts = useMemo(() => {
+    const order = new Map(
+      form.related_post_ids.map((id, index) => [id, index]),
+    );
+    return posts
+      .filter((post) => order.has(post.id))
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  }, [form.related_post_ids, posts]);
+
+  const searchableRelatedPosts = useMemo(() => {
+    const term = relatedSearch.trim().toLowerCase();
+    return posts
+      .filter((post) => post.id !== editingId)
+      .filter((post) => postMatchesRelatedSearch(post, term))
+      .sort((a, b) => b.id - a.id)
+      .slice(0, 10);
+  }, [posts, editingId, relatedSearch]);
 
   const openCreate = () => {
+    clearContentAutoSaveTimer();
+    lastSavedContentRef.current = null;
+    editingIdRef.current = null;
     setEditingId(null);
     setSlugTouched(false);
-    setForm(emptyBlogPostInput());
+    setRelatedSearch('');
+    setForm({
+      ...emptyBlogPostInput(),
+      view_count: randomInitialViewCount(),
+    });
     setDialogOpen(true);
   };
 
   const openEdit = async (post: BlogPost) => {
     try {
       const relatedPostIds = await loadRelatedPostIds(post.id);
+      clearContentAutoSaveTimer();
+      lastSavedContentRef.current = post.content;
+      editingIdRef.current = post.id;
       setEditingId(post.id);
       setSlugTouched(true);
+      setRelatedSearch('');
       setForm(postToInput(post, relatedPostIds));
       setDialogOpen(true);
     } catch (err) {
@@ -228,14 +476,236 @@ export function BlogPosts() {
 
   const toggleRelatedPost = (postId: number, checked: boolean) => {
     setForm((current) => {
-      const ids = new Set(current.related_post_ids);
       if (checked) {
-        ids.add(postId);
-      } else {
-        ids.delete(postId);
+        if (current.related_post_ids.includes(postId)) {
+          return current;
+        }
+        return {
+          ...current,
+          related_post_ids: [...current.related_post_ids, postId],
+        };
       }
-      return { ...current, related_post_ids: Array.from(ids) };
+      return {
+        ...current,
+        related_post_ids: current.related_post_ids.filter((id) => id !== postId),
+      };
     });
+  };
+
+  const autoSaveReference = useCallback(
+    async (reference: BlogPostReference, content?: string) => {
+      const currentForm = formRef.current;
+      const nextForm: BlogPostInput = {
+        ...currentForm,
+        reference,
+        ...(content !== undefined ? { content } : {}),
+      };
+
+      formRef.current = nextForm;
+      setForm(nextForm);
+
+      const postId = editingIdRef.current;
+
+      try {
+        setSaving(true);
+
+        if (postId !== null) {
+          const patch: {
+            reference: BlogPostReference;
+            content?: string;
+          } = { reference };
+          if (content !== undefined) {
+            patch.content = content.trim();
+            lastSavedContentRef.current = patch.content;
+            clearContentAutoSaveTimer();
+          }
+
+          const { error } = await supabase
+            .from('blog_posts')
+            .update(patch)
+            .eq('id', postId);
+
+          if (error) throw error;
+        } else if (canPersistBlogPost(nextForm)) {
+          const { data, error } = await supabase
+            .from('blog_posts')
+            .insert(buildBlogPostPayload(nextForm))
+            .select('id')
+            .single();
+
+          if (error) throw error;
+
+          editingIdRef.current = data.id;
+          setEditingId(data.id);
+          setSlugTouched(true);
+          await saveRelatedPosts(data.id, nextForm.related_post_ids);
+        } else {
+          return;
+        }
+
+        await loadPosts();
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : 'Failed to save asset references.',
+        );
+      } finally {
+        setSaving(false);
+      }
+    },
+    [loadPosts],
+  );
+
+  const handleAssetUploaded = useCallback(
+    async (
+      asset: { path: string; publicUrl: string; fileName: string },
+      contentHtml: string,
+    ) => {
+      const current = formRef.current;
+      const reference = appendUploadedAsset(current.reference, asset);
+      await autoSaveReference(reference, contentHtml);
+    },
+    [autoSaveReference],
+  );
+
+  const handleReferenceChange = useCallback(
+    async (reference: BlogPostReference) => {
+      await autoSaveReference(reference);
+    },
+    [autoSaveReference],
+  );
+
+  const autoSaveContent = useCallback(async () => {
+    const current = formRef.current;
+    const content = current.content.trim();
+    if (!content || !canPersistBlogPost(current)) return;
+    if (lastSavedContentRef.current === content) return;
+
+    const postId = editingIdRef.current;
+
+    try {
+      setSaving(true);
+
+      if (postId !== null) {
+        const { error } = await supabase
+          .from('blog_posts')
+          .update({ content })
+          .eq('id', postId);
+
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from('blog_posts')
+          .insert(buildBlogPostPayload(current))
+          .select('id')
+          .single();
+
+        if (error) throw error;
+
+        editingIdRef.current = data.id;
+        setEditingId(data.id);
+        setSlugTouched(true);
+        await saveRelatedPosts(data.id, current.related_post_ids);
+      }
+
+      lastSavedContentRef.current = content;
+      await loadPosts();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to auto-save content.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [loadPosts]);
+
+  const handleContentChange = useCallback(
+    (content: string) => {
+      setForm((current) => {
+        const next = { ...current, content };
+        formRef.current = next;
+        return next;
+      });
+
+      clearContentAutoSaveTimer();
+      contentSaveTimerRef.current = setTimeout(() => {
+        void autoSaveContent();
+      }, CONTENT_AUTO_SAVE_MS);
+    },
+    [autoSaveContent, clearContentAutoSaveTimer],
+  );
+
+  useEffect(() => {
+    if (!dialogOpen) {
+      clearContentAutoSaveTimer();
+    }
+  }, [clearContentAutoSaveTimer, dialogOpen]);
+
+  useEffect(() => () => clearContentAutoSaveTimer(), [clearContentAutoSaveTimer]);
+
+  const handleSuggestExcerpt = () => {
+    if (!form.content.trim() && !form.title.trim()) {
+      toast.error('Add a title or content first.');
+      return;
+    }
+
+    const excerpt = generateExcerptFromBlogPost({
+      title: form.title,
+      content: form.content,
+    });
+
+    if (!excerpt) {
+      toast.message('No text found to build an excerpt.');
+      return;
+    }
+
+    setForm((current) => ({ ...current, excerpt }));
+    toast.success('Excerpt generated from content.');
+  };
+
+  const handleSuggestTags = () => {
+    if (
+      !form.title.trim() &&
+      !form.excerpt.trim() &&
+      !form.content.trim()
+    ) {
+      toast.error('Add a title or content first.');
+      return;
+    }
+
+    const tags = generateTagsFromBlogPost({
+      title: form.title,
+      excerpt: form.excerpt,
+      content: form.content,
+      category: form.category,
+      maxTags: 10,
+    });
+
+    if (tags.length === 0) {
+      toast.message('No keywords found in the content.');
+      return;
+    }
+
+    setForm((current) => ({ ...current, tags: formatTags(tags) }));
+    toast.success(`Generated ${tags.length} tag(s) from content.`);
+  };
+
+  const handleSuggestRelatedPosts = () => {
+    const tags = parseTags(form.tags);
+    if (tags.length === 0) {
+      toast.error('Add tags first to suggest related posts.');
+      return;
+    }
+
+    const suggested = findRelatedPostIdsByTags(posts, editingId, tags, 5);
+    if (suggested.length === 0) {
+      toast.message('No other posts share these tags.');
+      return;
+    }
+
+    setForm((current) => ({ ...current, related_post_ids: suggested }));
+    toast.success(`Selected ${suggested.length} related post(s) by tag.`);
   };
 
   const handleSave = async () => {
@@ -258,19 +728,7 @@ export function BlogPosts() {
 
     setSaving(true);
     try {
-      const payload = {
-        slug: form.slug.trim(),
-        title: form.title.trim(),
-        excerpt: form.excerpt.trim() || null,
-        content: form.content.trim(),
-        category: form.category.trim() || 'News',
-        featured_image_url: form.featured_image_url.trim() || null,
-        tags: parseTags(form.tags),
-        published_at: form.published_at,
-        view_count: Math.max(0, Number(form.view_count) || 0),
-        is_published: form.is_published,
-        show_wholesale_cta: form.show_wholesale_cta,
-      };
+      const payload = buildBlogPostPayload(form);
 
       let postId = editingId;
 
@@ -298,6 +756,8 @@ export function BlogPosts() {
         await saveRelatedPosts(postId, form.related_post_ids);
       }
 
+      lastSavedContentRef.current = form.content.trim();
+      clearContentAutoSaveTimer();
       setDialogOpen(false);
       await loadPosts();
     } catch (err) {
@@ -403,15 +863,30 @@ export function BlogPosts() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Title
-                      </th>
+                      <SortableHeader
+                        label="ID"
+                        column="id"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Title"
+                        column="title"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Slug
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Category
-                      </th>
+                      <SortableHeader
+                        label="Category"
+                        column="category"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Published
                       </th>
@@ -432,6 +907,9 @@ export function BlogPosts() {
                         key={post.id}
                         className="border-b transition-colors hover:bg-muted/50"
                       >
+                        <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
+                          {post.id}
+                        </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {post.title}
                         </td>
@@ -496,8 +974,14 @@ export function BlogPosts() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <aside className="w-full max-w-sm shrink-0 overflow-y-auto border-r px-4 py-4">
+          <div
+            ref={editorSplitRef}
+            className="flex min-h-0 flex-1 overflow-hidden"
+          >
+            <aside
+              className="shrink-0 overflow-y-auto px-4 py-4"
+              style={{ width: sidebarWidth }}
+            >
               <div className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="post-title">Title</Label>
@@ -569,7 +1053,19 @@ export function BlogPosts() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="post-tags">Tags (comma-separated)</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="post-tags">Tags (comma-separated)</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={handleSuggestTags}
+                    >
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      Suggest tags
+                    </Button>
+                  </div>
                   <Input
                     id="post-tags"
                     value={form.tags}
@@ -627,40 +1123,123 @@ export function BlogPosts() {
                   </label>
                 </div>
 
-                {relatedPostOptions.length > 0 && (
+                {posts.length > (editingId !== null ? 1 : 0) && (
                   <div className="grid gap-2">
-                    <Label>Related posts</Label>
-                    <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
-                      {relatedPostOptions.map((post) => (
-                        <label
-                          key={post.id}
-                          className="flex items-start gap-2 text-sm"
-                        >
-                          <Input
-                            type="checkbox"
-                            checked={form.related_post_ids.includes(post.id)}
-                            onChange={(e) =>
-                              toggleRelatedPost(post.id, e.target.checked)
-                            }
-                            className="mt-0.5 h-4 w-4"
-                          />
-                          <span>
-                            <span className="font-medium">{post.title}</span>
-                            <span className="block text-xs text-muted-foreground">
-                              {post.slug}
-                            </span>
-                          </span>
-                        </label>
-                      ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Related posts</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={handleSuggestRelatedPosts}
+                      >
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        Suggest 5 by tags
+                      </Button>
                     </div>
+
+                    {selectedRelatedPosts.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 rounded-md border bg-muted/30 p-2">
+                        {selectedRelatedPosts.map((post) => (
+                          <Badge
+                            key={post.id}
+                            variant="secondary"
+                            className="max-w-full gap-1 pr-1"
+                          >
+                            <span className="truncate">{post.title}</span>
+                            <button
+                              type="button"
+                              className="rounded-sm hover:bg-muted"
+                              onClick={() => toggleRelatedPost(post.id, false)}
+                              aria-label={`Remove ${post.title}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    <Input
+                      placeholder="Search posts to add…"
+                      value={relatedSearch}
+                      onChange={(e) => setRelatedSearch(e.target.value)}
+                    />
+
+                    <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-2">
+                      {searchableRelatedPosts.length === 0 ? (
+                        <p className="px-1 py-2 text-xs text-muted-foreground">
+                          No posts match your search.
+                        </p>
+                      ) : (
+                        searchableRelatedPosts.map((post) => {
+                          const selected = form.related_post_ids.includes(
+                            post.id,
+                          );
+                          return (
+                            <label
+                              key={post.id}
+                              className="flex cursor-pointer items-start gap-2 rounded-sm px-1 py-1.5 text-sm hover:bg-muted/50"
+                            >
+                              <Input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={(e) =>
+                                  toggleRelatedPost(post.id, e.target.checked)
+                                }
+                                className="mt-0.5 h-4 w-4"
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block font-medium leading-snug">
+                                  {post.title}
+                                </span>
+                                <span className="block text-xs text-muted-foreground">
+                                  #{post.id} · {post.slug}
+                                  {post.tags.length > 0 &&
+                                    ` · ${formatTags(post.tags)}`}
+                                </span>
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Showing up to 10 results, newest first. Selected posts
+                      stay listed above.
+                    </p>
                   </div>
                 )}
               </div>
             </aside>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize metadata panel"
+              title="Drag to resize"
+              onMouseDown={startSidebarResize}
+              className="relative z-10 w-2 shrink-0 cursor-col-resize border-r bg-border transition-colors hover:bg-primary/40 active:bg-primary/50"
+            >
+              <span className="absolute top-1/2 left-1/2 h-8 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground/40" />
+            </div>
+
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
               <div className="grid shrink-0 gap-2">
-                <Label htmlFor="post-excerpt">Excerpt</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="post-excerpt">Excerpt</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={handleSuggestExcerpt}
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Suggest excerpt
+                  </Button>
+                </div>
                 <Textarea
                   id="post-excerpt"
                   rows={3}
@@ -676,46 +1255,63 @@ export function BlogPosts() {
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-                <Label htmlFor="post-content">Content (HTML)</Label>
-                <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                  <Textarea
-                    id="post-content"
-                    value={form.content}
-                    wrap="off"
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        content: e.target.value,
-                      }))
-                    }
-                    className="min-h-full w-full resize-none rounded-md border-0 font-mono text-sm shadow-none focus-visible:ring-0"
-                  />
-                </div>
+                <Label htmlFor="post-content">Content</Label>
+                <HtmlRichTextEditor
+                  key={editingId ?? 'new'}
+                  id="post-content"
+                  value={form.content}
+                  onChange={handleContentChange}
+                  onAssetUploaded={handleAssetUploaded}
+                  placeholder="Write the article body…"
+                  className="min-h-0 flex-1"
+                />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="shrink-0 border-t px-6 py-4">
+          <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-between">
             <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              disabled={saving}
+              type="button"
+              variant="secondary"
+              onClick={() => setReferencesDialogOpen(true)}
             >
-              Cancel
-            </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                'Save'
+              <ImageIcon className="mr-2 h-4 w-4" />
+              Asset references
+              {form.reference.uploaded.length > 0 && (
+                <span className="ml-1 text-muted-foreground">
+                  ({form.reference.uploaded.length})
+                </span>
               )}
             </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => void handleSave()} disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BlogPostAssetReferencesDialog
+        open={referencesDialogOpen}
+        onOpenChange={setReferencesDialogOpen}
+        reference={form.reference}
+        onReferenceChange={(reference) => void handleReferenceChange(reference)}
+      />
 
       <AlertDialog
         open={deleteTarget !== null}
