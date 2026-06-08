@@ -1740,6 +1740,35 @@
       "viewMenu": "View Our Menu"
     }
   },
+  "News": {
+    "hero": {
+      "eyebrow": "NEWS & UPDATES",
+      "heading": "Latest Updates",
+      "subheading": "Stories from our stores, team, catering partners, and the Saigon Express community across Tasmania."
+    },
+    "filters": {
+      "all": "All"
+    },
+    "card": {
+      "readMore": "Read more",
+      "views": "{count, plural, one {# view} other {# views}}"
+    },
+    "empty": {
+      "heading": "No news posts yet",
+      "body": "Check back soon for updates from Saigon Express Tasmania.",
+      "filteredHeading": "No posts in this category",
+      "filteredBody": "Try another category or view all posts."
+    },
+    "detail": {
+      "backToAll": "All Posts",
+      "relatedTitle": "Related Posts",
+      "wholesaleCta": {
+        "title": "Ready to Order Wholesale?",
+        "description": "Register for a wholesale account to view pricing and place orders online.",
+        "button": "Register Now"
+      }
+    }
+  },
   "Promotions": {
     "hero": {
       "eyebrow": "Exclusive Deals",

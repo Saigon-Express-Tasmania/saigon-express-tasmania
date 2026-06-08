@@ -483,9 +483,9 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
                 {t("news.title")}
               </h2>
             </div>
-            <button className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1">
+            <Link href="/news" className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1">
               {t("news.viewAll")} <ChevronRight size={14} />
-            </button>
+            </Link>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {newsItems.map((n, i) => (

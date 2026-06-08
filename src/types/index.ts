@@ -3,6 +3,13 @@ export { mapFeaturedReviewRow } from "./FeaturedReview";
 export type { Promotion, PromotionRow } from "./Promotion";
 export { mapPromotionRow } from "./Promotion";
 export type {
+  BlogPost,
+  BlogPostDetail,
+  BlogPostDetailRow,
+  BlogPostRow,
+} from "./BlogPost";
+export { mapBlogPostDetailRow, mapBlogPostRow } from "./BlogPost";
+export type {
   MenuImageMoreEntry,
   MenuImageUrls,
   MenuItemIngredient,

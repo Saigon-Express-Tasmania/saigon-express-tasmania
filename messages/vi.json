@@ -1741,6 +1741,35 @@
       "viewMenu": "Xem Thực Đơn"
     }
   },
+  "News": {
+    "hero": {
+      "eyebrow": "TIN TỨC & CẬP NHẬT",
+      "heading": "Tin Mới Nhất",
+      "subheading": "Câu chuyện từ cửa hàng, đội ngũ, đối tác tiệc và cộng đồng Saigon Express khắp Tasmania."
+    },
+    "filters": {
+      "all": "Tất cả"
+    },
+    "card": {
+      "readMore": "Đọc thêm",
+      "views": "{count, plural, one {# lượt xem} other {# lượt xem}}"
+    },
+    "empty": {
+      "heading": "Chưa có bài viết nào",
+      "body": "Hãy quay lại sớm để xem tin tức từ Saigon Express Tasmania.",
+      "filteredHeading": "Không có bài viết trong danh mục này",
+      "filteredBody": "Thử danh mục khác hoặc xem tất cả bài viết."
+    },
+    "detail": {
+      "backToAll": "Tất Cả Bài Viết",
+      "relatedTitle": "Bài Viết Liên Quan",
+      "wholesaleCta": {
+        "title": "Sẵn Sàng Đặt Hàng Bán Buôn?",
+        "description": "Đăng ký tài khoản bán buôn để xem giá và đặt hàng trực tuyến.",
+        "button": "Đăng Ký Ngay"
+      }
+    }
+  },
   "Promotions": {
     "hero": {
       "eyebrow": "Ưu Đãi Độc Quyền",

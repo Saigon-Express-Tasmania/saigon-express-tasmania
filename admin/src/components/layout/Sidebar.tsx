@@ -13,6 +13,7 @@ import {
   Mail,
   MapPin,
   Megaphone,
+  Newspaper,
   Percent,
   Settings,
   ShoppingCart,
@@ -129,6 +130,12 @@ const navItems: NavItem[] = [
     title: "Wholesale Tiers",
     href: "/wholesale-tiers",
     icon: Percent,
+    group: "Content",
+  },
+  {
+    title: "Blog Posts",
+    href: "/blog-posts",
+    icon: Newspaper,
     group: "Content",
   },
   {

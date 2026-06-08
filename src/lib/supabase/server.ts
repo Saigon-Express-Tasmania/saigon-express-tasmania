@@ -1,5 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { FeaturedReviewRow, MenuItemRow, StoreLocationRow, PromotionRow, WholesaleProductRow } from "@/types";
+import type {
+  BlogPostDetailRow,
+  BlogPostRow,
+  FeaturedReviewRow,
+  MenuItemRow,
+  PromotionRow,
+  StoreLocationRow,
+  WholesaleProductRow,
+} from "@/types";
 
 let serverClient: SupabaseClient | null = null;
 
@@ -151,4 +159,79 @@ export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]
   }
 
   return (data ?? []) as WholesaleProductRow[];
+}
+
+export async function fetchBlogPostRows(): Promise<BlogPostRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select(
+      "id, slug, title, excerpt, category, featured_image_url, published_at, view_count",
+    )
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw new Error(`blog_posts: ${error.message}`);
+  }
+
+  return (data ?? []) as BlogPostRow[];
+}
+
+export async function fetchBlogPostBySlug(
+  slug: string,
+): Promise<BlogPostDetailRow | null> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select(
+      "id, slug, title, excerpt, content, category, featured_image_url, tags, published_at, view_count, show_wholesale_cta",
+    )
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`blog_posts: ${error.message}`);
+  }
+
+  return (data as BlogPostDetailRow | null) ?? null;
+}
+
+export async function fetchRelatedBlogPostRows(
+  postId: number,
+): Promise<BlogPostRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data: links, error: linksError } = await supabase
+    .from("blog_post_related")
+    .select("related_post_id, sort_order")
+    .eq("post_id", postId)
+    .order("sort_order", { ascending: true });
+
+  if (linksError) {
+    throw new Error(`blog_post_related: ${linksError.message}`);
+  }
+
+  if (!links?.length) {
+    return [];
+  }
+
+  const relatedIds = links.map((link) => link.related_post_id);
+  const { data: posts, error: postsError } = await supabase
+    .from("blog_posts")
+    .select(
+      "id, slug, title, excerpt, category, featured_image_url, published_at, view_count",
+    )
+    .in("id", relatedIds);
+
+  if (postsError) {
+    throw new Error(`blog_posts related: ${postsError.message}`);
+  }
+
+  const postsById = new Map(
+    ((posts ?? []) as BlogPostRow[]).map((post) => [post.id, post]),
+  );
+
+  return relatedIds
+    .map((id) => postsById.get(id))
+    .filter((post): post is BlogPostRow => post !== undefined);
 }
