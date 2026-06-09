@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -54,6 +55,11 @@ export type SupabaseContextValue = {
 
 export const SupabaseContext = createContext<SupabaseContextValue | null>(null);
 
+type LoadedUser = {
+  profile: UserProfile | null;
+  authMetadata: UserAuthMetadata;
+};
+
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -62,24 +68,57 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     DEFAULT_USER_AUTH_METADATA,
   );
   const [isLoading, setIsLoading] = useState(true);
+  const loadedAccessTokenRef = useRef<string | null>(null);
+  const loadedUserRef = useRef<LoadedUser | null>(null);
+  const loadInFlightRef = useRef<Promise<LoadedUser> | null>(null);
 
   const clearSignedInUser = useCallback(() => {
     setProfile(null);
     setAuthMetadata(DEFAULT_USER_AUTH_METADATA);
+    loadedAccessTokenRef.current = null;
+    loadedUserRef.current = null;
   }, []);
 
-  const loadSignedInUser = useCallback(async (activeSession: Session) => {
-    const userId = activeSession.user.id;
-    const [row, metadata] = await Promise.all([
-      fetchUserProfile(userId),
-      fetchUserAuthMetadata(userId, activeSession.user.app_metadata),
-    ]);
+  const loadSignedInUser = useCallback(
+    async (activeSession: Session, options?: { force?: boolean }) => {
+      const accessToken = activeSession.access_token;
 
-    setProfile(row);
-    setAuthMetadata(metadata);
+      if (
+        !options?.force &&
+        loadedAccessTokenRef.current === accessToken &&
+        loadedUserRef.current
+      ) {
+        return loadedUserRef.current;
+      }
 
-    return { profile: row, authMetadata: metadata };
-  }, []);
+      if (loadInFlightRef.current) {
+        return loadInFlightRef.current;
+      }
+
+      const userId = activeSession.user.id;
+      const loadPromise = (async () => {
+        const [row, metadata] = await Promise.all([
+          fetchUserProfile(userId),
+          fetchUserAuthMetadata(userId, activeSession.user.app_metadata),
+        ]);
+
+        const loaded: LoadedUser = { profile: row, authMetadata: metadata };
+        setProfile(row);
+        setAuthMetadata(metadata);
+        loadedAccessTokenRef.current = accessToken;
+        loadedUserRef.current = loaded;
+        return loaded;
+      })();
+
+      loadInFlightRef.current = loadPromise;
+      try {
+        return await loadPromise;
+      } finally {
+        loadInFlightRef.current = null;
+      }
+    },
+    [],
+  );
 
   const refreshProfile = useCallback(async () => {
     if (!user?.id || !session) {
@@ -87,7 +126,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    await loadSignedInUser(session);
+    await loadSignedInUser(session, { force: true });
   }, [clearSignedInUser, loadSignedInUser, session, user?.id]);
 
   useEffect(() => {
@@ -112,7 +151,6 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Error initializing Supabase session:", error);
       } finally {
-        console.log("isLoading", isLoading);
         if (mounted) setIsLoading(false);
       }
     };
@@ -124,6 +162,14 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (event === "TOKEN_REFRESHED") {
         setSession(newSession);
+        return;
+      }
+
+      // getSession() in init() already loads profile/metadata for the first session.
+      if (event === "INITIAL_SESSION") {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        if (mounted) setIsLoading(false);
         return;
       }
 
@@ -141,7 +187,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         clearSignedInUser();
       }
 
-      setIsLoading(false);
+      if (mounted) setIsLoading(false);
     });
 
     return () => {

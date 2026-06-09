@@ -7,6 +7,7 @@ import WholesaleFormSelect, {
   type WholesaleFormSelectOption,
 } from "@/components/WholesaleFormSelect";
 import MemberHeader from "@/components/MemberHeader";
+import MemberPrivilegeBadges from "@/components/MemberPrivilegeBadges";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import { resizeImageFile } from "@/lib/image-resize";
@@ -148,7 +149,7 @@ function formToUpdate(form: ProfileFormState): UserProfileSelfUpdate {
   };
 }
 
-export default function WholesaleProfile() {
+export default function MemberProfile() {
   const router = useRouter();
   const { profile, authMetadata, isLoading, signOut, updateOwnProfile } =
     useSupabase();
@@ -166,6 +167,7 @@ export default function WholesaleProfile() {
       businessName: profile.business_name ?? "Your Business",
       contactName: getContactName(profile),
       portalType: resolvePortalType(authMetadata.privileges),
+      privileges: authMetadata.privileges,
       avatarUrl: profile.avatar_url?.trim() || avatarPreviewUrl,
     };
   }, [profile, authMetadata, avatarPreviewUrl]);
@@ -335,102 +337,102 @@ export default function WholesaleProfile() {
     <div className="min-h-screen bg-black text-white">
       <MemberHeader member={me} onLogout={() => void handleLogout()} />
 
-      <div className="border-b border-white/10 py-6">
-        <div className="container">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
-              <User className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="font-serif text-2xl font-bold text-white">
-                Customer Profile Settings
-              </h1>
-              <p className="text-sm text-white/45">
-                {me.businessName} · {businessTypeLabel(authMetadata.privileges)}{" "}
-                Member
-              </p>
+      <form onSubmit={(event) => void handleSubmit(event)}>
+        <div className="border-b border-white/10 py-6">
+          <div className="container">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
+                  <User className="h-6 w-6 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="font-serif text-2xl font-bold text-white truncate">
+                    {me.businessName}
+                  </h1>
+                  <MemberPrivilegeBadges privileges={authMetadata.privileges} />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="md:hidden inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </button>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="container max-w-5xl py-8">
-        <form onSubmit={(event) => void handleSubmit(event)}>
-          <div className="mb-6 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-flex-start lg:h-full lg:justify-flex_start">
-                <div className="text-center">
-                  <div className="relative mx-auto mb-3 flex h-50 w-50 p-1 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/20">
-                    {avatarPreviewUrl ? (
-                      <AppImage
-                        src={avatarPreviewUrl}
-                        alt={displayName}
-                        width={80}
-                        height={80}
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <span className="text-2xl font-semibold text-primary">
-                        {getInitials(profile)}
-                      </span>
-                    )}
-                    {isUploading ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="container max-w-5xl py-8">
+          <section className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+              <div className="mx-auto w-full max-w-xs shrink-0 text-center lg:mx-0 lg:w-auto">
+                <div className="relative mx-auto mb-3 flex h-50 w-50 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/20 p-1">
+                  {avatarPreviewUrl ? (
+                    <AppImage
+                      src={avatarPreviewUrl}
+                      alt={displayName}
+                      width={80}
+                      height={80}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-2xl font-semibold text-primary">
+                      {getInitials(profile)}
+                    </span>
+                  )}
+                  {isUploading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={isUploading || isSaving}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {avatarPreviewUrl ? "Replace" : "Upload"}
+                  </button>
+                  {avatarPreviewUrl ? (
                     <button
                       type="button"
-                      onClick={() => avatarInputRef.current?.click()}
+                      onClick={() => void handleAvatarClear()}
                       disabled={isUploading || isSaving}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <Upload className="h-3.5 w-3.5" />
-                      {avatarPreviewUrl ? "Replace" : "Upload"}
+                      <X className="h-3.5 w-3.5" />
+                      Remove
                     </button>
-                    {avatarPreviewUrl ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleAvatarClear()}
-                        disabled={isUploading || isSaving}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 text-xs text-white/35">
-                    JPEG, PNG, WebP or GIF.
-                  </p>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept={AVATAR_ACCEPT}
-                    className="sr-only"
-                    disabled={isUploading || isSaving}
-                    onChange={(event) => void handleAvatarInputChange(event)}
-                  />
+                  ) : null}
                 </div>
-                <div>
-                  <div className="mb-2 font-serif text-2xl text-white">
-                    {displayName}
-                  </div>
-                  <div className="text-sm text-white/70">
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
-                      {businessTypeLabel(authMetadata.privileges)}
-                    </span>
-                  </div>
-                </div>
+                <p className="mt-2 text-xs text-white/35">
+                  JPEG, PNG, WebP or GIF.
+                </p>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept={AVATAR_ACCEPT}
+                  className="sr-only"
+                  disabled={isUploading || isSaving}
+                  onChange={(event) => void handleAvatarInputChange(event)}
+                />
               </div>
-            </div>
 
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <h2 className="mb-5 text-base font-semibold text-white">
-                Personal Details
-              </h2>
+              <div className="min-w-0 flex-1">
+                <h2 className="mb-5 text-base font-semibold text-white">
+                  Personal Details
+                </h2>
                 <div className="mb-4 grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label htmlFor="first_name" className={LABEL_CLASS}>
@@ -495,8 +497,9 @@ export default function WholesaleProfile() {
                     />
                   </div>
                 </div>
-            </section>
-          </div>
+              </div>
+            </div>
+          </section>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
@@ -699,8 +702,8 @@ export default function WholesaleProfile() {
               </div>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }

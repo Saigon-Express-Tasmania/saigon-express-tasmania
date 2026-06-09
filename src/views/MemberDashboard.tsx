@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import MemberHeader from "@/components/MemberHeader";
 import { useSupabase } from "@/hooks/useSupabase";
-import { hasPortalPrivilege, resolvePortalType } from "@/lib/privileges";
+import { hasPortalPrivilege } from "@/lib/privileges";
 import type { UserProfile } from "@/types";
 import { toast } from "sonner";
 
@@ -21,13 +21,9 @@ export default function MemberDashboard({ locale: _locale }: { locale: string })
 
   const me = useMemo(() => {
     if (!profile) return null;
-    const portalType = hasPortalPrivilege(authMetadata.privileges)
-      ? resolvePortalType(authMetadata.privileges)
-      : "personal";
-
     return {
       businessName: profile.business_name?.trim() || getDisplayName(profile),
-      portalType,
+      privileges: authMetadata.privileges,
       avatarUrl: profile.avatar_url?.trim() || null,
     };
   }, [profile, authMetadata]);

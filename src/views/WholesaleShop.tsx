@@ -93,6 +93,7 @@ export default function WholesaleShop({
       businessName: profile.business_name ?? "Your Business",
       contactName: getContactName(profile),
       portalType: resolvePortalType(authMetadata.privileges),
+      privileges: authMetadata.privileges,
       avatarUrl: profile.avatar_url?.trim() || null,
     };
   }, [profile, authMetadata]);

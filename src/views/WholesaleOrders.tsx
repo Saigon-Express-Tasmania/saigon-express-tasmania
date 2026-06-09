@@ -358,6 +358,7 @@ export default function WholesaleOrders({
       contactName: getContactName(profile),
       memberId: getMemberId(profile),
       portalType: resolvePortalType(authMetadata.privileges),
+      privileges: authMetadata.privileges,
       avatarUrl: profile.avatar_url?.trim() || null,
     };
   }, [profile, authMetadata]);
