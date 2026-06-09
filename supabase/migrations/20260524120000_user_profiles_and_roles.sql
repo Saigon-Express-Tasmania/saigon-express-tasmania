@@ -1,13 +1,7 @@
 -- User profiles, JWT role helpers, and auth signup sync.
+-- Portal privileges live on user_metadata.privileges (user_metadata migration),
+-- not on user_profiles.
 
--- ---------------------------------------------------------------------------
--- Enum
--- ---------------------------------------------------------------------------
-create type public.user_role as enum ('none', 'user', 'admin', 'partner');
-comment on type public.user_role is
-  'Application role: none (no access), user (default), admin, partner.';
-
-create type public.business_type as enum ('personal', 'wholesale', 'warehouse', 'franchise');
 -- ---------------------------------------------------------------------------
 -- Profiles table
 -- ---------------------------------------------------------------------------
@@ -32,7 +26,6 @@ create table public.user_profiles (
   abn text,
   business_category text,
   avatar_url text,
-  business_type public.business_type not null default 'personal',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint user_profiles_email_lowercase check (
@@ -73,17 +66,7 @@ set search_path = public, auth
 as $$
 declare
   meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
-  profile_business_type public.business_type := 'personal'::public.business_type;
-  meta_business_type text;
 begin
-  meta_business_type := nullif(trim(meta ->> 'business_type'), '');
-
-  if meta_business_type is not null
-    and meta_business_type in ('personal', 'wholesale', 'warehouse', 'franchise')
-  then
-    profile_business_type := meta_business_type::public.business_type;
-  end if;
-
   insert into public.user_profiles (
     id,
     email,
@@ -93,8 +76,7 @@ begin
     address_line1,
     business_name,
     abn,
-    business_category,
-    business_type
+    business_category
   )
   values (
     new.id,
@@ -105,8 +87,7 @@ begin
     nullif(trim(meta ->> 'address_line1'), ''),
     nullif(trim(meta ->> 'business_name'), ''),
     nullif(trim(meta ->> 'abn'), ''),
-    nullif(trim(meta ->> 'business_category'), ''),
-    profile_business_type
+    nullif(trim(meta ->> 'business_category'), '')
   )
   on conflict (id) do update
   set
@@ -121,12 +102,6 @@ begin
       excluded.business_category,
       public.user_profiles.business_category
     ),
-    business_type = case
-      when excluded.business_type = 'personal'::public.business_type
-        and public.user_profiles.business_type <> 'personal'::public.business_type
-      then public.user_profiles.business_type
-      else excluded.business_type
-    end,
     updated_at = now();
 
   return new;
@@ -174,13 +149,11 @@ as $$
   select case
     when coalesce(nullif(auth.jwt() -> 'app_metadata' ->> 'user_role', ''), 'none') = 'admin'
       then 'admin'
-    when coalesce((auth.jwt() -> 'app_metadata' ->> 'is_verified')::boolean, false)
-      then coalesce(nullif(auth.jwt() -> 'app_metadata' ->> 'user_role', ''), 'none')
-    else 'none'
+    else coalesce(nullif(auth.jwt() -> 'app_metadata' ->> 'user_role', ''), 'none')
   end;
 $$;
 comment on function public.auth_user_role() is
-  'Role from JWT app_metadata; requires is_verified=true (admin role exempt).';
+  'Role from JWT app_metadata. Admin is always effective.';
 create or replace function public.is_admin()
 returns boolean
 language sql

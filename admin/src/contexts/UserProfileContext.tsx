@@ -2,6 +2,7 @@
 
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { parsePrivileges } from '@/lib/privileges';
 import supabase from '@/lib/supabase/client';
 import type { UserProfile, UserProfileUpdate } from '@/types/UserProfile';
 import {
@@ -27,7 +28,7 @@ export type UserProfileContextValue = {
 
 export const UserProfileContext = createContext<UserProfileContextValue | null>(null);
 
-type ProfileRow = Omit<UserProfile, 'user_role' | 'is_verified' | 'membership_level'>;
+type ProfileRow = Omit<UserProfile, 'user_role' | 'privileges' | 'membership_level'>;
 
 async function resolveAvatarPreview(
   avatarPath: string | null | undefined,
@@ -48,14 +49,14 @@ function mergeAdminProfile(
   profile: ProfileRow,
   metadata: {
     user_role: UserProfile['user_role'];
-    is_verified: boolean;
+    privileges: UserProfile['privileges'];
     membership_level: number;
   } | null,
 ): UserProfile {
   return {
     ...profile,
     user_role: metadata?.user_role ?? 'user',
-    is_verified: metadata?.is_verified ?? false,
+    privileges: metadata?.privileges ?? ['personal'],
     membership_level: metadata?.membership_level ?? 0,
   };
 }
@@ -94,7 +95,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
           supabase.from('user_profiles').select('*').eq('id', userId).single(),
           supabase
             .from('user_metadata')
-            .select('user_role, is_verified, membership_level')
+            .select('user_role, privileges, membership_level')
             .eq('id', userId)
             .maybeSingle(),
         ]);
@@ -102,7 +103,11 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
       if (profileError) throw profileError;
       if (metadataError) throw metadataError;
 
-      const row = mergeAdminProfile(profileData as ProfileRow, metadataData);
+      const row = mergeAdminProfile(profileData as ProfileRow, metadataData ? {
+        user_role: metadataData.user_role,
+        privileges: parsePrivileges(metadataData.privileges),
+        membership_level: metadataData.membership_level,
+      } : null);
       setProfile(row);
       setAvatarPreviewUrl(await resolveAvatarPreview(row.avatar_url, getSignedUrl));
     } catch (err) {
@@ -135,11 +140,14 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
-        const { user_role: _role, is_verified: _verified, ...safeUpdates } =
-          updates as UserProfileUpdate & {
-            user_role?: unknown;
-            is_verified?: unknown;
-          };
+        const {
+          user_role: _role,
+          privileges: _privileges,
+          ...safeUpdates
+        } = updates as UserProfileUpdate & {
+          user_role?: unknown;
+          privileges?: unknown;
+        };
 
         const { data, error: updateError } = await supabase
           .from('user_profiles')
@@ -152,7 +160,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
         const row = mergeAdminProfile(data as ProfileRow, profile ? {
           user_role: profile.user_role,
-          is_verified: profile.is_verified,
+          privileges: profile.privileges,
           membership_level: profile.membership_level,
         } : null);
         setProfile(row);

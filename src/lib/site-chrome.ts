@@ -1,14 +1,26 @@
-import { SUPPORTED_LOCALES } from "@/config/localize";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
 
-const HEADERLESS_PATHS = new Set(["/wholesale/dashboard"]);
+/** Site sections that use MemberHeader instead of MainHeader. */
+const HEADERLESS_SECTIONS = ["/wholesale", "/member", "/warehouse", "/franchise"] as const;
+
+function stripLocalePrefix(pathname: string): string {
+  for (const locale of SUPPORTED_LOCALES) {
+    if (locale === DEFAULT_LOCALE) continue;
+    const prefix = `/${locale}`;
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return pathname.slice(prefix.length) || "/";
+    }
+  }
+  return pathname;
+}
+
+function matchesSectionWildcard(path: string, section: string): boolean {
+  return path.startsWith(`${section}/`);
+}
 
 export function shouldHideMainHeader(pathname: string): boolean {
-  const path = pathname.replace(/\/$/, "") || "/";
-  if (HEADERLESS_PATHS.has(path)) return true;
-
-  for (const locale of SUPPORTED_LOCALES) {
-    if (path.endsWith('/wholesale/dashboard') || path.endsWith('/wholesale/orders') || path.endsWith('/wholesale/profile')) return true;
-  }
-
-  return false;
+  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
+  return HEADERLESS_SECTIONS.some((section) =>
+    matchesSectionWildcard(path, section),
+  );
 }

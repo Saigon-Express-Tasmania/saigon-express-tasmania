@@ -40,7 +40,7 @@ export function DashboardLayout({
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="relative z-40 flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );

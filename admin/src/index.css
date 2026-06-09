@@ -198,9 +198,15 @@
 }
 
 .html-rich-text-editor .ql-snow .ql-picker-options {
+  z-index: 200;
   border-color: var(--border);
   background: var(--popover);
   color: var(--popover-foreground);
+}
+
+/* Link/video tooltips and toolbar pickers above dialog chrome (header, footer, splitters). */
+.html-rich-text-editor .ql-snow .ql-tooltip {
+  z-index: 200;
 }
 
 .html-rich-text-editor .ql-snow .ql-picker.ql-expanded .ql-picker-label {

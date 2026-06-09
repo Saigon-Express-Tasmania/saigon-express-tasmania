@@ -1,8 +1,9 @@
+import { hasPortalPrivilege, hasPrivilege } from "@/lib/privileges";
 import type { BusinessType, UserAuthMetadata, UserProfile } from "@/types/UserProfile";
 
 const STORAGE_KEY = "saigon_wholesale_registration_status";
 
-export type WholesaleRegistrationStatusType = "pending_confirmation";
+export type WholesaleRegistrationStatusType = "pending_approval";
 
 export type WholesaleRegistrationStatus = {
   email: string;
@@ -14,42 +15,36 @@ export type WholesaleRegistrationStatus = {
 };
 
 export const WHOLESALE_REGISTRATION_MESSAGES = {
-  pending_confirmation:
-    "Registration submitted! An administrator will confirm your account (typically 1–2 business days). You can sign in once your registration has been confirmed.",
-  pending_confirmation_banner:
-    "Your registration is pending administrator confirmation. Sign in after your account has been confirmed.",
-  login_blocked:
-    "Your account is pending administrator confirmation. Please try again once your registration has been confirmed.",
+  pending_approval:
+    "Registration submitted! You can sign in anytime. Portal access requires administrator approval (typically 1–2 business days).",
+  pending_approval_banner:
+    "Your registration is pending administrator approval. You can sign in, but wholesale portal features are not available yet.",
 } as const;
 
 export function isWholesaleMemberConfirmed(
-  profile: Pick<UserProfile, "business_type"> | null,
+  _profile: UserProfile | null,
   authMetadata: UserAuthMetadata,
 ): boolean {
-  if (!profile) return false;
-
-  if (profile.business_type === "wholesale") {
-    return authMetadata.user_role === "partner" || authMetadata.is_verified;
-  }
-
-  if (profile.business_type === "warehouse") {
-    return authMetadata.is_verified;
-  }
-
-  return false;
+  return (
+    authMetadata.user_role === "partner" || hasPortalPrivilege(authMetadata.privileges)
+  );
 }
 
-export function isWholesaleMemberPendingConfirmation(
-  profile: Pick<UserProfile, "business_type"> | null,
+export function isWholesaleMemberPendingApproval(
+  profile: UserProfile | null,
   authMetadata: UserAuthMetadata,
+  requestedType?: Extract<BusinessType, "wholesale" | "warehouse">,
 ): boolean {
   if (!profile) return false;
 
-  const isWholesaleAccount =
-    profile.business_type === "wholesale" ||
-    profile.business_type === "warehouse";
+  const isBusinessRegistration = Boolean(profile.business_name?.trim());
+  if (!isBusinessRegistration) return false;
 
-  return isWholesaleAccount && !isWholesaleMemberConfirmed(profile, authMetadata);
+  if (requestedType) {
+    return !hasPrivilege(authMetadata.privileges, requestedType);
+  }
+
+  return !hasPortalPrivilege(authMetadata.privileges);
 }
 
 export function saveWholesaleRegistrationStatus(
@@ -85,9 +80,9 @@ export function buildWholesaleRegistrationStatus(input: {
     email: input.email.trim().toLowerCase(),
     businessName: input.businessName.trim(),
     businessType: input.businessType,
-    status: "pending_confirmation",
+    status: "pending_approval",
     submittedAt: new Date().toISOString(),
-    message: WHOLESALE_REGISTRATION_MESSAGES.pending_confirmation,
+    message: WHOLESALE_REGISTRATION_MESSAGES.pending_approval,
   };
 }
 
@@ -100,19 +95,17 @@ export function resolveWholesaleRegistrationStatus(
     return null;
   }
 
-  if (isWholesaleMemberPendingConfirmation(profile, authMetadata)) {
+  const requestedType = stored?.businessType ?? "wholesale";
+
+  if (isWholesaleMemberPendingApproval(profile, authMetadata, requestedType)) {
     return {
-      email: profile!.email ?? stored?.email ?? "",
-      businessName: profile!.business_name ?? stored?.businessName ?? "",
-      businessType: profile!.business_type as Extract<
-        BusinessType,
-        "wholesale" | "warehouse"
-      >,
-      status: "pending_confirmation",
-      submittedAt: stored?.submittedAt ?? profile!.updated_at,
+      email: profile?.email ?? stored?.email ?? "",
+      businessName: profile?.business_name ?? stored?.businessName ?? "",
+      businessType: requestedType,
+      status: "pending_approval",
+      submittedAt: stored?.submittedAt ?? profile?.updated_at ?? new Date().toISOString(),
       message:
-        stored?.message ??
-        WHOLESALE_REGISTRATION_MESSAGES.pending_confirmation_banner,
+        stored?.message ?? WHOLESALE_REGISTRATION_MESSAGES.pending_approval_banner,
     };
   }
 

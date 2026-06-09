@@ -9,6 +9,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { mergePrivileges } from '@/lib/privileges';
+import {
+  fetchUserMetadataByIds,
+  fetchUsersMissingPrivilege,
+  updateUserMetadata,
+} from '@/lib/user-metadata';
 import supabase from '@/lib/supabase/client';
 import type { BusinessType, UserProfile } from '@/types/UserProfile';
 import { CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
@@ -25,21 +31,19 @@ type MemberProfile = Pick<
   | 'business_name'
   | 'abn'
   | 'business_category'
-  | 'business_type'
   | 'phone'
   | 'address_line1'
-  | 'is_verified'
   | 'created_at'
->;
+> & {
+  privileges: BusinessType[];
+};
 
 const MEMBER_SELECT =
-  'id, email, first_name, last_name, display_name, business_name, abn, business_category, business_type, phone, address_line1, is_verified, created_at';
+  'id, email, first_name, last_name, display_name, business_name, abn, business_category, phone, address_line1, created_at';
 
-const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
-  personal: 'Personal',
+const PORTAL_PRIVILEGE_LABELS: Record<'wholesale' | 'warehouse', string> = {
   wholesale: 'Wholesale',
   warehouse: 'Warehouse',
-  franchise: 'Franchise',
 };
 
 function formatDate(value: string): string {
@@ -69,15 +73,37 @@ export function Users() {
   const loadPendingMembers = useCallback(async () => {
     setLoading(true);
     try {
+      const [missingWholesaleIds, missingWarehouseIds] = await Promise.all([
+        fetchUsersMissingPrivilege('wholesale'),
+        fetchUsersMissingPrivilege('warehouse'),
+      ]);
+      const pendingIds = [...new Set([...missingWholesaleIds, ...missingWarehouseIds])];
+      if (pendingIds.length === 0) {
+        setPendingMembers([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select(MEMBER_SELECT)
-        .in('business_type', ['wholesale', 'warehouse'])
-        .eq('is_verified', false)
+        .in('id', pendingIds)
+        .not('business_name', 'is', null)
+        .neq('business_name', '')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPendingMembers((data as MemberProfile[] | null) ?? []);
+
+      const profiles = (data as Omit<MemberProfile, 'privileges'>[] | null) ?? [];
+      const metadataById = await fetchUserMetadataByIds(
+        profiles.map((member) => member.id),
+      );
+
+      setPendingMembers(
+        profiles.map((member) => ({
+          ...member,
+          privileges: metadataById.get(member.id)?.privileges ?? ['personal'],
+        })),
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load pending registrations.';
@@ -98,18 +124,22 @@ export function Users() {
   const handleConfirm = async (member: MemberProfile) => {
     setConfirmingId(member.id);
     try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ is_verified: true })
-        .eq('id', member.id);
+      const privileges = mergePrivileges(member.privileges, 'wholesale');
+      await updateUserMetadata(member.id, {
+        privileges,
+        user_role: 'partner',
+      });
 
-      if (error) throw error;
+      const { error: syncError } = await supabase.rpc('sync_user_auth_metadata', {
+        target_user_id: member.id,
+      });
+      if (syncError) throw syncError;
 
       setPendingMembers((current) => current.filter((row) => row.id !== member.id));
-      toast.success(`${memberName(member)} confirmed.`);
+      toast.success(`${memberName(member)} approved for wholesale access.`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to confirm registration.';
+        err instanceof Error ? err.message : 'Failed to approve registration.';
       toast.error(message);
     } finally {
       setConfirmingId(null);
@@ -121,10 +151,10 @@ export function Users() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
-            <CardTitle>Pending member confirmations</CardTitle>
+            <CardTitle>Pending member approvals</CardTitle>
             <CardDescription>
-              Confirm wholesale and warehouse registrations. No confirmation email
-              is sent — members can sign in once you confirm their account.
+              Grant wholesale or warehouse portal privileges. Members can sign in
+              before approval, but restricted pages stay locked until you grant access.
             </CardDescription>
           </div>
           {isAdmin ? (
@@ -148,10 +178,10 @@ export function Users() {
             </div>
           ) : !isAdmin ? (
             <p className="text-muted-foreground">
-              Administrator access is required to confirm member registrations.
+              Administrator access is required to approve member registrations.
             </p>
           ) : pendingMembers.length === 0 ? (
-            <p className="text-muted-foreground">No pending confirmations.</p>
+            <p className="text-muted-foreground">No pending approvals.</p>
           ) : (
             <div className="space-y-4">
               {pendingMembers.map((member) => (
@@ -163,9 +193,9 @@ export function Users() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{memberName(member)}</p>
                       <Badge variant="secondary">
-                        {BUSINESS_TYPE_LABELS[member.business_type]}
+                        {PORTAL_PRIVILEGE_LABELS.wholesale}
                       </Badge>
-                      <Badge variant="outline">Pending confirmation</Badge>
+                      <Badge variant="outline">Pending approval</Badge>
                     </div>
                     <div className="grid gap-1 text-sm text-muted-foreground">
                       <p>
@@ -214,12 +244,12 @@ export function Users() {
                     {confirmingId === member.id ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Confirming…
+                        Approving…
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="size-4" />
-                        Confirm
+                        Grant wholesale access
                       </>
                     )}
                   </Button>

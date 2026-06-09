@@ -50,6 +50,11 @@ const navItems: NavItem[] = [
     icon: Utensils,
   },
   {
+    title: "Partners",
+    href: "/partners",
+    icon: UserSquare2Icon,
+  },
+  {
     title: "Orders",
     href: "/sales/orders/catering",
     icon: ShoppingCart,
@@ -69,13 +74,7 @@ const navItems: NavItem[] = [
     icon: Archive,
     group: "Catering",
     isOrderPage: true,
-  },
-  {
-    title: "Partners",
-    href: "/partners/wholesale",
-    icon: UserSquare2Icon,
-    group: "Wholesale",
-  },
+  },  
   {
     title: "Orders",
     href: "/sales/orders/wholesale",

@@ -10,13 +10,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { normalizePartnerPrivileges } from '@/lib/partner-privilege-form';
+import { hasAnyPortalPartnerPrivilege } from '@/lib/privileges';
 import {
-  confirmPartnerProfile,
+  confirmPartnerWithPrivileges,
   DASHBOARD_PENDING_PARTNERS_LIMIT,
   fetchPendingPartners,
   partnerDisplayName,
 } from '@/lib/partner-profiles';
-import type { UserProfile } from '@/types/UserProfile';
+import type { BusinessType, UserProfile } from '@/types/UserProfile';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -35,7 +37,6 @@ export function PendingWholesaleMembers() {
     setLoading(true);
     try {
       const result = await fetchPendingPartners({
-        businessType: 'wholesale',
         limit: DASHBOARD_PENDING_PARTNERS_LIMIT,
       });
       setPartners(result.items);
@@ -63,10 +64,21 @@ export function PendingWholesaleMembers() {
     setConfirmPromptId((current) => (current === partnerId ? null : partnerId));
   };
 
-  const handleConfirm = async (partner: UserProfile) => {
+  const handleConfirm = async (
+    partner: UserProfile,
+    privileges: BusinessType[],
+  ) => {
+    const normalized = normalizePartnerPrivileges(privileges);
+    if (!hasAnyPortalPartnerPrivilege(normalized)) {
+      toast.error(
+        'Select at least one portal privilege (wholesale, warehouse, or franchise).',
+      );
+      return;
+    }
+
     setConfirmingId(partner.id);
     try {
-      await confirmPartnerProfile(partner);
+      await confirmPartnerWithPrivileges(partner, normalized);
       toast.success(`${partnerDisplayName(partner)} confirmed.`);
       await loadPending();
     } catch (err) {
@@ -84,7 +96,7 @@ export function PendingWholesaleMembers() {
   }
 
   return (
-    <Card>
+    <Card className="overflow-visible">
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
         <div>
           <CardTitle>Pending wholesale members</CardTitle>
@@ -94,7 +106,7 @@ export function PendingWholesaleMembers() {
         </div>
         {!loading && totalCount > 0 ? (
           <Button asChild variant="outline" size="sm">
-            <Link to="/partners/wholesale">View all</Link>
+            <Link to="/partners">View all</Link>
           </Button>
         ) : null}
       </CardHeader>
@@ -108,7 +120,9 @@ export function PendingWholesaleMembers() {
           confirmPromptId={confirmPromptId}
           onConfirmPromptToggle={handleConfirmPromptToggle}
           onConfirmPromptClose={() => setConfirmPromptId(null)}
-          onConfirm={(partner) => void handleConfirm(partner)}
+          onConfirm={(partner, privileges) =>
+            void handleConfirm(partner, privileges)
+          }
           skeletonCount={3}
           showHeader={false}
           emptyMessage="No pending wholesale registrations."

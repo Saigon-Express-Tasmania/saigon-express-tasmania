@@ -1,38 +1,71 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppImage from "@/components/AppImage";
-import { motion } from "framer-motion";
-import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
-import Link from "@/components/link";
+import MemberHeader from "@/components/MemberHeader";
+import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
-import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
-import type {
-  SiteCategory,
-  WholesalePricingTier,
-  WholesaleProduct,
-} from "@/types";
+import { resolvePortalType } from "@/lib/privileges";
+import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
+import type { SiteCategory, UserProfile, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
-// 1. Import Fuse
-import Fuse from "fuse.js";
+import { Plus, Package, Building2, Search } from "lucide-react";
+import { toast } from "sonner";
 
 const ALL_CATEGORY = "All";
+
+type DashboardProduct = {
+  id: number;
+  name: string;
+  category: string;
+  description: string;
+  priceExGst: number;
+  unit: string;
+  badge: string | null;
+  imageUrl: string | null;
+  isAvailable: boolean;
+  minOrderQty: number;
+  stockQty: number;
+};
+
+function mapProduct(p: WholesaleProduct): DashboardProduct {
+  return {
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    description: p.description ?? "",
+    priceExGst: Number(p.unitPrice ?? 0),
+    unit: p.unit,
+    badge: null,
+    imageUrl: pickWholesaleImageUrl(p.imageUrls, [512, 1024, 256, 1448]),
+    isAvailable: p.isAvailable,
+    minOrderQty: p.minOrderQty ?? 1,
+    stockQty: p.stockQty ?? 0,
+  };
+}
+
+function getContactName(profile: UserProfile): string {
+  if (profile.display_name?.trim()) return profile.display_name.trim();
+  const parts = [profile.first_name, profile.last_name].filter(Boolean);
+  if (parts.length > 0) return parts.join(" ");
+  return profile.email ?? "Member";
+}
 
 export default function WholesaleShop({
   products,
   categoriesContent,
-  pricingTiers,
 }: {
   products: WholesaleProduct[];
   categoriesContent: SiteCategory[];
-  pricingTiers: WholesalePricingTier[];
 }) {
-  const t = useTranslations("WholesaleShop");
-  const { profile, isSignedIn } = useSupabase();
-  const canViewPrices =
-    isSignedIn && profile?.business_type === "wholesale";
-
-  const bannerPerks = (t.raw("banner.perks") || []) as string[];
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { profile, authMetadata, isLoading, signOut } = useSupabase();
+  const { addToCart, getCartQty, clearCart } = useWholesaleCart();
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
 
   const categoryStyleMap = useMemo(
     () =>
@@ -52,363 +85,230 @@ export default function WholesaleShop({
     [categoriesContent],
   );
 
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
-
-  // 2. Initialize Fuse instance with targeted keys and fine-tuned thresholds
-  const fuse = useMemo(() => {
-    const options = {
-      keys: [
-        { name: "name", weight: 0.6 },
-        { name: "description", weight: 0.3 },
-        { name: "category", weight: 0.1 },
-      ],
-      threshold: 0.35, // Balanced threshold: perfect for picking up technical/ingredient typos without returning junk matches.
+  const me = useMemo(() => {
+    if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
+      return null;
+    }
+    return {
+      businessName: profile.business_name ?? "Your Business",
+      contactName: getContactName(profile),
+      portalType: resolvePortalType(authMetadata.privileges),
+      avatarUrl: profile.avatar_url?.trim() || null,
     };
-    return new Fuse(products ?? [], options);
-  }, [products]);
+  }, [profile, authMetadata]);
 
-  // 3. Compute fuzzy matching coupled with category constraints using useMemo
+  useEffect(() => {
+    if (!isLoading && !me) {
+      router.push("/member");
+    }
+  }, [me, isLoading, router]);
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (!checkout) return;
+
+    if (checkout === "success") {
+      clearCart();
+      toast.success("Payment successful! Your wholesale order has been placed.");
+    } else if (checkout === "cancelled") {
+      toast.error("Checkout was cancelled. Your cart is unchanged.");
+    } else if (checkout === "failed") {
+      toast.error("Payment failed. Please try again.");
+    }
+
+    router.replace(pathname, { scroll: false });
+  }, [searchParams, router, pathname, clearCart]);
+
+  const allProducts = useMemo(() => products.map(mapProduct), [products]);
+
   const filtered = useMemo(() => {
-    const normalizedSearch = search.trim();
+    const normalizedSearch = search.toLowerCase();
+    return allProducts.filter((p) => {
+      const matchesCategory =
+        selectedCategory === ALL_CATEGORY || p.category === selectedCategory;
+      const matchesSearch =
+        !normalizedSearch ||
+        p.name.toLowerCase().includes(normalizedSearch) ||
+        p.description.toLowerCase().includes(normalizedSearch);
+      return matchesCategory && matchesSearch;
+    });
+  }, [allProducts, search, selectedCategory]);
 
-    // If there is no search phrase, simply filter down raw data based on category mapping
-    if (!normalizedSearch) {
-      if (selectedCategory === ALL_CATEGORY) return products ?? [];
-      return (products ?? []).filter((p) => p.category === selectedCategory);
-    }
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("Signed out.");
+    router.push("/member");
+  };
 
-    // Query across the indexed global data subset
-    const searchResults = fuse
-      .search(normalizedSearch)
-      .map((result) => result.item);
-
-    // Apply category isolation on top of search hits
-    if (selectedCategory !== ALL_CATEGORY) {
-      return searchResults.filter((p) => p.category === selectedCategory);
-    }
-
-    return searchResults;
-  }, [search, selectedCategory, products, fuse]);
+  const handleAddToCart = (product: DashboardProduct) => {
+    addToCart({
+      productId: product.id,
+      productName: product.name,
+      unitPrice: product.priceExGst,
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Page header */}
-      <section className="py-16 border-b border-border/40 bg-background">
-        <div className="container">
-          <h1 className="font-serif text-5xl lg:text-6xl font-bold text-foreground mb-3">
-            {t("header.title")}
-          </h1>
-          <p className="text-muted-foreground text-lg">{t("header.desc")}</p>
-        </div>
-      </section>
+    <div className="min-h-screen bg-black text-white">
+      <MemberHeader member={me} onLogout={() => void handleLogout()} />
 
-      {/* Wholesale members banner */}
-      <section className="py-0">
-        <div className="container py-5">
-          <div className="relative rounded-2xl overflow-hidden">
-            <div className="absolute inset-0 bg-black" />
-            <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 p-7">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <Lock className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <div className="font-bold text-white text-lg mb-1">
-                    {t("banner.title")}
-                  </div>
-                  <p className="text-white/65 text-sm max-w-md">
-                    {t("banner.desc")}
-                  </p>
-                  <div className="flex flex-wrap gap-4 mt-3 text-xs text-white/55">
-                    {bannerPerks.map((perk, idx) => (
-                      <span key={idx} className="flex items-center gap-1.5">
-                        <CheckCircle className="w-3.5 h-3.5 text-green-400" />{" "}
-                        {perk}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <Link href="/member">
-                <button className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap">
-                  {t("banner.cta")} <ChevronRight className="w-4 h-4" />
-                </button>
-              </Link>
+      {/* Welcome banner */}
+      <div className="border-b border-white/10 py-6">
+        <div className="container">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-primary" />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PIN entry notice */}
-      <section className="py-3">
-        <div className="container">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 rounded-xl border border-primary/25 bg-primary/5">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
-                <Lock className="w-4 h-4 text-primary" />
-              </div>
+            {me ? (
               <div>
-                <div className="font-semibold text-foreground text-sm">
-                  {t("notice.title")}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {t("notice.desc")}
-                </div>
+                <h1 className="font-serif text-2xl font-bold text-white">
+                  Welcome, {me.contactName}
+                </h1>
+                <p className="text-white/45 text-sm">
+                  {me.businessName} ·{" "}
+                  {me.portalType === "wholesale" ? "Wholesale" : "Warehouse"}{" "}
+                  Member
+                </p>
               </div>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <Link href="/member">
-                <button className="text-xs font-semibold px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
-                  {t("notice.ctaRegister")}
-                </button>
-              </Link>
-              <Link href="/portals/wholesale">
-                <button className="text-xs font-semibold px-4 py-2 rounded-lg border border-border hover:border-primary/40 transition-colors">
-                  {t("notice.ctaPin")}
-                </button>
-              </Link>
-            </div>
+            ) : null}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Search + product grid */}
-      <section className="py-8">
-        <div className="container">
-          {/* Search bar */}
-          <div className="relative mb-6">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+      {/* Products section */}
+      <div className="container py-8">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
             <input
               type="text"
-              placeholder={t("search.placeholder")}
+              placeholder="Search products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-colors shadow-sm"
+              className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/8 border border-white/15 text-white placeholder-white/25 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
             />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t("search.clear")}
-              </button>
-            )}
           </div>
+        </div>
 
-          {/* Category filter pills */}
-          <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory(ALL_CATEGORY)}
+            className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
+              selectedCategory === ALL_CATEGORY
+                ? "bg-white text-black border-white"
+                : "border-white/20 text-white/50 hover:border-white/50 hover:text-white"
+            }`}
+          >
+            {ALL_CATEGORY}
+          </button>
+          {categoriesContent.map((category) => (
             <button
+              key={category.id}
               type="button"
-              onClick={() => setSelectedCategory(ALL_CATEGORY)}
+              onClick={() => setSelectedCategory(category.name)}
               className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                selectedCategory === ALL_CATEGORY
-                  ? "bg-foreground text-background border-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary bg-transparent"
+                selectedCategory === category.name
+                  ? "bg-white text-black border-white"
+                  : "border-white/20 text-white/50 hover:border-white/50 hover:text-white"
               }`}
             >
-              {ALL_CATEGORY}
+              {category.name}
             </button>
-            {categoriesContent.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => setSelectedCategory(category.name)}
-                className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                  selectedCategory === category.name
-                    ? "bg-foreground text-background border-foreground"
-                    : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary bg-transparent"
-                }`}
+          ))}
+        </div>
+
+        {/* Product grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filtered.map((product) => {
+            const gradientClass =
+              categoryStyleMap[product.category] ?? "from-gray-800 to-gray-600";
+            const icon = categoryIconMap[product.category] ?? "📦";
+            const cartQty = getCartQty(product.id);
+            const outOfStock =
+              !product.isAvailable || product.stockQty === 0;
+            return (
+              <div
+                key={product.id}
+                className={`group rounded-2xl overflow-hidden border border-white/10 bg-white/5 hover:bg-white/8 hover:border-white/20 transition-all ${outOfStock ? "opacity-60" : ""}`}
               >
-                {category.name}
-              </button>
-            ))}
-            <span className="ml-2 text-sm text-muted-foreground self-center">
-              {t("search.itemsCount", { count: filtered.length })}
-            </span>
-          </div>
-
-          {/* Product grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map((p, i) => {
-              const img = pickWholesaleImageUrl(
-                p.imageUrls,
-                [512, 1024, 256, 1448],
-              );
-              const gradientClass =
-                categoryStyleMap[p.category] ?? "from-gray-800 to-gray-600";
-              const catIcon = categoryIconMap[p.category] ?? "📦";
-              const desc = p.description ?? "";
-              const badge: string | null = null;
-
-              const specs: [string, string][] = [
-                [t("productCard.unitLabel"), p.unit],
-                [
-                  t("productCard.priceLabel"),
-                  canViewPrices && p.unitPrice
-                    ? `$${Number(p.unitPrice).toFixed(2)}`
-                    : t("productCard.priceValueLocked"),
-                ],
-                ...(p.minOrderQty
-                  ? ([
-                      [
-                        t("productCard.minOrderLabel"),
-                        t("productCard.minOrderValue", { qty: p.minOrderQty }),
-                      ],
-                    ] as [string, string][])
-                  : []),
-              ];
-              return (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: (i % 4) * 0.07 }}
-                  className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
-                >
-                  <div className="relative h-44 overflow-hidden bg-muted">
-                    {img ? (
-                      <AppImage
-                        src={img}
-                        alt={p.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div
-                        className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center group-hover:scale-105 transition-transform duration-500`}
-                      >
-                        <span className="text-5xl opacity-80">{catIcon}</span>
-                      </div>
-                    )}
-                    {badge && (
-                      <div className="absolute top-3 left-3 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-primary text-white">
-                        {badge}
-                      </div>
-                    )}
-                    <div className="absolute top-3 right-3 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-black/60 text-white backdrop-blur-sm">
-                      {p.category}
+                <div className="relative h-44 overflow-hidden">
+                  {product.imageUrl ? (
+                    <AppImage
+                      src={product.imageUrl}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div
+                      className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center group-hover:scale-105 transition-transform duration-500`}
+                    >
+                      <span className="text-5xl opacity-80">{icon}</span>
                     </div>
+                  )}
+                  {product.badge ? (
+                    <div className="absolute top-3 left-3 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-primary text-white">
+                      {product.badge}
+                    </div>
+                  ) : null}
+                  {outOfStock ? (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        Out of Stock
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="absolute top-3 right-3 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-black/60 text-white backdrop-blur-sm">
+                    {product.category}
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-foreground text-sm mb-2 leading-snug">
-                      {p.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mb-3 leading-relaxed line-clamp-2">
-                      {desc}
-                    </p>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-white text-sm mb-1.5 leading-snug">
+                    {product.name}
+                  </h3>
+                  <p className="text-xs text-white/40 mb-3 leading-relaxed line-clamp-2">
+                    {product.description}
+                  </p>
 
-                    {/* Specs table */}
-                    <div className="rounded-lg border border-border/60 overflow-hidden mb-4">
-                      {specs.map(([key, val]) => (
-                        <div
-                          key={key}
-                          className="flex justify-between px-3 py-1.5 text-xs border-b border-border/40 last:border-0"
-                        >
-                          <span className="text-muted-foreground">{key}</span>
-                          <span className="font-medium text-foreground">
-                            {val}
-                          </span>
-                        </div>
-                      ))}
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-lg font-bold text-white">
+                        ${Number(product.priceExGst).toFixed(2)}
+                      </div>
+                      <div className="text-xs text-white/35">
+                        per {product.unit} ex GST
+                      </div>
                     </div>
-
-                    {!canViewPrices ? (
-                      <>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-                          <Lock className="w-3.5 h-3.5 shrink-0" />
-                          <span>{t("productCard.priceDisclaimer")}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Link href="/member" className="flex-1">
-                            <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
-                              {t("productCard.ctaPin")}
-                            </button>
-                          </Link>
-                          <Link
-                            href="/member#register"
-                            className="flex-1"
-                          >
-                            <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
-                              {t("productCard.ctaRegister")}
-                            </button>
-                          </Link>
-                        </div>
-                      </>
+                    {cartQty > 0 ? (
+                      <div className="text-xs font-semibold text-primary bg-primary/15 px-2 py-1 rounded-lg">
+                        {cartQty} in cart
+                      </div>
                     ) : null}
                   </div>
-                </motion.div>
-              );
-            })}
-          </div>
 
-          {filtered.length === 0 && (
-            <div className="text-center py-20 text-muted-foreground">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <p className="font-medium">{t("noProducts.title", { search })}</p>
-              <p className="text-sm mt-1">{t("noProducts.desc")}</p>
-            </div>
-          )}
+                  <button
+                    type="button"
+                    onClick={() => handleAddToCart(product)}
+                    disabled={outOfStock}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {outOfStock ? "Out of Stock" : "Add to Cart"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </section>
 
-      {/* Pricing tiers */}
-      <section className="py-20" style={{ background: "oklch(13% 0.008 30)" }}>
-        <div className="container">
-          <div className="text-center mb-12">
-            <div
-              className="text-xs font-bold tracking-[0.2em] uppercase mb-3"
-              style={{ color: "oklch(71% 0.155 62)" }}
-            >
-              {t("pricingHeading.tag")}
-            </div>
-            <h2 className="font-serif text-4xl lg:text-5xl font-bold text-white mb-4">
-              {t("pricingHeading.title")}
-            </h2>
-            <p className="text-white/45 max-w-md mx-auto">
-              {t("pricingHeading.desc")}
-            </p>
+        {filtered.length === 0 ? (
+          <div className="text-center py-20 text-white/30">
+            <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
+            <p className="font-medium">No products found</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-4 max-w-3xl mx-auto">
-            {pricingTiers.map((tier, i) => (
-              <motion.div
-                key={tier.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className={`relative bg-gradient-to-br ${tier.color} rounded-2xl p-6 border border-white/10 text-center min-w-[150px] ${tier.popular ? "ring-2 ring-primary/60" : ""}`}
-              >
-                {tier.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold tracking-wider uppercase px-3 py-1 rounded-full bg-primary text-white whitespace-nowrap">
-                    {t("pricingHeading.badgePopular")}
-                  </div>
-                )}
-                <div className="text-xs font-bold tracking-[0.15em] uppercase text-white/50 mb-2">
-                  {tier.label}
-                </div>
-                <div className="font-serif text-3xl font-bold text-white mb-1">
-                  {tier.discount}
-                </div>
-                <div className="mt-2 text-white/55 text-sm font-medium">
-                  {tier.min}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <p className="text-center text-white/25 text-xs mt-8">
-            {t("pricingHeading.disclaimer")}
-          </p>
-          <div className="text-center mt-8">
-            <Link href="/member">
-              <button className="inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors">
-                {t("pricingHeading.cta")} <ChevronRight className="w-4 h-4" />
-              </button>
-            </Link>
-          </div>
-        </div>
-      </section>
+        ) : null}
+      </div>
     </div>
   );
 }

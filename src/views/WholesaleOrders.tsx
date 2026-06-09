@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
-import WholesaleHeader from "@/components/WholesaleHeader";
+import MemberHeader from "@/components/MemberHeader";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import {
@@ -18,6 +18,7 @@ import {
   type WholesaleOrderStatus,
   type WholesaleOrderStatusFilter,
 } from "@/lib/supabase/wholesale-orders";
+import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { UserProfile, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
@@ -356,7 +357,7 @@ export default function WholesaleOrders({
       businessName: profile.business_name ?? "Your Business",
       contactName: getContactName(profile),
       memberId: getMemberId(profile),
-      portalType: profile.business_type as "wholesale" | "warehouse",
+      portalType: resolvePortalType(authMetadata.privileges),
       avatarUrl: profile.avatar_url?.trim() || null,
     };
   }, [profile, authMetadata]);
@@ -455,7 +456,7 @@ export default function WholesaleOrders({
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <WholesaleHeader member={me} onLogout={() => void handleLogout()} />
+      <MemberHeader member={me} onLogout={() => void handleLogout()} />
 
       <div className="border-b border-white/10 py-6">
         <div className="container">

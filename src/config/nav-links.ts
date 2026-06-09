@@ -9,6 +9,6 @@ export const NAV_LINKS = [
 
 export const PORTAL_LINKS = [
   { id: "franchise", href: "/franchise/dashboard", icon: "🏪" },
-  { id: "wholesale", href: "/wholesale/dashboard", icon: "📦" },
+  { id: "wholesale", href: "/wholesale/shop", icon: "📦" },
   { id: "warehouse", href: "/warehouse/dashboard", icon: "🏭" },
 ] as const;

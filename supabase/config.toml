@@ -218,7 +218,7 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # Email confirmation disabled — no signup confirmation emails are sent.
-# Wholesale/warehouse accounts are confirmed by admins (user_profiles.is_verified).
+# Wholesale/warehouse portal access is granted by admins via user_metadata.privileges.
 enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false

@@ -37,13 +37,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { createPartnerAccount, deletePartnerAccount } from '@/lib/partner-api';
 import {
-  createPartnerAccount,
-  deletePartnerAccount,
-  isPartnerBusinessType,
-} from '@/lib/partner-api';
+  normalizePartnerPrivileges,
+  PARTNER_PRIVILEGE_OPTIONS,
+  togglePartnerPrivilege,
+} from '@/lib/partner-privilege-form';
 import {
-  confirmPartnerProfile,
+  formatPortalPartnerPrivileges,
+  hasAnyPortalPartnerPrivilege,
+} from '@/lib/privileges';
+import {
+  confirmPartnerWithPrivileges,
   fetchConfirmedPartners,
   fetchPendingPartners,
   PARTNERS_PAGE_PENDING_LIMIT,
@@ -54,7 +59,7 @@ import { updateUserMetadata } from '@/lib/user-metadata';
 import supabase from '@/lib/supabase/client';
 import type {
   AdminPartnerInput,
-  PartnerBusinessType,
+  BusinessType,
   UserProfile,
   UserRole,
 } from '@/types/UserProfile';
@@ -65,8 +70,7 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { NavLink, Navigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -93,7 +97,7 @@ type PartnerFormState = AdminPartnerInput & {
   membership_level: number;
 };
 
-function emptyPartnerForm(businessType: PartnerBusinessType): PartnerFormState {
+function emptyPartnerForm(): PartnerFormState {
   return {
     email: '',
     password: '',
@@ -110,9 +114,8 @@ function emptyPartnerForm(businessType: PartnerBusinessType): PartnerFormState {
     business_name: '',
     abn: '',
     business_category: '',
-    business_type: businessType,
     user_role: 'user',
-    is_verified: false,
+    privileges: ['personal'],
     date_of_birth: '',
     membership_level: 0,
   };
@@ -135,10 +138,8 @@ function profileToForm(profile: UserProfile): PartnerFormState {
     business_name: profile.business_name ?? '',
     abn: profile.abn ?? '',
     business_category: profile.business_category ?? '',
-    business_type:
-      profile.business_type === 'warehouse' ? 'warehouse' : 'wholesale',
     user_role: profile.user_role,
-    is_verified: profile.is_verified,
+    privileges: normalizePartnerPrivileges(profile.privileges),
     date_of_birth: profile.date_of_birth ?? '',
     membership_level: profile.membership_level ?? 0,
   };
@@ -165,28 +166,30 @@ function formToProfilePayload(form: PartnerFormState) {
     business_name: nullable(form.business_name),
     abn: nullable(form.abn),
     business_category: nullable(form.business_category),
-    business_type: form.business_type,
     date_of_birth: nullable(form.date_of_birth),
   };
 }
 
 function formToMetadataPayload(form: PartnerFormState) {
+  const privileges = normalizePartnerPrivileges(form.privileges);
+  let user_role = form.user_role;
+
+  if (privileges.includes('wholesale') && user_role === 'user') {
+    user_role = 'partner';
+  } else if (!privileges.includes('wholesale') && user_role === 'partner') {
+    user_role = 'user';
+  }
+
   return {
-    user_role: form.user_role,
-    is_verified: form.is_verified,
+    user_role,
+    privileges,
     membership_level: form.membership_level,
   };
 }
 
 export function Partners() {
-  const { partnerType } = useParams<{ partnerType: string }>();
   const { profile: adminProfile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = adminProfile?.user_role === 'admin';
-
-  const businessType: PartnerBusinessType | null = useMemo(() => {
-    if (!partnerType || !isPartnerBusinessType(partnerType)) return null;
-    return partnerType;
-  }, [partnerType]);
 
   const [pendingPartners, setPendingPartners] = useState<UserProfile[]>([]);
   const [pendingTotalCount, setPendingTotalCount] = useState(0);
@@ -198,23 +201,18 @@ export function Partners() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<UserProfile | null>(null);
-  const [form, setForm] = useState<PartnerFormState>(() =>
-    emptyPartnerForm('wholesale'),
-  );
+  const [form, setForm] = useState<PartnerFormState>(() => emptyPartnerForm());
 
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null);
 
   const loadPartners = useCallback(async () => {
-    if (!businessType) return;
-
     setLoading(true);
     try {
       const [pendingResult, confirmed] = await Promise.all([
         fetchPendingPartners({
-          businessType,
           limit: PARTNERS_PAGE_PENDING_LIMIT,
         }),
-        fetchConfirmedPartners(businessType),
+        fetchConfirmedPartners(),
       ]);
       setPendingPartners(pendingResult.items);
       setPendingTotalCount(pendingResult.totalCount);
@@ -226,15 +224,15 @@ export function Partners() {
     } finally {
       setLoading(false);
     }
-  }, [businessType]);
+  }, []);
 
   useEffect(() => {
-    if (!profileLoading && isAdmin && businessType) {
+    if (!profileLoading && isAdmin) {
       void loadPartners();
     } else if (!profileLoading) {
       setLoading(false);
     }
-  }, [profileLoading, isAdmin, businessType, loadPartners]);
+  }, [profileLoading, isAdmin, loadPartners]);
 
   const setField = <K extends keyof PartnerFormState>(
     field: K,
@@ -244,9 +242,8 @@ export function Partners() {
   };
 
   const openCreate = () => {
-    if (!businessType) return;
     setEditingPartner(null);
-    setForm(emptyPartnerForm(businessType));
+    setForm(emptyPartnerForm());
     setDialogOpen(true);
   };
 
@@ -257,8 +254,6 @@ export function Partners() {
   };
 
   const handleSave = async () => {
-    if (!businessType) return;
-
     if (editingPartner) {
       if (!form.email.trim()) {
         toast.error('Email is required.');
@@ -275,6 +270,11 @@ export function Partners() {
         if (profileError) throw profileError;
 
         await updateUserMetadata(editingPartner.id, formToMetadataPayload(form));
+
+        const { error: syncError } = await supabase.rpc('sync_user_auth_metadata', {
+          target_user_id: editingPartner.id,
+        });
+        if (syncError) throw syncError;
 
         toast.success('Partner updated.');
         setDialogOpen(false);
@@ -300,6 +300,7 @@ export function Partners() {
 
     setSaving(true);
     try {
+      const metadata = formToMetadataPayload(form);
       await createPartnerAccount({
         email: form.email.trim().toLowerCase(),
         password: form.password,
@@ -316,9 +317,8 @@ export function Partners() {
         business_name: form.business_name,
         abn: form.abn,
         business_category: form.business_category,
-        business_type: businessType,
-        user_role: form.user_role,
-        is_verified: form.is_verified,
+        user_role: metadata.user_role,
+        privileges: metadata.privileges,
         date_of_birth: form.date_of_birth,
       });
       toast.success('Partner created.');
@@ -333,10 +333,21 @@ export function Partners() {
     }
   };
 
-  const handleConfirm = async (partner: UserProfile) => {
+  const handleConfirm = async (
+    partner: UserProfile,
+    privileges: BusinessType[],
+  ) => {
+    const normalized = normalizePartnerPrivileges(privileges);
+    if (!hasAnyPortalPartnerPrivilege(normalized)) {
+      toast.error(
+        'Select at least one portal privilege (wholesale, warehouse, or franchise).',
+      );
+      return;
+    }
+
     setConfirmingId(partner.id);
     try {
-      await confirmPartnerProfile(partner);
+      await confirmPartnerWithPrivileges(partner, normalized);
       toast.success(`${partnerDisplayName(partner)} confirmed.`);
       await loadPartners();
     } catch (err) {
@@ -371,44 +382,15 @@ export function Partners() {
     setConfirmPromptId((current) => (current === partnerId ? null : partnerId));
   };
 
-  if (!businessType) {
-    return <Navigate to="/partners/wholesale" replace />;
-  }
-
-  const pageTitle =
-    businessType === 'wholesale' ? 'Wholesale Partners' : 'Warehouse Partners';
-
   return (
-    <DashboardLayout
-      title={pageTitle}
-      headerContent={
-        <div className="flex items-center gap-2">
-          {(['wholesale', 'warehouse'] as const).map((type) => (
-            <NavLink
-              key={type}
-              to={`/partners/${type}`}
-              className={({ isActive }) =>
-                [
-                  'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground',
-                ].join(' ')
-              }
-            >
-              {type === 'wholesale' ? 'Wholesale' : 'Warehouse'}
-            </NavLink>
-          ))}
-        </div>
-      }
-    >
-      <Card>
+    <DashboardLayout title="Partners">
+      <Card className="overflow-visible">
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
-            <CardTitle>{pageTitle}</CardTitle>
+            <CardTitle>Partners</CardTitle>
             <CardDescription>
-              Manage {businessType} partner accounts, confirm registrations, and
-              update profile details.
+              Manage partner accounts across wholesale, warehouse, and other
+              portal types. Confirm registrations and update profile details.
             </CardDescription>
           </div>
           {isAdmin ? (
@@ -454,7 +436,9 @@ export function Partners() {
                   confirmPromptId={confirmPromptId}
                   onConfirmPromptToggle={handleConfirmPromptToggle}
                   onConfirmPromptClose={() => setConfirmPromptId(null)}
-                  onConfirm={(partner) => void handleConfirm(partner)}
+                  onConfirm={(partner, privileges) =>
+                    void handleConfirm(partner, privileges)
+                  }
                   onEdit={openEdit}
                   onDelete={setDeleteTarget}
                 />
@@ -487,6 +471,9 @@ export function Partners() {
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-semibold">
                             Category
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold">
+                            Privileges
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-semibold">
                             Role
@@ -524,6 +511,9 @@ export function Partners() {
                             </td>
                             <td className="px-3 py-2 text-sm text-muted-foreground">
                               {partner.business_category ?? '—'}
+                            </td>
+                            <td className="px-3 py-2 text-sm capitalize text-muted-foreground">
+                              {formatPortalPartnerPrivileges(partner.privileges)}
                             </td>
                             <td className="px-3 py-2 text-sm">
                               <Badge variant="secondary" className="text-[10px]">
@@ -759,6 +749,43 @@ export function Partners() {
               />
             </div>
 
+            <div className="grid gap-2 sm:col-span-2">
+              <Label>Privileges</Label>
+              <div className="flex flex-wrap gap-x-5 gap-y-3 rounded-md border p-3">
+                {PARTNER_PRIVILEGE_OPTIONS.map((option) => {
+                  const checked = form.privileges.includes(option.value);
+                  const isOnlyPersonal =
+                    option.value === 'personal' &&
+                    form.privileges.length === 1 &&
+                    checked;
+
+                  return (
+                    <label
+                      key={option.value}
+                      className="flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-4 rounded border-input"
+                        checked={checked}
+                        disabled={saving || isOnlyPersonal}
+                        onChange={() =>
+                          setField(
+                            'privileges',
+                            togglePartnerPrivilege(form.privileges, option.value),
+                          )
+                        }
+                      />
+                      <span className="capitalize">{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select one or more portal privileges. Personal is always kept as
+                the base access level.
+              </p>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="partner-role">Role</Label>
               <Select
@@ -775,24 +802,6 @@ export function Partners() {
                       {ROLE_LABELS[role]}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="partner-verified">Confirmation status</Label>
-              <Select
-                value={form.is_verified ? 'confirmed' : 'pending'}
-                onValueChange={(value) =>
-                  setField('is_verified', value === 'confirmed')
-                }
-                disabled={saving}
-              >
-                <SelectTrigger id="partner-verified">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending confirmation</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

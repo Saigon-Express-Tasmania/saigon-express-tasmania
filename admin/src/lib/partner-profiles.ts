@@ -1,36 +1,42 @@
+import { normalizePartnerPrivileges } from '@/lib/partner-privilege-form';
 import supabase from '@/lib/supabase/client';
 import {
-  fetchUnverifiedUserIds,
+  hasAnyPortalPartnerPrivilege,
+  mergePrivileges,
+  revokePrivilege,
+} from '@/lib/privileges';
+import {
   fetchUserMetadataByIds,
-  fetchVerifiedUserIds,
+  fetchUsersWithAnyPortalPartnerPrivilege,
+  fetchUsersWithoutPortalPartnerPrivilege,
   updateUserMetadata,
 } from '@/lib/user-metadata';
-import type { PartnerBusinessType, UserProfile, UserRole } from '@/types/UserProfile';
+import type { BusinessType, PartnerBusinessType, UserProfile, UserRole } from '@/types/UserProfile';
 
 export const DASHBOARD_PENDING_PARTNERS_LIMIT = 10;
 export const PARTNERS_PAGE_PENDING_LIMIT = 25;
 
 export const PENDING_PARTNER_PROFILE_SELECT =
-  'id, email, first_name, last_name, display_name, phone, business_name, business_type, created_at';
+  'id, email, first_name, last_name, display_name, phone, business_name, created_at';
 
 export const PARTNER_PROFILE_SELECT =
-  'id, email, first_name, last_name, display_name, phone, address_line1, address_line2, city, suburb, state, postal_code, country, business_name, abn, business_category, business_type, date_of_birth, created_at, updated_at';
+  'id, email, first_name, last_name, display_name, phone, address_line1, address_line2, city, suburb, state, postal_code, country, business_name, abn, business_category, date_of_birth, created_at, updated_at';
 
 type PartnerProfileRow = Omit<
   UserProfile,
-  'user_role' | 'is_verified' | 'membership_level'
+  'user_role' | 'privileges' | 'membership_level'
 >;
 
 function mergePartnerProfile(
   profile: PartnerProfileRow,
   metadata:
-    | { user_role: UserRole; is_verified: boolean; membership_level: number }
+    | { user_role: UserRole; privileges: BusinessType[]; membership_level: number }
     | undefined,
 ): UserProfile {
   return {
     ...profile,
     user_role: metadata?.user_role ?? 'user',
-    is_verified: metadata?.is_verified ?? false,
+    privileges: metadata?.privileges ?? ['personal'],
     membership_level: metadata?.membership_level ?? 0,
   };
 }
@@ -67,17 +73,55 @@ export function pendingPartnersRemainingMessage(
 }
 
 export function getPartnerConfirmUpdates(
-  businessType: UserProfile['business_type'],
-): { is_verified: true; user_role?: 'partner' } {
+  businessType: PartnerBusinessType,
+  currentPrivileges: BusinessType[],
+): { privileges: BusinessType[]; user_role?: 'partner' } {
+  const privileges = mergePrivileges(currentPrivileges, businessType);
   return businessType === 'wholesale'
-    ? { is_verified: true, user_role: 'partner' }
-    : { is_verified: true };
+    ? { privileges, user_role: 'partner' }
+    : { privileges };
 }
 
 export async function confirmPartnerProfile(
-  partner: Pick<UserProfile, 'id' | 'business_type'>,
+  partner: Pick<UserProfile, 'id' | 'privileges'>,
+  businessType: PartnerBusinessType = 'wholesale',
 ): Promise<void> {
-  await updateUserMetadata(partner.id, getPartnerConfirmUpdates(partner.business_type));
+  await updateUserMetadata(
+    partner.id,
+    getPartnerConfirmUpdates(businessType, partner.privileges),
+  );
+
+  const { error: syncError } = await supabase.rpc('sync_user_auth_metadata', {
+    target_user_id: partner.id,
+  });
+
+  if (syncError) throw syncError;
+}
+
+export function getConfirmMetadataFromPrivileges(
+  currentRole: UserRole,
+  selectedPrivileges: BusinessType[],
+): { privileges: BusinessType[]; user_role: UserRole } {
+  const privileges = normalizePartnerPrivileges(selectedPrivileges);
+  let user_role = currentRole;
+
+  if (privileges.includes('wholesale') && user_role === 'user') {
+    user_role = 'partner';
+  } else if (!privileges.includes('wholesale') && user_role === 'partner') {
+    user_role = 'user';
+  }
+
+  return { user_role, privileges };
+}
+
+export async function confirmPartnerWithPrivileges(
+  partner: Pick<UserProfile, 'id' | 'user_role' | 'privileges'>,
+  selectedPrivileges: BusinessType[],
+): Promise<void> {
+  await updateUserMetadata(
+    partner.id,
+    getConfirmMetadataFromPrivileges(partner.user_role, selectedPrivileges),
+  );
 
   const { error: syncError } = await supabase.rpc('sync_user_auth_metadata', {
     target_user_id: partner.id,
@@ -87,19 +131,19 @@ export async function confirmPartnerProfile(
 }
 
 export async function fetchPendingPartners(input: {
-  businessType: PartnerBusinessType;
   limit: number;
 }): Promise<{ items: UserProfile[]; totalCount: number }> {
-  const unverifiedIds = await fetchUnverifiedUserIds();
-  if (unverifiedIds.length === 0) {
+  const missingPortalIds = await fetchUsersWithoutPortalPartnerPrivilege();
+  if (missingPortalIds.length === 0) {
     return { items: [], totalCount: 0 };
   }
 
   const { data, error, count } = await supabase
     .from('user_profiles')
     .select(PENDING_PARTNER_PROFILE_SELECT, { count: 'exact' })
-    .eq('business_type', input.businessType)
-    .in('id', unverifiedIds)
+    .in('id', missingPortalIds)
+    .not('business_name', 'is', null)
+    .neq('business_name', '')
     .order('created_at', { ascending: false })
     .limit(input.limit);
 
@@ -116,17 +160,14 @@ export async function fetchPendingPartners(input: {
   };
 }
 
-export async function fetchConfirmedPartners(
-  businessType: PartnerBusinessType,
-): Promise<UserProfile[]> {
-  const verifiedIds = await fetchVerifiedUserIds();
-  if (verifiedIds.length === 0) return [];
+export async function fetchConfirmedPartners(): Promise<UserProfile[]> {
+  const privilegedIds = await fetchUsersWithAnyPortalPartnerPrivilege();
+  if (privilegedIds.length === 0) return [];
 
   const { data, error } = await supabase
     .from('user_profiles')
     .select(PARTNER_PROFILE_SELECT)
-    .eq('business_type', businessType)
-    .in('id', verifiedIds)
+    .in('id', privilegedIds)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -134,7 +175,22 @@ export async function fetchConfirmedPartners(
   const profiles = (data as PartnerProfileRow[] | null) ?? [];
   const metadataById = await fetchUserMetadataByIds(profiles.map((profile) => profile.id));
 
-  return profiles.map((profile) =>
-    mergePartnerProfile(profile, metadataById.get(profile.id)),
-  );
+  return profiles
+    .map((profile) => mergePartnerProfile(profile, metadataById.get(profile.id)))
+    .filter((profile) => hasAnyPortalPartnerPrivilege(profile.privileges));
+}
+
+export function setPartnerPortalAccess(
+  currentPrivileges: BusinessType[],
+  businessType: PartnerBusinessType,
+  granted: boolean,
+): { privileges: BusinessType[]; user_role?: UserRole } {
+  if (granted) {
+    return getPartnerConfirmUpdates(businessType, currentPrivileges);
+  }
+
+  return {
+    privileges: revokePrivilege(currentPrivileges, businessType),
+    user_role: businessType === 'wholesale' ? 'user' : undefined,
+  };
 }

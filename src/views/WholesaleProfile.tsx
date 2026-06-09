@@ -6,12 +6,13 @@ import AppImage from "@/components/AppImage";
 import WholesaleFormSelect, {
   type WholesaleFormSelectOption,
 } from "@/components/WholesaleFormSelect";
-import WholesaleHeader from "@/components/WholesaleHeader";
+import MemberHeader from "@/components/MemberHeader";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import { resizeImageFile } from "@/lib/image-resize";
+import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
-import type { UserProfile, UserProfileSelfUpdate } from "@/types";
+import type { BusinessType, UserProfile, UserProfileSelfUpdate } from "@/types";
 import { Loader2, Upload, User, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -85,10 +86,10 @@ function businessCategoryLabel(value: string | null): string {
   );
 }
 
-function businessTypeLabel(type: UserProfile["business_type"]): string {
-  if (type === "wholesale") return "Wholesale";
-  if (type === "warehouse") return "Warehouse";
-  return type.charAt(0).toUpperCase() + type.slice(1);
+function businessTypeLabel(privileges: BusinessType[]): string {
+  if (privileges.includes("warehouse")) return "Warehouse";
+  if (privileges.includes("wholesale")) return "Wholesale";
+  return "Personal";
 }
 
 function profileToForm(profile: UserProfile): ProfileFormState {
@@ -164,7 +165,7 @@ export default function WholesaleProfile() {
     return {
       businessName: profile.business_name ?? "Your Business",
       contactName: getContactName(profile),
-      portalType: profile.business_type as "wholesale" | "warehouse",
+      portalType: resolvePortalType(authMetadata.privileges),
       avatarUrl: profile.avatar_url?.trim() || avatarPreviewUrl,
     };
   }, [profile, authMetadata, avatarPreviewUrl]);
@@ -332,7 +333,7 @@ export default function WholesaleProfile() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <WholesaleHeader member={me} onLogout={() => void handleLogout()} />
+      <MemberHeader member={me} onLogout={() => void handleLogout()} />
 
       <div className="border-b border-white/10 py-6">
         <div className="container">
@@ -345,7 +346,7 @@ export default function WholesaleProfile() {
                 Customer Profile Settings
               </h1>
               <p className="text-sm text-white/45">
-                {me.businessName} · {businessTypeLabel(profile.business_type)}{" "}
+                {me.businessName} · {businessTypeLabel(authMetadata.privileges)}{" "}
                 Member
               </p>
             </div>
@@ -419,7 +420,7 @@ export default function WholesaleProfile() {
                   </div>
                   <div className="text-sm text-white/70">
                     <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
-                      {businessTypeLabel(profile.business_type)}
+                      {businessTypeLabel(authMetadata.privileges)}
                     </span>
                   </div>
                 </div>

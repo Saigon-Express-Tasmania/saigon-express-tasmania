@@ -2,10 +2,10 @@ export type UserRole = "none" | "user" | "admin" | "partner";
 
 export type BusinessType = "personal" | "wholesale" | "warehouse" | "franchise";
 
-/** Role and verification from JWT app_metadata (stored in user_metadata). */
+/** Role and privileges from JWT app_metadata (stored in user_metadata). */
 export type UserAuthMetadata = {
   user_role: UserRole;
-  is_verified: boolean;
+  privileges: BusinessType[];
 };
 
 export type UserProfile = {
@@ -27,7 +27,6 @@ export type UserProfile = {
   abn: string | null;
   business_category: string | null;
   avatar_url: string | null;
-  business_type: BusinessType;
   created_at: string;
   updated_at: string;
 };

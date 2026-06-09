@@ -22,15 +22,14 @@ export type UserProfile = {
   business_category: string | null;
   avatar_url: string | null;
   user_role: UserRole;
-  business_type: BusinessType;
-  is_verified: boolean;
+  privileges: BusinessType[];
   membership_level: number;
   created_at: string;
   updated_at: string;
 };
 
 export type UserProfileUpdate = Partial<
-  Omit<UserProfile, 'id' | 'display_name' | 'created_at' | 'updated_at' | 'user_role'>
+  Omit<UserProfile, 'id' | 'display_name' | 'created_at' | 'updated_at' | 'user_role' | 'privileges'>
 >;
 
 export type AdminUserProfileUpdate = Partial<
@@ -53,8 +52,7 @@ export type AdminPartnerInput = {
   business_name: string;
   abn: string;
   business_category: string;
-  business_type: PartnerBusinessType;
   user_role: UserRole;
-  is_verified: boolean;
+  privileges: BusinessType[];
   date_of_birth: string;
 };

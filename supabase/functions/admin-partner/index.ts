@@ -2,7 +2,7 @@ import { requireAdmin } from "../_shared/auth.ts";
 import { handleCors, jsonResponse } from "../_shared/cors.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
 
-type PartnerBusinessType = "wholesale" | "warehouse";
+type BusinessType = "personal" | "wholesale" | "warehouse" | "franchise";
 
 type PartnerProfileInput = {
   first_name?: string | null;
@@ -18,9 +18,8 @@ type PartnerProfileInput = {
   business_name?: string | null;
   abn?: string | null;
   business_category?: string | null;
-  business_type: PartnerBusinessType;
   user_role?: "none" | "user" | "admin" | "partner";
-  is_verified?: boolean;
+  privileges?: BusinessType[];
   date_of_birth?: string | null;
 };
 
@@ -30,12 +29,21 @@ function nullableString(value: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-function parsePartnerProfile(data: Record<string, unknown>): PartnerProfileInput {
-  const businessType = String(data.business_type ?? "").trim();
-  if (businessType !== "wholesale" && businessType !== "warehouse") {
-    throw new Error('business_type must be "wholesale" or "warehouse"');
-  }
+function parsePrivileges(value: unknown): BusinessType[] {
+  if (!Array.isArray(value)) return ["personal"];
 
+  const privileges = value.filter(
+    (item): item is BusinessType =>
+      item === "personal" ||
+      item === "wholesale" ||
+      item === "warehouse" ||
+      item === "franchise",
+  );
+
+  return privileges.length > 0 ? privileges : ["personal"];
+}
+
+function parsePartnerProfile(data: Record<string, unknown>): PartnerProfileInput {
   const userRole = data.user_role != null ? String(data.user_role).trim() : "user";
   if (!["none", "user", "admin", "partner"].includes(userRole)) {
     throw new Error("Invalid user_role");
@@ -55,17 +63,14 @@ function parsePartnerProfile(data: Record<string, unknown>): PartnerProfileInput
     business_name: nullableString(data.business_name),
     abn: nullableString(data.abn),
     business_category: nullableString(data.business_category),
-    business_type: businessType,
     user_role: userRole as PartnerProfileInput["user_role"],
-    is_verified: Boolean(data.is_verified),
+    privileges: parsePrivileges(data.privileges),
     date_of_birth: nullableString(data.date_of_birth),
   };
 }
 
 function buildUserMetadata(profile: PartnerProfileInput): Record<string, unknown> {
-  const metadata: Record<string, unknown> = {
-    business_type: profile.business_type,
-  };
+  const metadata: Record<string, unknown> = {};
 
   if (profile.first_name) metadata.first_name = profile.first_name;
   if (profile.last_name) metadata.last_name = profile.last_name;
@@ -125,7 +130,6 @@ async function handleCreate(body: Record<string, unknown>) {
       business_name: profile.business_name,
       abn: profile.abn,
       business_category: profile.business_category,
-      business_type: profile.business_type,
       date_of_birth: profile.date_of_birth,
     })
     .eq("id", userId)
@@ -141,13 +145,22 @@ async function handleCreate(body: Record<string, unknown>) {
     .from("user_metadata")
     .update({
       user_role: profile.user_role ?? "user",
-      is_verified: profile.is_verified ?? false,
+      privileges: profile.privileges ?? ["personal"],
     })
     .eq("id", userId);
 
   if (metadataError) {
     await service.auth.admin.deleteUser(userId);
     throw metadataError;
+  }
+
+  const { error: syncError } = await service.rpc("sync_auth_user_metadata", {
+    target_user_id: userId,
+  });
+
+  if (syncError) {
+    await service.auth.admin.deleteUser(userId);
+    throw syncError;
   }
 
   return { userId: updatedProfile.id };

@@ -1,11 +1,38 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  defaultConfirmPrivileges,
+  PARTNER_PRIVILEGE_OPTIONS,
+  togglePartnerPrivilege,
+} from '@/lib/partner-privilege-form';
+import {
   formatPartnerDate,
   partnerDisplayName,
 } from '@/lib/partner-profiles';
-import type { UserProfile } from '@/types/UserProfile';
+import type { BusinessType, UserProfile } from '@/types/UserProfile';
 import { CheckCircle2, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+const CONFIRM_POPOVER_WIDTH = 208;
+
+type ConfirmPopoverPosition = {
+  top: number;
+  left: number;
+};
+
+function getConfirmPopoverPosition(anchor: HTMLElement): ConfirmPopoverPosition {
+  const rect = anchor.getBoundingClientRect();
+  const left = Math.max(
+    8,
+    Math.min(rect.right - CONFIRM_POPOVER_WIDTH, window.innerWidth - CONFIRM_POPOVER_WIDTH - 8),
+  );
+
+  return {
+    top: rect.top - 4,
+    left,
+  };
+}
 
 export type PendingPartnerCardProps = {
   partner: UserProfile;
@@ -13,7 +40,7 @@ export type PendingPartnerCardProps = {
   confirmPromptId: string | null;
   onConfirmPromptToggle: (partnerId: string) => void;
   onConfirmPromptClose: () => void;
-  onConfirm: (partner: UserProfile) => void;
+  onConfirm: (partner: UserProfile, privileges: BusinessType[]) => void;
   onEdit?: (partner: UserProfile) => void;
   onDelete?: (partner: UserProfile) => void;
 };
@@ -28,12 +55,137 @@ export function PendingPartnerCard({
   onEdit,
   onDelete,
 }: PendingPartnerCardProps) {
+  const [confirmPrivileges, setConfirmPrivileges] = useState<BusinessType[]>(
+    () => defaultConfirmPrivileges(partner.privileges),
+  );
+  const [popoverPosition, setPopoverPosition] = useState<ConfirmPopoverPosition | null>(
+    null,
+  );
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const isConfirmOpen = confirmPromptId === partner.id;
+
+  useEffect(() => {
+    if (isConfirmOpen) {
+      setConfirmPrivileges(defaultConfirmPrivileges(partner.privileges));
+    }
+  }, [isConfirmOpen, partner.privileges]);
+
+  useEffect(() => {
+    if (!isConfirmOpen || !anchorRef.current) {
+      setPopoverPosition(null);
+      return;
+    }
+
+    const syncPosition = () => {
+      if (!anchorRef.current) return;
+      setPopoverPosition(getConfirmPopoverPosition(anchorRef.current));
+    };
+
+    syncPosition();
+    window.addEventListener('resize', syncPosition);
+    window.addEventListener('scroll', syncPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', syncPosition);
+      window.removeEventListener('scroll', syncPosition, true);
+    };
+  }, [isConfirmOpen]);
+
+  useEffect(() => {
+    if (!isConfirmOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (anchorRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      onConfirmPromptClose();
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [isConfirmOpen, onConfirmPromptClose]);
+
   const metadataFields = [
     partner.email ?? '—',
     partner.business_name,
     partner.phone,
     formatPartnerDate(partner.created_at),
   ].filter(Boolean);
+
+  const confirmPopover =
+    isConfirmOpen && popoverPosition
+      ? createPortal(
+          <div
+            ref={popoverRef}
+            data-partner-confirm-popover
+            role="dialog"
+            aria-label="Confirm partner"
+            className="fixed z-[200] w-52 -translate-y-full rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+            style={{
+              top: popoverPosition.top,
+              left: popoverPosition.left,
+            }}
+          >
+            <p className="mb-2 text-xs font-medium">Confirm partner</p>
+            <div className="mb-3 flex flex-col gap-1.5">
+              {PARTNER_PRIVILEGE_OPTIONS.map((option) => {
+                const checked = confirmPrivileges.includes(option.value);
+                const isOnlyPersonal =
+                  option.value === 'personal' &&
+                  confirmPrivileges.length === 1 &&
+                  checked;
+
+                return (
+                  <label
+                    key={option.value}
+                    className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-0.5 text-xs hover:bg-muted/50"
+                  >
+                    <input
+                      type="checkbox"
+                      className="size-3.5 rounded border-input"
+                      checked={checked}
+                      disabled={confirmingId === partner.id || isOnlyPersonal}
+                      onChange={() =>
+                        setConfirmPrivileges((current) =>
+                          togglePartnerPrivilege(current, option.value),
+                        )
+                      }
+                    />
+                    <span className="capitalize">{option.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="flex justify-end gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-xs"
+                onClick={onConfirmPromptClose}
+                disabled={confirmingId === partner.id}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => onConfirm(partner, confirmPrivileges)}
+                disabled={confirmingId === partner.id}
+              >
+                {confirmingId === partner.id ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  'Confirm'
+                )}
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
@@ -63,7 +215,7 @@ export function PendingPartnerCard({
         </div>
       </div>
       <div className="flex shrink-0 flex-wrap gap-1.5">
-        <div className="relative">
+        <div ref={anchorRef} className="relative">
           <Button
             type="button"
             size="sm"
@@ -80,38 +232,8 @@ export function PendingPartnerCard({
               </>
             )}
           </Button>
-          {confirmPromptId === partner.id ? (
-            <div
-              role="tooltip"
-              className="absolute bottom-full right-0 z-10 mb-1 flex items-center gap-1.5 rounded-md border bg-popover px-2 py-1.5 text-popover-foreground shadow-md"
-            >
-              <span className="whitespace-nowrap text-xs">Confirm partner?</span>
-              <Button
-                type="button"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => onConfirm(partner)}
-                disabled={confirmingId === partner.id}
-              >
-                {confirmingId === partner.id ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  'Yes'
-                )}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-xs"
-                onClick={onConfirmPromptClose}
-                disabled={confirmingId === partner.id}
-              >
-                No
-              </Button>
-            </div>
-          ) : null}
         </div>
+        {confirmPopover}
         {onEdit ? (
           <Button
             type="button"

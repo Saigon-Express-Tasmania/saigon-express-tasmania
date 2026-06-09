@@ -61,8 +61,7 @@ export function App() {
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
             <Route path="/feedbacks" element={<Feedbacks />} />
             <Route path="/emails" element={<Emails />} />
-            <Route path="/partners" element={<Navigate to="/partners/wholesale" replace />} />
-            <Route path="/partners/:partnerType" element={<Partners />} />
+            <Route path="/partners" element={<Partners />} />
             <Route path="/sales/orders" element={<Navigate to="/sales/orders/pickup" replace />} />
             <Route path="/sales/orders/:orderType" element={<SalesOrdersPage />} />
             <Route

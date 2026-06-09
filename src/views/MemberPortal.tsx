@@ -18,7 +18,6 @@ import {
   clearWholesaleRegistrationStatus,
   getWholesaleRegistrationStatus,
   isWholesaleMemberConfirmed,
-  isWholesaleMemberPendingConfirmation,
   resolveWholesaleRegistrationStatus,
   saveWholesaleRegistrationStatus,
   WHOLESALE_REGISTRATION_MESSAGES,
@@ -157,7 +156,7 @@ function MemberPortalContent() {
     | ""
   >("");
 
-  const { signInWithPassword, signOut, profile, authMetadata, isSignedIn } =
+  const { signInWithPassword, profile, authMetadata, isSignedIn } =
     useSupabase();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -177,11 +176,13 @@ function MemberPortalContent() {
   }, []);
 
   useEffect(() => {
-    if (isSignedIn && isWholesaleMemberConfirmed(profile, authMetadata)) {
-      clearWholesaleRegistrationStatus();
-      setRegistrationStatus(null);
-      return;
+    if (isSignedIn) {
+      router.replace("/member/dashboard");
     }
+  }, [isSignedIn, router]);
+
+  useEffect(() => {
+    if (isSignedIn) return;
 
     const stored = getWholesaleRegistrationStatus();
     const resolved = resolveWholesaleRegistrationStatus(
@@ -219,14 +220,22 @@ function MemberPortalContent() {
     try {
       const { profile: signedInProfile, authMetadata: signedInAuth } =
         await signInWithPassword(loginEmail, loginPassword);
-      if (isWholesaleMemberPendingConfirmation(signedInProfile, signedInAuth)) {
-        await signOut();
-        restoreRegistrationStatus();
-        toast.error(WHOLESALE_REGISTRATION_MESSAGES.login_blocked);
-        return;
+
+      const resolved = resolveWholesaleRegistrationStatus(
+        getWholesaleRegistrationStatus(),
+        signedInProfile,
+        signedInAuth,
+      );
+      if (resolved) {
+        setRegistrationStatus(resolved);
       }
+
+      if (isWholesaleMemberConfirmed(signedInProfile, signedInAuth)) {
+        clearWholesaleRegistrationStatus();
+      }
+
       toast.success("Welcome back! Redirecting to your account...");
-      router.push("/wholesale/dashboard");
+      router.push("/member/dashboard");
     } catch (error) {
       restoreRegistrationStatus();
       toast.error(
@@ -266,6 +275,7 @@ function MemberPortalContent() {
         business_category: regBusinessType || undefined,
         address: regAddress || undefined,
         password: regPassword,
+        // Portal type kept for registration UX; not persisted on user_profiles yet
         business_type: portalType,
       });
 
@@ -315,7 +325,7 @@ function MemberPortalContent() {
       </button> */}
 
       <Link
-        href="/wholesale/shop"
+        href="/wholesale/landing-shop"
         className="absolute top-6 right-6 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors z-10"
       >
         Browse Products <ChevronRight className="w-4 h-4" />
@@ -825,7 +835,7 @@ function MemberPortalContent() {
 
       <div className="relative z-10 text-center mt-6">
         <Link
-          href="/wholesale/shop"
+          href="/wholesale/landing-shop"
           className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
         >
           ← Back to Wholesale Shop

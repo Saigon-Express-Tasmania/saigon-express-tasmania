@@ -193,7 +193,7 @@ export default function NewsItem({ post }: { post: BlogPostDetail }) {
               {t("detail.wholesaleCta.description")}
             </p>
             <Link
-              href="/wholesale/shop"
+              href="/wholesale/landing-shop"
               className="inline-flex items-center gap-2 rounded-xl bg-brand-amber px-5 py-2.5 text-sm font-bold text-brand-dark transition-colors hover:bg-brand-amber/90"
             >
               {t("detail.wholesaleCta.button")}

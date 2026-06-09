@@ -5,7 +5,6 @@ import type { BusinessType } from "@/types/UserProfile";
 
 export type WholesaleMemberMetadata = {
   business_name: string;
-  business_type: BusinessType;
   first_name: string;
   last_name: string | null;
   contact_name: string;
@@ -156,7 +155,6 @@ function buildWholesaleMemberAuthMetadata(
 
   const metadata: Record<string, unknown> = {
     business_name: input.business_name.trim(),
-    business_type: input.business_type,
     first_name,
     last_name,
     contact_name: input.contactName.trim()
@@ -181,7 +179,6 @@ export async function registerWholesaleMemberApplication(
   input: WholesaleMemberRegistration,
 ): Promise<WholesaleRegistrationResult> {
   const { first_name, last_name } = splitContactName(input.contactName);
-  const businessType = input.business_type as BusinessType;
 
   const metadata = buildWholesaleMemberAuthMetadata(input);
 
@@ -201,11 +198,7 @@ export async function registerWholesaleMemberApplication(
     business_name: input.business_name,
     abn: input.abn ?? null,
     business_category: input.business_category ?? null,
-    business_type: businessType,
   });
-
-  // Sign out so the member cannot access the portal until an admin confirms them.
-  await signOut();
 
   return { userId: session.user.id };
 }

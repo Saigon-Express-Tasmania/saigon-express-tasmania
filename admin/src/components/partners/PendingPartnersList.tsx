@@ -3,7 +3,7 @@ import {
   PendingPartnerCardSkeleton,
 } from '@/components/partners/PendingPartnerCard';
 import { pendingPartnersRemainingMessage } from '@/lib/partner-profiles';
-import type { UserProfile } from '@/types/UserProfile';
+import type { BusinessType, UserProfile } from '@/types/UserProfile';
 
 export type PendingPartnersListProps = {
   partners: UserProfile[];
@@ -14,7 +14,7 @@ export type PendingPartnersListProps = {
   confirmPromptId: string | null;
   onConfirmPromptToggle: (partnerId: string) => void;
   onConfirmPromptClose: () => void;
-  onConfirm: (partner: UserProfile) => void;
+  onConfirm: (partner: UserProfile, privileges: BusinessType[]) => void;
   onEdit?: (partner: UserProfile) => void;
   onDelete?: (partner: UserProfile) => void;
   skeletonCount?: number;

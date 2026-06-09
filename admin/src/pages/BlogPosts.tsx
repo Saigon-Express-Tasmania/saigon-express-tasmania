@@ -976,7 +976,7 @@ export function BlogPosts() {
 
           <div
             ref={editorSplitRef}
-            className="flex min-h-0 flex-1 overflow-hidden"
+            className="relative z-30 flex min-h-0 flex-1 overflow-hidden"
           >
             <aside
               className="shrink-0 overflow-y-auto px-4 py-4"
@@ -1225,7 +1225,7 @@ export function BlogPosts() {
               <span className="absolute top-1/2 left-1/2 h-8 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground/40" />
             </div>
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
+            <div className="relative z-20 flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
               <div className="grid shrink-0 gap-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="post-excerpt">Excerpt</Label>
@@ -1269,7 +1269,7 @@ export function BlogPosts() {
             </div>
           </div>
 
-          <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-between">
+          <DialogFooter className="relative z-10 shrink-0 border-t px-6 py-4 sm:justify-between">
             <Button
               type="button"
               variant="secondary"

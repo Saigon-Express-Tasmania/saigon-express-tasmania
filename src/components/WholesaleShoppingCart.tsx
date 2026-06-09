@@ -69,8 +69,8 @@ export default function WholesaleShoppingCart() {
 
   const wholesaleDashboardPath =
     locale === DEFAULT_LOCALE
-      ? "/wholesale/dashboard"
-      : `/${locale}/wholesale/dashboard`;
+      ? "/wholesale/shop"
+      : `/${locale}/wholesale/shop`;
 
   const handleCheckout = async () => {
     if (cart.length === 0) {

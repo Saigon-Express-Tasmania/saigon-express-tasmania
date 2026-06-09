@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
+import { hasPrivilege } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { StoreLocation } from "@/types";
 
@@ -29,9 +30,10 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const myAccountHref = useMemo(() => {
     if (!isSignedIn) return "/member";
     if (!isWholesaleMemberConfirmed(profile, authMetadata)) return "/member";
-    if (profile?.business_type === "wholesale") return "/wholesale/dashboard";
-    if (profile?.business_type === "warehouse") return "/warehouse/dashboard";
-    return "/member";
+    if (hasPrivilege(authMetadata.privileges, "warehouse")) {
+      return "/warehouse/dashboard";
+    }
+    return "/wholesale/shop";
   }, [authMetadata, isSignedIn, profile]);
 
   const handleOrderOnlineClick = useCallback(() => {
