@@ -14,4 +14,4 @@ export const ENV = {
   cacheRevalidateSecret: import.meta.env.VITE_CACHE_REVALIDATE_SECRET as string | undefined,
 };
 
-export const STORAGE_BUCKET = ENV.supabaseStorageBucket;
+export const STORAGE_BUCKET = ENV.supabaseStorageBucket || 'saigon-express-tasmania';

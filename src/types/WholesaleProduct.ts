@@ -10,12 +10,24 @@ export type WholesaleProductRow = {
   description: string | null;
   unit: string;
   unit_price: string;
-  stock_qty: number;
+  daily_global_limit: number;
+  daily_customer_limit: number | null;
   is_available: boolean;
   min_order_qty: number;
   image_urls: WholesaleImageUrls;
   created_at: string;
   updated_at: string;
+};
+
+export type WholesaleProductAvailabilityRow = {
+  product_id: number;
+  daily_global_limit: number;
+  global_paid_qty: number;
+  global_remaining: number;
+  daily_customer_limit: number | null;
+  customer_paid_qty: number;
+  customer_remaining: number | null;
+  effective_remaining: number;
 };
 
 /** Product used by the wholesale shop UI (camelCase). */
@@ -27,7 +39,13 @@ export type WholesaleProduct = {
   description: string | null;
   unit: string;
   unitPrice: string;
-  stockQty: number;
+  dailyGlobalLimit: number;
+  dailyCustomerLimit: number | null;
+  globalPaidQty: number;
+  globalRemaining: number;
+  customerPaidQty: number;
+  customerRemaining: number | null;
+  effectiveRemaining: number;
   isAvailable: boolean;
   minOrderQty: number;
   imageUrls: WholesaleImageUrls;
@@ -74,11 +92,35 @@ export function mapWholesaleProductRow(row: WholesaleProductRow): WholesaleProdu
     description: row.description,
     unit: row.unit,
     unitPrice: row.unit_price,
-    stockQty: row.stock_qty,
+    dailyGlobalLimit: row.daily_global_limit,
+    dailyCustomerLimit: row.daily_customer_limit,
+    globalPaidQty: 0,
+    globalRemaining: row.daily_global_limit,
+    customerPaidQty: 0,
+    customerRemaining: row.daily_customer_limit,
+    effectiveRemaining: row.daily_global_limit,
     isAvailable: row.is_available,
     minOrderQty: row.min_order_qty,
     imageUrls: normalizeWholesaleImageUrls(row.image_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function applyWholesaleProductAvailability(
+  product: WholesaleProduct,
+  availability: WholesaleProductAvailabilityRow | undefined,
+): WholesaleProduct {
+  if (!availability) return product;
+
+  return {
+    ...product,
+    dailyGlobalLimit: availability.daily_global_limit,
+    dailyCustomerLimit: availability.daily_customer_limit,
+    globalPaidQty: Number(availability.global_paid_qty),
+    globalRemaining: availability.global_remaining,
+    customerPaidQty: Number(availability.customer_paid_qty),
+    customerRemaining: availability.customer_remaining,
+    effectiveRemaining: availability.effective_remaining,
   };
 }

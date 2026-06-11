@@ -4,6 +4,10 @@
  */
 export const SHORT_REVALIDATE_SECONDS = 60 * 60;
 
+/** Wholesale daily inventory snapshot (shop + cart caps). */
+export const WHOLESALE_INVENTORY_REVALIDATE_SECONDS =
+  process.env.NODE_ENV === "production" ? 60 : 1;
+
 /** Fallback when `minimum_wholesale_order_value` is missing or invalid. */
 export const DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE = 300;
 
@@ -28,6 +32,7 @@ export const CACHE_TAGS = {
   cateringPacks: "catering-packs",
   storeLocations: "store-locations",
   wholesaleProducts: "wholesale-products",
+  wholesaleInventory: "wholesale-inventory",
   wholesaleTiers: "wholesale-tiers",
   blogPosts: "blog-posts",
   settings: "settings",

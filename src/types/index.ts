@@ -34,9 +34,11 @@ export { mapStoreLocationRow } from "./StoreLocation";
 export type {
   WholesaleImageUrls,
   WholesaleProduct,
+  WholesaleProductAvailabilityRow,
   WholesaleProductRow,
 } from "./WholesaleProduct";
 export {
+  applyWholesaleProductAvailability,
   mapWholesaleProductRow,
   normalizeWholesaleImageUrls,
   pickWholesaleImageUrl,

@@ -28,6 +28,7 @@ type WholesaleCartStore = {
     options?: { silent?: boolean },
   ) => void;
   updateQty: (productId: number, delta: number) => void;
+  setCartQty: (productId: number, qty: number) => void;
   removeFromCart: (productId: number) => void;
   clearCart: () => void;
 };
@@ -86,6 +87,22 @@ const useWholesaleCartStore = create<WholesaleCartStore>()(
           }
           return state;
         }),
+      setCartQty: (productId, qty) =>
+        set((state) => {
+          const nextQty = Math.max(0, Math.floor(qty));
+          if (nextQty === 0) {
+            return {
+              cart: state.cart.filter((item) => item.productId !== productId),
+            };
+          }
+          const existing = state.cart.find((item) => item.productId === productId);
+          if (!existing) return state;
+          return {
+            cart: state.cart.map((item) =>
+              item.productId === productId ? { ...item, qty: nextQty } : item,
+            ),
+          };
+        }),
       removeFromCart: (productId) =>
         set((state) => ({
           cart: state.cart.filter((item) => item.productId !== productId),
@@ -113,6 +130,7 @@ type WholesaleCartContextValue = {
     options?: { silent?: boolean },
   ) => void;
   updateQty: (productId: number, delta: number) => void;
+  setCartQty: (productId: number, qty: number) => void;
   removeFromCart: (productId: number) => void;
   clearCart: () => void;
   getCartQty: (productId: number) => number;
@@ -152,6 +170,7 @@ export function WholesaleCartProvider({
     setCartOpen,
     addToCart,
     updateQty,
+    setCartQty,
     removeFromCart,
     clearCart,
   } = useWholesaleCartStore();
@@ -177,6 +196,7 @@ export function WholesaleCartProvider({
         setCartOpen,
         addToCart,
         updateQty,
+        setCartQty,
         removeFromCart,
         clearCart,
         getCartQty,

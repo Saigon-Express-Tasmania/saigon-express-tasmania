@@ -29,6 +29,7 @@ export type OrderCheckoutInput = {
   notes?: string;
   origin: string;
   returnTo?: string;
+  successReturnTo?: string;
   items: OrderCheckoutItem[];
 };
 
@@ -124,14 +125,47 @@ function parseOptionalStoreId(value: unknown): number | null {
   return storeId;
 }
 
-function checkoutReturnUrls(origin: string, returnTo?: string) {
+function normalizeReturnPath(path: string): string {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+function wholesaleOrdersPathFromReturnTo(returnTo?: string): string {
   if (returnTo) {
-    const path = returnTo.startsWith("/") ? returnTo : `/${returnTo}`;
+    const path = normalizeReturnPath(returnTo);
+    if (path.endsWith("/shop")) {
+      return `${path.slice(0, -5)}/orders`;
+    }
+  }
+  return "/wholesale/orders";
+}
+
+function checkoutReturnUrls(
+  origin: string,
+  orderType: OrderType,
+  returnTo?: string,
+  successReturnTo?: string,
+) {
+  if (orderType === "wholesale") {
+    const cancelPath = returnTo
+      ? normalizeReturnPath(returnTo)
+      : "/wholesale/shop";
+    const successPath = successReturnTo
+      ? normalizeReturnPath(successReturnTo)
+      : wholesaleOrdersPathFromReturnTo(returnTo);
+    return {
+      successUrl: `${origin}${successPath}?checkout=success&sessionId={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${origin}${cancelPath}?checkout=cancelled`,
+    };
+  }
+
+  if (returnTo) {
+    const path = normalizeReturnPath(returnTo);
     return {
       successUrl: `${origin}${path}?checkout=success&sessionId={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${origin}${path}?checkout=cancelled`,
     };
   }
+
   return {
     successUrl: `${origin}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${origin}/checkout?cancelled=1`,
@@ -165,6 +199,8 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   const notes = data.notes != null ? String(data.notes).trim() : undefined;
   const customerAccount = parseOptionalCustomerAccount(data.customerAccount);
   const returnTo = data.returnTo != null ? String(data.returnTo).trim() : undefined;
+  const successReturnTo =
+    data.successReturnTo != null ? String(data.successReturnTo).trim() : undefined;
 
   if (!customerName) throw new Error("Please enter your name");
   if (!customerEmail || !isValidEmail(customerEmail)) {
@@ -216,8 +252,91 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     notes: notes || undefined,
     origin,
     returnTo: returnTo || undefined,
+    successReturnTo: successReturnTo || undefined,
     items,
   };
+}
+
+type WholesaleAvailabilityRow = {
+  product_id: number;
+  effective_remaining: number;
+  global_remaining: number;
+  customer_remaining: number | null;
+  daily_customer_limit: number | null;
+};
+
+function wholesaleInventoryLimitMessage(
+  itemName: string,
+  requestedQty: number,
+  row: WholesaleAvailabilityRow,
+): string {
+  const remaining = Math.max(row.effective_remaining, 0);
+  const overGlobal = requestedQty > row.global_remaining;
+  const hasCustomerCap = row.daily_customer_limit != null;
+  const customerRemaining = row.customer_remaining;
+  const overCustomer =
+    hasCustomerCap &&
+    customerRemaining != null &&
+    requestedQty > customerRemaining;
+
+  if (remaining <= 0) {
+    if (overCustomer && overGlobal) {
+      return `${itemName} has reached both today's store-wide limit and your personal daily limit. Try again tomorrow or choose another product.`;
+    }
+    if (overCustomer) {
+      return `You have reached your daily limit of ${row.daily_customer_limit} units for ${itemName}. Try again tomorrow.`;
+    }
+    return `${itemName} has reached today's store-wide limit. Try again tomorrow or choose another product.`;
+  }
+
+  if (overCustomer && (!overGlobal || customerRemaining === remaining)) {
+    return `You can only order ${remaining} more units of ${itemName} today (your daily limit is ${row.daily_customer_limit}).`;
+  }
+
+  if (overGlobal) {
+    return `Only ${remaining} units of ${itemName} are left today across all customers. Please reduce the quantity in your cart.`;
+  }
+
+  return `Only ${remaining} units of ${itemName} are available today. Please reduce the quantity in your cart.`;
+}
+
+async function validateWholesaleInventoryAvailability(
+  supabase: ReturnType<typeof createServiceClient>,
+  customerAccount: string,
+  items: OrderCheckoutItem[],
+): Promise<void> {
+  const qtyByProduct = new Map<number, { qty: number; itemName: string }>();
+
+  for (const item of items) {
+    const existing = qtyByProduct.get(item.menuItemId);
+    qtyByProduct.set(item.menuItemId, {
+      qty: (existing?.qty ?? 0) + item.qty,
+      itemName: item.itemName,
+    });
+  }
+
+  for (const [productId, { qty, itemName }] of qtyByProduct) {
+    const { data, error } = await supabase.rpc("get_wholesale_product_availability", {
+      p_product_id: productId,
+      p_customer_account: customerAccount,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | WholesaleAvailabilityRow
+      | undefined;
+
+    if (!row) {
+      throw new Error(`${itemName} is not available for wholesale today.`);
+    }
+
+    if (qty > row.effective_remaining) {
+      throw new Error(wholesaleInventoryLimitMessage(itemName, qty, row));
+    }
+  }
 }
 
 export async function createOrderCheckoutSession(
@@ -228,6 +347,14 @@ export async function createOrderCheckoutSession(
 
   if (total <= 0) {
     throw new Error("Order total must be greater than zero");
+  }
+
+  if (input.orderType === "wholesale" && input.customerAccount) {
+    await validateWholesaleInventoryAvailability(
+      supabase,
+      input.customerAccount,
+      input.items,
+    );
   }
 
   const { data: draftOrder, error: draftOrderError } = await supabase
@@ -301,7 +428,12 @@ export async function createOrderCheckoutSession(
     stripeMetadata.customerAccount = input.customerAccount;
   }
 
-  const { successUrl, cancelUrl } = checkoutReturnUrls(input.origin, input.returnTo);
+  const { successUrl, cancelUrl } = checkoutReturnUrls(
+    input.origin,
+    input.orderType,
+    input.returnTo,
+    input.successReturnTo,
+  );
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     payment_method_types: ["card"],

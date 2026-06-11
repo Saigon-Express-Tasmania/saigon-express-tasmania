@@ -40,11 +40,68 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
-import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ImageIcon,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCcw,
+  Trash2,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const WHOLESALE_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1448] as const;
+const WHOLESALE_BUSINESS_TIMEZONE = 'Australia/Hobart';
+const STOCK_REFILL_SYNC_DELAY_MS = 2000;
+
+function getHobartTimeParts(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: WHOLESALE_BUSINESS_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? 0);
+
+  return {
+    year: get('year'),
+    month: get('month'),
+    day: get('day'),
+    hour: get('hour'),
+    minute: get('minute'),
+    second: get('second'),
+  };
+}
+
+/** Seconds until the next Hobart midnight (daily wholesale stock refill). */
+function secondsUntilHobartStockRefill(now = new Date()): number {
+  const { hour, minute, second } = getHobartTimeParts(now);
+  const normalizedHour = hour === 24 ? 0 : hour;
+  const secondsIntoDay = normalizedHour * 3600 + minute * 60 + second;
+  if (secondsIntoDay === 0) return 0;
+  return 86400 - secondsIntoDay;
+}
+
+function formatStockRefillCountdown(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes.toString().padStart(2, '0')}m ${seconds
+      .toString()
+      .padStart(2, '0')}s`;
+  }
+
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 type WholesaleImageUrls = Record<string, string>;
 
@@ -56,7 +113,8 @@ type WholesaleProductRow = {
   description: string | null;
   unit: string;
   unit_price: string;
-  stock_qty: number;
+  daily_global_limit: number;
+  daily_customer_limit: number | null;
   is_available: boolean;
   min_order_qty: number;
   image_urls: WholesaleImageUrls;
@@ -96,7 +154,7 @@ type WholesaleProductInput = Omit<
 >;
 
 const SELECT_COLUMNS =
-  'id, name, sku, category, description, unit, unit_price, stock_qty, is_available, min_order_qty, image_urls, created_at, updated_at';
+  'id, name, sku, category, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at';
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
@@ -106,7 +164,8 @@ const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   description: '',
   unit: '',
   unit_price: '',
-  stock_qty: 0,
+  daily_global_limit: 0,
+  daily_customer_limit: null,
   is_available: true,
   min_order_qty: 1,
   image_urls: {},
@@ -130,7 +189,15 @@ export function WholesaleProducts() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [products, setProducts] = useState<WholesaleProductRow[]>([]);
+  const [todayGlobalPaidByProductId, setTodayGlobalPaidByProductId] = useState<
+    Record<number, number>
+  >({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stockRefillSecondsLeft, setStockRefillSecondsLeft] = useState(() =>
+    secondsUntilHobartStockRefill(),
+  );
+  const stockRefillRefreshScheduledRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,18 +215,48 @@ export function WholesaleProducts() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
     try {
       setError(null);
-      setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('wholesale_products')
-        .select(SELECT_COLUMNS)
-        .order('category', { ascending: true })
-        .order('id', { ascending: true });
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-      if (fetchError) throw fetchError;
-      setProducts((data ?? []) as WholesaleProductRow[]);
+      const { data: businessDate, error: businessDateError } = await supabase.rpc(
+        'wholesale_business_date',
+      );
+      if (businessDateError) throw businessDateError;
+
+      const saleDate = String(businessDate ?? '').trim();
+      const [productsResult, usageResult] = await Promise.all([
+        supabase
+          .from('wholesale_products')
+          .select(SELECT_COLUMNS)
+          .order('category', { ascending: true })
+          .order('id', { ascending: true }),
+        saleDate
+          ? supabase
+              .from('wholesale_product_daily_usage')
+              .select('product_id, global_paid_qty')
+              .eq('sale_date', saleDate)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (productsResult.error) throw productsResult.error;
+      if (usageResult.error) throw usageResult.error;
+
+      setProducts((productsResult.data ?? []) as WholesaleProductRow[]);
+      setTodayGlobalPaidByProductId(
+        Object.fromEntries(
+          (usageResult.data ?? []).map((row) => [
+            Number(row.product_id),
+            Number(row.global_paid_qty) || 0,
+          ]),
+        ),
+      );
     } catch (err) {
       const message =
         err instanceof Error
@@ -167,10 +264,19 @@ export function WholesaleProducts() {
           : 'Failed to load wholesale products.';
       setError(message);
       setProducts([]);
+      setTodayGlobalPaidByProductId({});
     } finally {
-      setLoading(false);
+      if (silent) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    void loadProducts({ silent: true });
+  }, [loadProducts]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -179,6 +285,40 @@ export function WholesaleProducts() {
       setLoading(false);
     }
   }, [isAdmin, loadProducts]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const tick = () => {
+      setStockRefillSecondsLeft(secondsUntilHobartStockRefill());
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin || stockRefillSecondsLeft !== 0) {
+      stockRefillRefreshScheduledRef.current = false;
+      return;
+    }
+
+    if (stockRefillRefreshScheduledRef.current) return;
+    stockRefillRefreshScheduledRef.current = true;
+
+    const timeout = window.setTimeout(() => {
+      void loadProducts({ silent: true });
+      stockRefillRefreshScheduledRef.current = false;
+    }, STOCK_REFILL_SYNC_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [isAdmin, stockRefillSecondsLeft, loadProducts]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -233,7 +373,8 @@ export function WholesaleProducts() {
       description: product.description ?? '',
       unit: product.unit,
       unit_price: product.unit_price,
-      stock_qty: product.stock_qty,
+      daily_global_limit: product.daily_global_limit,
+      daily_customer_limit: product.daily_customer_limit,
       is_available: product.is_available,
       min_order_qty: product.min_order_qty,
       image_urls: normalizeImageUrls(product.image_urls),
@@ -323,7 +464,11 @@ export function WholesaleProducts() {
         description: form.description?.trim() || null,
         unit: form.unit.trim(),
         unit_price: String(form.unit_price),
-        stock_qty: Number(form.stock_qty) || 0,
+        daily_global_limit: Number(form.daily_global_limit) || 0,
+        daily_customer_limit:
+          form.daily_customer_limit == null || form.daily_customer_limit === 0
+            ? null
+            : Number(form.daily_customer_limit),
         is_available: form.is_available,
         min_order_qty: Number(form.min_order_qty) || 1,
         image_urls: form.image_urls,
@@ -427,10 +572,32 @@ export function WholesaleProducts() {
                 Manage products shown on the public wholesale shop catalogue.
               </CardDescription>
             </div>
-            <Button onClick={() => void openCreate()} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add product
-            </Button>
+            <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+              <p className="text-xs text-muted-foreground tabular-nums whitespace-nowrap text-right">
+                {refreshing
+                  ? 'Refreshing stock…'
+                  : stockRefillSecondsLeft === 0
+                    ? `Daily stock refill now (${WHOLESALE_BUSINESS_TIMEZONE})`
+                    : `Daily stock refill in ${formatStockRefillCountdown(stockRefillSecondsLeft)} · 00:00 ${WHOLESALE_BUSINESS_TIMEZONE}`}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={loading || refreshing}
+              >
+                {refreshing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                )}
+                Refresh
+              </Button>
+              <Button onClick={() => void openCreate()} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add product
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
@@ -498,7 +665,10 @@ export function WholesaleProducts() {
                         Price
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Stock
+                        Daily global
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Daily / customer
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Min order
@@ -548,8 +718,12 @@ export function WholesaleProducts() {
                         <td className="px-4 py-3 text-sm">
                           ${Number(p.unit_price).toFixed(2)}
                         </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
+                          {todayGlobalPaidByProductId[p.id] ?? 0}/
+                          {p.daily_global_limit}
+                        </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {p.stock_qty}
+                          {p.daily_customer_limit ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {p.min_order_qty}
@@ -614,7 +788,9 @@ export function WholesaleProducts() {
                 : 'Add wholesale product'}
             </DialogTitle>
             <DialogDescription>
-              Available products appear on the public wholesale shop.
+              Daily global limit applies store-wide; daily customer limit caps how
+              many units one member may buy per product per day. Checkout must
+              satisfy both limits.
             </DialogDescription>
           </DialogHeader>
 
@@ -706,15 +882,35 @@ export function WholesaleProducts() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="wp-stock">Stock quantity</Label>
+              <Label htmlFor="wp-daily-global-limit">Daily global limit</Label>
               <Input
-                id="wp-stock"
+                id="wp-daily-global-limit"
                 type="number"
-                value={form.stock_qty}
+                value={form.daily_global_limit}
                 onChange={(e) =>
                   setForm((f) => ({
                     ...f,
-                    stock_qty: Number(e.target.value) || 0,
+                    daily_global_limit: Number(e.target.value) || 0,
+                  }))
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="wp-daily-customer-limit">
+                Daily customer limit
+              </Label>
+              <Input
+                id="wp-daily-customer-limit"
+                type="number"
+                placeholder="No limit"
+                value={form.daily_customer_limit ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    daily_customer_limit:
+                      e.target.value.trim() === ""
+                        ? null
+                        : Number(e.target.value) || 0,
                   }))
                 }
               />

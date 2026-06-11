@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
+import { WholesaleInventoryProvider } from "@/contexts/WholesaleInventoryContext";
+import WholesaleCartInventorySync from "@/components/WholesaleCartInventorySync";
 import WholesaleShoppingCart from "@/components/WholesaleShoppingCart";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
@@ -31,18 +33,21 @@ export function Providers({
         <SupabaseStorageProvider>
           <ThemeProvider defaultTheme="light">
             <CartProvider>
-              <WholesaleCartProvider>
-                <TooltipProvider>
-                  <AppChrome
-                    storeLocations={storeLocations}
-                    initialPathname={initialPathname}
-                  >
-                    {children}
-                  </AppChrome>
-                  <WholesaleShoppingCart />
-                  <Toaster />
-                </TooltipProvider>
-              </WholesaleCartProvider>
+              <WholesaleInventoryProvider>
+                <WholesaleCartProvider>
+                  <WholesaleCartInventorySync />
+                  <TooltipProvider>
+                    <AppChrome
+                      storeLocations={storeLocations}
+                      initialPathname={initialPathname}
+                    >
+                      {children}
+                    </AppChrome>
+                    <WholesaleShoppingCart />
+                    <Toaster />
+                  </TooltipProvider>
+                </WholesaleCartProvider>
+              </WholesaleInventoryProvider>
             </CartProvider>
           </ThemeProvider>
         </SupabaseStorageProvider>

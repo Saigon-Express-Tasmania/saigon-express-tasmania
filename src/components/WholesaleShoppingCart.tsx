@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
+import { useWholesaleInventory } from "@/contexts/WholesaleInventoryContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
@@ -12,6 +13,7 @@ import type { UserProfile } from "@/types";
 import {
   ChevronRight,
   CreditCard,
+  Loader2,
   Minus,
   Plus,
   ShoppingCart,
@@ -20,6 +22,8 @@ import {
 import { toast } from "sonner";
 
 const CART_ANIMATION_DURATION = 0.24;
+const QTY_FIELD_CLASS =
+  "h-7 w-[4.5rem] min-w-[4.5rem] shrink-0 rounded-lg bg-white/10 text-center text-sm font-bold text-white tabular-nums";
 
 const backdropMotion = {
   initial: {
@@ -143,6 +147,157 @@ function MinimumOrderProgress({
   );
 }
 
+function WholesaleCartItemQtyControl({
+  productName,
+  qty,
+  maxQty,
+  isActive,
+  isEditing,
+  onToggleEdit,
+  onCommitQty,
+  onDecrease,
+  onIncrease,
+  onSliderDragStart,
+  onSliderDragEnd,
+  atMin,
+  atMax,
+}: {
+  productName: string;
+  qty: number;
+  maxQty: number;
+  isActive: boolean;
+  isEditing: boolean;
+  onToggleEdit: () => void;
+  onCommitQty: (nextQty: number) => void;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  onSliderDragStart: () => void;
+  onSliderDragEnd: () => void;
+  atMin: boolean;
+  atMax: boolean;
+}) {
+  const inputId = useId();
+  const sliderId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [draftQty, setDraftQty] = useState(String(qty));
+  const finiteMaxQty =
+    Number.isFinite(maxQty) && maxQty > 0 ? maxQty : null;
+  const showSlider = isActive && finiteMaxQty != null;
+
+  useEffect(() => {
+    setDraftQty(String(qty));
+  }, [qty]);
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditing]);
+
+  const commitDraftQty = () => {
+    const parsed = Number.parseInt(draftQty, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      setDraftQty(String(qty));
+      return;
+    }
+    onCommitQty(parsed);
+  };
+
+  const handleSliderChange = (value: number) => {
+    setDraftQty(String(value));
+    onCommitQty(value);
+  };
+
+  return (
+    <div className="mt-2 flex w-full items-center gap-2 min-w-0">
+      <button
+        type="button"
+        onClick={onDecrease}
+        disabled={atMin}
+        className="w-7 h-7 shrink-0 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Minus className="w-3 h-3" />
+      </button>
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          id={inputId}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={finiteMaxQty ?? undefined}
+          value={draftQty}
+          onChange={(e) => setDraftQty(e.target.value)}
+          onBlur={commitDraftQty}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitDraftQty();
+              onToggleEdit();
+            }
+            if (e.key === "Escape") {
+              setDraftQty(String(qty));
+              onToggleEdit();
+            }
+          }}
+          className={`${QTY_FIELD_CLASS} border border-primary/50 bg-black/40 px-1 focus:outline-none focus:ring-2 focus:ring-primary/40 [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+          aria-label={`Quantity for ${productName}`}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={onToggleEdit}
+          className={`${QTY_FIELD_CLASS} px-2 hover:bg-white/20 transition-colors`}
+          aria-expanded={showSlider}
+          aria-controls={sliderId}
+        >
+          {qty}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onIncrease}
+        disabled={atMax}
+        className="w-7 h-7 shrink-0 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Plus className="w-3 h-3" />
+      </button>
+      <AnimatePresence initial={false}>
+        {showSlider ? (
+          <motion.div
+            id={sliderId}
+            key="qty-slider"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="flex min-w-0 flex-1 basis-0 items-center"
+          >
+            <input
+              type="range"
+              min={1}
+              max={finiteMaxQty}
+              step={1}
+              value={Math.min(qty, finiteMaxQty)}
+              onChange={(e) => handleSliderChange(Number(e.target.value))}
+              onPointerDown={onSliderDragStart}
+              onPointerUp={onSliderDragEnd}
+              onPointerCancel={onSliderDragEnd}
+              onLostPointerCapture={onSliderDragEnd}
+              className="h-2 w-full min-w-0 cursor-pointer appearance-none rounded-full bg-white/15 accent-primary [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+              aria-label={`Set quantity for ${productName}`}
+              aria-valuemin={1}
+              aria-valuemax={finiteMaxQty}
+              aria-valuenow={qty}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function WholesaleShoppingCart() {
   const {
     cart,
@@ -151,13 +306,24 @@ export default function WholesaleShoppingCart() {
     cartOpen,
     setCartOpen,
     updateQty,
+    setCartQty,
     clearCart,
   } = useWholesaleCart();
+  const { getMaxQty, validateQty, getAvailability } = useWholesaleInventory();
   const { profile, user } = useSupabase();
   const locale = useLocale();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [minimumWarning, setMinimumWarning] = useState<string | null>(null);
   const [highlightMinimum, setHighlightMinimum] = useState(false);
+  const [activeQtyProductId, setActiveQtyProductId] = useState<number | null>(
+    null,
+  );
+  const [editingQtyProductId, setEditingQtyProductId] = useState<number | null>(
+    null,
+  );
+  const [sliderDragProductId, setSliderDragProductId] = useState<number | null>(
+    null,
+  );
 
   const hasMetMinimum = cartTotal >= minimumOrderValue;
   const remainingToMinimum = Math.max(minimumOrderValue - cartTotal, 0);
@@ -177,15 +343,93 @@ export default function WholesaleShoppingCart() {
     clearMinimumFeedback();
   }, [cartOpen, cart]);
 
+  useEffect(() => {
+    if (!cartOpen) {
+      setActiveQtyProductId(null);
+      setEditingQtyProductId(null);
+      setSliderDragProductId(null);
+    }
+  }, [cartOpen]);
+
+  useEffect(() => {
+    if (!cartOpen && !isCheckingOut) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [cartOpen, isCheckingOut]);
+
+  const activateCartItem = (productId: number) => {
+    setActiveQtyProductId(productId);
+  };
+
+  const deactivateCartItem = (productId: number) => {
+    if (
+      editingQtyProductId === productId ||
+      sliderDragProductId === productId
+    ) {
+      return;
+    }
+    setActiveQtyProductId((current) =>
+      current === productId ? null : current,
+    );
+  };
+
+  const commitItemQty = (
+    productId: number,
+    productName: string,
+    rawQty: number,
+  ) => {
+    const maxQty = getMaxQty(productId);
+    let nextQty = Math.max(1, Math.floor(rawQty));
+
+    if (Number.isFinite(maxQty)) {
+      nextQty = Math.min(nextQty, maxQty);
+    }
+
+    const validation = validateQty(productId, nextQty, productName);
+    if (!validation.ok) {
+      toast.error(validation.message);
+      return;
+    }
+
+    setCartQty(productId, nextQty);
+  };
+
+  const handleIncreaseQty = (productId: number, productName: string, qty: number) => {
+    const nextQty = qty + 1;
+    const validation = validateQty(productId, nextQty, productName);
+    if (!validation.ok) {
+      toast.error(validation.message);
+      return;
+    }
+    updateQty(productId, 1);
+  };
+
   const wholesaleDashboardPath =
     locale === DEFAULT_LOCALE
       ? "/wholesale/shop"
       : `/${locale}/wholesale/shop`;
+  const wholesaleOrdersPath =
+    locale === DEFAULT_LOCALE
+      ? "/wholesale/orders"
+      : `/${locale}/wholesale/orders`;
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Your cart is empty.");
       return;
+    }
+
+    for (const item of cart) {
+      const validation = validateQty(item.productId, item.qty, item.productName);
+      if (!validation.ok) {
+        toast.error(validation.message, { duration: 6000 });
+        return;
+      }
     }
 
     if (!hasMetMinimum) {
@@ -228,6 +472,7 @@ export default function WholesaleShoppingCart() {
           customerPhone,
           origin: window.location.origin,
           returnTo: wholesaleDashboardPath,
+          successReturnTo: wholesaleOrdersPath,
           items: cart.map((item) => ({
             productId: item.productId,
             qty: item.qty,
@@ -252,13 +497,29 @@ export default function WholesaleShoppingCart() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Checkout failed";
       toast.error(message);
-    } finally {
       setIsCheckingOut(false);
     }
   };
 
   return (
-    <AnimatePresence>
+    <>
+      {isCheckingOut ? (
+        <div
+          className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-black/55 backdrop-blur-[2px]"
+          aria-busy="true"
+          aria-live="polite"
+          role="alertdialog"
+          aria-label="Preparing checkout"
+        >
+          <div className="mx-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/90 px-6 py-4 shadow-2xl">
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
+            <p className="text-sm font-semibold text-white">
+              Preparing secure checkout…
+            </p>
+          </div>
+        </div>
+      ) : null}
+      <AnimatePresence>
       {cartOpen ? (
         <>
           <motion.button
@@ -266,7 +527,9 @@ export default function WholesaleShoppingCart() {
             type="button"
             aria-label="Close cart"
             className="fixed inset-0 z-50 bg-black/60"
-            onClick={() => setCartOpen(false)}
+            onClick={() => {
+              if (!isCheckingOut) setCartOpen(false);
+            }}
             {...backdropMotion}
           />
           <motion.div
@@ -283,7 +546,8 @@ export default function WholesaleShoppingCart() {
               <button
                 type="button"
                 onClick={clearCart}
-                className="text-xs text-white/30 hover:text-red-400 transition-colors"
+                disabled={isCheckingOut}
+                className="text-xs text-white/30 hover:text-red-400 transition-colors disabled:pointer-events-none disabled:opacity-40"
               >
                 Clear all
               </button>
@@ -291,7 +555,8 @@ export default function WholesaleShoppingCart() {
             <button
               type="button"
               onClick={() => setCartOpen(false)}
-              className="text-white/40 hover:text-white transition-colors text-2xl leading-none"
+              disabled={isCheckingOut}
+              className="text-white/40 hover:text-white transition-colors text-2xl leading-none disabled:pointer-events-none disabled:opacity-40"
             >
               &times;
             </button>
@@ -306,52 +571,103 @@ export default function WholesaleShoppingCart() {
               <p className="text-xs mt-1">Add products to get started</p>
             </div>
           ) : (
-            cart.map((item) => (
+            cart.map((item) => {
+              const maxQty = getMaxQty(item.productId);
+              const atMin = item.qty <= 1;
+              const atMax =
+                Number.isFinite(maxQty) && item.qty >= maxQty;
+              const availability = getAvailability(item.productId);
+
+              const isItemActive = activeQtyProductId === item.productId;
+              const isItemEditing = editingQtyProductId === item.productId;
+
+              return (
               <div
                 key={item.productId}
-                className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10"
+                tabIndex={0}
+                className={`p-4 rounded-xl border transition-colors outline-none ${
+                  isItemActive
+                    ? "bg-white/8 border-white/20 ring-1 ring-primary/25"
+                    : "bg-white/5 border-white/10"
+                }`}
+                onMouseEnter={() => activateCartItem(item.productId)}
+                onMouseLeave={() => deactivateCartItem(item.productId)}
+                onFocus={() => activateCartItem(item.productId)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    deactivateCartItem(item.productId);
+                  }
+                }}
+                onTouchStart={() => activateCartItem(item.productId)}
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white leading-snug">
-                    {item.productName}
-                  </p>
-                  <p className="text-xs text-white/40 mt-0.5">
-                    ${Number(item.unitPrice).toFixed(2)} ex GST
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white leading-snug">
+                      {item.productName}
+                    </p>
+                    <p className="text-xs text-white/40 mt-0.5">
+                      ${Number(item.unitPrice).toFixed(2)} ex GST
+                    </p>
+                    {availability && Number.isFinite(maxQty) ? (
+                      <p className="text-[11px] text-amber-200/80 mt-1">
+                        {maxQty} available today
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-bold text-white">
+                      ${(Number(item.unitPrice) * item.qty).toFixed(2)}
+                    </div>
                     <button
                       type="button"
-                      onClick={() => updateQty(item.productId, -1)}
-                      className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                      onClick={() => updateQty(item.productId, -item.qty)}
+                      className="mt-2 text-white/30 hover:text-red-400 transition-colors"
                     >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="text-sm font-bold text-white w-6 text-center">
-                      {item.qty}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateQty(item.productId, 1)}
-                      className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="text-sm font-bold text-white">
-                    ${(Number(item.unitPrice) * item.qty).toFixed(2)}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => updateQty(item.productId, -item.qty)}
-                    className="mt-2 text-white/30 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                <WholesaleCartItemQtyControl
+                  productName={item.productName}
+                  qty={item.qty}
+                  maxQty={maxQty}
+                  isActive={isItemActive}
+                  isEditing={isItemEditing}
+                  atMin={atMin}
+                  atMax={atMax}
+                  onToggleEdit={() => {
+                    activateCartItem(item.productId);
+                    setEditingQtyProductId((current) =>
+                      current === item.productId ? null : item.productId,
+                    );
+                  }}
+                  onCommitQty={(nextQty) =>
+                    commitItemQty(item.productId, item.productName, nextQty)
+                  }
+                  onDecrease={() => {
+                    if (item.qty > 1) {
+                      updateQty(item.productId, -1);
+                    }
+                  }}
+                  onIncrease={() =>
+                    handleIncreaseQty(
+                      item.productId,
+                      item.productName,
+                      item.qty,
+                    )
+                  }
+                  onSliderDragStart={() =>
+                    setSliderDragProductId(item.productId)
+                  }
+                  onSliderDragEnd={() =>
+                    setSliderDragProductId((current) =>
+                      current === item.productId ? null : current,
+                    )
+                  }
+                />
               </div>
-            ))
+            );
+            })
           )}
         </div>
 
@@ -433,5 +749,6 @@ export default function WholesaleShoppingCart() {
         </>
       ) : null}
     </AnimatePresence>
+    </>
   );
 }

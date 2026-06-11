@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import MemberHeader from "@/components/MemberHeader";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
-import { useSupabase } from "@/hooks/useSupabase";
+import { useWholesaleInventory } from "@/contexts/WholesaleInventoryContext";
+import { useSupabase, supabase } from "@/hooks/useSupabase";
+import {
+  applyWholesaleProductAvailability,
+  type WholesaleProductAvailabilityRow,
+} from "@/types";
 import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { SiteCategory, UserProfile, WholesaleProduct } from "@/types";
@@ -26,7 +31,10 @@ type DashboardProduct = {
   imageUrl: string | null;
   isAvailable: boolean;
   minOrderQty: number;
-  stockQty: number;
+  effectiveRemaining: number;
+  globalRemaining: number;
+  customerRemaining: number | null;
+  dailyCustomerLimit: number | null;
 };
 
 function mapProduct(p: WholesaleProduct): DashboardProduct {
@@ -41,7 +49,10 @@ function mapProduct(p: WholesaleProduct): DashboardProduct {
     imageUrl: pickWholesaleImageUrl(p.imageUrls, [512, 1024, 256, 1448]),
     isAvailable: p.isAvailable,
     minOrderQty: p.minOrderQty ?? 1,
-    stockQty: p.stockQty ?? 0,
+    effectiveRemaining: p.effectiveRemaining,
+    globalRemaining: p.globalRemaining,
+    customerRemaining: p.customerRemaining,
+    dailyCustomerLimit: p.dailyCustomerLimit,
   };
 }
 
@@ -54,10 +65,12 @@ function getContactName(profile: UserProfile): string {
 
 export default function WholesaleShop({
   products,
+  inventory,
   categoriesContent,
   minimumWholesaleOrderValue,
 }: {
   products: WholesaleProduct[];
+  inventory: WholesaleProductAvailabilityRow[];
   categoriesContent: SiteCategory[];
   minimumWholesaleOrderValue: number;
 }) {
@@ -67,8 +80,10 @@ export default function WholesaleShop({
   const { profile, authMetadata, isLoading, signOut } = useSupabase();
   const { addToCart, getCartQty, clearCart, setMinimumOrderValue } =
     useWholesaleCart();
+  const { setInventory, validateQty, getMaxQty } = useWholesaleInventory();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
+  const [shopProducts, setShopProducts] = useState(products);
 
   const categoryStyleMap = useMemo(
     () =>
@@ -101,9 +116,52 @@ export default function WholesaleShop({
     };
   }, [profile, authMetadata]);
 
+  const applyInventoryToProducts = (
+    rows: WholesaleProductAvailabilityRow[],
+    baseProducts: WholesaleProduct[],
+  ) => {
+    const availabilityByProductId = new Map(
+      rows.map((row) => [row.product_id, row]),
+    );
+    return baseProducts.map((product) =>
+      applyWholesaleProductAvailability(
+        product,
+        availabilityByProductId.get(product.id),
+      ),
+    );
+  };
+
+  useLayoutEffect(() => {
+    setInventory(inventory);
+    setShopProducts(applyInventoryToProducts(inventory, products));
+  }, [inventory, products, setInventory]);
+
   useEffect(() => {
     setMinimumOrderValue(minimumWholesaleOrderValue);
   }, [minimumWholesaleOrderValue, setMinimumOrderValue]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      const { data, error } = await supabase.rpc(
+        "get_wholesale_products_availability",
+        { p_customer_account: profile.id },
+      );
+
+      if (cancelled || error || !data) return;
+
+      const rows = data as WholesaleProductAvailabilityRow[];
+      setInventory(rows);
+      setShopProducts(applyInventoryToProducts(rows, products));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, products, setInventory]);
 
   useEffect(() => {
     if (!isLoading && !me) {
@@ -127,7 +185,7 @@ export default function WholesaleShop({
     router.replace(pathname, { scroll: false });
   }, [searchParams, router, pathname, clearCart]);
 
-  const allProducts = useMemo(() => products.map(mapProduct), [products]);
+  const allProducts = useMemo(() => shopProducts.map(mapProduct), [shopProducts]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase();
@@ -149,6 +207,15 @@ export default function WholesaleShop({
   };
 
   const handleAddToCart = (product: DashboardProduct) => {
+    const cartQty = getCartQty(product.id);
+    const nextQty = cartQty + 1;
+    const validation = validateQty(product.id, nextQty, product.name);
+
+    if (!validation.ok) {
+      toast.error(validation.message);
+      return;
+    }
+
     addToCart({
       productId: product.id,
       productName: product.name,
@@ -234,8 +301,16 @@ export default function WholesaleShop({
               categoryStyleMap[product.category] ?? "from-gray-800 to-gray-600";
             const icon = categoryIconMap[product.category];
             const cartQty = getCartQty(product.id);
+            const maxQty = getMaxQty(product.id);
             const outOfStock =
-              !product.isAvailable || product.stockQty === 0;
+              !product.isAvailable || product.effectiveRemaining <= 0;
+            const atCartMax =
+              Number.isFinite(maxQty) && cartQty >= maxQty;
+            const customerLimitIsTighter =
+              product.dailyCustomerLimit != null &&
+              product.customerRemaining != null &&
+              product.customerRemaining < product.globalRemaining;
+
             return (
               <div
                 key={product.id}
@@ -292,6 +367,17 @@ export default function WholesaleShop({
                       <div className="text-xs text-white/35">
                         per {product.unit} ex GST
                       </div>
+                      {product.effectiveRemaining > 0 ? (
+                        <div className="text-[11px] text-white/40 mt-1 leading-snug">
+                          {product.effectiveRemaining} left today
+                          {customerLimitIsTighter ? (
+                            <span className="text-amber-200/90">
+                              {" - your limit: "}
+                              {product.customerRemaining}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                     {cartQty > 0 ? (
                       <div className="text-xs font-semibold text-primary bg-primary/15 px-2 py-1 rounded-lg">
@@ -303,11 +389,15 @@ export default function WholesaleShop({
                   <button
                     type="button"
                     onClick={() => handleAddToCart(product)}
-                    disabled={outOfStock}
+                    disabled={outOfStock || atCartMax}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                   >
                     <Plus className="w-4 h-4" />
-                    {outOfStock ? "Out of Stock" : "Add to Cart"}
+                    {outOfStock
+                      ? "Out of Stock"
+                      : atCartMax
+                        ? "Limit reached"
+                        : "Add to Cart"}
                   </button>
                 </div>
               </div>

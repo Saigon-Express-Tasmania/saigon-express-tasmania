@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
 import MemberHeader from "@/components/MemberHeader";
@@ -334,8 +334,10 @@ export default function WholesaleOrders({
   products: WholesaleProduct[];
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { profile, authMetadata, user, isLoading, signOut } = useSupabase();
-  const { addToCart } = useWholesaleCart();
+  const { addToCart, clearCart } = useWholesaleCart();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] =
@@ -424,6 +426,21 @@ export default function WholesaleOrders({
     if (!user?.id || !me) return;
     void loadOrders();
   }, [loadOrders, user?.id, me]);
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (!checkout) return;
+
+    if (checkout === "success") {
+      clearCart();
+      toast.success("Payment successful! Your wholesale order has been placed.");
+      void loadOrders();
+    } else if (checkout === "cancelled") {
+      toast.error("Checkout was cancelled. Your cart is unchanged.");
+    }
+
+    router.replace(pathname, { scroll: false });
+  }, [searchParams, router, pathname, clearCart, loadOrders]);
 
   useEffect(() => {
     setPage(1);
