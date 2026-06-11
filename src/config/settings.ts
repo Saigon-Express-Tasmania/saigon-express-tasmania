@@ -4,6 +4,9 @@
  */
 export const SHORT_REVALIDATE_SECONDS = 60 * 60;
 
+/** Fallback when `minimum_wholesale_order_value` is missing or invalid. */
+export const DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE = 300;
+
 /**
  * Long ISR/data-cache revalidation interval (in seconds).
  * 1 day.

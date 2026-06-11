@@ -13,7 +13,7 @@ export async function revalidateFrontendCache({
   }
 
   if (!revalidateToken) {
-    throw new Error('Missing revalidate token in settings table.');
+    throw new Error('Missing VITE_CACHE_REVALIDATE_SECRET.');
   }
 
   const response = await fetch(`${frontendUrl.replace(/\/$/, '')}/api/revalidate`, {

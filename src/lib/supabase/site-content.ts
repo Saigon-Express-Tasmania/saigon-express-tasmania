@@ -5,7 +5,6 @@ import type { LocalizationValue, SiteContentSnapshot } from "@/types";
 import { unstable_cache } from "next/cache";
 import { createServerSupabaseClient } from "./server";
 
-const SETTINGS_FILE_PATH = "settings.json";
 const LOCALIZATION_FILE_PATH = "localization.json";
 const SERVER_BOOT_CACHE_BUSTER = `${process.pid}-${Date.now()}`;
 
@@ -23,20 +22,6 @@ function getStorageBucket(): string {
     throw new Error("NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET is not set");
   }
   return bucket;
-}
-
-function normalizeSettings(raw: unknown): Record<string, string> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return {};
-  }
-
-  return Object.entries(raw as Record<string, unknown>).reduce<Record<string, string>>(
-    (acc, [key, value]) => {
-      acc[key] = String(value ?? "");
-      return acc;
-    },
-    {},
-  );
 }
 
 function normalizeLocalization(raw: unknown): Record<string, LocalizationValue> {
@@ -93,15 +78,29 @@ async function readJsonFileFromStorage(path: string): Promise<unknown | null> {
   return JSON.parse(text);
 }
 
+async function fetchSettingsFromDb(): Promise<Record<string, string>> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase.from("settings").select("key, value");
+
+  if (error) {
+    throw new Error(`settings: ${error.message}`);
+  }
+
+  return (data ?? []).reduce<Record<string, string>>((acc, row) => {
+    acc[row.key] = row.value;
+    return acc;
+  }, {});
+}
+
 async function fetchSiteContentUncached(): Promise<SiteContentSnapshot> {
   try {
-    const [settingsRaw, localizationRaw] = await Promise.all([
-      readJsonFileFromStorage(SETTINGS_FILE_PATH),
+    const [settings, localizationRaw] = await Promise.all([
+      fetchSettingsFromDb(),
       readJsonFileFromStorage(LOCALIZATION_FILE_PATH),
     ]);
 
     const snapshot: SiteContentSnapshot = {
-      settings: settingsRaw ? normalizeSettings(settingsRaw) : lastKnownSnapshot.settings,
+      settings,
       localization: localizationRaw
         ? normalizeLocalization(localizationRaw)
         : lastKnownSnapshot.localization,

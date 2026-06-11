@@ -11,7 +11,6 @@ export const LANGUAGE_LABELS: Record<LanguageKey, string> = {
   vi: 'Vietnamese',
 };
 
-export const STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET;
 export const MASTER_DATA_MANIFEST_FILE_NAME = 'manifest.json';
 export const LOCALIZATION_FILE_NAME = 'localization';
 export const SETTINGS_FILE_NAME = 'settings';

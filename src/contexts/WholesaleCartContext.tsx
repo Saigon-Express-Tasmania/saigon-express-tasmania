@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE } from "@/config";
 import { createContext, useContext, useEffect, useState } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -103,6 +104,8 @@ type WholesaleCartContextValue = {
   cart: WholesaleCartItem[];
   cartCount: number;
   cartTotal: number;
+  minimumOrderValue: number;
+  setMinimumOrderValue: (value: number) => void;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
   addToCart: (
@@ -126,6 +129,9 @@ export function WholesaleCartProvider({
   children: React.ReactNode;
 }) {
   const [isHydrated, setIsHydrated] = useState(false);
+  const [minimumOrderValue, setMinimumOrderValue] = useState(
+    DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE,
+  );
 
   useEffect(() => {
     const { persist } = useWholesaleCartStore;
@@ -165,6 +171,8 @@ export function WholesaleCartProvider({
         cart,
         cartCount,
         cartTotal,
+        minimumOrderValue,
+        setMinimumOrderValue,
         cartOpen,
         setCartOpen,
         addToCart,

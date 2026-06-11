@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -54,10 +54,100 @@ function getContactName(profile: UserProfile): string {
   return profile.email ?? "Member";
 }
 
+function MinimumOrderProgress({
+  cartTotal,
+  minimumOrderValue,
+  highlight,
+}: {
+  cartTotal: number;
+  minimumOrderValue: number;
+  highlight: boolean;
+}) {
+  const progress = Math.min(cartTotal / minimumOrderValue, 1);
+  const remaining = Math.max(minimumOrderValue - cartTotal, 0);
+  const hasMetMinimum = cartTotal >= minimumOrderValue;
+  const progressPercent = Math.round(progress * 100);
+
+  return (
+    <motion.div
+      animate={
+        highlight
+          ? {
+              scale: [1, 1.02, 1],
+              x: [0, -8, 8, -6, 6, 0],
+            }
+          : { scale: 1, x: 0 }
+      }
+      transition={{ duration: 0.65, ease: "easeInOut" }}
+      className={`rounded-2xl border p-4 space-y-3 ${
+        hasMetMinimum
+          ? "border-green-400/40 bg-green-500/10"
+          : "border-amber-400/50 bg-amber-500/15"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p
+            className={`text-[11px] font-bold uppercase tracking-[0.18em] ${
+              hasMetMinimum ? "text-green-200/90" : "text-amber-200"
+            }`}
+          >
+            {hasMetMinimum ? "Minimum order reached" : "Minimum order required"}
+          </p>
+          <p className="mt-1 text-xl font-bold text-white leading-none">
+            ${cartTotal.toFixed(2)}
+            <span className="ml-2 text-sm font-medium text-white/45">
+              / ${minimumOrderValue.toFixed(2)} ex GST
+            </span>
+          </p>
+        </div>
+        <div
+          className={`rounded-xl px-3 py-2 text-lg font-black tabular-nums ${
+            hasMetMinimum
+              ? "bg-green-500/20 text-green-300"
+              : "bg-amber-500/25 text-amber-200"
+          }`}
+        >
+          {progressPercent}%
+        </div>
+      </div>
+
+      <div className="h-4 rounded-full bg-black/35 overflow-hidden border border-white/10">
+        <motion.div
+          className={`h-full rounded-full ${
+            hasMetMinimum
+              ? "bg-gradient-to-r from-green-400 to-green-500"
+              : "bg-gradient-to-r from-amber-300 via-amber-400 to-primary"
+          }`}
+          initial={false}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ type: "spring", stiffness: 180, damping: 22 }}
+        />
+      </div>
+
+      {hasMetMinimum ? (
+        <p className="text-sm font-medium text-green-100/90">
+          You can proceed to checkout.
+        </p>
+      ) : (
+        <p className="text-sm leading-relaxed text-amber-50/95">
+          Add{" "}
+          <span className="font-bold text-white">
+            ${remaining.toFixed(2)} more
+          </span>{" "}
+          in products to reach the ${minimumOrderValue.toFixed(2)} wholesale
+          minimum before checkout.
+        </p>
+      )}
+    </motion.div>
+  );
+}
+
 export default function WholesaleShoppingCart() {
   const {
     cart,
     cartTotal,
+    minimumOrderValue,
     cartOpen,
     setCartOpen,
     updateQty,
@@ -66,6 +156,26 @@ export default function WholesaleShoppingCart() {
   const { profile, user } = useSupabase();
   const locale = useLocale();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [minimumWarning, setMinimumWarning] = useState<string | null>(null);
+  const [highlightMinimum, setHighlightMinimum] = useState(false);
+
+  const hasMetMinimum = cartTotal >= minimumOrderValue;
+  const remainingToMinimum = Math.max(minimumOrderValue - cartTotal, 0);
+
+  const clearMinimumFeedback = () => {
+    setMinimumWarning(null);
+    setHighlightMinimum(false);
+  };
+
+  useEffect(() => {
+    if (hasMetMinimum) {
+      clearMinimumFeedback();
+    }
+  }, [hasMetMinimum]);
+
+  useEffect(() => {
+    clearMinimumFeedback();
+  }, [cartOpen, cart]);
 
   const wholesaleDashboardPath =
     locale === DEFAULT_LOCALE
@@ -75,6 +185,15 @@ export default function WholesaleShoppingCart() {
   const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Your cart is empty.");
+      return;
+    }
+
+    if (!hasMetMinimum) {
+      const message = `Your cart is $${cartTotal.toFixed(2)} ex GST. Wholesale orders must reach $${minimumOrderValue.toFixed(2)} in product value before checkout. Please add $${remainingToMinimum.toFixed(2)} more to your cart.`;
+      setMinimumWarning(message);
+      setHighlightMinimum(true);
+      toast.error(message, { duration: 6000 });
+      window.setTimeout(() => setHighlightMinimum(false), 700);
       return;
     }
 
@@ -238,6 +357,24 @@ export default function WholesaleShoppingCart() {
 
         {cart.length > 0 ? (
           <div className="px-6 py-5 border-t border-white/10 space-y-4">
+            <MinimumOrderProgress
+              cartTotal={cartTotal}
+              minimumOrderValue={minimumOrderValue}
+              highlight={highlightMinimum}
+            />
+
+            {minimumWarning && !hasMetMinimum ? (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-xl border border-amber-400/60 bg-amber-500/20 px-4 py-3 text-sm leading-relaxed text-amber-50"
+                role="alert"
+              >
+                <p className="font-semibold text-white">More products needed</p>
+                <p className="mt-1">{minimumWarning}</p>
+              </motion.div>
+            ) : null}
+
             <div className="flex justify-between text-sm">
               <span className="text-white/60">Subtotal (ex GST)</span>
               <span className="font-bold text-white">
@@ -261,23 +398,34 @@ export default function WholesaleShoppingCart() {
               type="button"
               onClick={() => void handleCheckout()}
               disabled={isCheckingOut}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
+              className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-sm transition-colors disabled:opacity-60 ${
+                hasMetMinimum
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "bg-white/10 text-white hover:bg-white/15 border border-amber-400/40"
+              }`}
             >
               {isCheckingOut ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Processing…
                 </>
-              ) : (
+              ) : hasMetMinimum ? (
                 <>
                   <CreditCard className="w-4 h-4" />
                   Checkout with Card / Apple Pay
                   <ChevronRight className="w-4 h-4" />
                 </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-4 h-4" />
+                  Add ${remainingToMinimum.toFixed(2)} more to checkout
+                </>
               )}
             </button>
             <p className="text-xs text-white/30 text-center">
-              Secure payment via Stripe · Card & Apple Pay accepted
+              {hasMetMinimum
+                ? "Secure payment via Stripe · Card & Apple Pay accepted"
+                : `Wholesale minimum is $${minimumOrderValue.toFixed(2)} ex GST in product value.`}
             </p>
           </div>
         ) : null}

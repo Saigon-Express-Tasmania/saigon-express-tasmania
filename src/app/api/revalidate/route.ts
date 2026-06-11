@@ -1,5 +1,4 @@
-import { CACHE_TAGS, REVALIDATE_TAG_LIST } from "@/config";
-import { getSiteContentSnapshot } from "@/lib/supabase/site-content";
+import { CACHE_TAGS, ENV, REVALIDATE_TAG_LIST } from "@/config";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -64,16 +63,12 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const siteContent = await getSiteContentSnapshot();
-  const secret =
-    siteContent.settings.revalidate_secret ||
-    siteContent.settings.REVALIDATE_SECRET ||
-    "";
+  const secret = ENV.cacheRevalidateSecret;
 
   if (!secret) {
     return jsonWithCors(
       req,
-      { ok: false, error: "Missing revalidate_secret in settings.json." },
+      { ok: false, error: "Missing CACHE_REVALIDATE_SECRET." },
       { status: 500 },
     );
   }

@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { DEFAULT_HANDSON_TABLE_OPTIONS } from '@/constants';
+import { DEFAULT_HANDSON_TABLE_OPTIONS, ENV } from '@/constants';
 import { usePageState } from '@/hooks/usePageState';
 import {
   mergeColumnWidths,
@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { loadSettingsFromStorage, saveSettingsToStorage } from './storage';
+import { fetchSettings, saveSettings } from '@/lib/settings';
 import { revalidateFrontendCache } from './tools';
 import type { SettingRow, SettingsTableUiState } from './types';
 
@@ -87,12 +87,12 @@ export function Settings() {
     setError(null);
 
     try {
-      const loadedSettings = await loadSettingsFromStorage();
+      const loadedSettings = await fetchSettings();
       setTableUpdateTimestamp(Date.now());
       setSettings(loadedSettings);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to load settings.json.';
+        err instanceof Error ? err.message : 'Failed to load settings.';
       setError(message);
       setTableUpdateTimestamp(Date.now());
       setSettings([]);
@@ -162,11 +162,13 @@ export function Settings() {
     setIsSaving(true);
     setError(null);
     try {
-      await saveSettingsToStorage(getSettingsFromTable());
-      toast.success('settings.json saved to storage.');
+      const savedSettings = getSettingsFromTable();
+      await saveSettings(savedSettings);
+      setSettings(savedSettings);
+      toast.success('Settings saved.');
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to save settings.json.';
+        err instanceof Error ? err.message : 'Failed to save settings.';
       setError(message);
       toast.error(message);
     } finally {
@@ -183,18 +185,11 @@ export function Settings() {
     setIsRunningTool(true);
     try {
       const tableSettings = getSettingsFromTable();
-      const frontendUrl = getSettingValue(
-        tableSettings,
-        'site_url'
-      );
-      const revalidateToken = getSettingValue(
-        tableSettings,
-        'revalidate_secret'
-      );
+      const frontendUrl = getSettingValue(tableSettings, 'site_url');
 
       await revalidateFrontendCache({
         frontendUrl: frontendUrl ?? '',
-        revalidateToken: revalidateToken ?? '',
+        revalidateToken: ENV.cacheRevalidateSecret ?? '',
       });
       toast.success('Frontend cache revalidated.');
     } catch (err) {
@@ -227,8 +222,7 @@ export function Settings() {
               <div>
                 <CardTitle>Settings Table</CardTitle>
                 <CardDescription>
-                  Edit key/value pairs and save to `settings.json` in Supabase
-                  storage.
+                  Edit key/value pairs stored in the settings table.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">

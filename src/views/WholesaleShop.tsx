@@ -55,15 +55,18 @@ function getContactName(profile: UserProfile): string {
 export default function WholesaleShop({
   products,
   categoriesContent,
+  minimumWholesaleOrderValue,
 }: {
   products: WholesaleProduct[];
   categoriesContent: SiteCategory[];
+  minimumWholesaleOrderValue: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { profile, authMetadata, isLoading, signOut } = useSupabase();
-  const { addToCart, getCartQty, clearCart } = useWholesaleCart();
+  const { addToCart, getCartQty, clearCart, setMinimumOrderValue } =
+    useWholesaleCart();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
 
@@ -97,6 +100,10 @@ export default function WholesaleShop({
       avatarUrl: profile.avatar_url?.trim() || null,
     };
   }, [profile, authMetadata]);
+
+  useEffect(() => {
+    setMinimumOrderValue(minimumWholesaleOrderValue);
+  }, [minimumWholesaleOrderValue, setMinimumOrderValue]);
 
   useEffect(() => {
     if (!isLoading && !me) {
@@ -166,7 +173,8 @@ export default function WholesaleShop({
                   Welcome, {me.contactName}
                 </h1>
                 <p className="text-white/45 text-sm">
-                  {me.businessName} ·{" "}
+                  {me.businessName}
+                  {" \u00b7 "}
                   {me.portalType === "wholesale" ? "Wholesale" : "Warehouse"}{" "}
                   Member
                 </p>
@@ -224,7 +232,7 @@ export default function WholesaleShop({
           {filtered.map((product) => {
             const gradientClass =
               categoryStyleMap[product.category] ?? "from-gray-800 to-gray-600";
-            const icon = categoryIconMap[product.category] ?? "📦";
+            const icon = categoryIconMap[product.category];
             const cartQty = getCartQty(product.id);
             const outOfStock =
               !product.isAvailable || product.stockQty === 0;
@@ -245,7 +253,11 @@ export default function WholesaleShop({
                     <div
                       className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center group-hover:scale-105 transition-transform duration-500`}
                     >
-                      <span className="text-5xl opacity-80">{icon}</span>
+                      {icon ? (
+                        <span className="text-5xl opacity-80">{icon}</span>
+                      ) : (
+                        <Package className="w-12 h-12 opacity-80 text-white" />
+                      )}
                     </div>
                   )}
                   {product.badge ? (
