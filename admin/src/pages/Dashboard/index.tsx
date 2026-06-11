@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { PendingFeedbacks } from '@/pages/Dashboard/PendingFeedbacks';
 import { PendingWholesaleMembers } from '@/pages/Dashboard/PendingWholesaleMembers';
 
 export function Dashboard() {
@@ -24,6 +25,10 @@ export function Dashboard() {
         </Card>
 
         <PendingWholesaleMembers />
+
+        <div className="xl:col-span-2">
+          <PendingFeedbacks />
+        </div>
       </div>
     </DashboardLayout>
   );

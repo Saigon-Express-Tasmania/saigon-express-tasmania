@@ -31,7 +31,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
     if (!isSignedIn) return "/member";
     if (!isWholesaleMemberConfirmed(profile, authMetadata)) return "/member";
     if (hasPrivilege(authMetadata.privileges, "warehouse")) {
-      return "/warehouse/dashboard";
+      return "/member/dashboard";
     }
     return "/wholesale/shop";
   }, [authMetadata, isSignedIn, profile]);

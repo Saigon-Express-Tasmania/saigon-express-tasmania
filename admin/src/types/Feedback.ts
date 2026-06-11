@@ -1,5 +1,14 @@
 export type FeedbackSource = 'faq';
 
+export type FeedbackStatus = 'pending' | 'approved' | 'resolved' | 'rejected';
+
+export const FEEDBACK_STATUS_OPTIONS: FeedbackStatus[] = [
+  'pending',
+  'approved',
+  'resolved',
+  'rejected',
+];
+
 export type Feedback = {
   id: number;
   name: string;
@@ -7,7 +16,9 @@ export type Feedback = {
   question: string;
   source: FeedbackSource;
   ip_hash: string;
+  status: FeedbackStatus;
   created_at: string;
+  resolved_at: string | null;
 };
 
 export type FeedbackInput = {
@@ -16,7 +27,9 @@ export type FeedbackInput = {
   question: string;
   source: FeedbackSource;
   ip_hash: string;
+  status: FeedbackStatus;
   created_at: string;
+  resolved_at: string | null;
 };
 
 export const emptyFeedbackInput = (): FeedbackInput => ({
@@ -25,7 +38,9 @@ export const emptyFeedbackInput = (): FeedbackInput => ({
   question: '',
   source: 'faq',
   ip_hash: 'admin',
+  status: 'pending',
   created_at: new Date().toISOString(),
+  resolved_at: null,
 });
 
 export function feedbackToInput(feedback: Feedback): FeedbackInput {
@@ -35,6 +50,8 @@ export function feedbackToInput(feedback: Feedback): FeedbackInput {
     question: feedback.question,
     source: feedback.source,
     ip_hash: feedback.ip_hash,
+    status: feedback.status,
     created_at: feedback.created_at,
+    resolved_at: feedback.resolved_at,
   };
 }

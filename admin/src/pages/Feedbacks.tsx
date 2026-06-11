@@ -1,3 +1,4 @@
+import { FeedbackViewDialog } from '@/components/feedbacks/FeedbackViewDialog';
 import { DashboardLayout } from '@/components/layout';
 import {
   AlertDialog,
@@ -28,22 +29,102 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import {
+  statusBadgeVariant,
+  truncateFeedbackText,
+  updateFeedbackStatus,
+} from '@/lib/feedbacks';
 import supabase from '@/lib/supabase/client';
 import {
   emptyFeedbackInput,
+  FEEDBACK_STATUS_OPTIONS,
   feedbackToInput,
   type Feedback,
   type FeedbackInput,
+  type FeedbackStatus,
 } from '@/types/Feedback';
-import { Eye, Loader2, MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Eye,
+  Loader2,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-function truncate(text: string, max = 80): string {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max).trimEnd()}…`;
+type SortColumn = 'id' | 'name' | 'email' | 'created_at' | 'resolved_at';
+type SortDirection = 'asc' | 'desc';
+
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+}) {
+  const isActive = sortColumn === column;
+  const Icon = isActive
+    ? sortDirection === 'asc'
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+
+  return (
+    <th className="px-4 py-3 text-left text-sm font-semibold">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-foreground/80"
+        onClick={() => onSort(column)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </th>
+  );
+}
+
+function compareNullableString(
+  a: string | null,
+  b: string | null,
+  direction: number,
+): number {
+  const aVal = a ?? '';
+  const bVal = b ?? '';
+  if (!aVal && !bVal) return 0;
+  if (!aVal) return 1;
+  if (!bVal) return -1;
+  return aVal.localeCompare(bVal) * direction;
+}
+
+function compareNullableDate(
+  a: string | null,
+  b: string | null,
+  direction: number,
+): number {
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  return (new Date(a).getTime() - new Date(b).getTime()) * direction;
 }
 
 function validateFeedbackForm(form: FeedbackInput): string | null {
@@ -81,6 +162,9 @@ export function Feedbacks() {
 
   const [viewTarget, setViewTarget] = useState<Feedback | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Feedback | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const loadFeedbacks = useCallback(async () => {
     try {
@@ -88,8 +172,7 @@ export function Feedbacks() {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('feedbacks')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       if (fetchError) throw fetchError;
       setFeedbacks((data ?? []) as Feedback[]);
@@ -110,6 +193,38 @@ export function Feedbacks() {
       setLoading(false);
     }
   }, [isAdmin, loadFeedbacks]);
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection(column === 'id' || column === 'created_at' ? 'desc' : 'asc');
+  };
+
+  const filteredFeedbacks = useMemo(() => {
+    const filtered =
+      statusFilter === 'all'
+        ? feedbacks
+        : feedbacks.filter((feedback) => feedback.status === statusFilter);
+
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      switch (sortColumn) {
+        case 'id':
+          return (a.id - b.id) * direction;
+        case 'name':
+          return a.name.localeCompare(b.name) * direction;
+        case 'email':
+          return compareNullableString(a.email, b.email, direction);
+        case 'created_at':
+          return compareNullableDate(a.created_at, b.created_at, direction);
+        case 'resolved_at':
+          return compareNullableDate(a.resolved_at, b.resolved_at, direction);
+      }
+    });
+  }, [feedbacks, statusFilter, sortColumn, sortDirection]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -132,13 +247,20 @@ export function Feedbacks() {
 
     setSaving(true);
     try {
+      const resolvedAt =
+        form.status === 'resolved'
+          ? form.resolved_at ?? new Date().toISOString()
+          : null;
+
       const payload = {
         name: form.name.trim(),
         email: form.email?.trim() || null,
         question: form.question.trim(),
         source: form.source,
         ip_hash: form.ip_hash.trim(),
+        status: form.status,
         created_at: form.created_at,
+        resolved_at: resolvedAt,
       };
 
       if (editingId !== null) {
@@ -163,6 +285,27 @@ export function Feedbacks() {
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to save feedback.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (
+    feedback: Feedback,
+    status: FeedbackStatus,
+  ) => {
+    setSaving(true);
+    try {
+      const updated = await updateFeedbackStatus(feedback.id, status);
+      setFeedbacks((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setViewTarget((prev) => (prev?.id === updated.id ? updated : prev));
+      toast.success(`Feedback marked as ${status}.`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to update status.',
       );
     } finally {
       setSaving(false);
@@ -243,28 +386,66 @@ export function Feedbacks() {
               </div>
             )}
 
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="feedback-status-filter" className="whitespace-nowrap">
+                  Status
+                </Label>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => setStatusFilter(value)}
+                >
+                  <SelectTrigger id="feedback-status-filter" className="w-40">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {FEEDBACK_STATUS_OPTIONS.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : feedbacks.length === 0 ? (
+            ) : filteredFeedbacks.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No feedback submissions yet.
+                {feedbacks.length === 0
+                  ? 'No feedback submissions yet.'
+                  : 'No feedback matches the selected status.'}
               </p>
             ) : (
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Name
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Email
-                      </th>
+                      <SortableHeader
+                        label="ID"
+                        column="id"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Name"
+                        column="name"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Email"
+                        column="email"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Question
                       </th>
@@ -272,15 +453,29 @@ export function Feedbacks() {
                         Source
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Submitted
+                        Status
                       </th>
+                      <SortableHeader
+                        label="Submitted"
+                        column="created_at"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Resolved at"
+                        column="resolved_at"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-right text-sm font-semibold">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {feedbacks.map((feedback) => (
+                    {filteredFeedbacks.map((feedback) => (
                       <tr
                         key={feedback.id}
                         className="border-b transition-colors hover:bg-muted/50"
@@ -295,13 +490,23 @@ export function Feedbacks() {
                           {feedback.email ?? '—'}
                         </td>
                         <td className="max-w-xs px-4 py-3 text-sm text-muted-foreground">
-                          {truncate(feedback.question)}
+                          {truncateFeedbackText(feedback.question)}
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant="secondary">{feedback.source}</Badge>
                         </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={statusBadgeVariant(feedback.status)}>
+                            {feedback.status}
+                          </Badge>
+                        </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {new Date(feedback.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {feedback.resolved_at
+                            ? new Date(feedback.resolved_at).toLocaleString()
+                            : '—'}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
@@ -396,9 +601,38 @@ export function Feedbacks() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
+                <Label htmlFor="feedback-status">Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(value) =>
+                    setForm((f) => ({
+                      ...f,
+                      status: value as FeedbackStatus,
+                      resolved_at:
+                        value === 'resolved'
+                          ? f.resolved_at ?? new Date().toISOString()
+                          : null,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="feedback-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FEEDBACK_STATUS_OPTIONS.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="feedback-source">Source</Label>
                 <Input id="feedback-source" value={form.source} disabled />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="feedback-created-at">Submitted at</Label>
                 <Input
@@ -416,6 +650,16 @@ export function Feedbacks() {
                   }}
                 />
               </div>
+              {form.status === 'resolved' && form.resolved_at && (
+                <div className="grid gap-2">
+                  <Label htmlFor="feedback-resolved-at">Resolved at</Label>
+                  <Input
+                    id="feedback-resolved-at"
+                    value={new Date(form.resolved_at).toLocaleString()}
+                    readOnly
+                  />
+                </div>
+              )}
             </div>
             {editingId !== null && (
               <div className="grid gap-2">
@@ -452,65 +696,16 @@ export function Feedbacks() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <FeedbackViewDialog
+        feedback={viewTarget}
         open={viewTarget !== null}
+        saving={saving}
         onOpenChange={(open) => !open && setViewTarget(null)}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Feedback #{viewTarget?.id}</DialogTitle>
-            <DialogDescription>
-              Submitted{' '}
-              {viewTarget
-                ? new Date(viewTarget.created_at).toLocaleString()
-                : ''}
-            </DialogDescription>
-          </DialogHeader>
-          {viewTarget && (
-            <div className="space-y-4 text-sm">
-              <div>
-                <p className="font-medium text-muted-foreground">Name</p>
-                <p>{viewTarget.name}</p>
-              </div>
-              <div>
-                <p className="font-medium text-muted-foreground">Email</p>
-                <p>{viewTarget.email ?? '—'}</p>
-              </div>
-              <div>
-                <p className="font-medium text-muted-foreground">Source</p>
-                <Badge variant="secondary">{viewTarget.source}</Badge>
-              </div>
-              <div>
-                <p className="font-medium text-muted-foreground">Question</p>
-                <p className="whitespace-pre-wrap leading-relaxed">
-                  {viewTarget.question}
-                </p>
-              </div>
-              <div>
-                <p className="font-medium text-muted-foreground">IP hash</p>
-                <p className="break-all font-mono text-xs text-muted-foreground">
-                  {viewTarget.ip_hash}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewTarget(null)}>
-              Close
-            </Button>
-            {viewTarget && (
-              <Button
-                onClick={() => {
-                  openEdit(viewTarget);
-                  setViewTarget(null);
-                }}
-              >
-                Edit
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onStatusChange={(feedback, status) =>
+          void handleStatusChange(feedback, status)
+        }
+        onEdit={openEdit}
+      />
 
       <AlertDialog
         open={deleteTarget !== null}
