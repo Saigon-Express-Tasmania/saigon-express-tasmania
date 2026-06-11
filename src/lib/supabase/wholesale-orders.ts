@@ -1,5 +1,7 @@
+import { parseWholesaleOrderB2B } from "@/lib/wholesale-b2b-order";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { supabase } from "@/lib/supabase/client";
+import type { WholesaleOrderB2B } from "@/types/WholesaleB2BOrder";
 
 export const WHOLESALE_ORDERS_PAGE_SIZE = 40;
 
@@ -28,6 +30,7 @@ export type WholesaleOrder = {
   tracking_token: string | null;
   created_at: string;
   items: WholesaleOrderItem[];
+  b2b: WholesaleOrderB2B;
 };
 
 export type WholesaleOrderStatusFilter = WholesaleOrderStatus | "all";
@@ -74,6 +77,12 @@ function mapOrderRow(
       unit_price: Number(item.unit_price),
       item_name: String(item.item_name),
     })),
+    b2b: parseWholesaleOrderB2B({
+      buyer: row.buyer,
+      shipping_address: row.shipping_address,
+      billing_address: row.billing_address,
+      financial_details: row.financial_details,
+    }),
   };
 }
 
@@ -88,7 +97,7 @@ export async function fetchWholesaleOrders(
   let query = supabase
     .from(table)
     .select(
-      `id, order_type, total, status, payment_status, tracking_token, created_at, ${itemsRelation} (id, menu_item_id, qty, unit_price, item_name)`,
+      `id, order_type, total, status, payment_status, tracking_token, created_at, buyer, shipping_address, billing_address, financial_details, ${itemsRelation} (id, menu_item_id, qty, unit_price, item_name)`,
       { count: "exact" },
     )
     .eq("customer_account", params.userId)
@@ -128,6 +137,17 @@ export function formatOrderDate(iso: string): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+export function formatOrderDateShort(iso: string): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,

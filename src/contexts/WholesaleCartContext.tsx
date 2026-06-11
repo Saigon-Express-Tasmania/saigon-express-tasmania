@@ -11,18 +11,24 @@ export type WholesaleCartItem = {
   productName: string;
   qty: number;
   unitPrice: number;
+  imageUrl?: string | null;
+  /** Unix ms when this line was last added from the shop. */
+  addedAt: number;
 };
 
 export type WholesaleCartProductInput = {
   productId: number;
   productName: string;
   unitPrice: number;
+  imageUrl?: string | null;
 };
 
 type WholesaleCartStore = {
   cart: WholesaleCartItem[];
   cartOpen: boolean;
+  highlightProductId: number | null;
   setCartOpen: (open: boolean) => void;
+  clearCartHighlight: () => void;
   addToCart: (
     product: WholesaleCartProductInput,
     options?: { silent?: boolean },
@@ -33,21 +39,43 @@ type WholesaleCartStore = {
   clearCart: () => void;
 };
 
+function normalizeCartItem(
+  item: WholesaleCartItem & { addedAt?: number },
+): WholesaleCartItem {
+  return {
+    ...item,
+    imageUrl: item.imageUrl ?? null,
+    addedAt: item.addedAt ?? 0,
+  };
+}
+
 const useWholesaleCartStore = create<WholesaleCartStore>()(
   persist(
     (set) => ({
       cart: [],
       cartOpen: false,
-      setCartOpen: (open) => set({ cartOpen: open }),
+      highlightProductId: null,
+      setCartOpen: (open) =>
+        set({
+          cartOpen: open,
+          highlightProductId: null,
+        }),
+      clearCartHighlight: () => set({ highlightProductId: null }),
       addToCart: (product, options) => {
         set((state) => {
+          const now = Date.now();
           const existing = state.cart.find(
             (item) => item.productId === product.productId,
           );
           const nextCart = existing
             ? state.cart.map((item) =>
                 item.productId === product.productId
-                  ? { ...item, qty: item.qty + 1 }
+                  ? {
+                      ...item,
+                      qty: item.qty + 1,
+                      addedAt: now,
+                      imageUrl: product.imageUrl ?? item.imageUrl ?? null,
+                    }
                   : item,
               )
             : [
@@ -57,12 +85,19 @@ const useWholesaleCartStore = create<WholesaleCartStore>()(
                   productName: product.productName,
                   qty: 1,
                   unitPrice: product.unitPrice,
+                  imageUrl: product.imageUrl ?? null,
+                  addedAt: now,
                 },
               ];
 
           return {
             cart: nextCart,
-            ...(options?.silent ? {} : { cartOpen: true }),
+            ...(options?.silent
+              ? {}
+              : {
+                  cartOpen: true,
+                  highlightProductId: product.productId,
+                }),
           };
         });
         if (!options?.silent) {
@@ -107,12 +142,22 @@ const useWholesaleCartStore = create<WholesaleCartStore>()(
         set((state) => ({
           cart: state.cart.filter((item) => item.productId !== productId),
         })),
-      clearCart: () => set({ cart: [] }),
+      clearCart: () => set({ cart: [], highlightProductId: null }),
     }),
     {
       name: "saigon-wholesale-cart",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ cart: state.cart }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<WholesaleCartStore> | undefined;
+        return {
+          ...current,
+          ...persistedState,
+          cart: (persistedState?.cart ?? []).map((item) =>
+            normalizeCartItem(item as WholesaleCartItem & { addedAt?: number }),
+          ),
+        };
+      },
     },
   ),
 );
@@ -124,7 +169,9 @@ type WholesaleCartContextValue = {
   minimumOrderValue: number;
   setMinimumOrderValue: (value: number) => void;
   cartOpen: boolean;
+  highlightProductId: number | null;
   setCartOpen: (open: boolean) => void;
+  clearCartHighlight: () => void;
   addToCart: (
     product: WholesaleCartProductInput,
     options?: { silent?: boolean },
@@ -167,7 +214,9 @@ export function WholesaleCartProvider({
   const {
     cart,
     cartOpen,
+    highlightProductId,
     setCartOpen,
+    clearCartHighlight,
     addToCart,
     updateQty,
     setCartQty,
@@ -193,7 +242,9 @@ export function WholesaleCartProvider({
         minimumOrderValue,
         setMinimumOrderValue,
         cartOpen,
+        highlightProductId,
         setCartOpen,
+        clearCartHighlight,
         addToCart,
         updateQty,
         setCartQty,

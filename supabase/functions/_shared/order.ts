@@ -17,6 +17,44 @@ export type OrderCheckoutItem = {
   itemName: string;
 };
 
+export type WholesaleOrderBuyer = {
+  name: string;
+  role?: string | null;
+  contact_phone: string;
+  contact_email?: string | null;
+};
+
+export type WholesaleShippingAddress = {
+  dba_name: string;
+  street_1: string;
+  street_2?: string | null;
+  city: string;
+  state?: string | null;
+  postal_code: string;
+  country?: string | null;
+  special_instructions?: string | null;
+  preferred_window?: string | null;
+};
+
+export type WholesaleBillingAddress = {
+  legal_name: string;
+  street_1: string;
+  street_2?: string | null;
+  city: string;
+  state?: string | null;
+  postal_code: string;
+  country?: string | null;
+  tax_id?: string | null;
+  payment_terms?: string | null;
+};
+
+export type WholesaleFinancialDetails = {
+  subtotal_ex_gst: number;
+  gst_total: number;
+  grand_total_inc_gst: number;
+  currency?: string;
+};
+
 export type OrderCheckoutInput = {
   mode: StripePaymentMode;
   orderType: OrderType;
@@ -30,6 +68,10 @@ export type OrderCheckoutInput = {
   origin: string;
   returnTo?: string;
   successReturnTo?: string;
+  buyer?: WholesaleOrderBuyer;
+  shippingAddress?: WholesaleShippingAddress;
+  billingAddress?: WholesaleBillingAddress;
+  financialDetails?: WholesaleFinancialDetails;
   items: OrderCheckoutItem[];
 };
 
@@ -65,6 +107,10 @@ type DraftOrderRow = {
   total: number | string | null;
   notes: string | null;
   items: unknown;
+  buyer: WholesaleOrderBuyer | null;
+  shipping_address: WholesaleShippingAddress | null;
+  billing_address: WholesaleBillingAddress | null;
+  financial_details: WholesaleFinancialDetails | null;
 };
 
 type CreatePaidOrderWithItemsResponse = number;
@@ -114,6 +160,125 @@ function parseOrderType(value: unknown): OrderType {
   if (raw === "wholesale") return "wholesale";
   if (raw === "pickup") return "pickup";
   throw new Error("Invalid order type");
+}
+
+function parseOptionalJsonObject<T extends Record<string, unknown>>(
+  value: unknown,
+  label: string,
+): T | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Invalid ${label}`);
+  }
+  return value as T;
+}
+
+function parseWholesaleBuyer(value: unknown): WholesaleOrderBuyer | undefined {
+  const row = parseOptionalJsonObject<Record<string, unknown>>(value, "buyer");
+  if (!row) return undefined;
+  const name = String(row.name ?? "").trim();
+  const contact_phone = String(row.contact_phone ?? "").trim();
+  if (!name || !contact_phone) {
+    throw new Error("Buyer name and contact phone are required");
+  }
+  return {
+    name,
+    role: row.role != null ? String(row.role).trim() || null : null,
+    contact_phone,
+    contact_email:
+      row.contact_email != null ? String(row.contact_email).trim() || null : null,
+  };
+}
+
+function parseWholesaleShippingAddress(
+  value: unknown,
+): WholesaleShippingAddress | undefined {
+  const row = parseOptionalJsonObject<Record<string, unknown>>(
+    value,
+    "shipping address",
+  );
+  if (!row) return undefined;
+  const street_1 = String(row.street_1 ?? "").trim();
+  const city = String(row.city ?? "").trim();
+  const postal_code = String(row.postal_code ?? "").trim();
+  const dba_name = String(row.dba_name ?? "").trim();
+  if (!street_1 || !city || !postal_code || !dba_name) {
+    throw new Error("Shipping address requires DBA name, street, city, and postal code");
+  }
+  return {
+    dba_name,
+    street_1,
+    street_2: row.street_2 != null ? String(row.street_2).trim() || null : null,
+    city,
+    state: row.state != null ? String(row.state).trim() || null : null,
+    postal_code,
+    country: row.country != null ? String(row.country).trim() || null : null,
+    special_instructions:
+      row.special_instructions != null
+        ? String(row.special_instructions).trim() || null
+        : null,
+    preferred_window:
+      row.preferred_window != null
+        ? String(row.preferred_window).trim() || null
+        : null,
+  };
+}
+
+function parseWholesaleBillingAddress(
+  value: unknown,
+): WholesaleBillingAddress | undefined {
+  const row = parseOptionalJsonObject<Record<string, unknown>>(
+    value,
+    "billing address",
+  );
+  if (!row) return undefined;
+  const legal_name = String(row.legal_name ?? "").trim();
+  const street_1 = String(row.street_1 ?? "").trim();
+  const city = String(row.city ?? "").trim();
+  const postal_code = String(row.postal_code ?? "").trim();
+  if (!legal_name || !street_1 || !city || !postal_code) {
+    throw new Error(
+      "Billing address requires legal name, street, city, and postal code",
+    );
+  }
+  return {
+    legal_name,
+    street_1,
+    street_2: row.street_2 != null ? String(row.street_2).trim() || null : null,
+    city,
+    state: row.state != null ? String(row.state).trim() || null : null,
+    postal_code,
+    country: row.country != null ? String(row.country).trim() || null : null,
+    tax_id: row.tax_id != null ? String(row.tax_id).trim() || null : null,
+    payment_terms:
+      row.payment_terms != null ? String(row.payment_terms).trim() || null : null,
+  };
+}
+
+function parseWholesaleFinancialDetails(
+  value: unknown,
+): WholesaleFinancialDetails | undefined {
+  const row = parseOptionalJsonObject<Record<string, unknown>>(
+    value,
+    "financial details",
+  );
+  if (!row) return undefined;
+  const subtotal_ex_gst = Number(row.subtotal_ex_gst);
+  const gst_total = Number(row.gst_total);
+  const grand_total_inc_gst = Number(row.grand_total_inc_gst);
+  if (
+    !Number.isFinite(subtotal_ex_gst) ||
+    !Number.isFinite(gst_total) ||
+    !Number.isFinite(grand_total_inc_gst)
+  ) {
+    throw new Error("Invalid financial details");
+  }
+  return {
+    subtotal_ex_gst,
+    gst_total,
+    grand_total_inc_gst,
+    currency: row.currency != null ? String(row.currency).trim() || undefined : undefined,
+  };
 }
 
 function parseOptionalStoreId(value: unknown): number | null {
@@ -220,6 +385,17 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     throw new Error("Please sign in to place a wholesale order");
   }
 
+  const buyer = parseWholesaleBuyer(data.buyer);
+  const shippingAddress = parseWholesaleShippingAddress(data.shippingAddress);
+  const billingAddress = parseWholesaleBillingAddress(data.billingAddress);
+  const financialDetails = parseWholesaleFinancialDetails(data.financialDetails);
+
+  if (orderType === "wholesale") {
+    if (!buyer || !shippingAddress || !billingAddress || !financialDetails) {
+      throw new Error("Wholesale checkout requires buyer, shipping, billing, and totals");
+    }
+  }
+
   const rawItems = data.items;
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
     throw new Error("Your cart is empty");
@@ -253,6 +429,10 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     origin,
     returnTo: returnTo || undefined,
     successReturnTo: successReturnTo || undefined,
+    buyer,
+    shippingAddress,
+    billingAddress,
+    financialDetails,
     items,
   };
 }
@@ -370,6 +550,10 @@ export async function createOrderCheckoutSession(
       total: total.toFixed(2),
       notes: input.notes ?? null,
       items: input.items,
+      buyer: input.buyer ?? null,
+      shipping_address: input.shippingAddress ?? null,
+      billing_address: input.billingAddress ?? null,
+      financial_details: input.financialDetails ?? null,
     })
     .select("id")
     .single();
@@ -515,6 +699,10 @@ export async function markOrderPaidFromStripeSession(
       p_status_updated_at: new Date().toISOString(),
       p_items: parsedItems,
       p_draft_order_id: draftOrderId,
+      p_buyer: draftOrder.buyer,
+      p_shipping_address: draftOrder.shipping_address,
+      p_billing_address: draftOrder.billing_address,
+      p_financial_details: draftOrder.financial_details,
     },
   );
 
@@ -627,7 +815,7 @@ async function fetchDraftOrder(
   const { data, error } = await supabase
     .from("draft_orders")
     .select(
-      "id, order_type, customer_account, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items",
+      "id, order_type, customer_account, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items, buyer, shipping_address, billing_address, financial_details",
     )
     .eq("id", draftOrderId)
     .maybeSingle();
@@ -643,7 +831,7 @@ function parseDraftItems(items: unknown): DraftOrderItemRow[] {
   for (const raw of items) {
     if (!raw || typeof raw !== "object") continue;
     const item = raw as Record<string, unknown>;
-    const menuItemId = Number(item.menuItemId);
+    const menuItemId = Number(item.menuItemId ?? item.productId);
     const qty = Number(item.qty);
     const unitPrice = Number(item.unitPrice);
     const itemName = String(item.itemName ?? "").trim();

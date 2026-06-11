@@ -37,6 +37,15 @@ export type {
   WholesaleProductAvailabilityRow,
   WholesaleProductRow,
 } from "./WholesaleProduct";
+export type {
+  WholesaleB2BCheckoutPayload,
+  WholesaleOrderB2B,
+  WholesaleOrderB2BSection,
+  WholesaleBillingAddress,
+  WholesaleOrderBuyer,
+  WholesaleOrderFinancialDetails,
+  WholesaleShippingAddress,
+} from "./WholesaleB2BOrder";
 export {
   applyWholesaleProductAvailability,
   mapWholesaleProductRow,

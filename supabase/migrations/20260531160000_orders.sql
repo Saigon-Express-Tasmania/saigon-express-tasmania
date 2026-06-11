@@ -30,6 +30,10 @@ create table public.orders (
   notes text,
   cancel_token text,
   tracking_token text,
+  buyer jsonb,
+  shipping_address jsonb,
+  billing_address jsonb,
+  financial_details jsonb,
   status_updated_at timestamptz,
   receipt_confirmed_at timestamptz,
   created_at timestamptz not null default now()

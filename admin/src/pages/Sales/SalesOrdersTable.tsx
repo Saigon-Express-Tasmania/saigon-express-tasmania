@@ -1,11 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import type { SalesOrderRow } from './salesOrderShared';
 
 type SalesOrdersTableProps = {
   orders: SalesOrderRow[];
   saving: boolean;
+  onView: (order: SalesOrderRow) => void;
   onEdit: (order: SalesOrderRow) => void;
   onDelete: (order: SalesOrderRow) => void;
 };
@@ -13,6 +14,7 @@ type SalesOrdersTableProps = {
 export function SalesOrdersTable({
   orders,
   saving,
+  onView,
   onEdit,
   onDelete,
 }: SalesOrdersTableProps) {
@@ -55,8 +57,18 @@ export function SalesOrdersTable({
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => onView(order)}
+                    disabled={saving}
+                    aria-label={`View order ${order.id}`}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => onEdit(order)}
                     disabled={saving}
+                    aria-label={`Edit order ${order.id}`}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>

@@ -1,3 +1,11 @@
+import {
+  emptyB2BForm,
+  parseB2BFormFromRow,
+  type SalesOrderB2BForm,
+} from './salesOrderB2b';
+
+export type { SalesOrderB2BForm } from './salesOrderB2b';
+
 export type OrderStatus =
   | 'pending'
   | 'confirmed'
@@ -23,6 +31,10 @@ export type SalesOrderRow = {
   notes: string | null;
   cancel_token: string | null;
   tracking_token: string | null;
+  buyer: unknown;
+  shipping_address: unknown;
+  billing_address: unknown;
+  financial_details: unknown;
   status_updated_at: string | null;
   receipt_confirmed_at: string | null;
   created_at: string;
@@ -37,8 +49,12 @@ export type SalesOrderItemRow = {
   item_name: string;
 };
 
-export type SalesOrderForm = Omit<SalesOrderRow, 'id' | 'created_at'> & {
+export type SalesOrderForm = Omit<
+  SalesOrderRow,
+  'id' | 'created_at' | 'buyer' | 'shipping_address' | 'billing_address' | 'financial_details'
+> & {
   items: SalesOrderItemForm[];
+  b2b: SalesOrderB2BForm;
 };
 
 export type SalesOrderItemForm = {
@@ -63,7 +79,7 @@ export type SalesOrdersDataset = {
 };
 
 export const SALES_ORDER_COLUMNS =
-  'id, customer_name, customer_email, customer_phone, store_id, pickup_time, total, status, stripe_checkout_session_id, stripe_mode, payment_status, notes, cancel_token, tracking_token, status_updated_at, receipt_confirmed_at, created_at';
+  'id, customer_name, customer_email, customer_phone, store_id, pickup_time, total, status, stripe_checkout_session_id, stripe_mode, payment_status, notes, cancel_token, tracking_token, buyer, shipping_address, billing_address, financial_details, status_updated_at, receipt_confirmed_at, created_at';
 
 export const ORDER_STATUS_OPTIONS: OrderStatus[] = [
   'pending',
@@ -122,6 +138,7 @@ export function emptyOrderForm(defaultStripeMode: 'test' | 'live' | null): Sales
     status_updated_at: null,
     receipt_confirmed_at: null,
     items: [],
+    b2b: emptyB2BForm(),
   };
 }
 
@@ -153,6 +170,7 @@ export function orderToForm(
     status_updated_at: order.status_updated_at,
     receipt_confirmed_at: order.receipt_confirmed_at,
     items: itemPayload,
+    b2b: parseB2BFormFromRow(order),
   };
 }
 

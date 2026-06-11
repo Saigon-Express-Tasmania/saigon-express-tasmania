@@ -220,6 +220,7 @@ export default function WholesaleShop({
       productId: product.id,
       productName: product.name,
       unitPrice: product.priceExGst,
+      imageUrl: product.imageUrl,
     });
   };
 
@@ -241,9 +242,6 @@ export default function WholesaleShop({
                 </h1>
                 <p className="text-white/45 text-sm">
                   {me.businessName}
-                  {" \u00b7 "}
-                  {me.portalType === "wholesale" ? "Wholesale" : "Warehouse"}{" "}
-                  Member
                 </p>
               </div>
             ) : null}

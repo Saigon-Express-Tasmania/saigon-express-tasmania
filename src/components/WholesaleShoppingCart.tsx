@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useWholesaleInventory } from "@/contexts/WholesaleInventoryContext";
@@ -9,7 +9,16 @@ import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { useLocale } from "next-intl";
 import { DEFAULT_LOCALE } from "@/config/localize";
-import type { UserProfile } from "@/types";
+import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
+import WholesaleOrderReviewPanel from "@/components/WholesaleOrderReviewPanel";
+import {
+  buildWholesaleB2BFromProfile,
+  buildWholesaleFinancialDetails,
+  getWholesaleContactName,
+  serializeWholesaleB2BForCheckout,
+  validateWholesaleB2BReview,
+} from "@/lib/wholesale-b2b-order";
+import type { WholesaleB2BCheckoutPayload } from "@/types";
 import {
   ChevronRight,
   CreditCard,
@@ -20,6 +29,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+
+type CartSidebarView = "cart" | "review";
 
 const CART_ANIMATION_DURATION = 0.24;
 const QTY_FIELD_CLASS =
@@ -50,13 +61,6 @@ const panelMotion = {
   exit: { x: "100%" },
   transition: { duration: CART_ANIMATION_DURATION, ease: "easeOut" as const },
 };
-
-function getContactName(profile: UserProfile): string {
-  if (profile.display_name?.trim()) return profile.display_name.trim();
-  const parts = [profile.first_name, profile.last_name].filter(Boolean);
-  if (parts.length > 0) return parts.join(" ");
-  return profile.email ?? "Member";
-}
 
 function MinimumOrderProgress({
   cartTotal,
@@ -304,7 +308,9 @@ export default function WholesaleShoppingCart() {
     cartTotal,
     minimumOrderValue,
     cartOpen,
+    highlightProductId,
     setCartOpen,
+    clearCartHighlight,
     updateQty,
     setCartQty,
     clearCart,
@@ -323,6 +329,19 @@ export default function WholesaleShoppingCart() {
   );
   const [sliderDragProductId, setSliderDragProductId] = useState<number | null>(
     null,
+  );
+  const [cartView, setCartView] = useState<CartSidebarView>("cart");
+  const [b2bReview, setB2bReview] = useState<WholesaleB2BCheckoutPayload | null>(
+    null,
+  );
+  const highlightedItemRef = useRef<HTMLDivElement | null>(null);
+
+  const sortedCart = useMemo(
+    () =>
+      [...cart].sort(
+        (a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0),
+      ),
+    [cart],
   );
 
   const hasMetMinimum = cartTotal >= minimumOrderValue;
@@ -348,6 +367,8 @@ export default function WholesaleShoppingCart() {
       setActiveQtyProductId(null);
       setEditingQtyProductId(null);
       setSliderDragProductId(null);
+      setCartView("cart");
+      setB2bReview(null);
     }
   }, [cartOpen]);
 
@@ -361,6 +382,23 @@ export default function WholesaleShoppingCart() {
       document.body.style.overflow = previousOverflow;
     };
   }, [cartOpen, isCheckingOut]);
+
+  useEffect(() => {
+    if (!cartOpen || highlightProductId == null) return;
+
+    highlightedItemRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+
+    const timeout = window.setTimeout(() => {
+      clearCartHighlight();
+    }, 2800);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [cartOpen, highlightProductId, clearCartHighlight, sortedCart]);
 
   const activateCartItem = (productId: number) => {
     setActiveQtyProductId(productId);
@@ -418,7 +456,7 @@ export default function WholesaleShoppingCart() {
       ? "/wholesale/orders"
       : `/${locale}/wholesale/orders`;
 
-  const handleCheckout = async () => {
+  const handleBeginReview = () => {
     if (cart.length === 0) {
       toast.error("Your cart is empty.");
       return;
@@ -446,7 +484,6 @@ export default function WholesaleShoppingCart() {
       return;
     }
 
-    const customerName = getContactName(profile);
     const customerEmail = profile.email?.trim() ?? user.email?.trim() ?? "";
     const customerPhone = profile.phone?.trim() ?? "";
 
@@ -458,6 +495,36 @@ export default function WholesaleShoppingCart() {
       toast.error("Please add a phone number to your profile before checkout.");
       return;
     }
+
+    const draft = buildWholesaleB2BFromProfile(profile, customerEmail);
+    draft.financialDetails = buildWholesaleFinancialDetails(cartTotal);
+    setB2bReview(draft);
+    setCartView("review");
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!user || !profile || !b2bReview) {
+      toast.error("Please sign in to checkout.");
+      return;
+    }
+
+    const validationError = validateWholesaleB2BReview(b2bReview);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    const customerName = getWholesaleContactName(profile);
+    const customerEmail =
+      b2bReview.buyer.contact_email?.trim() ||
+      profile.email?.trim() ||
+      user.email?.trim() ||
+      "";
+    const customerPhone = b2bReview.buyer.contact_phone.trim();
+    const b2bPayload = serializeWholesaleB2BForCheckout({
+      ...b2bReview,
+      financialDetails: buildWholesaleFinancialDetails(cartTotal),
+    });
 
     setIsCheckingOut(true);
     try {
@@ -473,6 +540,7 @@ export default function WholesaleShoppingCart() {
           origin: window.location.origin,
           returnTo: wholesaleDashboardPath,
           successReturnTo: wholesaleOrdersPath,
+          ...b2bPayload,
           items: cart.map((item) => ({
             productId: item.productId,
             qty: item.qty,
@@ -528,15 +596,34 @@ export default function WholesaleShoppingCart() {
             aria-label="Close cart"
             className="fixed inset-0 z-50 bg-black/60"
             onClick={() => {
-              if (!isCheckingOut) setCartOpen(false);
+              if (!isCheckingOut) {
+                setCartView("cart");
+                setCartOpen(false);
+              }
             }}
             {...backdropMotion}
           />
           <motion.div
             key="wholesale-cart-panel"
-            className="fixed inset-y-0 right-0 z-[51] flex w-full flex-col border-l border-white/10 bg-black shadow-2xl sm:max-w-md"
+            className={`fixed inset-y-0 right-0 z-[51] flex w-full flex-col border-l border-white/10 bg-black shadow-2xl ${
+              cartView === "review"
+                ? "sm:max-w-2xl lg:max-w-3xl"
+                : "sm:max-w-md"
+            }`}
             {...panelMotion}
           >
+        {cartView === "review" && b2bReview ? (
+          <WholesaleOrderReviewPanel
+            items={sortedCart}
+            financialDetails={buildWholesaleFinancialDetails(cartTotal)}
+            b2b={b2bReview}
+            onB2bChange={setB2bReview}
+            onBack={() => setCartView("cart")}
+            onConfirm={() => void handleConfirmPayment()}
+            isCheckingOut={isCheckingOut}
+          />
+        ) : (
+        <>
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
           <h2 className="font-serif text-xl font-bold text-white flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-primary" /> Your Cart
@@ -571,7 +658,7 @@ export default function WholesaleShoppingCart() {
               <p className="text-xs mt-1">Add products to get started</p>
             </div>
           ) : (
-            cart.map((item) => {
+            sortedCart.map((item) => {
               const maxQty = getMaxQty(item.productId);
               const atMin = item.qty <= 1;
               const atMax =
@@ -580,15 +667,21 @@ export default function WholesaleShoppingCart() {
 
               const isItemActive = activeQtyProductId === item.productId;
               const isItemEditing = editingQtyProductId === item.productId;
+              const isHighlighted = highlightProductId === item.productId;
 
               return (
-              <div
+              <motion.div
                 key={item.productId}
+                ref={isHighlighted ? highlightedItemRef : undefined}
                 tabIndex={0}
+                animate={isHighlighted ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+                transition={{ duration: 0.75, ease: "easeInOut" }}
                 className={`p-4 rounded-xl border transition-colors outline-none ${
-                  isItemActive
-                    ? "bg-white/8 border-white/20 ring-1 ring-primary/25"
-                    : "bg-white/5 border-white/10"
+                  isHighlighted
+                    ? "bg-green-500/15 border-green-400/50 ring-2 ring-green-400/50"
+                    : isItemActive
+                      ? "bg-white/8 border-white/20 ring-1 ring-primary/25"
+                      : "bg-white/5 border-white/10"
                 }`}
                 onMouseEnter={() => activateCartItem(item.productId)}
                 onMouseLeave={() => deactivateCartItem(item.productId)}
@@ -600,7 +693,11 @@ export default function WholesaleShoppingCart() {
                 }}
                 onTouchStart={() => activateCartItem(item.productId)}
               >
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3">
+                  <WholesaleCartItemThumbnail
+                    imageUrl={item.imageUrl}
+                    alt={item.productName}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white leading-snug">
                       {item.productName}
@@ -665,7 +762,7 @@ export default function WholesaleShoppingCart() {
                     )
                   }
                 />
-              </div>
+              </motion.div>
             );
             })
           )}
@@ -712,7 +809,7 @@ export default function WholesaleShoppingCart() {
 
             <button
               type="button"
-              onClick={() => void handleCheckout()}
+              onClick={handleBeginReview}
               disabled={isCheckingOut}
               className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-sm transition-colors disabled:opacity-60 ${
                 hasMetMinimum
@@ -720,15 +817,10 @@ export default function WholesaleShoppingCart() {
                   : "bg-white/10 text-white hover:bg-white/15 border border-amber-400/40"
               }`}
             >
-              {isCheckingOut ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Processing…
-                </>
-              ) : hasMetMinimum ? (
+              {hasMetMinimum ? (
                 <>
                   <CreditCard className="w-4 h-4" />
-                  Checkout with Card / Apple Pay
+                  Review order
                   <ChevronRight className="w-4 h-4" />
                 </>
               ) : (
@@ -740,11 +832,13 @@ export default function WholesaleShoppingCart() {
             </button>
             <p className="text-xs text-white/30 text-center">
               {hasMetMinimum
-                ? "Secure payment via Stripe · Card & Apple Pay accepted"
+                ? "Review shipping and billing before payment"
                 : `Wholesale minimum is $${minimumOrderValue.toFixed(2)} ex GST in product value.`}
             </p>
           </div>
         ) : null}
+        </>
+        )}
           </motion.div>
         </>
       ) : null}

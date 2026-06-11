@@ -13,6 +13,10 @@ create table public.draft_orders (
   notes text,
   items jsonb not null default '[]'::jsonb,
   expires_at timestamptz,
+  buyer jsonb,
+  shipping_address jsonb,
+  billing_address jsonb,
+  financial_details jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

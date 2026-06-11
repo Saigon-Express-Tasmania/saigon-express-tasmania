@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { SalesOrderDeleteDialog } from './SalesOrderDeleteDialog';
 import { SalesOrderEditorDialog } from './SalesOrderEditorDialog';
 import { SalesOrdersTable } from './SalesOrdersTable';
+import { serializeB2BForDb } from './salesOrderB2b';
 import {
   emptyOrderForm,
   orderToForm,
@@ -48,6 +49,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
   const [search, setSearch] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogReadOnly, setDialogReadOnly] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [form, setForm] = useState<SalesOrderForm>(() =>
     emptyOrderForm(dataset.defaultStripeMode),
@@ -102,11 +104,12 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
   const openCreate = () => {
     setEditingOrderId(null);
+    setDialogReadOnly(false);
     setForm(emptyOrderForm(dataset.defaultStripeMode));
     setDialogOpen(true);
   };
 
-  const openEdit = async (order: SalesOrderRow) => {
+  const openOrderDialog = async (order: SalesOrderRow, readOnly: boolean) => {
     setSaving(true);
     try {
       const { data: items, error: itemError } = await supabase
@@ -117,6 +120,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
       if (itemError) throw itemError;
       setEditingOrderId(order.id);
+      setDialogReadOnly(readOnly);
       setForm(orderToForm(order, (items ?? []) as SalesOrderItemRow[]));
       setDialogOpen(true);
     } catch (err) {
@@ -165,6 +169,8 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
     setSaving(true);
     try {
+      const b2bPayload = serializeB2BForDb(form.b2b, orderType);
+
       const orderPayload = {
         order_type: orderType,
         customer_name: form.customer_name.trim(),
@@ -182,6 +188,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         tracking_token: form.tracking_token?.trim() || null,
         status_updated_at: form.status_updated_at || null,
         receipt_confirmed_at: form.receipt_confirmed_at || null,
+        ...b2bPayload,
       };
 
       let targetOrderId = editingOrderId;
@@ -336,7 +343,8 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
               <SalesOrdersTable
                 orders={filteredOrders}
                 saving={saving}
-                onEdit={(order) => void openEdit(order)}
+                onView={(order) => void openOrderDialog(order, true)}
+                onEdit={(order) => void openOrderDialog(order, false)}
                 onDelete={setDeleteTarget}
               />
             )}
@@ -350,6 +358,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         editingOrderId={editingOrderId}
+        readOnly={dialogReadOnly}
         form={form}
         onFormChange={setForm}
         saving={saving}
