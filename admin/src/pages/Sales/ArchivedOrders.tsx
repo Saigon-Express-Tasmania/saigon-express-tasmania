@@ -28,150 +28,107 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
-import { Loader2, Pencil, Plus } from 'lucide-react';
+import { Loader2, Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { SalesOrderAddressEditor } from './SalesOrderAddressEditor';
+import { SalesOrderItemsEditor } from './SalesOrderItemsEditor';
+import type { OrderAddressDbFields } from './salesOrderB2b';
+import {
+  ARCHIVED_ORDER_COLUMNS,
+  fetchOrderItems,
+  fetchPaymentStatusByOrderIds,
+  formatTargetDateDisplay,
+  fromDatetimeLocalValue,
+  mapDbItemToForm,
+  toDatetimeLocalValue,
+} from './salesOrderDb';
+import {
+  FULFILLMENT_TYPE_OPTIONS,
+  ORDER_STATUS_OPTIONS,
+  PAYMENT_TERMS_OPTIONS,
+  type FulfillmentType,
+  type OrderStatus,
+  type PaymentStatus,
+  type PaymentTerms,
+  type SalesOrderItemForm,
+} from './salesOrderShared';
 import { useSalesOrderType } from './useSalesOrderType';
-
-type OrderStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'preparing'
-  | 'ready'
-  | 'completed'
-  | 'cancelled';
-
-type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
-
-type ArchivedOrderItem = {
-  menuItemId: number;
-  qty: number;
-  unitPrice: number;
-  itemName: string;
-};
 
 type ArchivedOrderRow = {
   id: number;
-  original_order_id: number | null;
-  customer_name: string | null;
-  customer_email: string | null;
-  customer_phone: string | null;
-  store_id: number | null;
-  pickup_time: string | null;
-  total: string | null;
-  status: OrderStatus | null;
-  payment_status: PaymentStatus | null;
-  notes: string | null;
-  items: unknown;
-  archived_reason: string | null;
-  archived_at: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type ArchivedOrderForm = {
-  original_order_id: number | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
   store_id: number | null;
-  pickup_time: string;
-  total: string;
-  status: OrderStatus | null;
-  payment_status: PaymentStatus | null;
-  notes: string;
-  itemsJson: string;
-  archived_reason: string;
+  requested_fulfillment_method: FulfillmentType;
+  requested_target_date: string;
+  payment_terms: PaymentTerms;
+  po_number: string | null;
+  subtotal: string;
+  tax_total: string;
+  shipping_fee: string;
+  grand_total: string;
+  status: OrderStatus;
+  notes: string | null;
+  archived_reason: string | null;
   archived_at: string;
   created_at: string;
-};
+  updated_at: string;
+  payment_status?: PaymentStatus;
+} & OrderAddressDbFields;
 
-const ARCHIVED_ORDER_COLUMNS =
-  'id, original_order_id, customer_name, customer_email, customer_phone, store_id, pickup_time, total, status, payment_status, notes, items, archived_reason, archived_at, created_at, updated_at';
+type ArchivedOrderForm = {
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  store_id: number | null;
+  requested_fulfillment_method: FulfillmentType;
+  requested_target_date: string;
+  payment_terms: PaymentTerms;
+  po_number: string;
+  subtotal: string;
+  tax_total: string;
+  shipping_fee: string;
+  grand_total: string;
+  status: OrderStatus;
+  notes: string;
+  archived_reason: string;
+  archived_at: string;
+  items: SalesOrderItemForm[];
+} & OrderAddressDbFields;
 
-const ORDER_STATUS_OPTIONS: OrderStatus[] = [
-  'pending',
-  'confirmed',
-  'preparing',
-  'ready',
-  'completed',
-  'cancelled',
-];
-const PAYMENT_STATUS_OPTIONS: PaymentStatus[] = ['unpaid', 'paid', 'refunded'];
-
-function emptyArchivedOrderForm(): ArchivedOrderForm {
-  const nowIso = new Date().toISOString();
+function archivedRowToForm(row: ArchivedOrderRow, items: SalesOrderItemForm[]): ArchivedOrderForm {
   return {
-    original_order_id: null,
-    customer_name: '',
-    customer_email: '',
-    customer_phone: '',
-    store_id: null,
-    pickup_time: '',
-    total: '0.00',
-    status: null,
-    payment_status: null,
-    notes: '',
-    itemsJson: '[]',
-    archived_reason: '',
-    archived_at: nowIso,
-    created_at: nowIso,
-  };
-}
-
-function toForm(row: ArchivedOrderRow): ArchivedOrderForm {
-  return {
-    original_order_id: row.original_order_id,
-    customer_name: row.customer_name ?? '',
-    customer_email: row.customer_email ?? '',
-    customer_phone: row.customer_phone ?? '',
+    customer_name: row.customer_name,
+    customer_email: row.customer_email,
+    customer_phone: row.customer_phone,
     store_id: row.store_id,
-    pickup_time: row.pickup_time ?? '',
-    total: row.total ? String(row.total) : '0.00',
+    requested_fulfillment_method: row.requested_fulfillment_method,
+    requested_target_date: row.requested_target_date,
+    payment_terms: row.payment_terms,
+    po_number: row.po_number ?? '',
+    subtotal: String(row.subtotal),
+    tax_total: String(row.tax_total),
+    shipping_fee: String(row.shipping_fee),
+    grand_total: String(row.grand_total),
     status: row.status,
-    payment_status: row.payment_status,
     notes: row.notes ?? '',
-    itemsJson: JSON.stringify(row.items ?? [], null, 2),
     archived_reason: row.archived_reason ?? '',
     archived_at: row.archived_at,
-    created_at: row.created_at,
+    items,
+    shipping_address: row.shipping_address,
+    shipping_city: row.shipping_city,
+    shipping_state: row.shipping_state,
+    shipping_postal_code: row.shipping_postal_code,
+    shipping_country: row.shipping_country,
+    billing_address: row.billing_address,
+    billing_city: row.billing_city,
+    billing_state: row.billing_state,
+    billing_postal_code: row.billing_postal_code,
+    billing_country: row.billing_country,
   };
-}
-
-function parseArchivedItems(itemsJson: string): ArchivedOrderItem[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(itemsJson);
-  } catch {
-    throw new Error('Items JSON is invalid.');
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error('Items JSON must be an array.');
-  }
-  return parsed.map((raw) => {
-    if (!raw || typeof raw !== 'object') {
-      throw new Error('Each item must be an object.');
-    }
-    const row = raw as Record<string, unknown>;
-    const menuItemId = Number(row.menuItemId);
-    const qty = Number(row.qty);
-    const unitPrice = Number(row.unitPrice);
-    const itemName = String(row.itemName ?? '').trim();
-    if (!Number.isFinite(menuItemId) || menuItemId <= 0) {
-      throw new Error('Each item needs a valid menuItemId.');
-    }
-    if (!Number.isFinite(qty) || qty < 1) {
-      throw new Error('Each item needs qty >= 1.');
-    }
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-      throw new Error('Each item needs unitPrice >= 0.');
-    }
-    if (!itemName) {
-      throw new Error('Each item needs itemName.');
-    }
-    return { menuItemId, qty, unitPrice, itemName };
-  });
 }
 
 export function ArchivedOrders() {
@@ -190,7 +147,7 @@ export function ArchivedOrders() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<ArchivedOrderForm>(emptyArchivedOrderForm());
+  const [form, setForm] = useState<ArchivedOrderForm | null>(null);
 
   const loadRows = useCallback(async () => {
     if (!orderType) return;
@@ -202,9 +159,17 @@ export function ArchivedOrders() {
         .from('archived_orders')
         .select(ARCHIVED_ORDER_COLUMNS)
         .eq('order_type', orderType)
-        .order('id', { ascending: false });
+        .order('archived_at', { ascending: false });
       if (fetchError) throw fetchError;
-      setRows((data ?? []) as ArchivedOrderRow[]);
+
+      const baseRows = (data ?? []) as ArchivedOrderRow[];
+      const paymentMap = await fetchPaymentStatusByOrderIds(baseRows.map((row) => row.id));
+      setRows(
+        baseRows.map((row) => ({
+          ...row,
+          payment_status: paymentMap.get(row.id) ?? 'unpaid',
+        })),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load archived orders.';
       setError(message);
@@ -228,82 +193,100 @@ export function ArchivedOrders() {
     return rows.filter((row) => {
       return (
         String(row.id).includes(term) ||
-        String(row.original_order_id ?? '').includes(term) ||
-        (row.customer_name ?? '').toLowerCase().includes(term) ||
-        (row.customer_email ?? '').toLowerCase().includes(term) ||
-        (row.customer_phone ?? '').toLowerCase().includes(term)
+        row.customer_name.toLowerCase().includes(term) ||
+        row.customer_email.toLowerCase().includes(term) ||
+        row.customer_phone.toLowerCase().includes(term)
       );
     });
   }, [rows, search]);
 
-  const openCreate = () => {
-    setEditingId(null);
-    setForm(emptyArchivedOrderForm());
-    setDialogOpen(true);
-  };
-
-  const openEdit = (row: ArchivedOrderRow) => {
-    setEditingId(row.id);
-    setForm(toForm(row));
-    setDialogOpen(true);
+  const openEdit = async (row: ArchivedOrderRow) => {
+    setSaving(true);
+    try {
+      const itemRows = await fetchOrderItems(row.id);
+      const items = itemRows.map((item) => mapDbItemToForm(item));
+      setEditingId(row.id);
+      setForm(archivedRowToForm(row, items));
+      setDialogOpen(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load archived order.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async () => {
-    if (!orderType) return;
+    if (!orderType || !form || editingId === null) return;
 
-    const parsedTotal = Number(form.total);
-    if (!Number.isFinite(parsedTotal) || parsedTotal < 0) {
-      toast.error('Total must be a valid non-negative number.');
+    const subtotal = Number(form.subtotal);
+    const taxTotal = Number(form.tax_total);
+    const shippingFee = Number(form.shipping_fee);
+    const grandTotal = Number(form.grand_total);
+
+    if (
+      !form.customer_name.trim() ||
+      !form.customer_email.trim() ||
+      !form.customer_phone.trim()
+    ) {
+      toast.error('Customer name, email, and phone are required.');
       return;
     }
 
-    let parsedItems: ArchivedOrderItem[];
-    try {
-      parsedItems = parseArchivedItems(form.itemsJson);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Invalid items JSON.');
+    if (
+      !Number.isFinite(subtotal) ||
+      !Number.isFinite(taxTotal) ||
+      !Number.isFinite(shippingFee) ||
+      !Number.isFinite(grandTotal)
+    ) {
+      toast.error('Totals must be valid numbers.');
+      return;
+    }
+
+    const targetDate = new Date(form.requested_target_date);
+    if (Number.isNaN(targetDate.getTime())) {
+      toast.error('Target date must be valid.');
       return;
     }
 
     setSaving(true);
     try {
       const payload = {
-        order_type: orderType,
-        original_order_id: form.original_order_id,
-        customer_name: form.customer_name.trim() || null,
-        customer_email: form.customer_email.trim() || null,
-        customer_phone: form.customer_phone.trim() || null,
+        customer_name: form.customer_name.trim(),
+        customer_email: form.customer_email.trim(),
+        customer_phone: form.customer_phone.trim(),
         store_id: form.store_id,
-        pickup_time: form.pickup_time.trim() || null,
-        total: parsedTotal.toFixed(2),
+        requested_fulfillment_method: form.requested_fulfillment_method,
+        requested_target_date: targetDate.toISOString(),
+        payment_terms: form.payment_terms,
+        po_number: form.po_number.trim() || null,
+        subtotal: subtotal.toFixed(2),
+        tax_total: taxTotal.toFixed(2),
+        shipping_fee: shippingFee.toFixed(2),
+        grand_total: grandTotal.toFixed(2),
         status: form.status,
-        payment_status: form.payment_status,
         notes: form.notes.trim() || null,
-        items: parsedItems,
         archived_reason: form.archived_reason.trim() || null,
         archived_at: form.archived_at.trim() || new Date().toISOString(),
+        shipping_address: form.shipping_address.trim() || 'N/A',
+        shipping_city: form.shipping_city.trim() || 'N/A',
+        shipping_state: form.shipping_state.trim() || 'N/A',
+        shipping_postal_code: form.shipping_postal_code.trim() || '0000',
+        shipping_country: form.shipping_country.trim() || 'Australia',
+        billing_address: form.billing_address.trim() || 'N/A',
+        billing_city: form.billing_city.trim() || 'N/A',
+        billing_state: form.billing_state.trim() || 'N/A',
+        billing_postal_code: form.billing_postal_code.trim() || '0000',
+        billing_country: form.billing_country.trim() || 'Australia',
+        updated_at: new Date().toISOString(),
       };
 
-      if (editingId !== null) {
-        const { error: updateError } = await supabase
-          .from('archived_orders')
-          .update({
-            ...payload,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingId);
-        if (updateError) throw updateError;
-        toast.success('Archived order updated.');
-      } else {
-        const { error: insertError } = await supabase.from('archived_orders').insert({
-          ...payload,
-          created_at: form.created_at.trim() || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-        if (insertError) throw insertError;
-        toast.success('Archived order created.');
-      }
+      const { error: updateError } = await supabase
+        .from('archived_orders')
+        .update(payload)
+        .eq('id', editingId);
+      if (updateError) throw updateError;
 
+      toast.success('Archived order updated.');
       setDialogOpen(false);
       await loadRows();
     } catch (err) {
@@ -342,15 +325,13 @@ export function ArchivedOrders() {
     <DashboardLayout title={pageTitle}>
       <div className="space-y-6">
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <CardHeader>
             <div>
               <CardTitle>{tableTitle}</CardTitle>
-              <CardDescription>Read and update archived order records.</CardDescription>
+              <CardDescription>
+                Historical order headers. Line items remain in shared order_items by preserved ID.
+              </CardDescription>
             </div>
-            <Button onClick={openCreate} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add archived order
-            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
@@ -359,7 +340,7 @@ export function ArchivedOrders() {
               </div>
             )}
             <Input
-              placeholder="Search by archive ID, original order ID, customer, email or phone..."
+              placeholder="Search by order ID, customer, email or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
@@ -376,12 +357,12 @@ export function ArchivedOrders() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-semibold">Archive ID</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">Original ID</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Order ID</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Target date</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">Archived At</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Archived at</th>
                       <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
                     </tr>
                   </thead>
@@ -389,19 +370,23 @@ export function ArchivedOrders() {
                     {filteredRows.map((row) => (
                       <tr key={row.id} className="border-b transition-colors hover:bg-muted/50">
                         <td className="px-4 py-3 font-mono text-sm">{row.id}</td>
-                        <td className="px-4 py-3 font-mono text-sm">{row.original_order_id ?? '-'}</td>
                         <td className="px-4 py-3 text-sm">
-                          <p className="font-medium">{row.customer_name ?? '-'}</p>
-                          <p className="text-muted-foreground">{row.customer_email ?? '-'}</p>
+                          <p className="font-medium">{row.customer_name}</p>
+                          <p className="text-muted-foreground">{row.customer_email}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                          {row.total ? `$${Number(row.total).toFixed(2)}` : '-'}
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {formatTargetDateDisplay(row.requested_target_date)}
+                        </td>
+                        <td className="px-4 py-3 text-sm tabular-nums">
+                          ${Number(row.grand_total).toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary">{row.status ?? 'none'}</Badge>
-                            <Badge variant={row.payment_status === 'paid' ? 'default' : 'secondary'}>
-                              {row.payment_status ?? 'none'}
+                            <Badge variant="secondary">{row.status}</Badge>
+                            <Badge
+                              variant={row.payment_status === 'paid' ? 'default' : 'secondary'}
+                            >
+                              {row.payment_status ?? 'unpaid'}
                             </Badge>
                           </div>
                         </td>
@@ -413,7 +398,7 @@ export function ArchivedOrders() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openEdit(row)}
+                              onClick={() => void openEdit(row)}
                               disabled={saving}
                             >
                               <Pencil className="h-4 w-4" />
@@ -430,177 +415,261 @@ export function ArchivedOrders() {
         </Card>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setForm(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId !== null ? 'Edit archived order' : 'Add archived order'}</DialogTitle>
+            <DialogTitle>Edit archived order #{editingId}</DialogTitle>
             <DialogDescription>
-              Manage archived order data (deletion is intentionally disabled).
+              Update archived header fields. Line items are read-only and linked by order ID.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="arch-original-order-id">Original order ID</Label>
-              <Input
-                id="arch-original-order-id"
-                type="number"
-                value={form.original_order_id ?? ''}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    original_order_id: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-              />
+          {form ? (
+            <div className="grid gap-4 py-2 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="arch-customer-name">Customer name</Label>
+                <Input
+                  id="arch-customer-name"
+                  value={form.customer_name}
+                  onChange={(e) => setForm((prev) => prev && { ...prev, customer_name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-customer-email">Customer email</Label>
+                <Input
+                  id="arch-customer-email"
+                  type="email"
+                  value={form.customer_email}
+                  onChange={(e) => setForm((prev) => prev && { ...prev, customer_email: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-customer-phone">Customer phone</Label>
+                <Input
+                  id="arch-customer-phone"
+                  value={form.customer_phone}
+                  onChange={(e) => setForm((prev) => prev && { ...prev, customer_phone: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-store-id">Store ID</Label>
+                <Input
+                  id="arch-store-id"
+                  type="number"
+                  value={form.store_id ?? ''}
+                  onChange={(e) =>
+                    setForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            store_id: e.target.value ? Number(e.target.value) : null,
+                          }
+                        : prev,
+                    )
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-fulfillment">Fulfillment method</Label>
+                <Select
+                  value={form.requested_fulfillment_method}
+                  onValueChange={(value) =>
+                    setForm((prev) =>
+                      prev
+                        ? { ...prev, requested_fulfillment_method: value as FulfillmentType }
+                        : prev,
+                    )
+                  }
+                >
+                  <SelectTrigger id="arch-fulfillment">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FULFILLMENT_TYPE_OPTIONS.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-payment-terms">Payment terms</Label>
+                <Select
+                  value={form.payment_terms}
+                  onValueChange={(value) =>
+                    setForm((prev) =>
+                      prev ? { ...prev, payment_terms: value as PaymentTerms } : prev,
+                    )
+                  }
+                >
+                  <SelectTrigger id="arch-payment-terms">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_TERMS_OPTIONS.map((terms) => (
+                      <SelectItem key={terms} value={terms}>
+                        {terms}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="arch-target-date">Target date</Label>
+                <Input
+                  id="arch-target-date"
+                  type="datetime-local"
+                  value={toDatetimeLocalValue(form.requested_target_date)}
+                  onChange={(e) => {
+                    const iso = fromDatetimeLocalValue(e.target.value);
+                    if (iso) {
+                      setForm((prev) => prev && { ...prev, requested_target_date: iso });
+                    }
+                  }}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-subtotal">Subtotal</Label>
+                <Input
+                  id="arch-subtotal"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.subtotal}
+                  onChange={(e) => setForm((prev) => prev && { ...prev, subtotal: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-tax">Tax total</Label>
+                <Input
+                  id="arch-tax"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.tax_total}
+                  onChange={(e) => setForm((prev) => prev && { ...prev, tax_total: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-shipping">Shipping fee</Label>
+                <Input
+                  id="arch-shipping"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.shipping_fee}
+                  onChange={(e) =>
+                    setForm((prev) => prev && { ...prev, shipping_fee: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-grand-total">Grand total</Label>
+                <Input
+                  id="arch-grand-total"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.grand_total}
+                  onChange={(e) =>
+                    setForm((prev) => prev && { ...prev, grand_total: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-status">Order status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(value) =>
+                    setForm((prev) => (prev ? { ...prev, status: value as OrderStatus } : prev))
+                  }
+                >
+                  <SelectTrigger id="arch-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ORDER_STATUS_OPTIONS.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="arch-archived-at">Archived at (ISO)</Label>
+                <Input
+                  id="arch-archived-at"
+                  value={form.archived_at}
+                  onChange={(e) =>
+                    setForm((prev) => prev && { ...prev, archived_at: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="arch-archived-reason">Archived reason</Label>
+                <Input
+                  id="arch-archived-reason"
+                  value={form.archived_reason}
+                  onChange={(e) =>
+                    setForm((prev) => prev && { ...prev, archived_reason: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <SalesOrderAddressEditor
+                  idPrefix="archived-order"
+                  value={{
+                    shipping_address: form.shipping_address,
+                    shipping_city: form.shipping_city,
+                    shipping_state: form.shipping_state,
+                    shipping_postal_code: form.shipping_postal_code,
+                    shipping_country: form.shipping_country,
+                    billing_address: form.billing_address,
+                    billing_city: form.billing_city,
+                    billing_state: form.billing_state,
+                    billing_postal_code: form.billing_postal_code,
+                    billing_country: form.billing_country,
+                  }}
+                  onChange={(address) =>
+                    setForm((prev) => (prev ? { ...prev, ...address } : prev))
+                  }
+                  disabled={saving}
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="arch-notes">Notes</Label>
+                <Textarea
+                  id="arch-notes"
+                  rows={3}
+                  value={form.notes}
+                  onChange={(e) => setForm((prev) => prev && { ...prev, notes: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label>Line items (read-only)</Label>
+                <SalesOrderItemsEditor
+                  orderType={orderType!}
+                  items={form.items}
+                  onItemsChange={() => undefined}
+                  idPrefix="archived-order"
+                  disabled
+                  readOnly
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-store-id">Store ID</Label>
-              <Input
-                id="arch-store-id"
-                type="number"
-                value={form.store_id ?? ''}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    store_id: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-customer-name">Customer name</Label>
-              <Input
-                id="arch-customer-name"
-                value={form.customer_name}
-                onChange={(e) => setForm((prev) => ({ ...prev, customer_name: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-customer-email">Customer email</Label>
-              <Input
-                id="arch-customer-email"
-                type="email"
-                value={form.customer_email}
-                onChange={(e) => setForm((prev) => ({ ...prev, customer_email: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-customer-phone">Customer phone</Label>
-              <Input
-                id="arch-customer-phone"
-                value={form.customer_phone}
-                onChange={(e) => setForm((prev) => ({ ...prev, customer_phone: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-pickup-time">Pickup time</Label>
-              <Input
-                id="arch-pickup-time"
-                value={form.pickup_time}
-                onChange={(e) => setForm((prev) => ({ ...prev, pickup_time: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-total">Total</Label>
-              <Input
-                id="arch-total"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.total}
-                onChange={(e) => setForm((prev) => ({ ...prev, total: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-archived-at">Archived at (ISO)</Label>
-              <Input
-                id="arch-archived-at"
-                value={form.archived_at}
-                onChange={(e) => setForm((prev) => ({ ...prev, archived_at: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-status">Order status</Label>
-              <Select
-                value={form.status ?? 'null'}
-                onValueChange={(value) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    status: value === 'null' ? null : (value as OrderStatus),
-                  }))
-                }
-              >
-                <SelectTrigger id="arch-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="null">None</SelectItem>
-                  {ORDER_STATUS_OPTIONS.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="arch-payment-status">Payment status</Label>
-              <Select
-                value={form.payment_status ?? 'null'}
-                onValueChange={(value) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    payment_status: value === 'null' ? null : (value as PaymentStatus),
-                  }))
-                }
-              >
-                <SelectTrigger id="arch-payment-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="null">None</SelectItem>
-                  {PAYMENT_STATUS_OPTIONS.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="arch-archived-reason">Archived reason</Label>
-              <Input
-                id="arch-archived-reason"
-                value={form.archived_reason}
-                onChange={(e) => setForm((prev) => ({ ...prev, archived_reason: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="arch-notes">Notes</Label>
-              <Textarea
-                id="arch-notes"
-                rows={3}
-                value={form.notes}
-                onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="arch-items">Items JSON</Label>
-              <Textarea
-                id="arch-items"
-                rows={10}
-                value={form.itemsJson}
-                onChange={(e) => setForm((prev) => ({ ...prev, itemsJson: e.target.value }))}
-                placeholder='[{"menuItemId":1,"qty":2,"unitPrice":12.5,"itemName":"Pho"}]'
-                className="font-mono text-xs"
-              />
-            </div>
-          </div>
+          ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
+            <Button onClick={() => void handleSave()} disabled={saving || !form}>
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

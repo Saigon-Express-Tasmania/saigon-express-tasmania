@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
 
 /** Site sections that use MemberHeader instead of MainHeader. */
-const HEADERLESS_SECTIONS = ["/wholesale", "/member", "/warehouse", "/franchise"] as const;
+const HEADERLESS_SECTIONS = ["/wholesale", "/member", "/warehouse", "/franchise", "/order-tracking"] as const;
 
 function stripLocalePrefix(pathname: string): string {
   for (const locale of SUPPORTED_LOCALES) {
@@ -15,7 +15,7 @@ function stripLocalePrefix(pathname: string): string {
 }
 
 function matchesSectionWildcard(path: string, section: string): boolean {
-  return path.startsWith(`${section}/`);
+  return path.startsWith(`${section}/`) || (path === section && section !== "/member");
 }
 
 export function shouldHideMainHeader(pathname: string): boolean {

@@ -45,6 +45,19 @@ export type SalesOrderB2BForm = {
   financial_details: SalesOrderB2BFinancialForm;
 };
 
+export type OrderAddressDbFields = {
+  shipping_address: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postal_code: string;
+  shipping_country: string;
+  billing_address: string;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: string;
+};
+
 function str(value: unknown): string {
   if (value == null) return '';
   return String(value);
@@ -58,6 +71,25 @@ function nullableTrimmed(value: string): string | null {
 function parseObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return value as Record<string, unknown>;
+}
+
+function formatStreetLine(street1: string, street2: string): string {
+  return [street1, street2].map((part) => part.trim()).filter(Boolean).join(', ');
+}
+
+export function defaultOrderAddressFields(): OrderAddressDbFields {
+  return {
+    shipping_address: 'N/A',
+    shipping_city: 'N/A',
+    shipping_state: 'N/A',
+    shipping_postal_code: '0000',
+    shipping_country: 'Australia',
+    billing_address: 'N/A',
+    billing_city: 'N/A',
+    billing_state: 'N/A',
+    billing_postal_code: '0000',
+    billing_country: 'Australia',
+  };
 }
 
 export function emptyB2BForm(): SalesOrderB2BForm {
@@ -100,22 +132,77 @@ export function emptyB2BForm(): SalesOrderB2BForm {
 }
 
 export function parseB2BFormFromRow(row: {
-  buyer?: unknown;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  payment_terms?: string | null;
   shipping_address?: unknown;
+  shipping_city?: string | null;
+  shipping_state?: string | null;
+  shipping_postal_code?: string | null;
+  shipping_country?: string | null;
   billing_address?: unknown;
+  billing_city?: string | null;
+  billing_state?: string | null;
+  billing_postal_code?: string | null;
+  billing_country?: string | null;
   financial_details?: unknown;
 }): SalesOrderB2BForm {
-  const buyer = parseObject(row.buyer);
+  const financials = parseObject(row.financial_details);
+  const hasFlatColumns =
+    row.shipping_city != null ||
+    row.billing_city != null ||
+    row.shipping_postal_code != null ||
+    row.billing_postal_code != null;
+
+  if (hasFlatColumns) {
+    return {
+      buyer: {
+        name: str(row.customer_name),
+        role: '',
+        contact_phone: str(row.customer_phone),
+        contact_email: str(row.customer_email),
+      },
+      shipping_address: {
+        dba_name: str(financials.shipping_dba_name) || str(row.customer_name),
+        street_1: str(row.shipping_address),
+        street_2: str(financials.shipping_street_2),
+        city: str(row.shipping_city),
+        state: str(row.shipping_state),
+        postal_code: str(row.shipping_postal_code),
+        country: str(row.shipping_country),
+        special_instructions: str(financials.shipping_special_instructions),
+        preferred_window: str(financials.shipping_preferred_window),
+      },
+      billing_address: {
+        legal_name: str(financials.billing_legal_name) || str(row.customer_name),
+        street_1: str(row.billing_address),
+        street_2: str(financials.billing_street_2),
+        city: str(row.billing_city),
+        state: str(row.billing_state),
+        postal_code: str(row.billing_postal_code),
+        country: str(row.billing_country),
+        tax_id: str(financials.billing_tax_id),
+        payment_terms: str(row.payment_terms),
+      },
+      financial_details: {
+        subtotal_ex_gst: str(financials.subtotal_ex_gst),
+        gst_total: str(financials.gst_total),
+        grand_total_inc_gst: str(financials.grand_total_inc_gst),
+        currency: str(financials.currency) || 'AUD',
+      },
+    };
+  }
+
   const shipping = parseObject(row.shipping_address);
   const billing = parseObject(row.billing_address);
-  const financials = parseObject(row.financial_details);
 
   return {
     buyer: {
-      name: str(buyer.name),
-      role: str(buyer.role),
-      contact_phone: str(buyer.contact_phone),
-      contact_email: str(buyer.contact_email),
+      name: str(row.customer_name),
+      role: '',
+      contact_phone: str(row.customer_phone),
+      contact_email: str(row.customer_email),
     },
     shipping_address: {
       dba_name: str(shipping.dba_name),
@@ -162,37 +249,17 @@ function parseFinancialField(value: string): number | null {
 export function serializeB2BForDb(
   form: SalesOrderB2BForm,
   orderType: OrderType,
-): {
-  buyer: Record<string, unknown> | null;
-  shipping_address: Record<string, unknown> | null;
-  billing_address: Record<string, unknown> | null;
+): OrderAddressDbFields & {
   financial_details: Record<string, unknown> | null;
 } {
   if (orderType !== 'wholesale') {
     return {
-      buyer: null,
-      shipping_address: null,
-      billing_address: null,
+      ...defaultOrderAddressFields(),
       financial_details: null,
     };
   }
 
-  const buyer =
-    hasText([
-      form.buyer.name,
-      form.buyer.role,
-      form.buyer.contact_phone,
-      form.buyer.contact_email,
-    ])
-      ? {
-          name: form.buyer.name.trim(),
-          role: nullableTrimmed(form.buyer.role),
-          contact_phone: form.buyer.contact_phone.trim(),
-          contact_email: nullableTrimmed(form.buyer.contact_email),
-        }
-      : null;
-
-  const shipping_address = hasText([
+  const shippingHasData = hasText([
     form.shipping_address.dba_name,
     form.shipping_address.street_1,
     form.shipping_address.street_2,
@@ -202,23 +269,9 @@ export function serializeB2BForDb(
     form.shipping_address.country,
     form.shipping_address.special_instructions,
     form.shipping_address.preferred_window,
-  ])
-    ? {
-        dba_name: form.shipping_address.dba_name.trim(),
-        street_1: form.shipping_address.street_1.trim(),
-        street_2: nullableTrimmed(form.shipping_address.street_2),
-        city: form.shipping_address.city.trim(),
-        state: nullableTrimmed(form.shipping_address.state),
-        postal_code: form.shipping_address.postal_code.trim(),
-        country: nullableTrimmed(form.shipping_address.country),
-        special_instructions: nullableTrimmed(
-          form.shipping_address.special_instructions,
-        ),
-        preferred_window: nullableTrimmed(form.shipping_address.preferred_window),
-      }
-    : null;
+  ]);
 
-  const billing_address = hasText([
+  const billingHasData = hasText([
     form.billing_address.legal_name,
     form.billing_address.street_1,
     form.billing_address.street_2,
@@ -228,39 +281,70 @@ export function serializeB2BForDb(
     form.billing_address.country,
     form.billing_address.tax_id,
     form.billing_address.payment_terms,
-  ])
+  ]);
+
+  const addressFields: OrderAddressDbFields = shippingHasData || billingHasData
     ? {
-        legal_name: form.billing_address.legal_name.trim(),
-        street_1: form.billing_address.street_1.trim(),
-        street_2: nullableTrimmed(form.billing_address.street_2),
-        city: form.billing_address.city.trim(),
-        state: nullableTrimmed(form.billing_address.state),
-        postal_code: form.billing_address.postal_code.trim(),
-        country: nullableTrimmed(form.billing_address.country),
-        tax_id: nullableTrimmed(form.billing_address.tax_id),
-        payment_terms: nullableTrimmed(form.billing_address.payment_terms),
+        shipping_address: shippingHasData
+          ? formatStreetLine(
+              form.shipping_address.street_1,
+              form.shipping_address.street_2,
+            ) || 'N/A'
+          : 'N/A',
+        shipping_city: form.shipping_address.city.trim() || 'N/A',
+        shipping_state: form.shipping_address.state.trim() || 'N/A',
+        shipping_postal_code: form.shipping_address.postal_code.trim() || '0000',
+        shipping_country: form.shipping_address.country.trim() || 'Australia',
+        billing_address: billingHasData
+          ? formatStreetLine(
+              form.billing_address.street_1,
+              form.billing_address.street_2,
+            ) || 'N/A'
+          : 'N/A',
+        billing_city: form.billing_address.city.trim() || 'N/A',
+        billing_state: form.billing_address.state.trim() || 'N/A',
+        billing_postal_code: form.billing_address.postal_code.trim() || '0000',
+        billing_country: form.billing_address.country.trim() || 'Australia',
       }
-    : null;
+    : defaultOrderAddressFields();
 
   const subtotal = parseFinancialField(form.financial_details.subtotal_ex_gst);
   const gst = parseFinancialField(form.financial_details.gst_total);
   const grand = parseFinancialField(form.financial_details.grand_total_inc_gst);
   const currency = nullableTrimmed(form.financial_details.currency) ?? 'AUD';
 
-  const financial_details =
-    subtotal != null || gst != null || grand != null
-      ? {
-          subtotal_ex_gst: subtotal ?? 0,
-          gst_total: gst ?? 0,
-          grand_total_inc_gst: grand ?? 0,
-          currency,
-        }
-      : null;
+  const financialPayload: Record<string, unknown> = {};
+  if (subtotal != null) financialPayload.subtotal_ex_gst = subtotal;
+  if (gst != null) financialPayload.gst_total = gst;
+  if (grand != null) financialPayload.grand_total_inc_gst = grand;
+  financialPayload.currency = currency;
+
+  if (form.shipping_address.dba_name.trim()) {
+    financialPayload.shipping_dba_name = form.shipping_address.dba_name.trim();
+  }
+  if (form.shipping_address.street_2.trim()) {
+    financialPayload.shipping_street_2 = form.shipping_address.street_2.trim();
+  }
+  if (form.shipping_address.special_instructions.trim()) {
+    financialPayload.shipping_special_instructions =
+      form.shipping_address.special_instructions.trim();
+  }
+  if (form.shipping_address.preferred_window.trim()) {
+    financialPayload.shipping_preferred_window =
+      form.shipping_address.preferred_window.trim();
+  }
+  if (form.billing_address.legal_name.trim()) {
+    financialPayload.billing_legal_name = form.billing_address.legal_name.trim();
+  }
+  if (form.billing_address.street_2.trim()) {
+    financialPayload.billing_street_2 = form.billing_address.street_2.trim();
+  }
+  if (form.billing_address.tax_id.trim()) {
+    financialPayload.billing_tax_id = form.billing_address.tax_id.trim();
+  }
 
   return {
-    buyer,
-    shipping_address,
-    billing_address,
-    financial_details,
+    ...addressFields,
+    financial_details: Object.keys(financialPayload).length > 0 ? financialPayload : null,
   };
 }

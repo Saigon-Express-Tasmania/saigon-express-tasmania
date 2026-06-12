@@ -20,10 +20,10 @@ comment on column public.wholesale_products.daily_customer_limit is
 -- ---------------------------------------------------------------------------
 create table public.wholesale_inventory_sales (
   id bigint generated always as identity primary key,
-  product_id bigint not null
-    references public.wholesale_products (id) on delete restrict,
-  customer_account uuid not null
-    references public.user_profiles (id) on delete restrict,
+  product_id bigint
+    references public.wholesale_products (id) on delete set null,
+  customer_account uuid
+    references public.user_profiles (id) on delete set null,
   order_source text not null
     check (order_source in ('orders', 'test_orders')),
   order_id bigint not null,
@@ -237,7 +237,7 @@ begin
     raise exception 'customer account is required for wholesale inventory';
   end if;
 
-  if p_order_source = 'orders' then
+  execute format($sql$
     insert into public.wholesale_inventory_sales (
       product_id,
       customer_account,
@@ -248,42 +248,20 @@ begin
       sale_date
     )
     select
-      oi.menu_item_id,
-      p_customer_account,
-      'orders',
+      coalesce(oi.wholesale_item_id, oi.menu_item_id),
+      $2,
+      $3,
       o.id,
       oi.id,
-      oi.qty,
-      p_sale_date
+      trunc(oi.quantity)::integer,
+      $4
     from public.order_items as oi
-    inner join public.orders as o on o.id = oi.order_id
-    where o.id = p_order_id
+    inner join public.%I as o on o.id = oi.order_id
+    where o.id = $1
       and o.order_type = 'wholesale'::public.order_type
-    on conflict (order_source, order_item_id) do nothing;
-  else
-    insert into public.wholesale_inventory_sales (
-      product_id,
-      customer_account,
-      order_source,
-      order_id,
-      order_item_id,
-      qty,
-      sale_date
-    )
-    select
-      oi.menu_item_id,
-      p_customer_account,
-      'test_orders',
-      o.id,
-      oi.id,
-      oi.qty,
-      p_sale_date
-    from public.test_order_items as oi
-    inner join public.test_orders as o on o.id = oi.order_id
-    where o.id = p_order_id
-      and o.order_type = 'wholesale'::public.order_type
-    on conflict (order_source, order_item_id) do nothing;
-  end if;
+    on conflict (order_source, order_item_id) do nothing
+  $sql$, p_order_source)
+  using p_order_id, p_customer_account, p_order_source, p_sale_date;
 end;
 $$;
 
@@ -295,285 +273,5 @@ grant execute on function public.get_wholesale_product_availability(bigint, uuid
 grant execute on function public.get_wholesale_products_availability(uuid, date) to anon, authenticated, service_role;
 grant execute on function public.record_wholesale_inventory_sales(text, bigint, uuid, date) to service_role;
 
--- ---------------------------------------------------------------------------
--- Paid order RPCs: record wholesale inventory after line items are inserted
--- ---------------------------------------------------------------------------
-create or replace function public.create_paid_order_with_items(
-  p_order_type public.order_type,
-  p_customer_account uuid,
-  p_customer_name text,
-  p_customer_email text,
-  p_customer_phone text,
-  p_store_id bigint,
-  p_pickup_time text,
-  p_total numeric(10, 2),
-  p_notes text,
-  p_stripe_mode text,
-  p_stripe_checkout_session_id text,
-  p_cancel_token text,
-  p_tracking_token text,
-  p_status_updated_at timestamptz,
-  p_items jsonb,
-  p_draft_order_id bigint default null
-)
-returns bigint
-language plpgsql
-as $$
-declare
-  v_order_id bigint;
-begin
-  if p_stripe_checkout_session_id is not null then
-    select o.id
-    into v_order_id
-    from public.orders as o
-    where o.stripe_checkout_session_id = p_stripe_checkout_session_id
-    limit 1;
-
-    if v_order_id is not null then
-      if p_draft_order_id is not null then
-        delete from public.draft_orders where id = p_draft_order_id;
-      end if;
-      return v_order_id;
-    end if;
-  end if;
-
-  if p_total is null or p_total <= 0 then
-    raise exception 'Order total must be greater than zero';
-  end if;
-
-  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
-    raise exception 'Order items must be a non-empty array';
-  end if;
-
-  begin
-    insert into public.orders (
-      order_type,
-      customer_account,
-      customer_name,
-      customer_email,
-      customer_phone,
-      store_id,
-      pickup_time,
-      total,
-      notes,
-      payment_status,
-      status,
-      stripe_mode,
-      stripe_checkout_session_id,
-      cancel_token,
-      tracking_token,
-      status_updated_at
-    )
-    values (
-      p_order_type,
-      p_customer_account,
-      p_customer_name,
-      p_customer_email,
-      p_customer_phone,
-      p_store_id,
-      p_pickup_time,
-      p_total,
-      p_notes,
-      'paid',
-      'confirmed',
-      p_stripe_mode,
-      p_stripe_checkout_session_id,
-      p_cancel_token,
-      p_tracking_token,
-      p_status_updated_at
-    )
-    returning id into v_order_id;
-  exception
-    when unique_violation then
-      select o.id
-      into v_order_id
-      from public.orders as o
-      where o.stripe_checkout_session_id = p_stripe_checkout_session_id
-      limit 1;
-
-      if v_order_id is not null then
-        if p_draft_order_id is not null then
-          delete from public.draft_orders where id = p_draft_order_id;
-        end if;
-        return v_order_id;
-      end if;
-
-      raise;
-  end;
-
-  insert into public.order_items (order_id, menu_item_id, qty, unit_price, item_name)
-  select
-    v_order_id,
-    coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint),
-    (item ->> 'qty')::integer,
-    (item ->> 'unitPrice')::numeric(8, 2),
-    item ->> 'itemName'
-  from jsonb_array_elements(p_items) as item
-  where
-    jsonb_typeof(item) = 'object'
-    and coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint, 0) > 0
-    and coalesce((item ->> 'qty')::integer, 0) >= 1
-    and coalesce((item ->> 'unitPrice')::numeric, -1) >= 0
-    and nullif(trim(item ->> 'itemName'), '') is not null;
-
-  if not exists (
-    select 1 from public.order_items where order_id = v_order_id
-  ) then
-    raise exception 'No valid order items found';
-  end if;
-
-  if p_order_type = 'wholesale'::public.order_type then
-    perform public.record_wholesale_inventory_sales(
-      'orders',
-      v_order_id,
-      p_customer_account
-    );
-  end if;
-
-  if p_draft_order_id is not null then
-    delete from public.draft_orders where id = p_draft_order_id;
-  end if;
-
-  return v_order_id;
-end;
-$$;
-
-create or replace function public.create_paid_test_order_with_items(
-  p_order_type public.order_type,
-  p_customer_account uuid,
-  p_customer_name text,
-  p_customer_email text,
-  p_customer_phone text,
-  p_store_id bigint,
-  p_pickup_time text,
-  p_total numeric(10, 2),
-  p_notes text,
-  p_stripe_mode text,
-  p_stripe_checkout_session_id text,
-  p_cancel_token text,
-  p_tracking_token text,
-  p_status_updated_at timestamptz,
-  p_items jsonb,
-  p_draft_order_id bigint default null
-)
-returns bigint
-language plpgsql
-as $$
-declare
-  v_order_id bigint;
-begin
-  if p_stripe_checkout_session_id is not null then
-    select o.id
-    into v_order_id
-    from public.test_orders as o
-    where o.stripe_checkout_session_id = p_stripe_checkout_session_id
-    limit 1;
-
-    if v_order_id is not null then
-      if p_draft_order_id is not null then
-        delete from public.draft_orders where id = p_draft_order_id;
-      end if;
-      return v_order_id;
-    end if;
-  end if;
-
-  if p_total is null or p_total <= 0 then
-    raise exception 'Order total must be greater than zero';
-  end if;
-
-  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
-    raise exception 'Order items must be a non-empty array';
-  end if;
-
-  begin
-    insert into public.test_orders (
-      order_type,
-      customer_account,
-      customer_name,
-      customer_email,
-      customer_phone,
-      store_id,
-      pickup_time,
-      total,
-      notes,
-      payment_status,
-      status,
-      stripe_mode,
-      stripe_checkout_session_id,
-      cancel_token,
-      tracking_token,
-      status_updated_at
-    )
-    values (
-      p_order_type,
-      p_customer_account,
-      p_customer_name,
-      p_customer_email,
-      p_customer_phone,
-      p_store_id,
-      p_pickup_time,
-      p_total,
-      p_notes,
-      'paid',
-      'confirmed',
-      p_stripe_mode,
-      p_stripe_checkout_session_id,
-      p_cancel_token,
-      p_tracking_token,
-      p_status_updated_at
-    )
-    returning id into v_order_id;
-  exception
-    when unique_violation then
-      select o.id
-      into v_order_id
-      from public.test_orders as o
-      where o.stripe_checkout_session_id = p_stripe_checkout_session_id
-      limit 1;
-
-      if v_order_id is not null then
-        if p_draft_order_id is not null then
-          delete from public.draft_orders where id = p_draft_order_id;
-        end if;
-        return v_order_id;
-      end if;
-
-      raise;
-  end;
-
-  insert into public.test_order_items (order_id, menu_item_id, qty, unit_price, item_name)
-  select
-    v_order_id,
-    coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint),
-    (item ->> 'qty')::integer,
-    (item ->> 'unitPrice')::numeric(8, 2),
-    item ->> 'itemName'
-  from jsonb_array_elements(p_items) as item
-  where
-    jsonb_typeof(item) = 'object'
-    and coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint, 0) > 0
-    and coalesce((item ->> 'qty')::integer, 0) >= 1
-    and coalesce((item ->> 'unitPrice')::numeric, -1) >= 0
-    and nullif(trim(item ->> 'itemName'), '') is not null;
-
-  if not exists (
-    select 1 from public.test_order_items where order_id = v_order_id
-  ) then
-    raise exception 'No valid order items found';
-  end if;
-
-  if p_order_type = 'wholesale'::public.order_type then
-    perform public.record_wholesale_inventory_sales(
-      'test_orders',
-      v_order_id,
-      p_customer_account
-    );
-  end if;
-
-  if p_draft_order_id is not null then
-    delete from public.draft_orders where id = p_draft_order_id;
-  end if;
-
-  return v_order_id;
-end;
-$$;
+-- Paid order RPCs are defined in 20260531160000_orders.sql and call
+-- record_wholesale_inventory_sales after line items are inserted.

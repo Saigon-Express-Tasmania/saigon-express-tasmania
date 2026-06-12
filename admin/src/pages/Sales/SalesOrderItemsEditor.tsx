@@ -1,6 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import type { OrderType } from './orderType';
 import { SalesOrderItemPicker } from './SalesOrderItemPicker';
@@ -8,7 +15,12 @@ import {
   getOrderItemIdColumnLabel,
   useSalesOrderCatalog,
 } from './salesOrderCatalog';
-import { emptyOrderItem, type SalesOrderItemForm } from './salesOrderShared';
+import {
+  emptyOrderItem,
+  ITEM_UOM_OPTIONS,
+  type ItemUom,
+  type SalesOrderItemForm,
+} from './salesOrderShared';
 
 type SalesOrderItemsEditorProps = {
   orderType: OrderType;
@@ -74,14 +86,20 @@ export function SalesOrderItemsEditor({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-md border">
-          <table className="w-full min-w-[760px]">
+          <table className="w-full min-w-[960px]">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="w-36 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className="w-28 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
                   {itemIdLabel}
+                </th>
+                <th className="w-28 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                  SKU
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
                   Item name
+                </th>
+                <th className="w-20 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                  UOM
                 </th>
                 <th className="w-24 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
                   Qty
@@ -113,6 +131,23 @@ export function SalesOrderItemsEditor({
                     </td>
                     <td className="px-3 py-2 align-top text-sm">
                       {readOnly ? (
+                        item.sku || '—'
+                      ) : (
+                        <Input
+                          id={`${idPrefix}-item-${index}-sku`}
+                          value={item.sku}
+                          disabled={fieldsDisabled}
+                          onChange={(e) =>
+                            onItemsChange(
+                              updateItem(items, index, { sku: e.target.value }),
+                            )
+                          }
+                          className="h-9 font-mono text-xs"
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top text-sm">
+                      {readOnly ? (
                         item.item_name || '—'
                       ) : (
                         <SalesOrderItemPicker
@@ -128,10 +163,37 @@ export function SalesOrderItemsEditor({
                                 menu_item_id: option.id,
                                 item_name: option.name,
                                 unit_price: option.unitPrice,
+                                sku: item.sku || String(option.id),
                               }),
                             )
                           }
                         />
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top text-sm">
+                      {readOnly ? (
+                        item.uom
+                      ) : (
+                        <Select
+                          value={item.uom}
+                          disabled={fieldsDisabled}
+                          onValueChange={(value) =>
+                            onItemsChange(
+                              updateItem(items, index, { uom: value as ItemUom }),
+                            )
+                          }
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ITEM_UOM_OPTIONS.map((uom) => (
+                              <SelectItem key={uom} value={uom}>
+                                {uom}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       )}
                     </td>
                     <td className="px-3 py-2 align-top text-sm tabular-nums">
@@ -202,7 +264,7 @@ export function SalesOrderItemsEditor({
             </tbody>
             <tfoot>
               <tr className="bg-muted/30">
-                <td colSpan={4} className="px-3 py-2 text-right text-sm font-semibold">
+                <td colSpan={6} className="px-3 py-2 text-right text-sm font-semibold">
                   Items subtotal
                 </td>
                 <td className="px-3 py-2 text-right text-sm font-semibold tabular-nums">

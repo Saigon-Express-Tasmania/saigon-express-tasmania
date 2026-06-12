@@ -1,205 +1,178 @@
--- Customer pickup orders (Stripe checkout + in-store pickup).
+-- Customer orders (live checkout + in-store fulfillment).
 
 create type public.order_status as enum (
   'pending',
+  'awaiting_payment',
   'confirmed',
   'preparing',
-  'ready',
+  'packed',
+  'ready_to_pickup',
+  'out_for_delivery',
   'completed',
   'cancelled'
 );
 
+create type public.order_fulfillment_type as enum (
+  'pick_up',
+  'delivery',
+  'shipping'
+);
+
 create type public.order_type as enum ('delivery', 'pickup', 'catering', 'wholesale');
 
-create type public.payment_status as enum ('unpaid', 'paid', 'refunded');
+create type public.order_payment_status as enum ('unpaid', 'paid', 'refunded');
+
+create type public.order_payment_terms as enum (
+  'prepaid',
+  'due_on_receipt',
+  'deposit_required',
+  'net_30',
+  'net_60',
+  'net_90'
+);
+
+create type public.order_payment_method as enum (
+  'credit_card',
+  'debit_card',
+  'cash',
+  'check',
+  'other'
+);
+
+create type public.order_payment_gateway as enum (
+  'none',
+  'stripe',
+  'square',
+  'paypal',
+  'cash',
+  'check',
+  'other'
+);
+
+create type public.order_item_uom as enum ('CASE', 'EACH', 'LBS', 'KG');
+
+-- Shared across orders, draft_orders, test_orders, and archived_orders.
+create sequence public.order_id_seq;
 
 create table public.orders (
-  id bigint generated always as identity primary key,
+  id bigint not null default nextval('public.order_id_seq') primary key,
   order_type public.order_type not null,
+  status public.order_status not null default 'pending',
+  cancel_token text unique,
+  tracking_token text unique,
+
   customer_account uuid references public.user_profiles (id) on delete set null,
   customer_name text not null,
   customer_email text not null,
   customer_phone text not null,
-  store_id bigint references public.store_locations (id),
-  pickup_time text not null,
-  total numeric(10, 2) not null,
-  status public.order_status not null default 'pending',
-  stripe_checkout_session_id text,
-  stripe_mode text check (stripe_mode in ('test', 'live')),
-  payment_status public.payment_status not null default 'unpaid',
-  notes text,
-  cancel_token text,
-  tracking_token text,
-  buyer jsonb,
-  shipping_address jsonb,
-  billing_address jsonb,
+
+  store_id bigint references public.store_locations (id) on delete set null,
+  requested_fulfillment_method public.order_fulfillment_type not null,
+  requested_target_date timestamptz not null,
+  shipping_address text not null,
+  shipping_city text not null,
+  shipping_state text not null,
+  shipping_postal_code text not null,
+  shipping_country text not null,
+  billing_address text not null,
+  billing_city text not null,
+  billing_state text not null,
+  billing_postal_code text not null,
+  billing_country text not null,
+
+  payment_terms public.order_payment_terms not null default 'prepaid',
+  po_number varchar(100),
+  subtotal numeric(10, 2) not null,
+  tax_total numeric(10, 2) not null default 0.00,
+  shipping_fee numeric(10, 2) not null default 0.00,
+  grand_total numeric(10, 2) not null,
   financial_details jsonb,
+
+  notes text,
   status_updated_at timestamptz,
-  receipt_confirmed_at timestamptz,
   created_at timestamptz not null default now()
 );
 
 create table public.order_items (
   id bigint generated always as identity primary key,
-  order_id bigint not null references public.orders (id) on delete cascade,
-  menu_item_id bigint not null,
-  qty integer not null check (qty >= 1),
-  unit_price numeric(8, 2) not null,
-  item_name text not null
+  order_id bigint not null,
+  item_type public.order_type not null,
+  menu_item_id bigint references public.menu (id) on delete set null,
+  wholesale_item_id bigint references public.wholesale_products (id) on delete set null,
+  catering_item_id bigint references public.catering_packs (id) on delete set null,
+  sku text not null,
+  name text not null,
+  quantity numeric(10, 2) not null,
+  uom public.order_item_uom not null default 'EACH',
+  is_catch_weight boolean not null default false,
+  unit_price numeric(10, 2) not null,
+  line_total numeric(10, 2) not null,
+  created_at timestamptz not null default now()
+);
+
+create table public.order_payments (
+  id bigint generated always as identity primary key,
+  order_id bigint not null,
+  amount numeric(10, 2) not null,
+  status public.order_payment_status not null default 'unpaid',
+  mode text check (mode in ('test', 'live')),
+  method public.order_payment_method not null,
+  gateway public.order_payment_gateway not null default 'none',
+  gateway_transaction_id text not null default '',
+  gateway_data jsonb,
+  recorded_by_staff_id uuid references auth.users (id) on delete set null,
+  notes text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table public.order_fulfillments (
+  id bigint generated always as identity primary key,
+  order_id bigint not null,
+  method public.order_fulfillment_type not null,
+  shipping_address jsonb,
+  scheduled_start timestamptz not null,
+  scheduled_end timestamptz not null,
+  actual_handover timestamptz,
+  pickup_person_name text,
+  signature_url text,
+  temperature_log_c numeric(5, 2),
+  released_by_staff uuid references auth.users (id) on delete set null,
+  has_exceptions boolean not null default false,
+  exception_notes text
 );
 
 create index orders_store_id_idx on public.orders (store_id);
-create index orders_payment_status_idx on public.orders (payment_status);
+create index orders_status_idx on public.orders (status);
 create index orders_tracking_token_idx on public.orders (tracking_token) where tracking_token is not null;
-create unique index orders_stripe_checkout_session_id_uidx
-  on public.orders (stripe_checkout_session_id)
-  where stripe_checkout_session_id is not null;
-create index order_items_order_id_idx on public.order_items (order_id);
 create index orders_order_type_idx on public.orders (order_type);
+create index orders_customer_account_idx
+  on public.orders (customer_account, created_at desc)
+  where customer_account is not null;
 
-create or replace function public.create_paid_order_with_items(
-  p_order_type public.order_type,
-  p_customer_account uuid,
-  p_customer_name text,
-  p_customer_email text,
-  p_customer_phone text,
-  p_store_id bigint,
-  p_pickup_time text,
-  p_total numeric(10, 2),
-  p_notes text,
-  p_stripe_mode text,
-  p_stripe_checkout_session_id text,
-  p_cancel_token text,
-  p_tracking_token text,
-  p_status_updated_at timestamptz,
-  p_items jsonb,
-  p_draft_order_id bigint default null
-)
-returns bigint
-language plpgsql
-as $$
-declare
-  v_order_id bigint;
-begin
-  if p_stripe_checkout_session_id is not null then
-    select o.id
-    into v_order_id
-    from public.orders as o
-    where o.stripe_checkout_session_id = p_stripe_checkout_session_id
-    limit 1;
+create index order_items_order_id_idx on public.order_items (order_id);
+create index order_items_wholesale_item_id_idx on public.order_items (wholesale_item_id)
+  where wholesale_item_id is not null;
 
-    if v_order_id is not null then
-      if p_draft_order_id is not null then
-        delete from public.draft_orders where id = p_draft_order_id;
-      end if;
-      return v_order_id;
-    end if;
-  end if;
+create index order_payments_order_id_idx on public.order_payments (order_id);
+create unique index order_payments_stripe_session_uidx
+  on public.order_payments (gateway_transaction_id)
+  where gateway = 'stripe'::public.order_payment_gateway
+    and gateway_transaction_id <> '';
 
-  if p_total is null or p_total <= 0 then
-    raise exception 'Order total must be greater than zero';
-  end if;
+create index order_fulfillments_order_id_idx on public.order_fulfillments (order_id);
 
-  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
-    raise exception 'Order items must be a non-empty array';
-  end if;
-
-  begin
-    insert into public.orders (
-      order_type,
-      customer_account,
-      customer_name,
-      customer_email,
-      customer_phone,
-      store_id,
-      pickup_time,
-      total,
-      notes,
-      payment_status,
-      status,
-      stripe_mode,
-      stripe_checkout_session_id,
-      cancel_token,
-      tracking_token,
-      status_updated_at
-    )
-    values (
-      p_order_type,
-      p_customer_account,
-      p_customer_name,
-      p_customer_email,
-      p_customer_phone,
-      p_store_id,
-      p_pickup_time,
-      p_total,
-      p_notes,
-      'paid',
-      'confirmed',
-      p_stripe_mode,
-      p_stripe_checkout_session_id,
-      p_cancel_token,
-      p_tracking_token,
-      p_status_updated_at
-    )
-    returning id into v_order_id;
-  exception
-    when unique_violation then
-      select o.id
-      into v_order_id
-      from public.orders as o
-      where o.stripe_checkout_session_id = p_stripe_checkout_session_id
-      limit 1;
-
-      if v_order_id is not null then
-        if p_draft_order_id is not null then
-          delete from public.draft_orders where id = p_draft_order_id;
-        end if;
-        return v_order_id;
-      end if;
-
-      raise;
-  end;
-
-  insert into public.order_items (order_id, menu_item_id, qty, unit_price, item_name)
-  select
-    v_order_id,
-    coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint),
-    (item ->> 'qty')::integer,
-    (item ->> 'unitPrice')::numeric(8, 2),
-    item ->> 'itemName'
-  from jsonb_array_elements(p_items) as item
-  where
-    jsonb_typeof(item) = 'object'
-    and coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint, 0) > 0
-    and coalesce((item ->> 'qty')::integer, 0) >= 1
-    and coalesce((item ->> 'unitPrice')::numeric, -1) >= 0
-    and nullif(trim(item ->> 'itemName'), '') is not null;
-
-  if not exists (
-    select 1 from public.order_items where order_id = v_order_id
-  ) then
-    raise exception 'No valid order items found';
-  end if;
-
-  if p_draft_order_id is not null then
-    delete from public.draft_orders where id = p_draft_order_id;
-  end if;
-
-  return v_order_id;
-end;
-$$;
-
-comment on table public.orders is 'Customer pickup orders placed via the public checkout flow.';
-comment on column public.orders.stripe_mode is
-  'Stripe payment environment used at checkout (test or live).';
-comment on table public.order_items is 'Line items for customer pickup orders.';
-comment on function public.create_paid_order_with_items is
-  'Atomically creates a paid confirmed order and its line items from a draft payload.';
+comment on table public.orders is 'Active customer orders placed via checkout or admin.';
+comment on table public.order_items is 'Line items shared across all order lifecycle tables.';
+comment on table public.order_payments is 'Payment ledger entries shared across all order lifecycle tables.';
+comment on table public.order_fulfillments is 'Fulfillment events shared across all order lifecycle tables.';
+comment on column public.order_items.order_id is
+  'References an order id from orders, draft_orders, test_orders, or archived_orders (no FK).';
 
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
+alter table public.order_payments enable row level security;
+alter table public.order_fulfillments enable row level security;
 
--- No public access; edge functions use service_role.
 create policy "Service role full access on orders"
   on public.orders
   for all
@@ -228,16 +201,43 @@ create policy "Admins full access on order_items"
   using (public.is_admin())
   with check (public.is_admin());
 
+create policy "Service role full access on order_payments"
+  on public.order_payments
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+create policy "Admins full access on order_payments"
+  on public.order_payments
+  for all
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Service role full access on order_fulfillments"
+  on public.order_fulfillments
+  for all
+  to service_role
+  using (true)
+  with check (true);
+
+create policy "Admins full access on order_fulfillments"
+  on public.order_fulfillments
+  for all
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
 grant all on public.orders to service_role;
 grant all on public.order_items to service_role;
+grant all on public.order_payments to service_role;
+grant all on public.order_fulfillments to service_role;
 grant select, insert, update, delete on public.orders to authenticated;
 grant select, insert, update, delete on public.order_items to authenticated;
-grant execute on function public.create_paid_order_with_items to service_role;
-
-
-create index if not exists orders_customer_account_idx
-  on public.orders (customer_account, created_at desc)
-  where customer_account is not null;
+grant select, insert, update, delete on public.order_payments to authenticated;
+grant select, insert, update, delete on public.order_fulfillments to authenticated;
+grant usage, select on sequence public.order_id_seq to service_role, authenticated;
 
 create policy "Partners read own wholesale orders"
   on public.orders
@@ -262,3 +262,113 @@ create policy "Partners read own wholesale order items"
     )
   );
 
+create policy "Partners read own wholesale order payments"
+  on public.order_payments
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.orders as o
+      where o.id = order_payments.order_id
+        and o.customer_account = auth.uid()
+        and o.order_type = 'wholesale'::public.order_type
+    )
+  );
+
+create policy "Partners read own wholesale order fulfillments"
+  on public.order_fulfillments
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.orders as o
+      where o.id = order_fulfillments.order_id
+        and o.customer_account = auth.uid()
+        and o.order_type = 'wholesale'::public.order_type
+    )
+  );
+
+create or replace function public.request_tracking_token()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_headers text;
+begin
+  v_headers := nullif(current_setting('request.headers', true), '');
+  if v_headers is null then
+    return null;
+  end if;
+
+  return nullif(trim((v_headers::json)->>'x-tracking-token'), '');
+exception
+  when others then
+    return null;
+end;
+$$;
+
+comment on function public.request_tracking_token() is
+  'Reads x-tracking-token from PostgREST request headers for order-tracking RLS.';
+
+grant execute on function public.request_tracking_token() to anon, authenticated, service_role;
+
+create policy "Public read orders by tracking token"
+  on public.orders
+  for select
+  to anon, authenticated
+  using (
+    tracking_token is not null
+    and tracking_token = public.request_tracking_token()
+  );
+
+create policy "Public read order items by tracking token"
+  on public.order_items
+  for select
+  to anon, authenticated
+  using (
+    exists (
+      select 1
+      from public.orders as o
+      where o.id = order_items.order_id
+        and o.tracking_token is not null
+        and o.tracking_token = public.request_tracking_token()
+    )
+  );
+
+create policy "Public read order payments by tracking token"
+  on public.order_payments
+  for select
+  to anon, authenticated
+  using (
+    exists (
+      select 1
+      from public.orders as o
+      where o.id = order_payments.order_id
+        and o.tracking_token is not null
+        and o.tracking_token = public.request_tracking_token()
+    )
+  );
+
+create policy "Public read order fulfillments by tracking token"
+  on public.order_fulfillments
+  for select
+  to anon, authenticated
+  using (
+    exists (
+      select 1
+      from public.orders as o
+      where o.id = order_fulfillments.order_id
+        and o.tracking_token is not null
+        and o.tracking_token = public.request_tracking_token()
+    )
+  );
+
+grant select on public.orders to anon;
+grant select on public.order_items to anon;
+grant select on public.order_payments to anon;
+grant select on public.order_fulfillments to anon;

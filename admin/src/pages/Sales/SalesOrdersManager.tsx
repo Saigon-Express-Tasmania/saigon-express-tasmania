@@ -19,12 +19,19 @@ import { SalesOrderEditorDialog } from './SalesOrderEditorDialog';
 import { SalesOrdersTable } from './SalesOrdersTable';
 import { serializeB2BForDb } from './salesOrderB2b';
 import {
+  fetchPaymentStatusByOrderIds,
+  replaceOrderItems,
+  saveOrderPayment,
+} from './salesOrderDb';
+import {
   emptyOrderForm,
-  orderToForm,
+  loadOrderForm,
+  orderAddressFromForm,
+  parsePaymentTerms,
+  syncTotalsFromItems,
   validateOrderItems,
   SALES_ORDER_COLUMNS,
   type SalesOrderForm,
-  type SalesOrderItemRow,
   type SalesOrderRow,
   type SalesOrdersDataset,
 } from './salesOrderShared';
@@ -52,7 +59,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
   const [dialogReadOnly, setDialogReadOnly] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [form, setForm] = useState<SalesOrderForm>(() =>
-    emptyOrderForm(dataset.defaultStripeMode),
+    emptyOrderForm(dataset.defaultPaymentMode, orderType ?? 'pickup'),
   );
 
   const [deleteTarget, setDeleteTarget] = useState<SalesOrderRow | null>(null);
@@ -70,7 +77,15 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         .order('id', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setOrders((data ?? []) as SalesOrderRow[]);
+
+      const rows = (data ?? []) as SalesOrderRow[];
+      const paymentMap = await fetchPaymentStatusByOrderIds(rows.map((row) => row.id));
+      setOrders(
+        rows.map((row) => ({
+          ...row,
+          payment_status: paymentMap.get(row.id) ?? 'unpaid',
+        })),
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : `Failed to load ${dataset.entityName}s.`;
@@ -105,23 +120,17 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
   const openCreate = () => {
     setEditingOrderId(null);
     setDialogReadOnly(false);
-    setForm(emptyOrderForm(dataset.defaultStripeMode));
+    setForm(emptyOrderForm(dataset.defaultPaymentMode, orderType ?? 'pickup'));
     setDialogOpen(true);
   };
 
   const openOrderDialog = async (order: SalesOrderRow, readOnly: boolean) => {
     setSaving(true);
     try {
-      const { data: items, error: itemError } = await supabase
-        .from(dataset.itemsTable)
-        .select('id, order_id, menu_item_id, qty, unit_price, item_name')
-        .eq('order_id', order.id)
-        .order('id', { ascending: true });
-
-      if (itemError) throw itemError;
+      const loadedForm = await loadOrderForm(order, dataset.defaultPaymentMode);
       setEditingOrderId(order.id);
       setDialogReadOnly(readOnly);
-      setForm(orderToForm(order, (items ?? []) as SalesOrderItemRow[]));
+      setForm(loadedForm);
       setDialogOpen(true);
     } catch (err) {
       toast.error(
@@ -149,13 +158,14 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
       toast.error('Customer phone is required.');
       return;
     }
-    if (!form.pickup_time.trim()) {
-      toast.error('Pickup time is required.');
+    if (!form.requested_target_date.trim()) {
+      toast.error('Target date is required.');
       return;
     }
-    const total = Number(form.total);
-    if (!Number.isFinite(total) || total < 0) {
-      toast.error('Total must be a valid non-negative number.');
+
+    const targetDate = new Date(form.requested_target_date);
+    if (Number.isNaN(targetDate.getTime())) {
+      toast.error('Target date must be a valid date and time.');
       return;
     }
 
@@ -167,28 +177,60 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
       return;
     }
 
+    const syncedForm = syncTotalsFromItems({ ...form, items: parsedItems });
+    const subtotal = Number(syncedForm.subtotal);
+    const taxTotal = Number(syncedForm.tax_total);
+    const shippingFee = Number(syncedForm.shipping_fee);
+    const grandTotal = Number(syncedForm.grand_total);
+
+    if (
+      !Number.isFinite(subtotal) ||
+      !Number.isFinite(taxTotal) ||
+      !Number.isFinite(shippingFee) ||
+      !Number.isFinite(grandTotal) ||
+      subtotal < 0 ||
+      taxTotal < 0 ||
+      shippingFee < 0 ||
+      grandTotal < 0
+    ) {
+      toast.error('Order totals must be valid non-negative numbers.');
+      return;
+    }
+
     setSaving(true);
     try {
-      const b2bPayload = serializeB2BForDb(form.b2b, orderType);
+      const b2bPayload = serializeB2BForDb(syncedForm.b2b, orderType);
+      const billingTerms = syncedForm.b2b.billing_address.payment_terms;
+      const addressPayload =
+        orderType === 'wholesale'
+          ? b2bPayload
+          : {
+              ...orderAddressFromForm(syncedForm),
+              financial_details: null,
+            };
 
       const orderPayload = {
         order_type: orderType,
-        customer_name: form.customer_name.trim(),
-        customer_email: form.customer_email.trim(),
-        customer_phone: form.customer_phone.trim(),
-        store_id: form.store_id,
-        pickup_time: form.pickup_time.trim(),
-        total: total.toFixed(2),
-        status: form.status,
-        stripe_checkout_session_id: form.stripe_checkout_session_id?.trim() || null,
-        stripe_mode: form.stripe_mode,
-        payment_status: form.payment_status,
-        notes: form.notes?.trim() || null,
-        cancel_token: form.cancel_token?.trim() || null,
-        tracking_token: form.tracking_token?.trim() || null,
-        status_updated_at: form.status_updated_at || null,
-        receipt_confirmed_at: form.receipt_confirmed_at || null,
-        ...b2bPayload,
+        customer_name: syncedForm.customer_name.trim(),
+        customer_email: syncedForm.customer_email.trim(),
+        customer_phone: syncedForm.customer_phone.trim(),
+        store_id: syncedForm.store_id,
+        requested_fulfillment_method: syncedForm.requested_fulfillment_method,
+        requested_target_date: targetDate.toISOString(),
+        payment_terms: billingTerms.trim()
+          ? parsePaymentTerms(billingTerms)
+          : syncedForm.payment_terms,
+        po_number: syncedForm.po_number?.trim() || null,
+        subtotal: subtotal.toFixed(2),
+        tax_total: taxTotal.toFixed(2),
+        shipping_fee: shippingFee.toFixed(2),
+        grand_total: grandTotal.toFixed(2),
+        status: syncedForm.status,
+        notes: syncedForm.notes?.trim() || null,
+        cancel_token: syncedForm.cancel_token?.trim() || null,
+        tracking_token: syncedForm.tracking_token?.trim() || null,
+        status_updated_at: syncedForm.status_updated_at || null,
+        ...addressPayload,
       };
 
       let targetOrderId = editingOrderId;
@@ -199,12 +241,6 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
           .update(orderPayload)
           .eq('id', editingOrderId);
         if (updateError) throw updateError;
-
-        const { error: deleteItemsError } = await supabase
-          .from(dataset.itemsTable)
-          .delete()
-          .eq('order_id', editingOrderId);
-        if (deleteItemsError) throw deleteItemsError;
       } else {
         const { data: insertedOrder, error: insertError } = await supabase
           .from(dataset.ordersTable)
@@ -221,16 +257,12 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         throw new Error(`Could not resolve ${dataset.entityName} id.`);
       }
 
-      const { error: insertItemsError } = await supabase.from(dataset.itemsTable).insert(
-        parsedItems.map((item) => ({
-          order_id: targetOrderId,
-          menu_item_id: item.menu_item_id,
-          qty: item.qty,
-          unit_price: item.unit_price.toFixed(2),
-          item_name: item.item_name,
-        })),
-      );
-      if (insertItemsError) throw insertItemsError;
+      await replaceOrderItems(targetOrderId, orderType, parsedItems);
+      await saveOrderPayment(targetOrderId, {
+        ...syncedForm.payment,
+        amount: grandTotal.toFixed(2),
+        mode: syncedForm.payment.mode ?? dataset.defaultPaymentMode,
+      });
 
       toast.success(
         editingOrderId !== null

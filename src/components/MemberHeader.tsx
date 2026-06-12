@@ -18,6 +18,16 @@ import type { BusinessType } from "@/types/UserProfile";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const HOME_LINK = {
+  label: "Home",
+  href: "/",
+} as const;
+
+const MEMBER_ACCOUNT_LINK = {
+  label: "My Account",
+  href: "/member",
+} as const;
+
 const DASHBOARD_LINK = {
   label: "Dashboard",
   href: "/member/dashboard",
@@ -140,7 +150,7 @@ export default function MemberHeader({
   showCart = true,
 }: MemberHeaderProps) {
   const pathname = usePathname();
-  const { isLoading: isAccountLoading } = useSupabase();
+  const { isLoading: isAccountLoading, isSignedIn } = useSupabase();
   const { cartCount, setCartOpen, isHydrated } = useWholesaleCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wholesaleMenuOpen, setWholesaleMenuOpen] = useState(false);
@@ -150,6 +160,8 @@ export default function MemberHeader({
   const hasWholesalePrivilege = member
     ? hasPrivilege(member.privileges, "wholesale")
     : false;
+  const homeActive = isActiveNav(pathname, HOME_LINK.href);
+  const memberAccountActive = isActiveNav(pathname, MEMBER_ACCOUNT_LINK.href);
   const dashboardActive = isActiveNav(pathname, DASHBOARD_LINK.href);
   const profileActive = isActiveNav(pathname, PROFILE_LINK.href);
   const wholesaleNavActive = isWholesaleNavActive(pathname);
@@ -170,7 +182,10 @@ export default function MemberHeader({
       <header className="sticky top-0 z-50 bg-black/95 backdrop-blur-md border-b border-white/10">
         <div className="container flex items-center justify-between gap-4 h-16">
           <div className="flex items-center gap-6 min-w-0">
-            <Link href="/member/dashboard" className="shrink-0">
+            <Link
+              href={isSignedIn ? DASHBOARD_LINK.href : HOME_LINK.href}
+              className="shrink-0"
+            >
               <AppImage
                 src={LOGO_URL}
                 alt="Saigon Express"
@@ -180,58 +195,77 @@ export default function MemberHeader({
               />
             </Link>
             <nav className="hidden md:flex items-center gap-1 min-w-0">
-              <Link
-                href={DASHBOARD_LINK.href}
-                className={navLinkClass(dashboardActive)}
-              >
-                {DASHBOARD_LINK.label}
-              </Link>
-              {hasWholesalePrivilege ? (
-                <Popover
-                  open={wholesaleMenuOpen}
-                  onOpenChange={setWholesaleMenuOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className={`inline-flex items-center gap-1 ${navLinkClass(wholesaleNavActive)}`}
-                    >
-                      Wholesale
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform ${wholesaleMenuOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="start"
-                    className="w-44 border-white/10 bg-black/95 p-1 text-white shadow-xl backdrop-blur-md"
+              {isSignedIn ? (
+                <>
+                  <Link
+                    href={DASHBOARD_LINK.href}
+                    className={navLinkClass(dashboardActive)}
                   >
-                    {WHOLESALE_NAV_LINKS.map((link) => {
-                      const active = isActiveNav(pathname, link.href);
-                      return (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={() => setWholesaleMenuOpen(false)}
-                          className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                            active
-                              ? "bg-primary/20 text-primary"
-                              : "text-white/70 hover:bg-white/8 hover:text-white"
-                          }`}
+                    {DASHBOARD_LINK.label}
+                  </Link>
+                  {hasWholesalePrivilege ? (
+                    <Popover
+                      open={wholesaleMenuOpen}
+                      onOpenChange={setWholesaleMenuOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`inline-flex items-center gap-1 ${navLinkClass(wholesaleNavActive)}`}
                         >
-                          {link.label}
-                        </Link>
-                      );
-                    })}
-                  </PopoverContent>
-                </Popover>
-              ) : null}
-              <Link
-                href={PROFILE_LINK.href}
-                className={navLinkClass(profileActive)}
-              >
-                {PROFILE_LINK.label}
-              </Link>
+                          Wholesale
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${wholesaleMenuOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        className="w-44 border-white/10 bg-black/95 p-1 text-white shadow-xl backdrop-blur-md"
+                      >
+                        {WHOLESALE_NAV_LINKS.map((link) => {
+                          const active = isActiveNav(pathname, link.href);
+                          return (
+                            <Link
+                              key={link.href}
+                              href={link.href}
+                              onClick={() => setWholesaleMenuOpen(false)}
+                              className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                                active
+                                  ? "bg-primary/20 text-primary"
+                                  : "text-white/70 hover:bg-white/8 hover:text-white"
+                              }`}
+                            >
+                              {link.label}
+                            </Link>
+                          );
+                        })}
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
+                  <Link
+                    href={PROFILE_LINK.href}
+                    className={navLinkClass(profileActive)}
+                  >
+                    {PROFILE_LINK.label}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href={HOME_LINK.href}
+                    className={navLinkClass(homeActive)}
+                  >
+                    {HOME_LINK.label}
+                  </Link>
+                  <Link
+                    href={MEMBER_ACCOUNT_LINK.href}
+                    className={navLinkClass(memberAccountActive)}
+                  >
+                    {MEMBER_ACCOUNT_LINK.label}
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
 
@@ -248,14 +282,16 @@ export default function MemberHeader({
                 onOpenCart={() => setCartOpen(true)}
               />
             ) : null}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="hidden md:block p-2 text-white/40 hover:text-white transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {isSignedIn ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="hidden md:block p-2 text-white/40 hover:text-white transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            ) : null}
             <button
               type="button"
               className="md:hidden p-2 text-white/70 hover:text-white transition-colors"
@@ -302,68 +338,99 @@ export default function MemberHeader({
               ) : null}
 
               <nav className="space-y-1">
-                <Link
-                  href={DASHBOARD_LINK.href}
-                  onClick={closeMobileMenu}
-                  className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    dashboardActive
-                      ? "bg-primary/20 text-primary"
-                      : "text-white/70 hover:bg-white/8 hover:text-white"
-                  }`}
-                >
-                  {DASHBOARD_LINK.label}
-                </Link>
-                {hasWholesalePrivilege ? (
-                  <div className="space-y-1">
-                    <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/40">
-                      Wholesale
-                    </div>
-                    {WHOLESALE_NAV_LINKS.map((link) => {
-                      const active = isActiveNav(pathname, link.href);
-                      return (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={closeMobileMenu}
-                          className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                            active
-                              ? "bg-primary/20 text-primary"
-                              : "text-white/70 hover:bg-white/8 hover:text-white"
-                          }`}
-                        >
-                          {link.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : null}
-                <Link
-                  href={PROFILE_LINK.href}
-                  onClick={closeMobileMenu}
-                  className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    profileActive
-                      ? "bg-primary/20 text-primary"
-                      : "text-white/70 hover:bg-white/8 hover:text-white"
-                  }`}
-                >
-                  {PROFILE_LINK.label}
-                </Link>
+                {isSignedIn ? (
+                  <>
+                    <Link
+                      href={DASHBOARD_LINK.href}
+                      onClick={closeMobileMenu}
+                      className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        dashboardActive
+                          ? "bg-primary/20 text-primary"
+                          : "text-white/70 hover:bg-white/8 hover:text-white"
+                      }`}
+                    >
+                      {DASHBOARD_LINK.label}
+                    </Link>
+                    {hasWholesalePrivilege ? (
+                      <div className="space-y-1">
+                        <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+                          Wholesale
+                        </div>
+                        {WHOLESALE_NAV_LINKS.map((link) => {
+                          const active = isActiveNav(pathname, link.href);
+                          return (
+                            <Link
+                              key={link.href}
+                              href={link.href}
+                              onClick={closeMobileMenu}
+                              className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                                active
+                                  ? "bg-primary/20 text-primary"
+                                  : "text-white/70 hover:bg-white/8 hover:text-white"
+                              }`}
+                            >
+                              {link.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                    <Link
+                      href={PROFILE_LINK.href}
+                      onClick={closeMobileMenu}
+                      className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        profileActive
+                          ? "bg-primary/20 text-primary"
+                          : "text-white/70 hover:bg-white/8 hover:text-white"
+                      }`}
+                    >
+                      {PROFILE_LINK.label}
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href={HOME_LINK.href}
+                      onClick={closeMobileMenu}
+                      className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        homeActive
+                          ? "bg-primary/20 text-primary"
+                          : "text-white/70 hover:bg-white/8 hover:text-white"
+                      }`}
+                    >
+                      {HOME_LINK.label}
+                    </Link>
+                    <Link
+                      href={MEMBER_ACCOUNT_LINK.href}
+                      onClick={closeMobileMenu}
+                      className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        memberAccountActive
+                          ? "bg-primary/20 text-primary"
+                          : "text-white/70 hover:bg-white/8 hover:text-white"
+                      }`}
+                    >
+                      {MEMBER_ACCOUNT_LINK.label}
+                    </Link>
+                  </>
+                )}
               </nav>
             </div>
 
-            <div className="border-t border-white/10 p-4">
-              <button
-                type="button"
-                onClick={() => {
-                  closeMobileMenu();
-                  onLogout();
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/8 hover:text-white transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign out
-              </button>
-            </div>
+            {isSignedIn ? (
+              <div className="border-t border-white/10 p-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMobileMenu();
+                    onLogout();
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/8 hover:text-white transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign out
+                </button>
+              </div>
+            ) : null}
           </aside>
         </div>
       ) : null}

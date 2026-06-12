@@ -16,6 +16,12 @@ import MemberHeader from "@/components/MemberHeader";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import {
+  ORDER_STATUS_FILTER_OPTIONS,
+  getOrderStatusLabel,
+  getOrderTrackingShortLabel,
+  orderStatusIsPositive,
+} from "@/lib/order-status";
+import {
   fetchWholesaleOrders,
   formatOrderDate,
   formatOrderDateShort,
@@ -30,7 +36,9 @@ import {
 import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import {
+  formatFlatShippingLines,
   getWholesaleOrderB2BSummary,
+  hasMeaningfulFlatShippingAddress,
   hasWholesaleOrderB2B,
 } from "@/lib/wholesale-b2b-order";
 import type { UserProfile, WholesaleProduct } from "@/types";
@@ -55,16 +63,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const STATUS_FILTER_OPTIONS: { value: WholesaleOrderStatusFilter; label: string }[] = [
-  { value: "all", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "preparing", label: "Preparing" },
-  { value: "ready", label: "Ready" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
 function getContactName(profile: UserProfile): string {
   if (profile.display_name?.trim()) return profile.display_name.trim();
   const parts = [profile.first_name, profile.last_name].filter(Boolean);
@@ -77,27 +75,13 @@ function getMemberId(profile: UserProfile): string {
 }
 
 function statusBadgeClass(status: WholesaleOrderStatus): string {
-  switch (status) {
-    case "completed":
-    case "ready":
-      return "bg-emerald-500/15 text-emerald-300 before:bg-emerald-300";
-    case "cancelled":
-      return "bg-white/10 text-white/45 before:bg-white/45";
-    default:
-      return "bg-amber-500/15 text-amber-200 before:bg-amber-200";
+  if (orderStatusIsPositive(status)) {
+    return "bg-emerald-500/15 text-emerald-300 before:bg-emerald-300";
   }
-}
-
-function statusLabel(status: WholesaleOrderStatus): string {
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function trackingStatusLabel(status: WholesaleOrderStatus): string | null {
-  if (status === "completed") return "Delivered";
-  if (status === "ready") return "Ready";
-  if (status === "preparing" || status === "confirmed") return "Processing";
-  if (status === "pending") return "Pending";
-  return null;
+  if (status === "cancelled") {
+    return "bg-white/10 text-white/45 before:bg-white/45";
+  }
+  return "bg-amber-500/15 text-amber-200 before:bg-amber-200";
 }
 
 type StatusBadgeProps = {
@@ -109,7 +93,7 @@ function StatusBadge({ status }: StatusBadgeProps) {
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium before:inline-block before:h-1.5 before:w-1.5 before:rounded-full ${statusBadgeClass(status)}`}
     >
-      {statusLabel(status)}
+      {getOrderStatusLabel(status)}
     </span>
   );
 }
@@ -219,12 +203,16 @@ function OrderRow({
   const [b2bDialogOpen, setB2bDialogOpen] = useState(false);
 
   const itemCount = getOrderItemCount(order.items);
-  const trackingLabel = trackingStatusLabel(order.status);
+  const trackingLabel = getOrderTrackingShortLabel(order.status);
   const trackingUrl = order.tracking_token
     ? `/order-tracking/${order.tracking_token}`
     : null;
   const hasB2B = hasWholesaleOrderB2B(order.b2b);
-  const b2bSummary = getWholesaleOrderB2BSummary(order.b2b);
+  const b2bSummary =
+    getWholesaleOrderB2BSummary(order.b2b) ??
+    (hasMeaningfulFlatShippingAddress(order.address)
+      ? formatFlatShippingLines(order.address).join(" · ")
+      : null);
 
   const openB2BDialog = (event: MouseEvent) => {
     event.stopPropagation();
@@ -258,17 +246,17 @@ function OrderRow({
             <div className="flex shrink-0 items-center gap-2">
               <span
                 className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  order.status === "completed" || order.status === "ready"
+                  orderStatusIsPositive(order.status)
                     ? "bg-emerald-500/15 text-emerald-300"
                     : order.status === "cancelled"
                       ? "bg-white/10 text-white/45"
                       : "bg-amber-500/15 text-amber-200"
                 }`}
               >
-                {trackingLabel ?? statusLabel(order.status)}
+                {trackingLabel ?? getOrderStatusLabel(order.status)}
               </span>
               <span className="text-sm font-bold tabular-nums text-white">
-                ${order.total.toFixed(2)}
+                ${order.grand_total.toFixed(2)}
               </span>
             </div>
           </div>
@@ -321,7 +309,7 @@ function OrderRow({
         </div>
         <div className="hidden text-sm text-white/70 lg:block">{itemCount}</div>
         <div className="hidden text-sm font-semibold text-white lg:block">
-          ${order.total.toFixed(2)}
+          ${order.grand_total.toFixed(2)}
         </div>
         <div className="hidden lg:block">
           {trackingUrl ? (
@@ -480,7 +468,7 @@ function OrderRow({
         open={b2bDialogOpen}
         onOpenChange={setB2bDialogOpen}
         orderId={order.id}
-        orderTotal={order.total}
+        orderTotal={order.grand_total}
         b2b={order.b2b}
         section="all"
       />
@@ -666,7 +654,7 @@ export default function WholesaleOrders({
                   Order History
                 </h1>
                 <p className="text-sm text-white/45">
-                  Welcome back, {me.contactName} | Member ID: {me.memberId}
+                  Welcome back, {me.contactName} | Email: {profile?.email}
                 </p>
               </div>
             ) : null}
@@ -736,7 +724,7 @@ export default function WholesaleOrders({
               }
               className="w-full cursor-pointer appearance-none rounded-xl border border-white/15 bg-white/8 py-3 pl-4 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
-              {STATUS_FILTER_OPTIONS.map((option) => (
+              {ORDER_STATUS_FILTER_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value} className="bg-neutral-900">
                   {option.label}
                 </option>

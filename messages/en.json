@@ -850,6 +850,101 @@
       "btnFindStore": "Find Your Store"
     }
   },
+  "OrderTrackingFront": {
+    "title": "Track Your Order",
+    "description": "Enter your unique tracking token to open the detailed status page.",
+    "inputLabel": "Tracking token",
+    "inputPlaceholder": "Enter Tracking Order Token (e.g., SE-TOKEN-XXXXXX)",
+    "submit": "VIEW ORDER DETAILS",
+    "tokenHelp": {
+      "title": "Where can I find my token?",
+      "description": "Your unique token is provided in your order confirmation email and on your physical invoice."
+    },
+    "errors": {
+      "emptyToken": "Please enter your tracking token.",
+      "orderNotFound": "We couldn't find an order for that tracking token. Please check it and try again."
+    },
+    "signedOut": "Signed out.",
+    "footer": {
+      "helpCenter": {
+        "title": "Help Center",
+        "description": "Browse FAQs and common questions."
+      },
+      "services": {
+        "title": "Latest Services",
+        "description": "Explore wholesale and catering options."
+      },
+      "contact": {
+        "title": "Contact Us",
+        "description": "Reach our team for order support."
+      },
+      "about": {
+        "title": "About Us",
+        "description": "Learn more about Saigon Express."
+      }
+    }
+  },
+  "OrderTrackingDetails": {
+    "title": "Track Order - {orderId}",
+    "welcomeMember": "Welcome back, {name}",
+    "welcomeGuest": "Order for {name}",
+    "signedOut": "Signed out.",
+    "backToTracking": "Track another order",
+    "summary": {
+      "order": "Order",
+      "orderDate": "Order Date",
+      "orderType": "Order Type",
+      "totalAmount": "Total Amount"
+    },
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "timeline": {
+      "title": "Order Lifecycle Timeline",
+      "expectedDelivery": "Expected Delivery: {window}",
+      "placed": "Order Placed",
+      "processing": "Processing",
+      "qualityChecked": "Quality Checked",
+      "packed": "Packed",
+      "delivery": "Out for Delivery",
+      "pickupReady": "Ready for Pickup",
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "upcoming": "Upcoming"
+    },
+    "deliveryMap": {
+      "title": "Delivery Map",
+      "placeholder": "Interactive Map Area",
+      "addressTitle": "Delivery Address",
+      "billingTitle": "Billing Address",
+      "noAddress": "Pickup details will appear here.",
+      "carrierTitle": "Carrier Information",
+      "lastUpdate": "Last Update: {date}"
+    },
+    "items": {
+      "title": "Item Details",
+      "shipmentTitle": "Items In This Shipment",
+      "sku": "SKU",
+      "name": "Name",
+      "qty": "Qty",
+      "unit": "Unit",
+      "total": "Total",
+      "packed": "Packed",
+      "packedYes": "Packed",
+      "packedNo": "Pending"
+    },
+    "actions": {
+      "viewInvoice": "View Invoice",
+      "downloadPackingSlip": "Download Packing Slip",
+      "reportIssue": "Report Issue",
+      "contactSupplier": "Contact Supplier"
+    }
+  },
   "Contact": {
     "hero": {
       "badge": "GET IN TOUCH",

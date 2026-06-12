@@ -27,6 +27,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
@@ -34,14 +41,30 @@ import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  defaultOrderAddressFields,
+  type OrderAddressDbFields,
+} from './salesOrderB2b';
+import { SalesOrderAddressEditor } from './SalesOrderAddressEditor';
+import { SalesOrderItemsEditor } from './SalesOrderItemsEditor';
+import {
+  DRAFT_ORDER_COLUMNS,
+  fetchOrderItems,
+  formatTargetDateDisplay,
+  fromDatetimeLocalValue,
+  mapDbItemToForm,
+  replaceOrderItems,
+  toDatetimeLocalValue,
+} from './salesOrderDb';
+import {
+  defaultFulfillmentForOrderType,
+  emptyOrderItem,
+  FULFILLMENT_TYPE_OPTIONS,
+  validateOrderItems,
+  type FulfillmentType,
+  type SalesOrderItemForm,
+} from './salesOrderShared';
 import { useSalesOrderType } from './useSalesOrderType';
-
-type DraftOrderItem = {
-  menuItemId: number;
-  qty: number;
-  unitPrice: number;
-  itemName: string;
-};
 
 type DraftOrderRow = {
   id: number;
@@ -49,94 +72,94 @@ type DraftOrderRow = {
   customer_email: string | null;
   customer_phone: string | null;
   store_id: number | null;
-  pickup_time: string | null;
-  total: string | null;
+  requested_fulfillment_method: FulfillmentType;
+  requested_target_date: string | null;
+  subtotal: string | null;
+  tax_total: string | null;
+  shipping_fee: string | null;
+  grand_total: string | null;
   notes: string | null;
-  items: unknown;
   expires_at: string | null;
   created_at: string;
   updated_at: string;
-};
+} & OrderAddressDbFields;
 
 type DraftOrderForm = {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
   store_id: number | null;
-  pickup_time: string;
-  total: string;
+  requested_fulfillment_method: FulfillmentType;
+  requested_target_date: string;
+  subtotal: string;
+  tax_total: string;
+  shipping_fee: string;
+  grand_total: string;
   notes: string;
-  itemsJson: string;
+  items: SalesOrderItemForm[];
   expires_at: string;
-};
+} & OrderAddressDbFields;
 
-const DRAFT_ORDER_COLUMNS =
-  'id, customer_name, customer_email, customer_phone, store_id, pickup_time, total, notes, items, expires_at, created_at, updated_at';
-
-function emptyDraftOrderForm(): DraftOrderForm {
+function emptyDraftOrderForm(orderType: string): DraftOrderForm {
   return {
     customer_name: '',
     customer_email: '',
     customer_phone: '',
     store_id: null,
-    pickup_time: '',
-    total: '0.00',
+    requested_fulfillment_method: defaultFulfillmentForOrderType(orderType),
+    requested_target_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    subtotal: '0.00',
+    tax_total: '0.00',
+    shipping_fee: '0.00',
+    grand_total: '0.00',
     notes: '',
-    itemsJson: '[]',
+    items: [],
     expires_at: '',
+    ...defaultOrderAddressFields(),
   };
 }
 
-function toDraftOrderForm(row: DraftOrderRow): DraftOrderForm {
+function syncDraftTotals(form: DraftOrderForm): DraftOrderForm {
+  const subtotal = form.items.reduce((sum, item) => {
+    const qty = Number(item.qty);
+    const unitPrice = Number(item.unit_price);
+    if (!Number.isFinite(qty) || !Number.isFinite(unitPrice)) return sum;
+    return sum + qty * unitPrice;
+  }, 0);
+  const taxTotal = Number(form.tax_total) || 0;
+  const shippingFee = Number(form.shipping_fee) || 0;
   return {
+    ...form,
+    subtotal: subtotal.toFixed(2),
+    grand_total: (subtotal + taxTotal + shippingFee).toFixed(2),
+  };
+}
+
+function draftRowToForm(row: DraftOrderRow, items: SalesOrderItemForm[]): DraftOrderForm {
+  return syncDraftTotals({
     customer_name: row.customer_name ?? '',
     customer_email: row.customer_email ?? '',
     customer_phone: row.customer_phone ?? '',
     store_id: row.store_id,
-    pickup_time: row.pickup_time ?? '',
-    total: row.total ? String(row.total) : '0.00',
+    requested_fulfillment_method: row.requested_fulfillment_method,
+    requested_target_date: row.requested_target_date ?? new Date().toISOString(),
+    subtotal: row.subtotal ? String(row.subtotal) : '0.00',
+    tax_total: row.tax_total ? String(row.tax_total) : '0.00',
+    shipping_fee: row.shipping_fee ? String(row.shipping_fee) : '0.00',
+    grand_total: row.grand_total ? String(row.grand_total) : '0.00',
     notes: row.notes ?? '',
-    itemsJson: JSON.stringify(row.items ?? [], null, 2),
+    items,
     expires_at: row.expires_at ?? '',
-  };
-}
-
-function parseDraftItems(itemsJson: string): DraftOrderItem[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(itemsJson);
-  } catch {
-    throw new Error('Items JSON is invalid.');
-  }
-
-  if (!Array.isArray(parsed)) {
-    throw new Error('Items JSON must be an array.');
-  }
-
-  return parsed.map((raw) => {
-    if (!raw || typeof raw !== 'object') {
-      throw new Error('Each item must be an object.');
-    }
-    const row = raw as Record<string, unknown>;
-    const menuItemId = Number(row.menuItemId);
-    const qty = Number(row.qty);
-    const unitPrice = Number(row.unitPrice);
-    const itemName = String(row.itemName ?? '').trim();
-
-    if (!Number.isFinite(menuItemId) || menuItemId <= 0) {
-      throw new Error('Each item needs a valid menuItemId.');
-    }
-    if (!Number.isFinite(qty) || qty < 1) {
-      throw new Error('Each item needs qty >= 1.');
-    }
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-      throw new Error('Each item needs unitPrice >= 0.');
-    }
-    if (!itemName) {
-      throw new Error('Each item needs itemName.');
-    }
-
-    return { menuItemId, qty, unitPrice, itemName };
+    shipping_address: row.shipping_address,
+    shipping_city: row.shipping_city,
+    shipping_state: row.shipping_state,
+    shipping_postal_code: row.shipping_postal_code,
+    shipping_country: row.shipping_country,
+    billing_address: row.billing_address,
+    billing_city: row.billing_city,
+    billing_state: row.billing_state,
+    billing_postal_code: row.billing_postal_code,
+    billing_country: row.billing_country,
   });
 }
 
@@ -156,7 +179,9 @@ export function DraftOrders() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<DraftOrderForm>(emptyDraftOrderForm());
+  const [form, setForm] = useState<DraftOrderForm>(() =>
+    emptyDraftOrderForm(orderType ?? 'pickup'),
+  );
   const [deleteTarget, setDeleteTarget] = useState<DraftOrderRow | null>(null);
 
   const loadRows = useCallback(async () => {
@@ -204,32 +229,45 @@ export function DraftOrders() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm(emptyDraftOrderForm());
+    setForm(emptyDraftOrderForm(orderType ?? 'pickup'));
     setDialogOpen(true);
   };
 
-  const openEdit = (row: DraftOrderRow) => {
-    setEditingId(row.id);
-    setForm(toDraftOrderForm(row));
-    setDialogOpen(true);
+  const openEdit = async (row: DraftOrderRow) => {
+    setSaving(true);
+    try {
+      const itemRows = await fetchOrderItems(row.id);
+      const items = itemRows.map((item) => mapDbItemToForm(item));
+      setEditingId(row.id);
+      setForm(draftRowToForm(row, items));
+      setDialogOpen(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load draft order.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyItemsChange = (items: SalesOrderItemForm[]) => {
+    setForm((prev) => syncDraftTotals({ ...prev, items }));
   };
 
   const handleSave = async () => {
     if (!orderType) return;
 
-    if (form.total.trim()) {
-      const total = Number(form.total);
-      if (!Number.isFinite(total) || total < 0) {
-        toast.error('Total must be a valid non-negative number.');
-        return;
-      }
+    let parsedItems: SalesOrderItemForm[];
+    try {
+      parsedItems = form.items.length > 0 ? validateOrderItems(form.items) : [];
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Invalid line items.');
+      return;
     }
 
-    let parsedItems: DraftOrderItem[];
-    try {
-      parsedItems = parseDraftItems(form.itemsJson);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Invalid items JSON.');
+    const synced = syncDraftTotals({ ...form, items: parsedItems });
+
+    const targetDate = new Date(synced.requested_target_date);
+    if (Number.isNaN(targetDate.getTime())) {
+      toast.error('Target date must be valid.');
       return;
     }
 
@@ -237,16 +275,32 @@ export function DraftOrders() {
     try {
       const payload = {
         order_type: orderType,
-        customer_name: form.customer_name.trim() || null,
-        customer_email: form.customer_email.trim() || null,
-        customer_phone: form.customer_phone.trim() || null,
-        store_id: form.store_id,
-        pickup_time: form.pickup_time.trim() || null,
-        total: form.total.trim() ? Number(form.total).toFixed(2) : null,
-        notes: form.notes.trim() || null,
-        items: parsedItems,
+        status: 'awaiting_payment' as const,
+        customer_name: synced.customer_name.trim() || null,
+        customer_email: synced.customer_email.trim() || null,
+        customer_phone: synced.customer_phone.trim() || null,
+        store_id: synced.store_id,
+        requested_fulfillment_method: synced.requested_fulfillment_method,
+        requested_target_date: targetDate.toISOString(),
+        shipping_address: synced.shipping_address.trim() || 'N/A',
+        shipping_city: synced.shipping_city.trim() || 'N/A',
+        shipping_state: synced.shipping_state.trim() || 'N/A',
+        shipping_postal_code: synced.shipping_postal_code.trim() || '0000',
+        shipping_country: synced.shipping_country.trim() || 'Australia',
+        billing_address: synced.billing_address.trim() || 'N/A',
+        billing_city: synced.billing_city.trim() || 'N/A',
+        billing_state: synced.billing_state.trim() || 'N/A',
+        billing_postal_code: synced.billing_postal_code.trim() || '0000',
+        billing_country: synced.billing_country.trim() || 'Australia',
+        subtotal: Number(synced.subtotal).toFixed(2),
+        tax_total: Number(synced.tax_total).toFixed(2),
+        shipping_fee: Number(synced.shipping_fee).toFixed(2),
+        grand_total: Number(synced.grand_total).toFixed(2),
+        notes: synced.notes.trim() || null,
         expires_at: form.expires_at.trim() || null,
       };
+
+      let targetId = editingId;
 
       if (editingId !== null) {
         const { error: updateError } = await supabase
@@ -260,13 +314,24 @@ export function DraftOrders() {
         toast.success('Draft order updated.');
       } else {
         const nowIso = new Date().toISOString();
-        const { error: insertError } = await supabase.from('draft_orders').insert({
-          ...payload,
-          created_at: nowIso,
-          updated_at: nowIso,
-        });
-        if (insertError) throw insertError;
+        const { data: inserted, error: insertError } = await supabase
+          .from('draft_orders')
+          .insert({
+            ...payload,
+            created_at: nowIso,
+            updated_at: nowIso,
+          })
+          .select('id')
+          .single();
+        if (insertError || !inserted) {
+          throw insertError ?? new Error('Failed to create draft order.');
+        }
+        targetId = inserted.id as number;
         toast.success('Draft order created.');
+      }
+
+      if (targetId) {
+        await replaceOrderItems(targetId, orderType, parsedItems);
       }
 
       setDialogOpen(false);
@@ -363,7 +428,7 @@ export function DraftOrders() {
                     <tr className="border-b bg-muted/50">
                       <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">Pickup</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Target date</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Expires</th>
                       <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
@@ -378,10 +443,10 @@ export function DraftOrders() {
                           <p className="text-muted-foreground">{row.customer_email ?? '-'}</p>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {row.pickup_time ?? '-'}
+                          {formatTargetDateDisplay(row.requested_target_date)}
                         </td>
-                        <td className="px-4 py-3 text-sm">
-                          {row.total ? `$${Number(row.total).toFixed(2)}` : '-'}
+                        <td className="px-4 py-3 text-sm tabular-nums">
+                          {row.grand_total ? `$${Number(row.grand_total).toFixed(2)}` : '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {row.expires_at ? new Date(row.expires_at).toLocaleString() : '-'}
@@ -391,7 +456,7 @@ export function DraftOrders() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openEdit(row)}
+                              onClick={() => void openEdit(row)}
                               disabled={saving}
                             >
                               <Pencil className="h-4 w-4" />
@@ -417,7 +482,7 @@ export function DraftOrders() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId !== null ? 'Edit draft order' : 'Add draft order'}</DialogTitle>
             <DialogDescription>Draft data used before payment completion.</DialogDescription>
@@ -468,25 +533,78 @@ export function DraftOrders() {
                 }
               />
             </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="draft-pickup-time">Pickup time</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="draft-fulfillment">Fulfillment method</Label>
+              <Select
+                value={form.requested_fulfillment_method}
+                onValueChange={(value) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    requested_fulfillment_method: value as FulfillmentType,
+                  }))
+                }
+              >
+                <SelectTrigger id="draft-fulfillment">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FULFILLMENT_TYPE_OPTIONS.map((method) => (
+                    <SelectItem key={method} value={method}>
+                      {method}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="draft-target-date">Target date</Label>
               <Input
-                id="draft-pickup-time"
-                value={form.pickup_time}
+                id="draft-target-date"
+                type="datetime-local"
+                value={toDatetimeLocalValue(form.requested_target_date)}
+                onChange={(e) => {
+                  const iso = fromDatetimeLocalValue(e.target.value);
+                  if (iso) {
+                    setForm((prev) => ({ ...prev, requested_target_date: iso }));
+                  }
+                }}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="draft-tax">Tax total</Label>
+              <Input
+                id="draft-tax"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.tax_total}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, pickup_time: e.target.value }))
+                  setForm((prev) => syncDraftTotals({ ...prev, tax_total: e.target.value }))
                 }
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="draft-total">Total</Label>
+              <Label htmlFor="draft-shipping">Shipping fee</Label>
               <Input
-                id="draft-total"
+                id="draft-shipping"
                 type="number"
                 min="0"
                 step="0.01"
-                value={form.total}
-                onChange={(e) => setForm((prev) => ({ ...prev, total: e.target.value }))}
+                value={form.shipping_fee}
+                onChange={(e) =>
+                  setForm((prev) => syncDraftTotals({ ...prev, shipping_fee: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="draft-grand-total">Grand total</Label>
+              <Input
+                id="draft-grand-total"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.grand_total}
+                readOnly
               />
             </div>
             <div className="grid gap-2">
@@ -500,6 +618,25 @@ export function DraftOrders() {
               />
             </div>
             <div className="grid gap-2 md:col-span-2">
+              <SalesOrderAddressEditor
+                idPrefix="draft-order"
+                value={{
+                  shipping_address: form.shipping_address,
+                  shipping_city: form.shipping_city,
+                  shipping_state: form.shipping_state,
+                  shipping_postal_code: form.shipping_postal_code,
+                  shipping_country: form.shipping_country,
+                  billing_address: form.billing_address,
+                  billing_city: form.billing_city,
+                  billing_state: form.billing_state,
+                  billing_postal_code: form.billing_postal_code,
+                  billing_country: form.billing_country,
+                }}
+                onChange={(address) => setForm((prev) => ({ ...prev, ...address }))}
+                disabled={saving}
+              />
+            </div>
+            <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="draft-notes">Notes</Label>
               <Textarea
                 id="draft-notes"
@@ -509,14 +646,29 @@ export function DraftOrders() {
               />
             </div>
             <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="draft-items">Items JSON</Label>
-              <Textarea
-                id="draft-items"
-                rows={10}
-                value={form.itemsJson}
-                onChange={(e) => setForm((prev) => ({ ...prev, itemsJson: e.target.value }))}
-                placeholder='[{"menuItemId":1,"qty":2,"unitPrice":12.5,"itemName":"Pho"}]'
-                className="font-mono text-xs"
+              <div className="flex items-center justify-between">
+                <Label>Line items</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      items: [...prev.items, emptyOrderItem()],
+                    }))
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add line item
+                </Button>
+              </div>
+              <SalesOrderItemsEditor
+                orderType={orderType!}
+                items={form.items}
+                onItemsChange={applyItemsChange}
+                idPrefix="draft-order"
+                disabled={saving}
               />
             </div>
           </div>

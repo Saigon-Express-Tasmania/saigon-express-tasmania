@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { formatTargetDateDisplay } from './salesOrderDb';
 import type { SalesOrderRow } from './salesOrderShared';
 
 type SalesOrdersTableProps = {
@@ -25,7 +26,7 @@ export function SalesOrdersTable({
           <tr className="border-b bg-muted/50">
             <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold">Pickup</th>
+            <th className="px-4 py-3 text-left text-sm font-semibold">Target date</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Payment</th>
@@ -40,16 +41,22 @@ export function SalesOrdersTable({
                 <p className="font-medium">{order.customer_name}</p>
                 <p className="text-muted-foreground">{order.customer_email}</p>
               </td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{order.pickup_time}</td>
-              <td className="px-4 py-3 text-sm">${Number(order.total).toFixed(2)}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">
+                {formatTargetDateDisplay(order.requested_target_date)}
+              </td>
+              <td className="px-4 py-3 text-sm tabular-nums">
+                ${Number(order.grand_total).toFixed(2)}
+              </td>
               <td className="px-4 py-3">
                 <Badge variant={order.status === 'cancelled' ? 'secondary' : 'default'}>
                   {order.status}
                 </Badge>
               </td>
               <td className="px-4 py-3">
-                <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'}>
-                  {order.payment_status}
+                <Badge
+                  variant={order.payment_status === 'paid' ? 'default' : 'secondary'}
+                >
+                  {order.payment_status ?? 'unpaid'}
                 </Badge>
               </td>
               <td className="px-4 py-3">

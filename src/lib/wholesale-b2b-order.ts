@@ -238,12 +238,191 @@ export function parseWholesaleFinancialDetails(
   };
 }
 
-export function parseWholesaleOrderB2B(row: {
-  buyer?: unknown;
-  shipping_address?: unknown;
-  billing_address?: unknown;
+export type OrderAddressDbRow = {
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  payment_terms?: string | null;
+  shipping_address?: string | null;
+  shipping_city?: string | null;
+  shipping_state?: string | null;
+  shipping_postal_code?: string | null;
+  shipping_country?: string | null;
+  billing_address?: string | null;
+  billing_city?: string | null;
+  billing_state?: string | null;
+  billing_postal_code?: string | null;
+  billing_country?: string | null;
   financial_details?: unknown;
-}): WholesaleOrderB2B {
+};
+
+function financialExtras(
+  value: unknown,
+): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+export type OrderFlatAddress = {
+  shipping_address: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postal_code: string;
+  shipping_country: string;
+  billing_address: string;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: string;
+};
+
+export function isPlaceholderAddressValue(value: string | null | undefined): boolean {
+  const trimmed = String(value ?? "").trim();
+  return (
+    !trimmed ||
+    trimmed === "N/A" ||
+    trimmed === "0000" ||
+    trimmed === "In-store pickup"
+  );
+}
+
+export function extractOrderFlatAddress(row: OrderAddressDbRow): OrderFlatAddress {
+  return {
+    shipping_address: requiredString(row.shipping_address),
+    shipping_city: requiredString(row.shipping_city),
+    shipping_state: requiredString(row.shipping_state),
+    shipping_postal_code: requiredString(row.shipping_postal_code),
+    shipping_country: requiredString(row.shipping_country),
+    billing_address: requiredString(row.billing_address),
+    billing_city: requiredString(row.billing_city),
+    billing_state: requiredString(row.billing_state),
+    billing_postal_code: requiredString(row.billing_postal_code),
+    billing_country: requiredString(row.billing_country),
+  };
+}
+
+export function formatFlatAddressLines(parts: {
+  line: string;
+  city: string;
+  state?: string | null;
+  postal_code: string;
+  country?: string | null;
+}): string[] {
+  const locality = [parts.city, parts.state, parts.postal_code, parts.country]
+    .filter((part) => part && !isPlaceholderAddressValue(part))
+    .join(", ");
+
+  return [parts.line, locality].filter(
+    (line) => line && !isPlaceholderAddressValue(line),
+  );
+}
+
+export function formatFlatShippingLines(address: OrderFlatAddress): string[] {
+  return formatFlatAddressLines({
+    line: address.shipping_address,
+    city: address.shipping_city,
+    state: address.shipping_state,
+    postal_code: address.shipping_postal_code,
+    country: address.shipping_country,
+  });
+}
+
+export function formatFlatBillingLines(address: OrderFlatAddress): string[] {
+  return formatFlatAddressLines({
+    line: address.billing_address,
+    city: address.billing_city,
+    state: address.billing_state,
+    postal_code: address.billing_postal_code,
+    country: address.billing_country,
+  });
+}
+
+export function hasMeaningfulFlatShippingAddress(
+  address: OrderFlatAddress,
+): boolean {
+  return formatFlatShippingLines(address).length > 0;
+}
+
+export function hasMeaningfulFlatBillingAddress(
+  address: OrderFlatAddress,
+): boolean {
+  return formatFlatBillingLines(address).length > 0;
+}
+
+function parseWholesaleShippingFromFlatRow(
+  row: OrderAddressDbRow,
+): WholesaleShippingAddress | null {
+  const flat = extractOrderFlatAddress(row);
+  if (!hasMeaningfulFlatShippingAddress(flat)) return null;
+
+  const street = flat.shipping_address;
+  const city = flat.shipping_city;
+  const postalCode = flat.shipping_postal_code;
+
+  const extras = financialExtras(row.financial_details);
+  return {
+    dba_name:
+      optionalString(extras.shipping_dba_name) ??
+      (requiredString(row.customer_name) || "—"),
+    street_1: street || "—",
+    street_2: optionalString(extras.shipping_street_2),
+    city: city || "—",
+    state: optionalString(row.shipping_state),
+    postal_code: postalCode || "—",
+    country: optionalString(row.shipping_country),
+    special_instructions: optionalString(extras.shipping_special_instructions),
+    preferred_window: optionalString(extras.shipping_preferred_window),
+  };
+}
+
+function parseWholesaleBillingFromFlatRow(
+  row: OrderAddressDbRow,
+): WholesaleBillingAddress | null {
+  const flat = extractOrderFlatAddress(row);
+  if (!hasMeaningfulFlatBillingAddress(flat)) return null;
+
+  const street = flat.billing_address;
+  const city = flat.billing_city;
+  const postalCode = flat.billing_postal_code;
+
+  const extras = financialExtras(row.financial_details);
+  return {
+    legal_name:
+      optionalString(extras.billing_legal_name) ??
+      (requiredString(row.customer_name) || "—"),
+    street_1: street || "—",
+    street_2: optionalString(extras.billing_street_2),
+    city: city || "—",
+    state: optionalString(row.billing_state),
+    postal_code: postalCode || "—",
+    country: optionalString(row.billing_country),
+    tax_id: optionalString(extras.billing_tax_id),
+    payment_terms: optionalString(row.payment_terms),
+  };
+}
+
+function hasFlatAddressColumns(row: OrderAddressDbRow): boolean {
+  const flat = extractOrderFlatAddress(row);
+  return (
+    hasMeaningfulFlatShippingAddress(flat) ||
+    hasMeaningfulFlatBillingAddress(flat) ||
+    typeof row.shipping_city === "string" ||
+    typeof row.billing_city === "string"
+  );
+}
+
+export function parseWholesaleOrderB2B(
+  row: OrderAddressDbRow & { buyer?: unknown },
+): WholesaleOrderB2B {
+  if (hasFlatAddressColumns(row)) {
+    return {
+      buyer: parseWholesaleOrderBuyer(row.buyer),
+      shippingAddress: parseWholesaleShippingFromFlatRow(row),
+      billingAddress: parseWholesaleBillingFromFlatRow(row),
+      financialDetails: parseWholesaleFinancialDetails(row.financial_details),
+    };
+  }
+
   return {
     buyer: parseWholesaleOrderBuyer(row.buyer),
     shippingAddress: parseWholesaleShippingAddress(row.shipping_address),

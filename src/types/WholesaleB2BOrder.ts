@@ -1,4 +1,4 @@
-/** B2B wholesale order metadata stored in orders / draft_orders jsonb columns. */
+/** B2B wholesale order metadata stored on order headers (jsonb address + financial columns). */
 
 export type WholesaleOrderBuyer = {
   name: string;
@@ -45,7 +45,7 @@ export type WholesaleB2BCheckoutPayload = {
   financialDetails: WholesaleOrderFinancialDetails;
 };
 
-/** Parsed B2B metadata from orders / test_orders jsonb columns. */
+/** Parsed B2B metadata from order header jsonb columns. */
 export type WholesaleOrderB2B = {
   buyer: WholesaleOrderBuyer | null;
   shippingAddress: WholesaleShippingAddress | null;

@@ -851,6 +851,101 @@
       "btnFindStore": "Tìm Cửa Hàng"
     }
   },
+  "OrderTrackingFront": {
+    "title": "Theo Dõi Đơn Hàng",
+    "description": "Nhập mã theo dõi duy nhất của bạn để mở trang trạng thái chi tiết.",
+    "inputLabel": "Mã theo dõi",
+    "inputPlaceholder": "Nhập mã theo dõi đơn hàng (ví dụ: SE-TOKEN-XXXXXX)",
+    "submit": "XEM CHI TIẾT ĐƠN HÀNG",
+    "tokenHelp": {
+      "title": "Tôi có thể tìm mã ở đâu?",
+      "description": "Mã duy nhất của bạn được cung cấp trong email xác nhận đơn hàng và trên hóa đơn giấy."
+    },
+    "errors": {
+      "emptyToken": "Vui lòng nhập mã theo dõi.",
+      "orderNotFound": "Không tìm thấy đơn hàng với mã theo dõi này. Vui lòng kiểm tra và thử lại."
+    },
+    "signedOut": "Đã đăng xuất.",
+    "footer": {
+      "helpCenter": {
+        "title": "Trung Tâm Trợ Giúp",
+        "description": "Xem câu hỏi thường gặp và hướng dẫn."
+      },
+      "services": {
+        "title": "Dịch Vụ Mới",
+        "description": "Khám phá bán buôn và catering."
+      },
+      "contact": {
+        "title": "Liên Hệ",
+        "description": "Liên hệ đội ngũ hỗ trợ đơn hàng."
+      },
+      "about": {
+        "title": "Về Chúng Tôi",
+        "description": "Tìm hiểu thêm về Saigon Express."
+      }
+    }
+  },
+  "OrderTrackingDetails": {
+    "title": "Theo Dõi Đơn - {orderId}",
+    "welcomeMember": "Chào mừng trở lại, {name}",
+    "welcomeGuest": "Đơn hàng của {name}",
+    "signedOut": "Đã đăng xuất.",
+    "backToTracking": "Theo dõi đơn khác",
+    "summary": {
+      "order": "Đơn hàng",
+      "orderDate": "Ngày đặt",
+      "orderType": "Loại đơn",
+      "totalAmount": "Tổng tiền"
+    },
+    "status": {
+      "pending": "Chờ xử lý",
+      "confirmed": "Đã xác nhận",
+      "preparing": "Đang chuẩn bị",
+      "ready": "Sẵn sàng",
+      "completed": "Hoàn tất",
+      "cancelled": "Đã hủy"
+    },
+    "timeline": {
+      "title": "Tiến Trình Đơn Hàng",
+      "expectedDelivery": "Dự kiến giao: {window}",
+      "placed": "Đặt hàng",
+      "processing": "Xử lý",
+      "qualityChecked": "Kiểm tra chất lượng",
+      "packed": "Đóng gói",
+      "delivery": "Đang giao",
+      "pickupReady": "Sẵn sàng nhận",
+      "completed": "Hoàn tất",
+      "inProgress": "Đang xử lý",
+      "upcoming": "Sắp tới"
+    },
+    "deliveryMap": {
+      "title": "Bản Đồ Giao Hàng",
+      "placeholder": "Khu vực bản đồ tương tác",
+      "addressTitle": "Địa chỉ giao hàng",
+      "billingTitle": "Địa chỉ thanh toán",
+      "noAddress": "Thông tin nhận hàng sẽ hiển thị tại đây.",
+      "carrierTitle": "Thông tin vận chuyển",
+      "lastUpdate": "Cập nhật lần cuối: {date}"
+    },
+    "items": {
+      "title": "Chi Tiết Sản Phẩm",
+      "shipmentTitle": "Sản phẩm trong lô hàng",
+      "sku": "SKU",
+      "name": "Tên",
+      "qty": "SL",
+      "unit": "Đơn giá",
+      "total": "Tổng",
+      "packed": "Đóng gói",
+      "packedYes": "Đã đóng gói",
+      "packedNo": "Chờ xử lý"
+    },
+    "actions": {
+      "viewInvoice": "Xem hóa đơn",
+      "downloadPackingSlip": "Tải phiếu đóng gói",
+      "reportIssue": "Báo sự cố",
+      "contactSupplier": "Liên hệ nhà cung cấp"
+    }
+  },
   "Contact": {
     "hero": {
       "badge": "LIÊN HỆ",
