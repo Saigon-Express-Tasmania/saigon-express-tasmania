@@ -8,10 +8,8 @@ export type SalesOrderCatalogOption = {
   unitPrice: number;
 };
 
-export function getOrderItemIdColumnLabel(orderType: OrderType): string {
-  if (orderType === 'wholesale') return 'Wholesale Item ID';
-  if (orderType === 'pickup' || orderType === 'delivery') return 'Menu Item ID';
-  return 'Menu Item ID';
+export function getOrderItemIdColumnLabel(_orderType: OrderType): string {
+  return 'Product ID';
 }
 
 export function usesWholesaleCatalog(orderType: OrderType): boolean {
@@ -20,8 +18,9 @@ export function usesWholesaleCatalog(orderType: OrderType): boolean {
 
 async function fetchMenuCatalog(): Promise<SalesOrderCatalogOption[]> {
   const { data, error } = await supabase
-    .from('menu')
+    .from('products')
     .select('id, name, price')
+    .eq('product_type', 'alacarte')
     .order('name', { ascending: true });
 
   if (error) throw error;
@@ -35,8 +34,9 @@ async function fetchMenuCatalog(): Promise<SalesOrderCatalogOption[]> {
 
 async function fetchWholesaleCatalog(): Promise<SalesOrderCatalogOption[]> {
   const { data, error } = await supabase
-    .from('wholesale_products')
+    .from('products')
     .select('id, name, unit_price')
+    .eq('product_type', 'wholesale')
     .order('name', { ascending: true });
 
   if (error) throw error;
@@ -44,7 +44,7 @@ async function fetchWholesaleCatalog(): Promise<SalesOrderCatalogOption[]> {
   return (data ?? []).map((row) => ({
     id: Number(row.id),
     name: String(row.name ?? '').trim(),
-    unitPrice: Number(row.unit_price ?? 0) || 0,
+    unitPrice: Number.parseFloat(String(row.unit_price ?? '0')) || 0,
   }));
 }
 

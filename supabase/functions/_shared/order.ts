@@ -13,7 +13,7 @@ export type OrderType = "pickup" | "wholesale";
 export type OrderFulfillmentType = "pick_up" | "delivery" | "shipping";
 
 export type OrderCheckoutItem = {
-  menuItemId: number;
+  productId: number;
   qty: number;
   unitPrice: number;
   itemName: string;
@@ -93,7 +93,7 @@ type StoreStripeRow = {
 };
 
 type DraftOrderItemRow = {
-  menuItemId: number;
+  productId: number;
   qty: number;
   unitPrice: number;
   itemName: string;
@@ -313,12 +313,11 @@ function buildOrderItemInsertRows(
 ): Record<string, unknown>[] {
   return items.map((item) => {
     const lineTotal = item.qty * item.unitPrice;
+    const productId = item.productId;
     return {
       order_id: orderId,
       item_type: orderType,
-      menu_item_id: orderType === "wholesale" ? null : item.menuItemId,
-      wholesale_item_id: orderType === "wholesale" ? item.menuItemId : null,
-      catering_item_id: null,
+      product_id: productId,
       sku: item.itemName,
       name: item.itemName,
       quantity: item.qty,
@@ -350,7 +349,7 @@ async function fetchDraftOrderItems(
 ): Promise<DraftOrderItemRow[]> {
   const { data, error } = await supabase
     .from("order_items")
-    .select("menu_item_id, wholesale_item_id, quantity, unit_price, name")
+    .select("product_id, quantity, unit_price, name")
     .eq("order_id", orderId);
 
   if (error) {
@@ -360,30 +359,27 @@ async function fetchDraftOrderItems(
   const parsed: DraftOrderItemRow[] = [];
   for (const row of data ?? []) {
     const record = row as Record<string, unknown>;
-    const menuItemId = Number(
-      orderType === "wholesale"
-        ? record.wholesale_item_id ?? record.menu_item_id
-        : record.menu_item_id,
-    );
+    const productId = Number(record.product_id);
     const qty = Number(record.quantity);
     const unitPrice = Number(record.unit_price);
     const itemName = String(record.name ?? "").trim();
 
-    if (!Number.isFinite(menuItemId) || menuItemId <= 0) continue;
+    if (!Number.isFinite(productId) || productId <= 0) continue;
     if (!Number.isFinite(qty) || qty <= 0) continue;
     if (!Number.isFinite(unitPrice) || unitPrice < 0) continue;
     if (!itemName) continue;
 
-    parsed.push({ menuItemId, qty, unitPrice, itemName });
+    parsed.push({ productId, qty, unitPrice, itemName });
   }
 
   return parsed;
 }
 
-function mapCheckoutItemsToPayload(items: DraftOrderItemRow[], orderType: OrderType) {
+function mapCheckoutItemsToPayload(items: DraftOrderItemRow[]) {
   return items.map((item) => {
     const lineTotal = item.qty * item.unitPrice;
-    const row: Record<string, unknown> = {
+    return {
+      product_id: item.productId,
       sku: item.itemName,
       name: item.itemName,
       quantity: item.qty,
@@ -392,12 +388,6 @@ function mapCheckoutItemsToPayload(items: DraftOrderItemRow[], orderType: OrderT
       unit_price: item.unitPrice,
       line_total: lineTotal,
     };
-    if (orderType === "wholesale") {
-      row.wholesale_item_id = item.menuItemId;
-    } else {
-      row.menu_item_id = item.menuItemId;
-    }
-    return row;
   });
 }
 
@@ -896,12 +886,12 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     const unitPrice = Number(row.unitPrice);
     const itemName = String(row.itemName ?? "").trim();
 
-    if (!Number.isFinite(menuItemId) || menuItemId <= 0) throw new Error("Invalid menu item");
+    if (!Number.isFinite(menuItemId) || menuItemId <= 0) throw new Error("Invalid product");
     if (!Number.isFinite(qty) || qty < 1) throw new Error("Invalid quantity");
     if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error("Invalid price");
     if (!itemName) throw new Error("Invalid item name");
 
-    return { menuItemId, qty, unitPrice, itemName };
+    return { productId: menuItemId, qty, unitPrice, itemName };
   });
 
   return {
@@ -978,8 +968,8 @@ async function validateWholesaleInventoryAvailability(
   const qtyByProduct = new Map<number, { qty: number; itemName: string }>();
 
   for (const item of items) {
-    const existing = qtyByProduct.get(item.menuItemId);
-    qtyByProduct.set(item.menuItemId, {
+    const existing = qtyByProduct.get(item.productId);
+    qtyByProduct.set(item.productId, {
       qty: (existing?.qty ?? 0) + item.qty,
       itemName: item.itemName,
     });
@@ -1207,7 +1197,7 @@ export async function markOrderPaidFromStripeSession(
     PAID_ORDER_RPC,
     {
       p_draft_order_id: draftOrderId,
-      p_items: mapCheckoutItemsToPayload(parsedItems, draftOrder.order_type),
+      p_items: mapCheckoutItemsToPayload(parsedItems),
       p_order_payload: buildOrderPayload(
         draftOrder,
         paymentMode,

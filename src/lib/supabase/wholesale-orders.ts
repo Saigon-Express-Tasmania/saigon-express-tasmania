@@ -88,7 +88,7 @@ function mapOrderItem(item: Record<string, unknown>): WholesaleOrderItem {
 
   return {
     id: Number(item.id),
-    menu_item_id: Number(item.wholesale_item_id ?? item.menu_item_id ?? 0),
+    menu_item_id: Number(item.product_id ?? 0),
     sku: String(item.sku ?? item.name ?? item.item_name ?? ""),
     qty,
     unit_price: unitPrice,
@@ -195,7 +195,7 @@ export async function fetchWholesaleOrders(
         supabase
           .from("order_items")
           .select(
-            "id, order_id, menu_item_id, wholesale_item_id, sku, quantity, unit_price, line_total, name",
+            "id, order_id, product_id, sku, quantity, unit_price, line_total, name",
           )
           .in("order_id", orderIds),
         fetchPaymentStatusByOrderId(orderIds),

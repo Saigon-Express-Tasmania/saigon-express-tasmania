@@ -109,7 +109,7 @@ function mapTrackedOrderItem(item: Record<string, unknown>): TrackedOrderItem {
 
   return {
     id: Number(item.id),
-    menu_item_id: Number(item.wholesale_item_id ?? item.menu_item_id ?? 0),
+    menu_item_id: Number(item.product_id ?? 0),
     sku: String(item.sku ?? item.name ?? item.item_name ?? ""),
     qty,
     unit_price: unitPrice,
@@ -175,7 +175,7 @@ async function fetchTrackedOrderForMode(
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
     .select(
-      "id, menu_item_id, wholesale_item_id, sku, quantity, unit_price, line_total, name",
+      "id, product_id, sku, quantity, unit_price, line_total, name",
     )
     .eq("order_id", Number(orderRow.id));
 

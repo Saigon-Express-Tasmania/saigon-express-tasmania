@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapWholesaleProductRow, type WholesaleProduct } from "@/types";
-import { fetchWholesaleProductRows } from "./server";
+import { fetchWholesaleProductRows } from "./products";
 
 const CACHE_TAG = CACHE_TAGS.wholesaleProducts;
 
@@ -11,11 +11,10 @@ async function loadWholesaleProducts(): Promise<WholesaleProduct[]> {
 }
 
 /**
- * Wholesale products for the public wholesale shop, cached for at least one hour.
+ * Wholesale products for the public wholesale shop, cached via Next.js unstable_cache.
  */
 export const getWholesaleProducts = unstable_cache(
   loadWholesaleProducts,
   [CACHE_TAG],
   { revalidate: SHORT_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 );
-

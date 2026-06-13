@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Backfill public.menu.slug from name when slug is null or empty.
+ * Backfill public.products.slug (alacarte) from name when slug is null or empty.
  *
  * Usage:
  *   node scripts/backfill-menu-slugs.mjs                    # dry run (report only)
@@ -71,7 +71,7 @@ function buildUpdates(rows) {
 
 function buildSql(updates) {
   if (updates.length === 0) {
-    return "-- No menu rows need slug backfill.\n";
+    return "-- No alacarte product rows need slug backfill.\n";
   }
 
   const lines = [
@@ -82,7 +82,7 @@ function buildSql(updates) {
 
   for (const { id, slug } of updates) {
     lines.push(
-      `update public.menu set slug = '${escapeSqlString(slug)}' where id = ${id};`,
+      `update public.products set slug = '${escapeSqlString(slug)}' where id = ${id} and product_type = 'alacarte';`,
     );
   }
 
@@ -130,12 +130,17 @@ async function applyWithServiceRole(updates) {
     const chunk = updates.slice(i, i + chunkSize);
     const results = await Promise.all(
       chunk.map(({ id, slug }) =>
-        supabase.from("menu").update({ slug }).eq("id", id).select("id"),
+        supabase
+          .from("products")
+          .update({ slug })
+          .eq("id", id)
+          .eq("product_type", "alacarte")
+          .select("id"),
       ),
     );
 
     for (const { data: updatedRows, error } of results) {
-      if (error) throw new Error(`menu update failed: ${error.message}`);
+      if (error) throw new Error(`products update failed: ${error.message}`);
       if (updatedRows?.length) updated += updatedRows.length;
     }
   }
@@ -156,7 +161,7 @@ function applyWithSupabaseCli(sql) {
   }
 }
 
-async function fetchMenuRows() {
+async function fetchAlacarteProductRows() {
   const url =
     process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
@@ -174,11 +179,12 @@ async function fetchMenuRows() {
   });
 
   const { data, error } = await supabase
-    .from("menu")
+    .from("products")
     .select("id, name, slug")
+    .eq("product_type", "alacarte")
     .order("id", { ascending: true });
 
-  if (error) throw new Error(`menu select failed: ${error.message}`);
+  if (error) throw new Error(`products select failed: ${error.message}`);
   return data ?? [];
 }
 
@@ -187,14 +193,14 @@ loadEnvFile(path.join(root, ".env"));
 loadEnvFile(path.join(root, "admin/.env.local"));
 loadEnvFile(path.join(root, "admin/.env"));
 
-const rows = await fetchMenuRows();
+const rows = await fetchAlacarteProductRows();
 const updates = buildUpdates(rows);
 const sql = buildSql(updates);
 
 fs.mkdirSync(path.dirname(sqlOutPath), { recursive: true });
 fs.writeFileSync(sqlOutPath, sql);
 
-console.log(`Scanned ${rows.length} menu row(s).`);
+console.log(`Scanned ${rows.length} alacarte product row(s).`);
 console.log(`${updates.length} row(s) need slug backfill.`);
 console.log(`Wrote ${path.relative(root, sqlOutPath)}`);
 

@@ -5,7 +5,7 @@ import {
   getMinimumWholesaleOrderValue,
   getSettings,
 } from "@/lib/supabase/settings";
-import { fetchWholesaleProductRows } from "@/lib/supabase/server";
+import { fetchWholesaleProductRows } from "@/lib/supabase/products";
 import { getWholesaleTiers } from "@/lib/supabase/wholesale-tiers";
 import type {
   SiteCategory,

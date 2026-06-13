@@ -1,7 +1,7 @@
 /** Size key → public image URL (e.g. `"512"` → `https://...`). */
 export type WholesaleImageUrls = Record<string, string>;
 
-/** Row shape from `public.wholesale_products` (snake_case). */
+/** Row shape from `public.products` where product_type = wholesale (snake_case). */
 export type WholesaleProductRow = {
   id: number;
   name: string;

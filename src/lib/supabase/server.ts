@@ -3,10 +3,8 @@ import type {
   BlogPostDetailRow,
   BlogPostRow,
   FeaturedReviewRow,
-  MenuItemRow,
   PromotionRow,
   StoreLocationRow,
-  WholesaleProductRow,
 } from "@/types";
 
 let serverClient: SupabaseClient | null = null;
@@ -52,62 +50,6 @@ export async function fetchFeaturedReviewRows(): Promise<FeaturedReviewRow[]> {
   return (data ?? []) as FeaturedReviewRow[];
 }
 
-const MENU_ITEM_SELECT =
-  "id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients";
-
-export async function fetchMenuItemRows(): Promise<MenuItemRow[]> {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("menu")
-    .select(MENU_ITEM_SELECT)
-    .eq("is_available", true)
-    .order("sort_order", { ascending: true })
-    .order("id", { ascending: true });
-
-  if (error) {
-    throw new Error(`menu: ${error.message}`);
-  }
-
-  return (data ?? []) as MenuItemRow[];
-}
-
-export async function fetchMenuItemRowById(
-  id: number,
-): Promise<MenuItemRow | null> {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("menu")
-    .select(MENU_ITEM_SELECT)
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`menu item ${id}: ${error.message}`);
-  }
-
-  return (data as MenuItemRow | null) ?? null;
-}
-
-export async function fetchMenuItemRowBySlug(
-  slug: string,
-): Promise<MenuItemRow | null> {
-  const trimmed = slug.trim();
-  if (!trimmed) return null;
-
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("menu")
-    .select(MENU_ITEM_SELECT)
-    .eq("slug", trimmed)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`menu item slug "${trimmed}": ${error.message}`);
-  }
-
-  return (data as MenuItemRow | null) ?? null;
-}
-
 export async function fetchStoreLocationRows(): Promise<StoreLocationRow[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
@@ -141,24 +83,6 @@ export async function fetchPromotionRows(): Promise<PromotionRow[]> {
   }
 
   return (data ?? []) as PromotionRow[];
-}
-
-export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]> {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("wholesale_products")
-    .select(
-      "id, name, sku, category, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at",
-    )
-    .eq("is_available", true)
-    .order("category", { ascending: true })
-    .order("id", { ascending: true });
-
-  if (error) {
-    throw new Error(`wholesale_products: ${error.message}`);
-  }
-
-  return (data ?? []) as WholesaleProductRow[];
 }
 
 export async function fetchBlogPostRows(): Promise<BlogPostRow[]> {

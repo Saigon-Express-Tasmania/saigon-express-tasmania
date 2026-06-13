@@ -2,17 +2,17 @@ import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapMenuItemRow } from "@/types";
 import type { MenuItem } from "@/contexts/CartContext";
-import { fetchMenuItemRows } from "./server";
+import { fetchAlacarteProductRows } from "./products";
 
 const CACHE_TAG = CACHE_TAGS.menu;
 
 async function loadMenuItems(): Promise<MenuItem[]> {
-  const rows = await fetchMenuItemRows();
+  const rows = await fetchAlacarteProductRows();
   return rows.map(mapMenuItemRow);
 }
 
 /**
- * Menu items for the public site, cached for at least one hour.
+ * Alacarte menu items for the public site, cached via Next.js unstable_cache.
  */
 export const getMenuItems = unstable_cache(
   loadMenuItems,

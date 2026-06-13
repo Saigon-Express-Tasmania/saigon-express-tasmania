@@ -94,9 +94,7 @@ export type SalesOrderItemRow = {
   id: number;
   order_id: number;
   item_type: string;
-  menu_item_id: number | null;
-  wholesale_item_id: number | null;
-  catering_item_id: number | null;
+  product_id: number | null;
   sku: string;
   name: string;
   quantity: number | string;

@@ -47,7 +47,7 @@ comment on function public.find_order_id_by_stripe_session(text) is
   'Stripe shorthand for find_order_id_by_gateway_transaction(''stripe'', session_id).';
 
 -- Inserts line items from a jsonb array whose objects match public.order_items columns
--- (menu_item_id, wholesale_item_id, catering_item_id, sku, name, quantity, uom, unit_price, line_total).
+-- (product_id, sku, name, quantity, uom, unit_price, line_total).
 -- Skips invalid rows silently; callers must verify at least one row was inserted.
 create or replace function public.insert_order_items_from_payload(
   p_order_id bigint,
@@ -62,9 +62,7 @@ begin
   insert into public.order_items (
     order_id,
     item_type,
-    menu_item_id,
-    wholesale_item_id,
-    catering_item_id,
+    product_id,
     sku,
     name,
     quantity,
@@ -76,13 +74,11 @@ begin
   select
     p_order_id,
     p_order_type,
-    nullif(item ->> 'menu_item_id', '')::bigint,
-    nullif(item ->> 'wholesale_item_id', '')::bigint,
-    nullif(item ->> 'catering_item_id', '')::bigint,
+    v.product_id,
     coalesce(nullif(trim(item ->> 'sku'), ''), 'UNKNOWN'),
     item ->> 'name',
     (item ->> 'quantity')::numeric(10, 2),
-    coalesce(nullif(item ->> 'uom', ''), 'EACH')::public.order_item_uom,
+    coalesce(nullif(item ->> 'uom', ''), 'EACH')::public.product_uom,
     coalesce((item ->> 'is_catch_weight')::boolean, false),
     (item ->> 'unit_price')::numeric(10, 2),
     coalesce(
@@ -90,14 +86,13 @@ begin
       (item ->> 'quantity')::numeric(10, 2) * (item ->> 'unit_price')::numeric(10, 2)
     )
   from jsonb_array_elements(p_items) as item
+  cross join lateral (
+    select nullif(item ->> 'product_id', '')::bigint as product_id
+  ) as v
   where
     jsonb_typeof(item) = 'object'
-    and coalesce(
-      nullif(item ->> 'menu_item_id', '')::bigint,
-      nullif(item ->> 'wholesale_item_id', '')::bigint,
-      nullif(item ->> 'catering_item_id', '')::bigint,
-      0
-    ) > 0
+    and v.product_id is not null
+    and v.product_id > 0
     and coalesce((item ->> 'quantity')::numeric(10, 2), 0) > 0
     and coalesce((item ->> 'unit_price')::numeric, -1) >= 0
     and nullif(trim(item ->> 'name'), '') is not null;
@@ -105,7 +100,7 @@ end;
 $$;
 
 comment on function public.insert_order_items_from_payload(bigint, public.order_type, jsonb) is
-  'Bulk-inserts order_items for an order from a jsonb array. item_type is set from p_order_type; product id columns depend on order type.';
+  'Bulk-inserts order_items for an order from a jsonb array. Each item must include product_id.';
 
 -- Promotes a draft_orders row into public.orders, preserving the shared id and any
 -- order_items already linked to that id. Address and B2B fields come from the draft;

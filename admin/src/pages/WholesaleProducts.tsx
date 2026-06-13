@@ -39,7 +39,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { nextProductId } from '@/lib/products';
 import supabase from '@/lib/supabase/client';
+import {
+  ITEM_UOM_OPTIONS,
+  type ItemUom,
+} from '@/pages/Sales/salesOrderShared';
 import {
   ImageIcon,
   Loader2,
@@ -112,6 +117,7 @@ type WholesaleProductRow = {
   category: string;
   description: string | null;
   unit: string;
+  uom: ItemUom;
   unit_price: string;
   daily_global_limit: number;
   daily_customer_limit: number | null;
@@ -154,7 +160,7 @@ type WholesaleProductInput = Omit<
 >;
 
 const SELECT_COLUMNS =
-  'id, name, sku, category, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at';
+  'id, name, sku, category, description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at';
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
@@ -163,6 +169,7 @@ const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   category: '',
   description: '',
   unit: '',
+  uom: 'EACH',
   unit_price: '',
   daily_global_limit: 0,
   daily_customer_limit: null,
@@ -172,15 +179,7 @@ const emptyWholesaleProductInput = (): WholesaleProductInput => ({
 });
 
 async function nextWholesaleProductId(): Promise<number> {
-  const { data, error } = await supabase
-    .from('wholesale_products')
-    .select('id')
-    .order('id', { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-  const maxId = data?.[0]?.id ?? 0;
-  return Number(maxId) + 1;
+  return nextProductId('wholesale');
 }
 
 export function WholesaleProducts() {
@@ -233,8 +232,9 @@ export function WholesaleProducts() {
       const saleDate = String(businessDate ?? '').trim();
       const [productsResult, usageResult] = await Promise.all([
         supabase
-          .from('wholesale_products')
+          .from('products')
           .select(SELECT_COLUMNS)
+          .eq('product_type', 'wholesale')
           .order('category', { ascending: true })
           .order('id', { ascending: true }),
         saleDate
@@ -372,6 +372,7 @@ export function WholesaleProducts() {
       category: product.category,
       description: product.description ?? '',
       unit: product.unit,
+      uom: product.uom ?? 'EACH',
       unit_price: product.unit_price,
       daily_global_limit: product.daily_global_limit,
       daily_customer_limit: product.daily_customer_limit,
@@ -457,12 +458,14 @@ export function WholesaleProducts() {
     try {
       const nowIso = new Date().toISOString();
       const payload = {
+        product_type: 'wholesale' as const,
         id: form.id,
         name: form.name.trim(),
         sku: form.sku?.trim() || null,
         category: form.category.trim(),
-        description: form.description?.trim() || null,
+        description: form.description?.trim() || '',
         unit: form.unit.trim(),
+        uom: form.uom,
         unit_price: String(form.unit_price),
         daily_global_limit: Number(form.daily_global_limit) || 0,
         daily_customer_limit:
@@ -476,23 +479,22 @@ export function WholesaleProducts() {
 
       if (editingId !== null) {
         const { error: updateError } = await supabase
-          .from('wholesale_products')
+          .from('products')
           .update({
             ...payload,
             updated_at: nowIso,
           })
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .eq('product_type', 'wholesale');
 
         if (updateError) throw updateError;
         toast.success('Wholesale product updated.');
       } else {
-        const { error: insertError } = await supabase
-          .from('wholesale_products')
-          .insert({
-            ...payload,
-            created_at: nowIso,
-            updated_at: nowIso,
-          });
+        const { error: insertError } = await supabase.from('products').insert({
+          ...payload,
+          created_at: nowIso,
+          updated_at: nowIso,
+        });
 
         if (insertError) throw insertError;
         toast.success('Wholesale product created.');
@@ -517,9 +519,10 @@ export function WholesaleProducts() {
     setSaving(true);
     try {
       const { error: deleteError } = await supabase
-        .from('wholesale_products')
+        .from('products')
         .delete()
-        .eq('id', deleteTarget.id);
+        .eq('id', deleteTarget.id)
+        .eq('product_type', 'wholesale');
 
       if (deleteError) throw deleteError;
       toast.success('Wholesale product deleted.');
@@ -656,10 +659,16 @@ export function WholesaleProducts() {
                         Name
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
+                        SKU
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
                         Category
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Unit
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        UOM
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Price
@@ -709,11 +718,17 @@ export function WholesaleProducts() {
                             <span className="min-w-0">{p.name}</span>
                           </div>
                         </td>
+                        <td className="px-4 py-3 text-sm font-mono text-muted-foreground">
+                          {p.sku ?? '—'}
+                        </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {p.category}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {p.unit}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-muted-foreground">
+                          {p.uom}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           ${Number(p.unit_price).toFixed(2)}
@@ -855,6 +870,26 @@ export function WholesaleProducts() {
                   setForm((f) => ({ ...f, sku: e.target.value }))
                 }
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="wp-uom">UOM</Label>
+              <Select
+                value={form.uom}
+                onValueChange={(value) =>
+                  setForm((f) => ({ ...f, uom: value as ItemUom }))
+                }
+              >
+                <SelectTrigger id="wp-uom">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_UOM_OPTIONS.map((uom) => (
+                    <SelectItem key={uom} value={uom}>
+                      {uom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">

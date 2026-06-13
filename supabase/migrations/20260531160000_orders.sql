@@ -49,8 +49,6 @@ create type public.order_payment_gateway as enum (
   'other'
 );
 
-create type public.order_item_uom as enum ('CASE', 'EACH', 'LBS', 'KG');
-
 -- Shared across orders, draft_orders, and archived_orders.
 create sequence public.order_id_seq;
 
@@ -100,14 +98,12 @@ create table public.order_items (
   id bigint generated always as identity primary key,
   order_id bigint not null,
   item_type public.order_type not null,
-  menu_item_id bigint references public.menu (id) on delete set null,
-  wholesale_item_id bigint references public.wholesale_products (id) on delete set null,
-  catering_item_id bigint references public.catering_packs (id) on delete set null,
+  product_id bigint references public.products (id) on delete set null,
   sku text not null,
   name text not null,
   quantity numeric(10, 2) not null,
-  uom public.order_item_uom not null default 'EACH',
-  is_catch_weight boolean not null default false,
+  uom public.product_uom not null default 'EACH',
+  is_catch_weight boolean not null default false, -- TRUE if price adjusts based on final weight.
   unit_price numeric(10, 2) not null,
   line_total numeric(10, 2) not null,
   created_at timestamptz not null default now()
@@ -154,8 +150,8 @@ create index orders_customer_account_idx
   where customer_account is not null;
 
 create index order_items_order_id_idx on public.order_items (order_id);
-create index order_items_wholesale_item_id_idx on public.order_items (wholesale_item_id)
-  where wholesale_item_id is not null;
+create index order_items_product_id_idx on public.order_items (product_id)
+  where product_id is not null;
 
 create index order_payments_order_id_idx on public.order_payments (order_id);
 create unique index order_payments_stripe_session_uidx
@@ -171,6 +167,8 @@ comment on table public.order_payments is 'Payment ledger entries shared across 
 comment on table public.order_fulfillments is 'Fulfillment events shared across all order lifecycle tables.';
 comment on column public.order_items.order_id is
   'References an order id from orders, draft_orders, or archived_orders (no FK).';
+comment on column public.order_items.product_id is
+  'References public.products. Primary product link for all order types.';
 
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;

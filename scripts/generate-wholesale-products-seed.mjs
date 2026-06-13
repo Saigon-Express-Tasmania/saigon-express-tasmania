@@ -3,6 +3,9 @@
  * Generates the `public.wholesale_products` seed SQL block by extracting
  * wholesale products from `refs/samples/wholesale-products.json` (tRPC batch).
  *
+ * Prefer the unified generator for the products table:
+ *   node scripts/generate-products-seed.mjs
+ *
  * Usage:
  *   node scripts/generate-wholesale-products-seed.mjs
  */

@@ -48,6 +48,7 @@ import {
   type MenuImageMoreEntry,
 } from '@/lib/menu-image-urls';
 import { resolveMenuSlug, slugFromName } from '@/lib/slug';
+import { nextProductId } from '@/lib/products';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
@@ -106,15 +107,7 @@ const emptyMenuItemInput = (): MenuItemInput => ({
 });
 
 async function nextMenuId(): Promise<number> {
-  const { data, error } = await supabase
-    .from('menu')
-    .select('id')
-    .order('id', { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-  const maxId = data?.[0]?.id ?? 0;
-  return Number(maxId) + 1;
+  return nextProductId('alacarte');
 }
 
 export function Menu() {
@@ -144,10 +137,11 @@ export function Menu() {
       setError(null);
       setLoading(true);
       const { data, error: fetchError } = await supabase
-        .from('menu')
+        .from('products')
         .select(
           'id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients',
         )
+        .eq('product_type', 'alacarte')
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
@@ -369,10 +363,11 @@ export function Menu() {
       }
 
       const payload = {
+        product_type: 'alacarte' as const,
         id: form.id,
         name: form.name.trim(),
         slug,
-        description: form.description?.trim() || null,
+        description: form.description?.trim() || '',
         price: String(form.price),
         wholesale_price: form.wholesale_price?.trim() || null,
         category: form.category.trim(),
@@ -388,7 +383,7 @@ export function Menu() {
 
       if (editingId !== null) {
         const { error: updateError } = await supabase
-          .from('menu')
+          .from('products')
           .update({
             name: payload.name,
             slug: payload.slug,
@@ -401,26 +396,15 @@ export function Menu() {
             is_popular: payload.is_popular,
             sort_order: payload.sort_order,
             ingredients: payload.ingredients,
+            updated_at: new Date().toISOString(),
           })
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .eq('product_type', 'alacarte');
 
         if (updateError) throw updateError;
         toast.success('Menu item updated.');
       } else {
-        const { error: insertError } = await supabase.from('menu').insert({
-          id: payload.id,
-          name: payload.name,
-          slug: payload.slug,
-          description: payload.description,
-          price: payload.price,
-          wholesale_price: payload.wholesale_price,
-          category: payload.category,
-          image_urls: payload.image_urls,
-          is_available: payload.is_available,
-          is_popular: payload.is_popular,
-          sort_order: payload.sort_order,
-          ingredients: payload.ingredients,
-        });
+        const { error: insertError } = await supabase.from('products').insert(payload);
 
         if (insertError) throw insertError;
         toast.success('Menu item created.');
@@ -443,9 +427,10 @@ export function Menu() {
     setSaving(true);
     try {
       const { error: deleteError } = await supabase
-        .from('menu')
+        .from('products')
         .delete()
-        .eq('id', deleteTarget.id);
+        .eq('id', deleteTarget.id)
+        .eq('product_type', 'alacarte');
 
       if (deleteError) throw deleteError;
       toast.success('Menu item deleted.');

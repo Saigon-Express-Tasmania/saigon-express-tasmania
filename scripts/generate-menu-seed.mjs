@@ -3,6 +3,9 @@
  * Reads refs/samples/menu.json and updates the seed block in a given
  * supabase/migrations/*.sql file.
  *
+ * Prefer the unified generator for the products table:
+ *   node scripts/generate-products-seed.mjs
+ *
  * Usage:
  *   node scripts/generate-menu-seed.mjs
  *   node scripts/generate-menu-seed.mjs --migrationPath supabase/migrations/2026....sql

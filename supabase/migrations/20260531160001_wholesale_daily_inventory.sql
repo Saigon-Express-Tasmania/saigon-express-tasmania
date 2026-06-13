@@ -1,27 +1,13 @@
 -- Wholesale daily inventory: per-product global + per-customer daily caps (Australia/Hobart).
 -- Paid sales are recorded in wholesale_inventory_sales; limits enforced at checkout only.
 
-alter table public.wholesale_products
-  add column daily_customer_limit integer;
-
-alter table public.wholesale_products
-  add constraint wholesale_products_daily_global_limit_check
-    check (daily_global_limit >= 0),
-  add constraint wholesale_products_daily_customer_limit_check
-    check (daily_customer_limit is null or daily_customer_limit >= 0);
-
-comment on column public.wholesale_products.daily_global_limit is
-  'Max units sold (paid) per Australia/Hobart calendar day across all customers.';
-comment on column public.wholesale_products.daily_customer_limit is
-  'Max units one customer may buy per Australia/Hobart calendar day for this product. Null = no per-customer cap.';
-
 -- ---------------------------------------------------------------------------
 -- Paid sales ledger
 -- ---------------------------------------------------------------------------
 create table public.wholesale_inventory_sales (
   id bigint generated always as identity primary key,
   product_id bigint
-    references public.wholesale_products (id) on delete set null,
+    references public.products (id) on delete set null,
   customer_account uuid
     references public.user_profiles (id) on delete set null,
   order_source text not null
@@ -116,11 +102,12 @@ set search_path = public
 as $$
   with product_limits as (
     select
-      wp.id,
-      wp.daily_global_limit,
-      wp.daily_customer_limit
-    from public.wholesale_products as wp
-    where wp.id = p_product_id
+      p.id,
+      p.daily_global_limit,
+      p.daily_customer_limit
+    from public.products as p
+    where p.id = p_product_id
+      and p.product_type = 'wholesale'::public.product_type
   ),
   global_usage as (
     select coalesce(sum(s.qty), 0)::bigint as paid_qty
@@ -205,13 +192,14 @@ as $$
     a.customer_paid_qty,
     a.customer_remaining,
     a.effective_remaining
-  from public.wholesale_products as wp
+  from public.products as p
   cross join lateral public.get_wholesale_product_availability(
-    wp.id,
+    p.id,
     p_customer_account,
     p_sale_date
   ) as a
-  where wp.is_available = true;
+  where p.product_type = 'wholesale'::public.product_type
+    and p.is_available = true;
 $$;
 
 comment on function public.get_wholesale_products_availability(uuid, date) is
@@ -242,7 +230,7 @@ begin
     sale_date
   )
   select
-    coalesce(oi.wholesale_item_id, oi.menu_item_id),
+    oi.product_id,
     p_customer_account,
     'orders',
     o.id,
@@ -254,6 +242,7 @@ begin
   where o.id = p_order_id
     and o.order_type = 'wholesale'::public.order_type
     and o.is_testing = false
+    and oi.product_id is not null
   on conflict (order_source, order_item_id) do nothing;
 end;
 $$;
@@ -266,5 +255,5 @@ grant execute on function public.get_wholesale_product_availability(bigint, uuid
 grant execute on function public.get_wholesale_products_availability(uuid, date) to anon, authenticated, service_role;
 grant execute on function public.record_wholesale_inventory_sales(bigint, uuid, date) to service_role;
 
--- Paid order RPCs are defined in 20260531160000_orders.sql and call
+-- Paid order RPCs are defined in 20260603120001_orders_rpc.sql and call
 -- record_wholesale_inventory_sales after line items are inserted.

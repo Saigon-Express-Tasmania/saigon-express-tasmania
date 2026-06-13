@@ -1,6 +1,9 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
-import { createServerSupabaseClient } from "./server";
+import {
+  fetchCateringProductRows,
+  type CateringProductRow,
+} from "./products";
 
 const CACHE_TAG = CACHE_TAGS.cateringPacks;
 
@@ -29,32 +32,17 @@ export type CateringPack = {
   isAvailable: boolean;
 };
 
-type CateringPackRow = {
-  id: number;
-  name: string;
-  category: string;
-  serves: string | null;
-  price: string | null;
-  description: string;
-  includes: string[] | null;
-  note: string | null;
-  prices: CateringTierPrice[] | null;
-  tag: string;
-  tag_bg: string;
-  image_url: string | null;
-  image_urls: Record<string, unknown> | null;
-  sort_order: number;
-  is_available: boolean;
-};
-
-function mapTierPrices(input: CateringPackRow["prices"]): CateringTierPrice[] {
+function mapTierPrices(input: CateringProductRow["prices"]): CateringTierPrice[] {
   if (!Array.isArray(input)) return [];
   return input
-    .map((item) => ({
-      size: String(item?.size ?? ""),
-      price: String(item?.price ?? ""),
-      serves: String(item?.serves ?? ""),
-    }))
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        size: String(row.size ?? ""),
+        price: String(row.price ?? ""),
+        serves: String(row.serves ?? ""),
+      };
+    })
     .filter((item) => item.size && item.price && item.serves);
 }
 
@@ -77,7 +65,7 @@ function resolvePackImage(
   return legacy || null;
 }
 
-function mapCateringPackRow(row: CateringPackRow): CateringPack {
+function mapCateringPackRow(row: CateringProductRow): CateringPack {
   return {
     id: Number(row.id),
     name: row.name,
@@ -99,21 +87,8 @@ function mapCateringPackRow(row: CateringPackRow): CateringPack {
 }
 
 async function loadCateringPacks(): Promise<CateringPack[]> {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("catering_packs")
-    .select(
-      "id, name, category, serves, price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available",
-    )
-    .eq("is_available", true)
-    .order("sort_order", { ascending: true })
-    .order("id", { ascending: true });
-
-  if (error) {
-    throw new Error(`catering_packs: ${error.message}`);
-  }
-
-  return (data ?? []).map((row) => mapCateringPackRow(row as CateringPackRow));
+  const rows = await fetchCateringProductRows();
+  return rows.map(mapCateringPackRow);
 }
 
 export const getCateringPacks = unstable_cache(loadCateringPacks, [CACHE_TAG], {

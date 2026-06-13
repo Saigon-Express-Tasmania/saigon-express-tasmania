@@ -49,6 +49,7 @@ import {
   type MenuImageMoreEntry,
 } from '@/lib/menu-image-urls';
 import { slugFromName } from '@/lib/slug';
+import { nextProductId } from '@/lib/products';
 import supabase from '@/lib/supabase/client';
 import {
   ArrowDown,
@@ -194,15 +195,7 @@ function serializeTierPrices(rows: CateringTierPrice[]): CateringTierPrice[] {
 }
 
 async function nextCateringPackId(): Promise<number> {
-  const { data, error } = await supabase
-    .from('catering_packs')
-    .select('id')
-    .order('id', { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-  const maxId = data?.[0]?.id ?? 0;
-  return Number(maxId) + 1;
+  return nextProductId('catering');
 }
 
 export function CateringPacks() {
@@ -234,10 +227,11 @@ export function CateringPacks() {
       setError(null);
       setLoading(true);
       const { data, error: fetchError } = await supabase
-        .from('catering_packs')
+        .from('products')
         .select(
           'id, name, serves, price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available',
         )
+        .eq('product_type', 'catering')
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
@@ -527,6 +521,7 @@ export function CateringPacks() {
     setSaving(true);
     try {
       const payload = {
+        product_type: 'catering' as const,
         id: form.id,
         name: form.name.trim(),
         serves: form.serves.trim(),
@@ -546,16 +541,15 @@ export function CateringPacks() {
 
       if (editingId !== null) {
         const { error: updateError } = await supabase
-          .from('catering_packs')
+          .from('products')
           .update(payload)
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .eq('product_type', 'catering');
 
         if (updateError) throw updateError;
         toast.success('Catering item updated.');
       } else {
-        const { error: insertError } = await supabase
-          .from('catering_packs')
-          .insert(payload);
+        const { error: insertError } = await supabase.from('products').insert(payload);
 
         if (insertError) throw insertError;
         toast.success('Catering item created.');
@@ -577,9 +571,10 @@ export function CateringPacks() {
     setSaving(true);
     try {
       const { error: deleteError } = await supabase
-        .from('catering_packs')
+        .from('products')
         .delete()
-        .eq('id', deleteTarget.id);
+        .eq('id', deleteTarget.id)
+        .eq('product_type', 'catering');
 
       if (deleteError) throw deleteError;
       toast.success('Catering item deleted.');

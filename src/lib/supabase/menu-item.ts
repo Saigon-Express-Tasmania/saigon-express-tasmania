@@ -4,17 +4,17 @@ import { parseNumericMenuItemId } from "@/lib/menu-item-routes";
 import { mapMenuItemRow } from "@/types";
 import type { MenuItem } from "@/contexts/CartContext";
 import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
-import { fetchMenuItemRowById, fetchMenuItemRowBySlug } from "./server";
+import { fetchAlacarteProductRowById, fetchAlacarteProductRowBySlug } from "./products";
 
 const CACHE_TAG = CACHE_TAGS.menu;
 
 async function loadMenuItemById(id: number): Promise<MenuItem | null> {
-  const row = await fetchMenuItemRowById(id);
+  const row = await fetchAlacarteProductRowById(id);
   return row ? mapMenuItemRow(row) : null;
 }
 
 async function loadMenuItemBySlug(slug: string): Promise<MenuItem | null> {
-  const row = await fetchMenuItemRowBySlug(slug);
+  const row = await fetchAlacarteProductRowBySlug(slug);
   return row ? mapMenuItemRow(row) : null;
 }
 

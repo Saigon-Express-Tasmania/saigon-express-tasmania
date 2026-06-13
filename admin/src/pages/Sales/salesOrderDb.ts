@@ -17,7 +17,7 @@ export const DRAFT_ORDER_COLUMNS = `${ORDER_HEADER_COLUMNS}, expires_at, updated
 export const ARCHIVED_ORDER_COLUMNS = `${ORDER_HEADER_COLUMNS}, archived_reason, archived_at, updated_at`;
 
 export const ORDER_ITEM_SELECT =
-  'id, order_id, item_type, menu_item_id, wholesale_item_id, catering_item_id, sku, name, quantity, uom, unit_price, line_total';
+  'id, order_id, item_type, product_id, sku, name, quantity, uom, unit_price, line_total';
 
 export const ORDER_PAYMENT_SELECT =
   'id, order_id, amount, status, mode, method, gateway, gateway_transaction_id, notes';
@@ -46,7 +46,7 @@ export function formatTargetDateDisplay(iso: string | null | undefined): string 
 }
 
 export function mapDbItemToForm(row: SalesOrderItemRow): SalesOrderItemForm {
-  const productId = Number(row.wholesale_item_id ?? row.menu_item_id ?? 0);
+  const productId = Number(row.product_id ?? 0);
   return {
     menu_item_id: productId,
     sku: row.sku,
@@ -67,9 +67,7 @@ export function buildOrderItemInsertRows(
     return {
       order_id: orderId,
       item_type: orderType,
-      menu_item_id: orderType === 'wholesale' ? null : item.menu_item_id,
-      wholesale_item_id: orderType === 'wholesale' ? item.menu_item_id : null,
-      catering_item_id: orderType === 'catering' ? item.menu_item_id : null,
+      product_id: item.menu_item_id,
       sku: item.sku.trim() || item.item_name.trim(),
       name: item.item_name.trim(),
       quantity: item.qty,
