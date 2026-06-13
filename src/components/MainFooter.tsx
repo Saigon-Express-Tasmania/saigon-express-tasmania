@@ -25,7 +25,7 @@ export default function MainFooter() {
   ] as const;
 
   return (
-    <footer className={`bg-brand-dark text-white/70`}>
+    <footer className="relative z-10 bg-brand-dark text-white/70">
       <div
         className={`max-w-[1280px] mx-auto px-4 pt-16 ${cartCount > 0 ? "pb-32" : "pb-8"}`}
       >

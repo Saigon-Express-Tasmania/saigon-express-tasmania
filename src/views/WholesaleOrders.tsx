@@ -13,6 +13,12 @@ import WholesaleOrderB2BDialog from "@/components/WholesaleOrderB2BDialog";
 import WholesaleOrderB2BIconTooltip from "@/components/WholesaleOrderB2BIconTooltip";
 import Link from "@/components/link";
 import MemberHeader from "@/components/MemberHeader";
+import MemberPortalBackground from "@/components/MemberPortalBackground";
+import {
+  MEMBER_PORTAL_BANNER_CLASS,
+  MEMBER_PORTAL_BOX_SURFACE,
+  MEMBER_PORTAL_PANEL_CLASS,
+} from "@/lib/member-portal-surfaces";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import {
@@ -247,7 +253,7 @@ function OrderRow({
   };
 
   return (
-    <article className="overflow-hidden rounded-lg border border-white/10 bg-white/5 lg:rounded-xl">
+    <article className={`overflow-hidden lg:rounded-xl ${MEMBER_PORTAL_PANEL_CLASS} rounded-lg`}>
       <button
         type="button"
         onClick={onToggle}
@@ -366,7 +372,7 @@ function OrderRow({
       ) : null}
 
       {expanded ? (
-        <div className="bg-black/40 px-3 py-2 lg:px-5 lg:py-3">
+        <div className={`px-3 py-2 lg:px-5 lg:py-3 ${MEMBER_PORTAL_BOX_SURFACE}`}>
           <div className="mb-2 hidden grid-cols-[2.5fr_0.7fr_0.8fr_1fr] gap-4 border-b border-white/10 px-2 pb-2 text-xs font-medium uppercase tracking-wide text-white/40 lg:grid">
             <div className="pl-10">Items</div>
             <div>Quantity</div>
@@ -672,10 +678,10 @@ export default function WholesaleOrders({
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <MemberPortalBackground>
       <MemberHeader member={me} onLogout={() => void handleLogout()} />
 
-      <div className="border-b border-white/10 py-6">
+      <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
         <div className="container">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
@@ -772,7 +778,7 @@ export default function WholesaleOrders({
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white lg:w-auto"
+              className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:border-white/25 hover:text-white lg:w-auto ${MEMBER_PORTAL_BOX_SURFACE}`}
             >
               <X className="h-4 w-4" />
               Clear filters
@@ -780,7 +786,7 @@ export default function WholesaleOrders({
           ) : null}
         </div>
 
-        <div className="hidden rounded-xl bg-white/5 px-5 py-4 text-xs font-medium uppercase tracking-wide text-white/40 lg:grid lg:grid-cols-[1.2fr_1.2fr_0.8fr_0.9fr_1.3fr_0.7fr_0.9fr_1fr] lg:gap-4">
+        <div className={`hidden rounded-xl px-5 py-4 text-xs font-medium uppercase tracking-wide text-white/40 lg:grid lg:grid-cols-[1.2fr_1.2fr_0.8fr_0.9fr_1.3fr_0.7fr_0.9fr_1fr] lg:gap-4 ${MEMBER_PORTAL_BOX_SURFACE}`}>
           <div>Order ID</div>
           <div>Date</div>
           <div>Order type</div>
@@ -840,6 +846,6 @@ export default function WholesaleOrders({
           </div>
         ) : null}
       </div>
-    </div>
+    </MemberPortalBackground>
   );
 }

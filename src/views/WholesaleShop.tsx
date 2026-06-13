@@ -4,6 +4,11 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import MemberHeader from "@/components/MemberHeader";
+import MemberPortalBackground from "@/components/MemberPortalBackground";
+import {
+  MEMBER_PORTAL_BANNER_CLASS,
+  MEMBER_PORTAL_CARD_HOVER_CLASS,
+} from "@/lib/member-portal-surfaces";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useWholesaleInventory } from "@/contexts/WholesaleInventoryContext";
 import { useSupabase, supabase } from "@/hooks/useSupabase";
@@ -225,11 +230,11 @@ export default function WholesaleShop({
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <MemberPortalBackground>
       <MemberHeader member={me} onLogout={() => void handleLogout()} />
 
       {/* Welcome banner */}
-      <div className="border-b border-white/10 py-6">
+      <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
         <div className="container">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
@@ -312,7 +317,7 @@ export default function WholesaleShop({
             return (
               <div
                 key={product.id}
-                className={`group rounded-2xl overflow-hidden border border-white/10 bg-white/5 hover:bg-white/8 hover:border-white/20 transition-all ${outOfStock ? "opacity-60" : ""}`}
+                className={`group ${MEMBER_PORTAL_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
               >
                 <div className="relative h-44 overflow-hidden">
                   {product.imageUrl ? (
@@ -410,6 +415,6 @@ export default function WholesaleShop({
           </div>
         ) : null}
       </div>
-    </div>
+    </MemberPortalBackground>
   );
 }

@@ -528,10 +528,29 @@ async function fetchTrackingTokenForPaidOrder(
   return token ?? null;
 }
 
-function randomHex(byteLength: number): string {
-  const bytes = new Uint8Array(byteLength);
+const ORDER_TOKEN_LENGTH = 12;
+const CROCKFORD_BASE32_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+function randomCrockfordBase32(length: number): string {
+  const byteCount = Math.ceil((length * 5) / 8);
+  const bytes = new Uint8Array(byteCount);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
+  let buffer = 0;
+  let bitsLeft = 0;
+  let byteIndex = 0;
+  let output = "";
+
+  while (output.length < length) {
+    if (bitsLeft < 5) {
+      buffer = (buffer << 8) | bytes[byteIndex++];
+      bitsLeft += 8;
+    }
+    bitsLeft -= 5;
+    output += CROCKFORD_BASE32_ALPHABET[(buffer >> bitsLeft) & 0x1f];
+  }
+
+  return output;
 }
 
 function isValidEmail(email: string): boolean {
@@ -1312,8 +1331,8 @@ export async function markOrderPaidFromStripeSession(
     throw new Error(`Draft order #${draftOrderId} has no valid items`);
   }
 
-  const cancelToken = randomHex(24);
-  const trackingToken = randomHex(24);
+  const cancelToken = randomCrockfordBase32(ORDER_TOKEN_LENGTH);
+  const trackingToken = randomCrockfordBase32(ORDER_TOKEN_LENGTH);
   const customerAccount = resolveCustomerAccount(draftOrder, session);
   const { data: createdOrderId, error: createOrderError } = await supabase.rpc(
     PAID_ORDER_RPC,

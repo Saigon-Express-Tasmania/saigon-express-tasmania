@@ -2,9 +2,15 @@
 
 import { useMemo } from "react";
 import Link from "@/components/link";
+import AppImage from "@/components/AppImage";
 import MemberHeader, {
   type MemberHeaderMember,
 } from "@/components/MemberHeader";
+import MemberPortalBackground from "@/components/MemberPortalBackground";
+import {
+  MEMBER_PORTAL_BOX_SURFACE,
+  MEMBER_PORTAL_ROUNDED_PANEL_CLASS,
+} from "@/lib/member-portal-surfaces";
 import { useSupabase } from "@/hooks/useSupabase";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import {
@@ -12,9 +18,13 @@ import {
   formatTrackedCurrency,
   formatTrackedDate,
   formatTrackedOrderId,
+  getActiveTimelineStep,
+  getCurrentTimelineNotice,
   getExpectedDeliveryLabel,
   getOrderStatusLabel,
   isItemPacked,
+  isPickupFulfillment,
+  timelineNoticeRequiresAction,
   type TrackedOrder,
 } from "@/lib/supabase/order-tracking";
 import {
@@ -29,11 +39,11 @@ import {
   hasMeaningfulFlatBillingAddress,
   hasMeaningfulFlatShippingAddress,
 } from "@/lib/wholesale-b2b-order";
+import { resolveOrderTrackingMapEmbedUrl } from "@/lib/google-maps-embed";
 import { useTranslations } from "next-intl";
 import {
   Check,
   ClipboardList,
-  FileText,
   MapPin,
   Package,
   ShieldCheck,
@@ -41,10 +51,11 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import type { StoreLocation } from "@/types";
 
 type OrderTrackingDetailsProps = {
   order: TrackedOrder;
-  storeName?: string | null;
+  pickupStore?: StoreLocation | null;
 };
 
 function statusBadgeClass(status: OrderStatus): string {
@@ -75,20 +86,24 @@ function timelineStepClass(state: "completed" | "in_progress" | "upcoming"): str
     case "in_progress":
       return "border-blue-500/60 bg-slate-900 shadow-[0_0_10px_rgba(77,166,255,0.2)]";
     default:
-      return "border-zinc-800 bg-[#161616]";
+      return `border-white/10 ${MEMBER_PORTAL_BOX_SURFACE}`;
   }
 }
 
 function timelineIconForStep(key: string) {
   switch (key) {
-    case "placed":
-      return FileText;
-    case "processing":
-      return Check;
-    case "quality":
+    case "confirmed":
       return ShieldCheck;
+    case "preparing":
+      return Check;
     case "packed":
       return Package;
+    case "ready_to_pickup":
+      return MapPin;
+    case "out_for_delivery":
+      return Truck;
+    case "completed":
+      return Check;
     default:
       return Truck;
   }
@@ -100,7 +115,7 @@ function getMemberId(userId: string): string {
 
 export default function OrderTrackingDetails({
   order,
-  storeName,
+  pickupStore = null,
 }: OrderTrackingDetailsProps) {
   const t = useTranslations("OrderTrackingDetails");
   const router = useRouter();
@@ -124,10 +139,10 @@ export default function OrderTrackingDetails({
       awaiting_payment: t("status.pending"),
       confirmed: t("status.confirmed"),
       preparing: t("status.preparing"),
-      packed: t("status.preparing"),
-      ready_to_pickup: t("status.ready"),
-      out_for_delivery: t("status.ready"),
-      ready: t("status.ready"),
+      packed: t("status.packed"),
+      ready_to_pickup: t("status.readyToPickup"),
+      out_for_delivery: t("status.outForDelivery"),
+      ready: t("status.readyToPickup"),
       completed: t("status.completed"),
       cancelled: t("status.cancelled"),
     }),
@@ -137,27 +152,49 @@ export default function OrderTrackingDetails({
   const timeline = useMemo(
     () =>
       buildOrderTimeline(order, {
-        placed: t("timeline.placed"),
-        processing: t("timeline.processing"),
-        qualityChecked: t("timeline.qualityChecked"),
+        confirmed: t("timeline.confirmed"),
+        preparing: t("timeline.preparing"),
         packed: t("timeline.packed"),
-        delivery: t("timeline.delivery"),
-        pickupReady: t("timeline.pickupReady"),
+        readyToPickup: t("timeline.readyToPickup"),
+        outForDelivery: t("timeline.outForDelivery"),
+        completed: t("timeline.completed"),
+        confirmedNotice: t("timeline.confirmedNotice"),
+        preparingNotice: t("timeline.preparingNotice"),
+        packedNoticePickup: t("timeline.packedNoticePickup"),
+        packedNoticeDelivery: t("timeline.packedNoticeDelivery"),
+        pickupNotice: t("timeline.pickupNotice"),
+        deliveryNotice: t("timeline.deliveryNotice"),
+        completedNotice: t("timeline.completedNotice"),
       }),
     [order, t],
   );
 
+  const activeTimelineStep = useMemo(
+    () => getActiveTimelineStep(timeline, order.status),
+    [timeline, order.status],
+  );
+
+  const currentStatusNotice = useMemo(
+    () => getCurrentTimelineNotice(timeline, order.status),
+    [timeline, order.status],
+  );
+
+  const statusNoticeIsUrgent = activeTimelineStep
+    ? timelineNoticeRequiresAction(activeTimelineStep.key)
+    : false;
+
+  const isPickup = isPickupFulfillment(order);
   const expectedDelivery = getExpectedDeliveryLabel(order);
   const orderLabel = formatTrackedOrderId(order.id);
   const packed = isItemPacked(order.status);
 
-  const deliveryLines = hasMeaningfulFlatShippingAddress(order.address)
-    ? formatFlatShippingLines(order.address)
-    : order.b2b.shippingAddress
-      ? formatWholesaleStreetAddress(order.b2b.shippingAddress)
-      : storeName
-        ? [storeName]
-        : [];
+  const deliveryLines = !isPickup
+    ? hasMeaningfulFlatShippingAddress(order.address)
+      ? formatFlatShippingLines(order.address)
+      : order.b2b.shippingAddress
+        ? formatWholesaleStreetAddress(order.b2b.shippingAddress)
+        : []
+    : [];
 
   const billingLines = hasMeaningfulFlatBillingAddress(order.address)
     ? formatFlatBillingLines(order.address)
@@ -169,6 +206,15 @@ export default function OrderTrackingDetails({
     order.b2b.shippingAddress?.special_instructions?.trim() ||
     order.notes?.trim() ||
     null;
+
+  const mapEmbedUrl = useMemo(
+    () => resolveOrderTrackingMapEmbedUrl(order, pickupStore),
+    [order, pickupStore],
+  );
+
+  const mapEmbedTitle = isPickup
+    ? t("deliveryMap.pickupMapTitle")
+    : t("deliveryMap.deliveryMapTitle");
 
   const welcomeLine = member
     ? t("welcomeMember", {
@@ -185,7 +231,7 @@ export default function OrderTrackingDetails({
   };
 
   return (
-    <div className="pb-8 bg-[#0b0b0b] text-white">
+    <MemberPortalBackground className="pb-8">
       <MemberHeader
         member={member}
         onLogout={() => void handleLogout()}
@@ -193,39 +239,32 @@ export default function OrderTrackingDetails({
       />
 
       <div className="container max-w-[1400px] py-5">
-        <div className="mb-6 flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+        <div className={`mb-8 flex overflow-hidden ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}>
+          <div className="flex w-10 shrink-0 items-center justify-center self-stretch text-primary sm:pl-5">
             <ClipboardList className="h-5 w-5" />
           </div>
-          <div>
-            <h1 className="text-xl font-semibold sm:text-[22px]">
-              {t("title", { orderId: orderLabel })}
-            </h1>
-            <p className="mt-1 text-sm text-zinc-500">{welcomeLine}</p>
-          </div>
-        </div>
-
-        <div className="mb-8 flex flex-col gap-4 rounded-[10px] border border-zinc-800 bg-[#161616] p-5 lg:flex-row lg:items-center lg:justify-between">
-          <SummaryField label={t("summary.order")} value={orderLabel} />
-          <SummaryField
-            label={t("summary.orderDate")}
-            value={formatTrackedDate(order.created_at)}
-          />
-          <SummaryField
-            label={t("summary.orderType")}
-            value={getOrderTypeLabel(order.order_type)}
-          />
-          <SummaryField
-            label={t("summary.totalAmount")}
-            value={formatTrackedCurrency(order.grand_total)}
-          />
-          <div className="lg:text-right">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] font-medium ${statusBadgeClass(order.status)}`}
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
-              {statusLabel(order.status, statusLabels)}
-            </span>
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-4 p-4 pl-0 sm:p-5 lg:flex lg:flex-row lg:items-center lg:justify-between">
+            <SummaryField label={t("summary.order")} value={orderLabel} />
+            <SummaryField
+              label={t("summary.orderDate")}
+              value={formatTrackedDate(order.created_at)}
+            />
+            <SummaryField
+              label={t("summary.orderType")}
+              value={getOrderTypeLabel(order.order_type)}
+            />
+            <SummaryField
+              label={t("summary.totalAmount")}
+              value={formatTrackedCurrency(order.grand_total)}
+            />
+            <div className="col-span-2 lg:col-span-1 lg:text-right">
+              <span
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] font-medium ${statusBadgeClass(order.status)}`}
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
+                {statusLabel(order.status, statusLabels)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -238,6 +277,21 @@ export default function OrderTrackingDetails({
               </p>
             ) : null}
           </div>
+
+          {currentStatusNotice ? (
+            <div
+              className={`mb-4 rounded-lg border px-4 py-3 text-sm leading-relaxed ${
+                statusNoticeIsUrgent
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-100"
+                  : order.status === "completed"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
+                    : "border-sky-500/40 bg-sky-500/10 text-sky-100"
+              }`}
+              role="status"
+            >
+              {currentStatusNotice}
+            </div>
+          ) : null}
 
           <div className="relative">
             <div className="absolute left-0 right-0 top-1/2 hidden h-0.5 -translate-y-1/2 bg-zinc-800 lg:block" />
@@ -267,6 +321,7 @@ export default function OrderTrackingDetails({
                           {step.dateLabel}
                         </div>
                       ) : null}
+                     
                       <div className="mt-2">
                         <TimelineStateBadge
                           state={step.state}
@@ -291,82 +346,101 @@ export default function OrderTrackingDetails({
         <div className="flex flex-col gap-6 xl:flex-row xl:gap-8">
           <section className="flex-1">
             <h2 className="mb-4 text-lg font-medium">{t("deliveryMap.title")}</h2>
-            <div className="overflow-hidden rounded-[10px] border border-zinc-800 bg-[#161616]">
-              <div className="relative flex h-[250px] items-center justify-center border-b border-zinc-800 bg-[#212c3d]">
-                <div className="absolute left-[20%] top-[60%] h-4 w-4 rounded-full border-[3px] border-white bg-blue-500" />
-                <div className="absolute right-[25%] top-[35%] flex h-5 w-5 items-center justify-center rounded-full border-[3px] border-white bg-red-500">
-                  <Truck className="h-2.5 w-2.5 text-white" />
-                </div>
-                <div className="absolute left-[20%] top-1/2 h-1 w-[60%] -translate-y-1/2 rotate-[-15deg] rounded bg-blue-500" />
-                <span className="relative z-[2] text-2xl font-bold text-white/20">
-                  {t("deliveryMap.placeholder")}
-                </span>
+            <div className={`overflow-hidden ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}>
+              <div className="relative h-[250px] border-b border-white/10 bg-black/60">
+                {mapEmbedUrl ? (
+                  <iframe
+                    title={mapEmbedTitle}
+                    src={mapEmbedUrl}
+                    className="h-full w-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-4 text-center">
+                    <span className="text-sm text-white/30">
+                      {t("deliveryMap.placeholder")}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-col gap-4 p-4 sm:flex-row sm:justify-between">
-                <div className="min-w-0 flex-1 space-y-4">
-                  <div>
-                    <div className="mb-1 text-[13px] font-bold">
-                      {t("deliveryMap.addressTitle")}
-                    </div>
-                    {deliveryLines.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:gap-6">
+                <div
+                  className={`min-w-0 ${billingLines.length === 0 ? "sm:col-span-2" : ""}`}
+                >
+                  <div className="mb-1 text-[13px] font-bold">
+                    {isPickup
+                      ? t("deliveryMap.pickupLocationTitle")
+                      : t("deliveryMap.addressTitle")}
+                  </div>
+                  {isPickup ? (
+                    pickupStore ? (
                       <div className="text-[13px] leading-relaxed text-zinc-400">
-                        {order.b2b.shippingAddress?.dba_name ? (
-                          <div className="font-medium text-zinc-300">
-                            {order.b2b.shippingAddress.dba_name}
-                          </div>
+                        <div className="font-medium text-zinc-300">
+                          {pickupStore.name}
+                        </div>
+                        <div>{pickupStore.address}</div>
+                        {pickupStore.suburb ? (
+                          <div>{pickupStore.suburb}</div>
                         ) : null}
-                        {deliveryLines.map((line) => (
-                          <div key={line}>{line}</div>
-                        ))}
-                        {deliveryInstructions ? (
-                          <div className="mt-1">{deliveryInstructions}</div>
-                        ) : null}
+                        {pickupStore.phone ? (
+                          <div className="mt-1">{pickupStore.phone}</div>
+                        ) : null}                                                
                       </div>
                     ) : (
                       <div className="flex items-start gap-2 text-[13px] text-zinc-400">
                         <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
                         <span>{order.pickup_time || t("deliveryMap.noAddress")}</span>
                       </div>
-                    )}
-                  </div>
-                  {billingLines.length > 0 ? (
-                    <div>
-                      <div className="mb-1 text-[13px] font-bold">
-                        {t("deliveryMap.billingTitle")}
-                      </div>
-                      <div className="text-[13px] leading-relaxed text-zinc-400">
-                        {order.b2b.billingAddress?.legal_name ? (
-                          <div className="font-medium text-zinc-300">
-                            {order.b2b.billingAddress.legal_name}
-                          </div>
-                        ) : null}
-                        {billingLines.map((line) => (
-                          <div key={line}>{line}</div>
-                        ))}
-                      </div>
+                    )
+                  ) : deliveryLines.length > 0 ? (
+                    <div className="text-[13px] leading-relaxed text-zinc-400">
+                      {order.b2b.shippingAddress?.dba_name ? (
+                        <div className="font-medium text-zinc-300">
+                          {order.b2b.shippingAddress.dba_name}
+                        </div>
+                      ) : null}
+                      {deliveryLines.map((line) => (
+                        <div key={line}>{line}</div>
+                      ))}
+                      {deliveryInstructions ? (
+                        <div className="mt-1">{deliveryInstructions}</div>
+                      ) : null}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="flex items-start gap-2 text-[13px] text-zinc-400">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{order.pickup_time || t("deliveryMap.noAddress")}</span>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <div className="mb-1 text-[13px] font-bold">
-                    {t("deliveryMap.carrierTitle")}
+                {billingLines.length > 0 ? (
+                  <div className="min-w-0">
+                    <div className="mb-1 text-[13px] font-bold">
+                      {t("deliveryMap.billingTitle")}
+                    </div>
+                    <div className="text-[13px] leading-relaxed text-zinc-400">
+                      {order.b2b.billingAddress?.legal_name ? (
+                        <div className="font-medium text-zinc-300">
+                          {order.b2b.billingAddress.legal_name}
+                        </div>
+                      ) : null}
+                      {billingLines.map((line) => (
+                        <div key={line}>{line}</div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-[13px] text-zinc-400">
-                    {t("deliveryMap.lastUpdate", {
-                      date: formatOrderDate(lastUpdate),
-                    })}
-                  </div>
-                </div>
+                ) : null}
               </div>
             </div>
           </section>
 
           <section className="flex flex-[1.2] flex-col">
             <h2 className="mb-4 text-lg font-medium">{t("items.title")}</h2>
-            <div className="flex flex-1 flex-col justify-between rounded-[10px] border border-zinc-800 bg-[#161616] p-5">
+            <div className={`flex flex-1 flex-col justify-between p-5 ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}>
               <div>
-                <div className="mb-4 font-medium">{t("items.shipmentTitle")}</div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
                     <thead>
@@ -375,10 +449,7 @@ export default function OrderTrackingDetails({
                         <th className="pb-2.5 font-normal">{t("items.name")}</th>
                         <th className="pb-2.5 font-normal">{t("items.qty")}</th>
                         <th className="pb-2.5 font-normal">{t("items.unit")}</th>
-                        <th className="pb-2.5 font-normal">{t("items.total")}</th>
-                        <th className="pb-2.5 text-right font-normal">
-                          {t("items.packed")}
-                        </th>
+                        <th className="pb-2.5 font-normal">{t("items.total")}</th>                        
                       </tr>
                     </thead>
                     <tbody>
@@ -388,25 +459,32 @@ export default function OrderTrackingDetails({
                           className="border-b border-zinc-800 last:border-0"
                         >
                           <td className="py-4">{item.sku || item.menu_item_id}</td>
-                          <td className="py-4">{item.item_name}</td>
+                          <td className="py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/10">
+                                {item.imageUrl ? (
+                                  <AppImage
+                                    src={item.imageUrl}
+                                    alt={item.item_name}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-base opacity-60">
+                                    <Package className="h-4 w-4 text-zinc-500" />
+                                  </div>
+                                )}
+                              </div>
+                              <span className="min-w-0">{item.item_name}</span>
+                            </div>
+                          </td>
                           <td className="py-4 text-zinc-300">{item.qty}</td>
                           <td className="py-4">
                             {formatTrackedCurrency(item.unit_price)}
                           </td>
                           <td className="py-4 font-bold">
                             {formatTrackedCurrency(item.line_total)}
-                          </td>
-                          <td className="py-4 text-right">
-                            <span
-                              className={`inline-block rounded border px-2 py-1 text-xs ${
-                                packed
-                                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                                  : "border-zinc-700 bg-zinc-800 text-zinc-500"
-                              }`}
-                            >
-                              {packed ? t("items.packedYes") : t("items.packedNo")}
-                            </span>
-                          </td>
+                          </td>                          
                         </tr>
                       ))}
                     </tbody>
@@ -414,30 +492,25 @@ export default function OrderTrackingDetails({
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-6 grid gap-2.5 md:grid-cols-3">
                 <ActionButton label={t("actions.viewInvoice")} disabled />
                 <ActionButton label={t("actions.downloadPackingSlip")} disabled />
-                <ActionButton label={t("actions.reportIssue")} href="/contact" />
-                <ActionButton
-                  label={t("actions.contactSupplier")}
-                  href="/contact"
-                  variant="primary"
-                />
+                <ActionButton label={t("actions.reportIssue")} href="/contact" />                
               </div>
             </div>
           </section>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 flex justify-flex-start">
           <Link
-            href="/order-tracking"
-            className="text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+            href={member ? "/wholesale/orders" : "/order-tracking"}
+            className={`inline-flex items-center justify-center rounded-lg border border-white/20 px-5 py-2.5 text-sm font-medium text-zinc-100 shadow-sm transition-colors hover:border-white/35 hover:bg-white/10 bg-white/10 backdrop-blur-sm`}
           >
-            {t("backToTracking")}
+            {member ? t("backToOrders") : t("backToTracking")}
           </Link>
         </div>
       </div>
-    </div>
+    </MemberPortalBackground>
   );
 }
 

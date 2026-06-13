@@ -7,6 +7,11 @@ import WholesaleFormSelect, {
   type WholesaleFormSelectOption,
 } from "@/components/WholesaleFormSelect";
 import MemberHeader from "@/components/MemberHeader";
+import MemberPortalBackground from "@/components/MemberPortalBackground";
+import {
+  MEMBER_PORTAL_BANNER_CLASS,
+  MEMBER_PORTAL_PANEL_CLASS,
+} from "@/lib/member-portal-surfaces";
 import MemberPrivilegeBadges from "@/components/MemberPrivilegeBadges";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
@@ -324,20 +329,20 @@ export default function MemberProfile() {
 
   if (isLoading || !me || !profile || !form) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+      <MemberPortalBackground className="flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      </MemberPortalBackground>
     );
   }
 
   const displayName = getContactName(profile);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <MemberPortalBackground>
       <MemberHeader member={me} onLogout={() => void handleLogout()} />
 
       <form onSubmit={(event) => void handleSubmit(event)}>
-        <div className="border-b border-white/10 py-6">
+        <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
           <div className="container">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-4">
@@ -370,7 +375,7 @@ export default function MemberProfile() {
         </div>
 
         <div className="container max-w-5xl py-8">
-          <section className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-6">
+          <section className={`mb-6 p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
               <div className="mx-auto w-full max-w-xs shrink-0 text-center lg:mx-0 lg:w-auto">
                 <div className="relative mx-auto mb-3 flex h-50 w-50 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/20 p-1">
@@ -502,7 +507,7 @@ export default function MemberProfile() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
-              <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
                 <h2 className="mb-5 text-base font-semibold text-white">
                   Shipping Address
                 </h2>
@@ -607,7 +612,7 @@ export default function MemberProfile() {
             </div>
 
             <div className="space-y-6">
-              <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
                 <h2 className="mb-5 text-base font-semibold text-white">
                   Business Information
                 </h2>
@@ -689,6 +694,6 @@ export default function MemberProfile() {
           </div>
         </div>
       </form>
-    </div>
+    </MemberPortalBackground>
   );
 }

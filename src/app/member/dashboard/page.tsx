@@ -1,5 +1,18 @@
+import WholesaleInventoryHydration from "@/components/WholesaleInventoryHydration";
+import { loadWholesalePageData } from "@/lib/wholesale-page";
 import MemberDashboard from "@/views/MemberDashboard";
 
-export default function MemberDashboardPage() {
-  return <MemberDashboard locale="en" />;
+export default async function MemberDashboardPage() {
+  const { products, inventory, pricingTiers } = await loadWholesalePageData();
+
+  return (
+    <>
+      <WholesaleInventoryHydration inventory={inventory} />
+      <MemberDashboard
+        locale="en"
+        products={products}
+        pricingTiers={pricingTiers}
+      />
+    </>
+  );
 }
