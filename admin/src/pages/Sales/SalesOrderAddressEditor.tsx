@@ -1,7 +1,13 @@
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import type { OrderAddressDbFields } from './salesOrderB2b';
+import {
+  SalesOrderFormField,
+  SalesOrderFormSection,
+  salesOrderFormGridClass,
+} from './SalesOrderFormField';
 import { SalesOrderPickupStoreSection } from './SalesOrderPickupStoreSection';
+import { SalesOrderStateField } from './SalesOrderStateField';
 import type { FulfillmentType } from './salesOrderShared';
 
 type SalesOrderAddressEditorProps = {
@@ -15,43 +21,6 @@ type SalesOrderAddressEditorProps = {
   onPickupStoreChange?: (storeId: number | null) => void;
 };
 
-function AddressField({
-  id,
-  label,
-  value,
-  onChange,
-  disabled,
-  readOnly,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  readOnly?: boolean;
-}) {
-  if (readOnly) {
-    return (
-      <div className="grid gap-2">
-        <Label htmlFor={id}>{label}</Label>
-        <p className="text-sm text-muted-foreground">{value || '—'}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
-  );
-}
-
 export function SalesOrderAddressEditor({
   value,
   onChange,
@@ -64,54 +33,115 @@ export function SalesOrderAddressEditor({
 }: SalesOrderAddressEditorProps) {
   const isPickup = fulfillmentMethod === 'pick_up';
 
-  const field = (name: keyof OrderAddressDbFields, label: string) => {
-    const id = `${idPrefix}-${name}`;
+  const nullableFields: Array<keyof OrderAddressDbFields> = [
+    'shipping_dba_name',
+    'shipping_special_instructions',
+    'shipping_preferred_window',
+    'billing_legal_name',
+    'billing_tax_id',
+  ];
+
+  const field = (
+    name: keyof OrderAddressDbFields,
+    label: string,
+    options?: { multiline?: boolean; fullWidth?: boolean },
+  ) => {
+    const fieldId = `${idPrefix}-${name}`;
+    const fieldValue = value[name] ?? '';
+
     return (
-      <AddressField
+      <SalesOrderFormField
         key={name}
-        id={id}
         label={label}
-        value={value[name]}
-        disabled={disabled}
+        htmlFor={fieldId}
         readOnly={readOnly}
-        onChange={(next) => onChange({ ...value, [name]: next })}
-      />
+        value={options?.multiline ? <span className="whitespace-pre-wrap">{fieldValue}</span> : fieldValue}
+        className={options?.fullWidth ? 'md:col-span-2' : undefined}
+        valueClassName={options?.multiline ? 'min-h-[4.5rem] whitespace-pre-wrap' : undefined}
+      >
+        {options?.multiline ? (
+          <Textarea
+            id={fieldId}
+            rows={3}
+            value={fieldValue}
+            disabled={disabled}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                [name]: nullableFields.includes(name) ? event.target.value || null : event.target.value,
+              })
+            }
+          />
+        ) : (
+          <Input
+            id={fieldId}
+            value={fieldValue}
+            disabled={disabled}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                [name]: nullableFields.includes(name) ? event.target.value || null : event.target.value,
+              })
+            }
+          />
+        )}
+      </SalesOrderFormField>
     );
   };
 
+  const stateField = (name: 'shipping_state' | 'billing_state') => (
+    <SalesOrderStateField
+      key={name}
+      id={`${idPrefix}-${name}`}
+      value={value[name] ?? ''}
+      disabled={disabled}
+      readOnly={readOnly}
+      onChange={(next) => onChange({ ...value, [name]: next })}
+    />
+  );
+
   return (
-    <div className="grid gap-6">
+    <div className="space-y-6">
       {isPickup ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2 text-sm font-medium">Pickup location</div>
-          <div className="md:col-span-2">
-            <SalesOrderPickupStoreSection
-              storeId={requestedPickUpStoreId}
-              onStoreChange={onPickupStoreChange}
-              idPrefix={idPrefix}
-              disabled={disabled}
-              readOnly={readOnly}
-            />
-          </div>
-        </div>
+        <SalesOrderFormSection title="Pickup location">
+          <SalesOrderPickupStoreSection
+            storeId={requestedPickUpStoreId}
+            onStoreChange={onPickupStoreChange}
+            idPrefix={idPrefix}
+            disabled={disabled}
+            readOnly={readOnly}
+            hideLabel
+          />
+        </SalesOrderFormSection>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2 text-sm font-medium">Shipping address</div>
-          {field('shipping_address', 'Street address')}
-          {field('shipping_city', 'City')}
-          {field('shipping_state', 'State')}
-          {field('shipping_postal_code', 'Postal code')}
-          {field('shipping_country', 'Country')}
-        </div>
+        <SalesOrderFormSection title="Shipping address">
+          <div className={salesOrderFormGridClass}>
+            {field('shipping_dba_name', 'DBA / business name')}
+            {field('shipping_address', 'Street address', { fullWidth: true })}
+            {field('shipping_city', 'City')}
+            {stateField('shipping_state')}
+            {field('shipping_postal_code', 'Postal code')}
+            {field('shipping_country', 'Country')}
+            {field('shipping_preferred_window', 'Preferred delivery window')}
+            {field('shipping_special_instructions', 'Delivery instructions', {
+              multiline: true,
+              fullWidth: true,
+            })}
+          </div>
+        </SalesOrderFormSection>
       )}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="md:col-span-2 text-sm font-medium">Billing address</div>
-        {field('billing_address', 'Street address')}
-        {field('billing_city', 'City')}
-        {field('billing_state', 'State')}
-        {field('billing_postal_code', 'Postal code')}
-        {field('billing_country', 'Country')}
-      </div>
+
+      <SalesOrderFormSection title="Billing address">
+        <div className={salesOrderFormGridClass}>
+          {field('billing_legal_name', 'Legal name')}
+          {field('billing_tax_id', 'Tax ID / ABN')}
+          {field('billing_address', 'Street address', { fullWidth: true })}
+          {field('billing_city', 'City')}
+          {stateField('billing_state')}
+          {field('billing_postal_code', 'Postal code')}
+          {field('billing_country', 'Country')}
+        </div>
+      </SalesOrderFormSection>
     </div>
   );
 }

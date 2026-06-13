@@ -212,7 +212,7 @@ export function SalesOrderItemsEditor({
                             )
                           }
                         >
-                          <SelectTrigger className="h-9">
+                          <SelectTrigger className="h-9 w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

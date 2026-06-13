@@ -1,4 +1,5 @@
 import type { OrderType } from './orderType';
+import { normalizeAustralianStateForStorage } from '@/lib/australian-states';
 
 export type SalesOrderB2BBuyerForm = {
   name: string;
@@ -162,7 +163,7 @@ export function parseB2BFormFromRow(row: {
         street_1: str(row.shipping_address),
         street_2: '',
         city: str(row.shipping_city),
-        state: str(row.shipping_state),
+        state: normalizeAustralianStateForStorage(str(row.shipping_state)),
         postal_code: str(row.shipping_postal_code),
         country: str(row.shipping_country),
         special_instructions: str(row.shipping_special_instructions),
@@ -173,7 +174,7 @@ export function parseB2BFormFromRow(row: {
         street_1: str(row.billing_address),
         street_2: '',
         city: str(row.billing_city),
-        state: str(row.billing_state),
+        state: normalizeAustralianStateForStorage(str(row.billing_state)),
         postal_code: str(row.billing_postal_code),
         country: str(row.billing_country),
         tax_id: str(row.billing_tax_id),
@@ -197,7 +198,7 @@ export function parseB2BFormFromRow(row: {
       street_1: str(shipping.street_1),
       street_2: str(shipping.street_2),
       city: str(shipping.city),
-      state: str(shipping.state),
+      state: normalizeAustralianStateForStorage(str(shipping.state)),
       postal_code: str(shipping.postal_code),
       country: str(shipping.country),
       special_instructions: str(shipping.special_instructions),
@@ -208,7 +209,7 @@ export function parseB2BFormFromRow(row: {
       street_1: str(billing.street_1),
       street_2: str(billing.street_2),
       city: str(billing.city),
-      state: str(billing.state),
+      state: normalizeAustralianStateForStorage(str(billing.state)),
       postal_code: str(billing.postal_code),
       country: str(billing.country),
       tax_id: str(billing.tax_id),
@@ -274,7 +275,7 @@ export function serializeB2BForDb(
         ) || 'N/A'
       : 'N/A',
     shipping_city: form.shipping_address.city.trim() || 'N/A',
-    shipping_state: form.shipping_address.state.trim() || 'N/A',
+    shipping_state: normalizeAustralianStateForStorage(form.shipping_address.state) || 'N/A',
     shipping_postal_code: form.shipping_address.postal_code.trim() || '0000',
     shipping_country: form.shipping_address.country.trim() || 'Australia',
     billing_legal_name: billingHasData
@@ -290,7 +291,7 @@ export function serializeB2BForDb(
         ) || 'N/A'
       : 'N/A',
     billing_city: form.billing_address.city.trim() || 'N/A',
-    billing_state: form.billing_address.state.trim() || 'N/A',
+    billing_state: normalizeAustralianStateForStorage(form.billing_address.state) || 'N/A',
     billing_postal_code: form.billing_address.postal_code.trim() || '0000',
     billing_country: form.billing_address.country.trim() || 'Australia',
   };

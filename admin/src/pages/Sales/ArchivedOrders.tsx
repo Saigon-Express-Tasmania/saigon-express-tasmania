@@ -17,7 +17,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -34,6 +33,12 @@ import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SalesOrderAddressEditor } from './SalesOrderAddressEditor';
 import { SalesOrderItemsEditor } from './SalesOrderItemsEditor';
+import {
+  SalesOrderFormField,
+  SalesOrderFormSection,
+  salesOrderFormGridClass,
+} from './SalesOrderFormField';
+import { formatOrderStatusLabel, fulfillmentMethodLabel } from './salesOrderFulfillment';
 import type { OrderAddressDbFields } from './salesOrderB2b';
 import {
   ARCHIVED_ORDER_COLUMNS,
@@ -47,6 +52,8 @@ import {
 import {
   FULFILLMENT_TYPE_OPTIONS,
   ORDER_STATUS_OPTIONS,
+  orderAddressFromForm,
+  pickOrderAddressFields,
   PAYMENT_TERMS_OPTIONS,
   type FulfillmentType,
   type OrderStatus,
@@ -121,16 +128,7 @@ function archivedRowToForm(row: ArchivedOrderRow, items: SalesOrderItemForm[]): 
     archived_reason: row.archived_reason ?? '',
     archived_at: row.archived_at,
     items,
-    shipping_address: row.shipping_address,
-    shipping_city: row.shipping_city,
-    shipping_state: row.shipping_state,
-    shipping_postal_code: row.shipping_postal_code,
-    shipping_country: row.shipping_country,
-    billing_address: row.billing_address,
-    billing_city: row.billing_city,
-    billing_state: row.billing_state,
-    billing_postal_code: row.billing_postal_code,
-    billing_country: row.billing_country,
+    ...pickOrderAddressFields(row),
   };
 }
 
@@ -141,6 +139,18 @@ export function ArchivedOrders() {
     'archived-orders',
     'Archived Orders',
   );
+
+  const formatPaymentTermsLabel = (terms: PaymentTerms): string => {
+    const labels: Record<PaymentTerms, string> = {
+      prepaid: 'Prepaid',
+      due_on_receipt: 'Due on receipt',
+      deposit_required: 'Deposit required',
+      net_30: 'Net 30',
+      net_60: 'Net 60',
+      net_90: 'Net 90',
+    };
+    return labels[terms];
+  };
 
   const [rows, setRows] = useState<ArchivedOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -271,16 +281,7 @@ export function ArchivedOrders() {
         notes: form.notes.trim() || null,
         archived_reason: form.archived_reason.trim() || null,
         archived_at: form.archived_at.trim() || new Date().toISOString(),
-        shipping_address: form.shipping_address.trim() || 'N/A',
-        shipping_city: form.shipping_city.trim() || 'N/A',
-        shipping_state: form.shipping_state.trim() || 'N/A',
-        shipping_postal_code: form.shipping_postal_code.trim() || '0000',
-        shipping_country: form.shipping_country.trim() || 'Australia',
-        billing_address: form.billing_address.trim() || 'N/A',
-        billing_city: form.billing_city.trim() || 'N/A',
-        billing_state: form.billing_state.trim() || 'N/A',
-        billing_postal_code: form.billing_postal_code.trim() || '0000',
-        billing_country: form.billing_country.trim() || 'Australia',
+        ...orderAddressFromForm(form),
         updated_at: new Date().toISOString(),
       };
 
@@ -426,7 +427,7 @@ export function ArchivedOrders() {
           if (!open) setForm(null);
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+        <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Edit archived order #{editingId}</DialogTitle>
             <DialogDescription>
@@ -434,242 +435,251 @@ export function ArchivedOrders() {
             </DialogDescription>
           </DialogHeader>
           {form ? (
-            <div className="grid gap-4 py-2 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="arch-customer-name">Customer name</Label>
-                <Input
-                  id="arch-customer-name"
-                  value={form.customer_name}
-                  onChange={(e) => setForm((prev) => prev && { ...prev, customer_name: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-customer-email">Customer email</Label>
-                <Input
-                  id="arch-customer-email"
-                  type="email"
-                  value={form.customer_email}
-                  onChange={(e) => setForm((prev) => prev && { ...prev, customer_email: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-customer-phone">Customer phone</Label>
-                <Input
-                  id="arch-customer-phone"
-                  value={form.customer_phone}
-                  onChange={(e) => setForm((prev) => prev && { ...prev, customer_phone: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-store-id">Store ID</Label>
-                <Input
-                  id="arch-store-id"
-                  type="number"
-                  value={form.store_id ?? ''}
-                  onChange={(e) =>
-                    setForm((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            store_id: e.target.value ? Number(e.target.value) : null,
-                          }
-                        : prev,
-                    )
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-fulfillment">Fulfillment method</Label>
-                <Select
-                  value={form.requested_fulfillment_method}
-                  onValueChange={(value) =>
-                    setForm((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            requested_fulfillment_method: value as FulfillmentType,
-                            requested_pick_up_store_id:
-                              value === 'pick_up' ? prev.requested_pick_up_store_id : null,
-                          }
-                        : prev,
-                    )
-                  }
-                >
-                  <SelectTrigger id="arch-fulfillment">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FULFILLMENT_TYPE_OPTIONS.map((method) => (
-                      <SelectItem key={method} value={method}>
-                        {method}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-payment-terms">Payment terms</Label>
-                <Select
-                  value={form.payment_terms}
-                  onValueChange={(value) =>
-                    setForm((prev) =>
-                      prev ? { ...prev, payment_terms: value as PaymentTerms } : prev,
-                    )
-                  }
-                >
-                  <SelectTrigger id="arch-payment-terms">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_TERMS_OPTIONS.map((terms) => (
-                      <SelectItem key={terms} value={terms}>
-                        {terms}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="arch-target-date">Target date</Label>
-                <Input
-                  id="arch-target-date"
-                  type="datetime-local"
-                  value={toDatetimeLocalValue(form.requested_target_date)}
-                  onChange={(e) => {
-                    const iso = fromDatetimeLocalValue(e.target.value);
-                    if (iso) {
-                      setForm((prev) => prev && { ...prev, requested_target_date: iso });
-                    }
-                  }}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-subtotal">Subtotal</Label>
-                <Input
-                  id="arch-subtotal"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.subtotal}
-                  onChange={(e) => setForm((prev) => prev && { ...prev, subtotal: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-tax">Tax total</Label>
-                <Input
-                  id="arch-tax"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.tax_total}
-                  onChange={(e) => setForm((prev) => prev && { ...prev, tax_total: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-shipping">Shipping fee</Label>
-                <Input
-                  id="arch-shipping"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.shipping_fee}
-                  onChange={(e) =>
-                    setForm((prev) => prev && { ...prev, shipping_fee: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-grand-total">Grand total</Label>
-                <Input
-                  id="arch-grand-total"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.grand_total}
-                  onChange={(e) =>
-                    setForm((prev) => prev && { ...prev, grand_total: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-status">Order status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(value) =>
-                    setForm((prev) => (prev ? { ...prev, status: value as OrderStatus } : prev))
-                  }
-                >
-                  <SelectTrigger id="arch-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ORDER_STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="arch-archived-at">Archived at (ISO)</Label>
-                <Input
-                  id="arch-archived-at"
-                  value={form.archived_at}
-                  onChange={(e) =>
-                    setForm((prev) => prev && { ...prev, archived_at: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="arch-archived-reason">Archived reason</Label>
-                <Input
-                  id="arch-archived-reason"
-                  value={form.archived_reason}
-                  onChange={(e) =>
-                    setForm((prev) => prev && { ...prev, archived_reason: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2 md:col-span-2">
-                <SalesOrderAddressEditor
-                  idPrefix="archived-order"
-                  fulfillmentMethod={form.requested_fulfillment_method}
-                  requestedPickUpStoreId={form.requested_pick_up_store_id}
-                  onPickupStoreChange={(storeId) =>
-                    setForm((prev) =>
-                      prev ? { ...prev, requested_pick_up_store_id: storeId } : prev,
-                    )
-                  }
-                  value={{
-                    shipping_address: form.shipping_address,
-                    shipping_city: form.shipping_city,
-                    shipping_state: form.shipping_state,
-                    shipping_postal_code: form.shipping_postal_code,
-                    shipping_country: form.shipping_country,
-                    billing_address: form.billing_address,
-                    billing_city: form.billing_city,
-                    billing_state: form.billing_state,
-                    billing_postal_code: form.billing_postal_code,
-                    billing_country: form.billing_country,
-                  }}
-                  onChange={(address) =>
-                    setForm((prev) => (prev ? { ...prev, ...address } : prev))
-                  }
-                  disabled={saving}
-                />
-              </div>
-              <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="arch-notes">Notes</Label>
-                <Textarea
-                  id="arch-notes"
-                  rows={3}
-                  value={form.notes}
-                  onChange={(e) => setForm((prev) => prev && { ...prev, notes: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2 md:col-span-2">
-                <Label>Line items (read-only)</Label>
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-2 pr-1">
+              <SalesOrderFormSection title="Customer contact">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField label="Customer name" htmlFor="arch-customer-name">
+                    <Input
+                      id="arch-customer-name"
+                      value={form.customer_name}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, customer_name: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Customer email" htmlFor="arch-customer-email">
+                    <Input
+                      id="arch-customer-email"
+                      type="email"
+                      value={form.customer_email}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, customer_email: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Customer phone" htmlFor="arch-customer-phone">
+                    <Input
+                      id="arch-customer-phone"
+                      value={form.customer_phone}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, customer_phone: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Store ID" htmlFor="arch-store-id">
+                    <Input
+                      id="arch-store-id"
+                      type="number"
+                      value={form.store_id ?? ''}
+                      onChange={(e) =>
+                        setForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                store_id: e.target.value ? Number(e.target.value) : null,
+                              }
+                            : prev,
+                        )
+                      }
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection title="Fulfillment & terms">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField label="Fulfillment method" htmlFor="arch-fulfillment">
+                    <Select
+                      value={form.requested_fulfillment_method}
+                      onValueChange={(value) =>
+                        setForm((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                requested_fulfillment_method: value as FulfillmentType,
+                                requested_pick_up_store_id:
+                                  value === 'pick_up' ? prev.requested_pick_up_store_id : null,
+                              }
+                            : prev,
+                        )
+                      }
+                    >
+                      <SelectTrigger id="arch-fulfillment">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FULFILLMENT_TYPE_OPTIONS.map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {fulfillmentMethodLabel(method)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Payment terms" htmlFor="arch-payment-terms">
+                    <Select
+                      value={form.payment_terms}
+                      onValueChange={(value) =>
+                        setForm((prev) =>
+                          prev ? { ...prev, payment_terms: value as PaymentTerms } : prev,
+                        )
+                      }
+                    >
+                      <SelectTrigger id="arch-payment-terms">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_TERMS_OPTIONS.map((terms) => (
+                          <SelectItem key={terms} value={terms}>
+                            {formatPaymentTermsLabel(terms)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Target date"
+                    htmlFor="arch-target-date"
+                    className="md:col-span-2"
+                  >
+                    <Input
+                      id="arch-target-date"
+                      type="datetime-local"
+                      value={toDatetimeLocalValue(form.requested_target_date)}
+                      onChange={(e) => {
+                        const iso = fromDatetimeLocalValue(e.target.value);
+                        if (iso) {
+                          setForm((prev) => prev && { ...prev, requested_target_date: iso });
+                        }
+                      }}
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection title="Totals & status">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField label="Subtotal" htmlFor="arch-subtotal">
+                    <Input
+                      id="arch-subtotal"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.subtotal}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, subtotal: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Tax total" htmlFor="arch-tax">
+                    <Input
+                      id="arch-tax"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.tax_total}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, tax_total: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Shipping fee" htmlFor="arch-shipping">
+                    <Input
+                      id="arch-shipping"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.shipping_fee}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, shipping_fee: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Grand total" htmlFor="arch-grand-total">
+                    <Input
+                      id="arch-grand-total"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.grand_total}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, grand_total: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Order status" htmlFor="arch-status">
+                    <Select
+                      value={form.status}
+                      onValueChange={(value) =>
+                        setForm((prev) => (prev ? { ...prev, status: value as OrderStatus } : prev))
+                      }
+                    >
+                      <SelectTrigger id="arch-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ORDER_STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {formatOrderStatusLabel(status)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection title="Archive metadata">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField label="Archived at" htmlFor="arch-archived-at">
+                    <Input
+                      id="arch-archived-at"
+                      value={form.archived_at}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, archived_at: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Archived reason"
+                    htmlFor="arch-archived-reason"
+                    className="md:col-span-2"
+                  >
+                    <Input
+                      id="arch-archived-reason"
+                      value={form.archived_reason}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, archived_reason: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderAddressEditor
+                idPrefix="archived-order"
+                fulfillmentMethod={form.requested_fulfillment_method}
+                requestedPickUpStoreId={form.requested_pick_up_store_id}
+                onPickupStoreChange={(storeId) =>
+                  setForm((prev) => (prev ? { ...prev, requested_pick_up_store_id: storeId } : prev))
+                }
+                value={pickOrderAddressFields(form)}
+                onChange={(address) => setForm((prev) => (prev ? { ...prev, ...address } : prev))}
+                disabled={saving}
+              />
+
+              <SalesOrderFormSection title="Notes">
+                <SalesOrderFormField label="Order notes" htmlFor="arch-notes">
+                  <Textarea
+                    id="arch-notes"
+                    rows={3}
+                    value={form.notes}
+                    onChange={(e) => setForm((prev) => prev && { ...prev, notes: e.target.value })}
+                  />
+                </SalesOrderFormField>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection title="Line items (read-only)">
                 <SalesOrderItemsEditor
                   orderType={orderType!}
                   items={form.items}
@@ -678,10 +688,10 @@ export function ArchivedOrders() {
                   disabled
                   readOnly
                 />
-              </div>
+              </SalesOrderFormSection>
             </div>
           ) : null}
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
               Cancel
             </Button>

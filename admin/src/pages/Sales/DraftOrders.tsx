@@ -26,7 +26,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -48,6 +47,12 @@ import {
 import { SalesOrderAddressEditor } from './SalesOrderAddressEditor';
 import { SalesOrderItemsEditor } from './SalesOrderItemsEditor';
 import {
+  SalesOrderFormField,
+  SalesOrderFormSection,
+  salesOrderFormGridClass,
+} from './SalesOrderFormField';
+import { fulfillmentMethodLabel } from './salesOrderFulfillment';
+import {
   DRAFT_ORDER_COLUMNS,
   fetchOrderItems,
   formatTargetDateDisplay,
@@ -60,6 +65,8 @@ import {
   defaultFulfillmentForOrderType,
   emptyOrderItem,
   FULFILLMENT_TYPE_OPTIONS,
+  orderAddressFromForm,
+  pickOrderAddressFields,
   validateOrderItems,
   type FulfillmentType,
   type SalesOrderItemForm,
@@ -154,16 +161,7 @@ function draftRowToForm(row: DraftOrderRow, items: SalesOrderItemForm[]): DraftO
     notes: row.notes ?? '',
     items,
     expires_at: row.expires_at ?? '',
-    shipping_address: row.shipping_address,
-    shipping_city: row.shipping_city,
-    shipping_state: row.shipping_state,
-    shipping_postal_code: row.shipping_postal_code,
-    shipping_country: row.shipping_country,
-    billing_address: row.billing_address,
-    billing_city: row.billing_city,
-    billing_state: row.billing_state,
-    billing_postal_code: row.billing_postal_code,
-    billing_country: row.billing_country,
+    ...pickOrderAddressFields(row),
   });
 }
 
@@ -287,16 +285,7 @@ export function DraftOrders() {
         requested_fulfillment_method: synced.requested_fulfillment_method,
         requested_target_date: targetDate.toISOString(),
         requested_pick_up_store_id: synced.requested_pick_up_store_id,
-        shipping_address: synced.shipping_address.trim() || 'N/A',
-        shipping_city: synced.shipping_city.trim() || 'N/A',
-        shipping_state: synced.shipping_state.trim() || 'N/A',
-        shipping_postal_code: synced.shipping_postal_code.trim() || '0000',
-        shipping_country: synced.shipping_country.trim() || 'Australia',
-        billing_address: synced.billing_address.trim() || 'N/A',
-        billing_city: synced.billing_city.trim() || 'N/A',
-        billing_state: synced.billing_state.trim() || 'N/A',
-        billing_postal_code: synced.billing_postal_code.trim() || '0000',
-        billing_country: synced.billing_country.trim() || 'Australia',
+        ...orderAddressFromForm(synced),
         subtotal: Number(synced.subtotal).toFixed(2),
         tax_total: Number(synced.tax_total).toFixed(2),
         shipping_fee: Number(synced.shipping_fee).toFixed(2),
@@ -487,179 +476,168 @@ export function DraftOrders() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+        <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editingId !== null ? 'Edit draft order' : 'Add draft order'}</DialogTitle>
             <DialogDescription>Draft data used before payment completion.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="draft-customer-name">Customer name</Label>
-              <Input
-                id="draft-customer-name"
-                value={form.customer_name}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, customer_name: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-customer-email">Customer email</Label>
-              <Input
-                id="draft-customer-email"
-                type="email"
-                value={form.customer_email}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, customer_email: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-customer-phone">Customer phone</Label>
-              <Input
-                id="draft-customer-phone"
-                value={form.customer_phone}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, customer_phone: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-store-id">Store ID</Label>
-              <Input
-                id="draft-store-id"
-                type="number"
-                value={form.store_id ?? ''}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    store_id: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-fulfillment">Fulfillment method</Label>
-              <Select
-                value={form.requested_fulfillment_method}
-                onValueChange={(value) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    requested_fulfillment_method: value as FulfillmentType,
-                    requested_pick_up_store_id:
-                      value === 'pick_up' ? prev.requested_pick_up_store_id : null,
-                  }))
-                }
-              >
-                <SelectTrigger id="draft-fulfillment">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FULFILLMENT_TYPE_OPTIONS.map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-target-date">Target date</Label>
-              <Input
-                id="draft-target-date"
-                type="datetime-local"
-                value={toDatetimeLocalValue(form.requested_target_date)}
-                onChange={(e) => {
-                  const iso = fromDatetimeLocalValue(e.target.value);
-                  if (iso) {
-                    setForm((prev) => ({ ...prev, requested_target_date: iso }));
-                  }
-                }}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-tax">Tax total</Label>
-              <Input
-                id="draft-tax"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.tax_total}
-                onChange={(e) =>
-                  setForm((prev) => syncDraftTotals({ ...prev, tax_total: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-shipping">Shipping fee</Label>
-              <Input
-                id="draft-shipping"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.shipping_fee}
-                onChange={(e) =>
-                  setForm((prev) => syncDraftTotals({ ...prev, shipping_fee: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-grand-total">Grand total</Label>
-              <Input
-                id="draft-grand-total"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.grand_total}
-                readOnly
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="draft-expires-at">Expires at (ISO)</Label>
-              <Input
-                id="draft-expires-at"
-                value={form.expires_at}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, expires_at: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <SalesOrderAddressEditor
-                idPrefix="draft-order"
-                fulfillmentMethod={form.requested_fulfillment_method}
-                requestedPickUpStoreId={form.requested_pick_up_store_id}
-                onPickupStoreChange={(storeId) =>
-                  setForm((prev) => ({ ...prev, requested_pick_up_store_id: storeId }))
-                }
-                value={{
-                  shipping_address: form.shipping_address,
-                  shipping_city: form.shipping_city,
-                  shipping_state: form.shipping_state,
-                  shipping_postal_code: form.shipping_postal_code,
-                  shipping_country: form.shipping_country,
-                  billing_address: form.billing_address,
-                  billing_city: form.billing_city,
-                  billing_state: form.billing_state,
-                  billing_postal_code: form.billing_postal_code,
-                  billing_country: form.billing_country,
-                }}
-                onChange={(address) => setForm((prev) => ({ ...prev, ...address }))}
-                disabled={saving}
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="draft-notes">Notes</Label>
-              <Textarea
-                id="draft-notes"
-                rows={3}
-                value={form.notes}
-                onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label>Line items</Label>
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-2 pr-1">
+            <SalesOrderFormSection title="Customer contact">
+              <div className={salesOrderFormGridClass}>
+                <SalesOrderFormField label="Customer name" htmlFor="draft-customer-name">
+                  <Input
+                    id="draft-customer-name"
+                    value={form.customer_name}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, customer_name: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Customer email" htmlFor="draft-customer-email">
+                  <Input
+                    id="draft-customer-email"
+                    type="email"
+                    value={form.customer_email}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, customer_email: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Customer phone" htmlFor="draft-customer-phone">
+                  <Input
+                    id="draft-customer-phone"
+                    value={form.customer_phone}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, customer_phone: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Store ID" htmlFor="draft-store-id">
+                  <Input
+                    id="draft-store-id"
+                    type="number"
+                    value={form.store_id ?? ''}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        store_id: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                  />
+                </SalesOrderFormField>
+              </div>
+            </SalesOrderFormSection>
+
+            <SalesOrderFormSection title="Fulfillment & totals">
+              <div className={salesOrderFormGridClass}>
+                <SalesOrderFormField label="Fulfillment method" htmlFor="draft-fulfillment">
+                  <Select
+                    value={form.requested_fulfillment_method}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        requested_fulfillment_method: value as FulfillmentType,
+                        requested_pick_up_store_id:
+                          value === 'pick_up' ? prev.requested_pick_up_store_id : null,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="draft-fulfillment">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FULFILLMENT_TYPE_OPTIONS.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {fulfillmentMethodLabel(method)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Target date" htmlFor="draft-target-date">
+                  <Input
+                    id="draft-target-date"
+                    type="datetime-local"
+                    value={toDatetimeLocalValue(form.requested_target_date)}
+                    onChange={(e) => {
+                      const iso = fromDatetimeLocalValue(e.target.value);
+                      if (iso) {
+                        setForm((prev) => ({ ...prev, requested_target_date: iso }));
+                      }
+                    }}
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Tax total" htmlFor="draft-tax">
+                  <Input
+                    id="draft-tax"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.tax_total}
+                    onChange={(e) =>
+                      setForm((prev) => syncDraftTotals({ ...prev, tax_total: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Shipping fee" htmlFor="draft-shipping">
+                  <Input
+                    id="draft-shipping"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.shipping_fee}
+                    onChange={(e) =>
+                      setForm((prev) => syncDraftTotals({ ...prev, shipping_fee: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Grand total" htmlFor="draft-grand-total">
+                  <Input
+                    id="draft-grand-total"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.grand_total}
+                    readOnly
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Expires at" htmlFor="draft-expires-at">
+                  <Input
+                    id="draft-expires-at"
+                    value={form.expires_at}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, expires_at: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+              </div>
+            </SalesOrderFormSection>
+
+            <SalesOrderAddressEditor
+              idPrefix="draft-order"
+              fulfillmentMethod={form.requested_fulfillment_method}
+              requestedPickUpStoreId={form.requested_pick_up_store_id}
+              onPickupStoreChange={(storeId) =>
+                setForm((prev) => ({ ...prev, requested_pick_up_store_id: storeId }))
+              }
+              value={pickOrderAddressFields(form)}
+              onChange={(address) => setForm((prev) => ({ ...prev, ...address }))}
+              disabled={saving}
+            />
+
+            <SalesOrderFormSection title="Notes">
+              <SalesOrderFormField label="Order notes" htmlFor="draft-notes">
+                <Textarea
+                  id="draft-notes"
+                  rows={3}
+                  value={form.notes}
+                  onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+              </SalesOrderFormField>
+            </SalesOrderFormSection>
+
+            <SalesOrderFormSection title="Line items">
+              <div className="mb-4 flex items-center justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -682,9 +660,9 @@ export function DraftOrders() {
                 idPrefix="draft-order"
                 disabled={saving}
               />
-            </div>
+            </SalesOrderFormSection>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
               Cancel
             </Button>

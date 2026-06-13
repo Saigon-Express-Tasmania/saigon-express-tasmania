@@ -2,10 +2,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { ReactNode } from 'react';
 import type { SalesOrderB2BForm } from './salesOrderB2b';
-import { SalesOrderFormField } from './SalesOrderFormField';
+import { SalesOrderFormField, SalesOrderFormSection, salesOrderFormGridClass } from './SalesOrderFormField';
 import { SalesOrderPickupStoreSection } from './SalesOrderPickupStoreSection';
+import { SalesOrderStateField } from './SalesOrderStateField';
 import type { FulfillmentType } from './salesOrderShared';
 
 type SalesOrderB2BEditorProps = {
@@ -16,11 +16,6 @@ type SalesOrderB2BEditorProps = {
   readOnly?: boolean;
   fulfillmentMethod?: FulfillmentType;
   requestedPickUpStoreId?: number | null;
-};
-
-type B2BSectionProps = {
-  title: string;
-  children: ReactNode;
 };
 
 type B2BFieldProps = {
@@ -34,15 +29,6 @@ type B2BFieldProps = {
   fullWidth?: boolean;
   multiline?: boolean;
 };
-
-function B2BSection({ title, children }: B2BSectionProps) {
-  return (
-    <div className="rounded-lg border bg-muted/20 p-4">
-      <h3 className="mb-3 text-sm font-semibold">{title}</h3>
-      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
-    </div>
-  );
-}
 
 function B2BField({
   id,
@@ -66,7 +52,7 @@ function B2BField({
       htmlFor={id}
       readOnly={readOnly}
       value={multiline ? <span className="whitespace-pre-wrap">{displayValue}</span> : displayValue}
-      className={cn(fullWidth && 'sm:col-span-2')}
+      className={cn(fullWidth && 'md:col-span-2')}
       valueClassName={multiline ? undefined : type === 'number' ? 'tabular-nums' : undefined}
     >
       {multiline ? (
@@ -137,7 +123,8 @@ export function SalesOrderB2BEditor({
         </p>
       </div>
 
-      <B2BSection title="Buyer">
+      <SalesOrderFormSection title="Buyer">
+        <div className={salesOrderFormGridClass}>
         <B2BField
           id={fieldId('buyer-name')}
           label="Name"
@@ -171,20 +158,22 @@ export function SalesOrderB2BEditor({
           readOnly={readOnly}
           onChange={(value) => updateBuyer({ contact_email: value })}
         />
-      </B2BSection>
+        </div>
+      </SalesOrderFormSection>
 
       {isPickup ? (
-        <div className="rounded-lg border bg-muted/20 p-4">
-          <h3 className="mb-3 text-sm font-semibold">Pickup location</h3>
+        <SalesOrderFormSection title="Pickup location">
           <SalesOrderPickupStoreSection
             storeId={requestedPickUpStoreId}
             idPrefix={`${idPrefix}-b2b`}
             disabled={disabled}
             readOnly
+            hideLabel
           />
-        </div>
+        </SalesOrderFormSection>
       ) : (
-        <B2BSection title="Shipping address">
+        <SalesOrderFormSection title="Shipping address">
+          <div className={salesOrderFormGridClass}>
           <B2BField
             id={fieldId('shipping-dba-name')}
             label="DBA name"
@@ -225,9 +214,8 @@ export function SalesOrderB2BEditor({
             readOnly={readOnly}
             onChange={(value) => updateShipping({ city: value })}
           />
-          <B2BField
+          <SalesOrderStateField
             id={fieldId('shipping-state')}
-            label="State"
             value={b2b.shipping_address.state}
             disabled={disabled}
             readOnly={readOnly}
@@ -258,10 +246,12 @@ export function SalesOrderB2BEditor({
             multiline
             onChange={(value) => updateShipping({ special_instructions: value })}
           />
-        </B2BSection>
+          </div>
+        </SalesOrderFormSection>
       )}
 
-      <B2BSection title="Billing address">
+      <SalesOrderFormSection title="Billing address">
+        <div className={salesOrderFormGridClass}>
         <B2BField
           id={fieldId('billing-legal-name')}
           label="Legal name"
@@ -302,9 +292,8 @@ export function SalesOrderB2BEditor({
           readOnly={readOnly}
           onChange={(value) => updateBilling({ city: value })}
         />
-        <B2BField
+        <SalesOrderStateField
           id={fieldId('billing-state')}
-          label="State"
           value={b2b.billing_address.state}
           disabled={disabled}
           readOnly={readOnly}
@@ -334,7 +323,8 @@ export function SalesOrderB2BEditor({
           fullWidth
           onChange={(value) => updateBilling({ payment_terms: value })}
         />
-      </B2BSection>
+        </div>
+      </SalesOrderFormSection>
     </div>
   );
 }

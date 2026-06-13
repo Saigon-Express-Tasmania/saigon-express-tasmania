@@ -213,6 +213,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
       const orderPayload = {
         order_type: orderType,
+        customer_account: syncedForm.customer_account?.trim() || null,
         customer_name: syncedForm.customer_name.trim(),
         customer_email: syncedForm.customer_email.trim(),
         customer_phone: syncedForm.customer_phone.trim(),

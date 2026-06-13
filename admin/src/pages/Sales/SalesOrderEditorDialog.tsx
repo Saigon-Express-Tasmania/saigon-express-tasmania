@@ -19,16 +19,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { OrderType } from './orderType';
+import { formatOrderTypeLabel, type OrderType } from './orderType';
 import { SalesOrderAddressEditor } from './SalesOrderAddressEditor';
 import { SalesOrderB2BEditor } from './SalesOrderB2BEditor';
-import { SalesOrderFormField } from './SalesOrderFormField';
+import {
+  SalesOrderFormField,
+  SalesOrderFormSection,
+  salesOrderFormGridClass,
+} from './SalesOrderFormField';
 import { isSalesOrderItemPickerTarget } from './SalesOrderItemPicker';
 import { SalesOrderItemsEditor } from './SalesOrderItemsEditor';
 import {
   fromDatetimeLocalValue,
+  formatTargetDateDisplay,
   toDatetimeLocalValue,
 } from './salesOrderDb';
+import { formatOrderStatusLabel, fulfillmentMethodLabel } from './salesOrderFulfillment';
 import {
   FULFILLMENT_TYPE_OPTIONS,
   ORDER_STATUS_OPTIONS,
@@ -36,6 +42,7 @@ import {
   PAYMENT_METHOD_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
   PAYMENT_TERMS_OPTIONS,
+  pickOrderAddressFields,
   syncTotalsFromItems,
   type FulfillmentType,
   type OrderStatus,
@@ -86,7 +93,25 @@ export function SalesOrderEditorDialog({
   }, [open, editingOrderId]);
 
   const tabPanelClass =
-    'mt-0 h-[min(58vh,560px)] flex-none overflow-y-auto pr-1 data-[state=inactive]:hidden';
+    'mt-0 h-[min(58vh,560px)] flex-none overflow-y-auto px-0.5 pr-1 data-[state=inactive]:hidden';
+
+  const formatEnumLabel = (value: string) =>
+    value
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+
+  const formatPaymentTermsLabel = (terms: PaymentTerms): string => {
+    const labels: Record<PaymentTerms, string> = {
+      prepaid: 'Prepaid',
+      due_on_receipt: 'Due on receipt',
+      deposit_required: 'Deposit required',
+      net_30: 'Net 30',
+      net_60: 'Net 60',
+      net_90: 'Net 90',
+    };
+    return labels[terms];
+  };
 
   const applyItemsChange = (items: SalesOrderForm['items']) => {
     onFormChange((prev) => syncTotalsFromItems({ ...prev, items }));
@@ -127,7 +152,7 @@ export function SalesOrderEditorDialog({
           onValueChange={(value) => setActiveTab(value as EditorTab)}
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
-          <TabsList className="shrink-0">
+          <TabsList className="h-auto w-full shrink-0 flex-wrap justify-start gap-1 bg-muted/40 p-1">
             <TabsTrigger value="customer">Customer</TabsTrigger>
             <TabsTrigger value="addresses">Addresses</TabsTrigger>
             <TabsTrigger value="items">
@@ -139,183 +164,252 @@ export function SalesOrderEditorDialog({
           </TabsList>
 
           <TabsContent value="customer" className={tabPanelClass}>
-            <div className="grid gap-4 py-1 md:grid-cols-2">
-              <SalesOrderFormField
-                label="Customer name"
-                htmlFor={id('name')}
-                readOnly={readOnly}
-                value={form.customer_name}
+            <div className="space-y-6 py-1">
+              <SalesOrderFormSection
+                title="Order metadata"
+                description="System identifiers and order context."
               >
-                <Input
-                  id={id('name')}
-                  value={form.customer_name}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({ ...prev, customer_name: e.target.value }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Customer email"
-                htmlFor={id('email')}
-                readOnly={readOnly}
-                value={form.customer_email}
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Customer account (UUID)"
+                    htmlFor={id('customer-account')}
+                    readOnly={readOnly}
+                    value={form.customer_account}
+                    valueClassName="break-all font-mono text-xs"
+                  >
+                    <Input
+                      id={id('customer-account')}
+                      value={form.customer_account ?? ''}
+                      disabled={saving}
+                      placeholder="Linked user_profiles.id"
+                      onChange={(e) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          customer_account: e.target.value.trim() || null,
+                        }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Order type"
+                    htmlFor={id('order-type')}
+                    readOnly
+                    value={formatOrderTypeLabel(orderType)}
+                  />
+                  {isEditing ? (
+                    <>
+                      <SalesOrderFormField
+                        label="Created at"
+                        htmlFor={id('created-at')}
+                        readOnly
+                        value={form.created_at ? formatTargetDateDisplay(form.created_at) : '—'}
+                      />
+                      <SalesOrderFormField
+                        label="Test order"
+                        htmlFor={id('is-testing')}
+                        readOnly
+                        value={form.is_testing ? 'Yes' : 'No'}
+                      />
+                    </>
+                  ) : null}
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection
+                title="Customer contact"
+                description="Primary contact details for this order."
               >
-                <Input
-                  id={id('email')}
-                  type="email"
-                  value={form.customer_email}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({ ...prev, customer_email: e.target.value }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Customer phone"
-                htmlFor={id('phone')}
-                readOnly={readOnly}
-                value={form.customer_phone}
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Customer name"
+                    htmlFor={id('name')}
+                    readOnly={readOnly}
+                    value={form.customer_name}
+                  >
+                    <Input
+                      id={id('name')}
+                      value={form.customer_name}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({ ...prev, customer_name: e.target.value }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Customer email"
+                    htmlFor={id('email')}
+                    readOnly={readOnly}
+                    value={form.customer_email}
+                  >
+                    <Input
+                      id={id('email')}
+                      type="email"
+                      value={form.customer_email}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({ ...prev, customer_email: e.target.value }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Customer phone"
+                    htmlFor={id('phone')}
+                    readOnly={readOnly}
+                    value={form.customer_phone}
+                  >
+                    <Input
+                      id={id('phone')}
+                      value={form.customer_phone}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({ ...prev, customer_phone: e.target.value }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Store ID"
+                    htmlFor={id('store-id')}
+                    readOnly={readOnly}
+                    value={form.store_id}
+                  >
+                    <Input
+                      id={id('store-id')}
+                      type="number"
+                      value={form.store_id ?? ''}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          store_id: e.target.value ? Number(e.target.value) : null,
+                        }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection
+                title="Fulfillment & terms"
+                description="How and when this order should be fulfilled."
               >
-                <Input
-                  id={id('phone')}
-                  value={form.customer_phone}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({ ...prev, customer_phone: e.target.value }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Store ID"
-                htmlFor={id('store-id')}
-                readOnly={readOnly}
-                value={form.store_id}
-              >
-                <Input
-                  id={id('store-id')}
-                  type="number"
-                  value={form.store_id ?? ''}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      store_id: e.target.value ? Number(e.target.value) : null,
-                    }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Fulfillment method"
-                htmlFor={id('fulfillment')}
-                readOnly={readOnly}
-                value={form.requested_fulfillment_method}
-              >
-                <Select
-                  value={form.requested_fulfillment_method}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      requested_fulfillment_method: value as FulfillmentType,
-                      requested_pick_up_store_id:
-                        value === 'pick_up' ? prev.requested_pick_up_store_id : null,
-                    }))
-                  }
-                >
-                  <SelectTrigger id={id('fulfillment')}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FULFILLMENT_TYPE_OPTIONS.map((method) => (
-                      <SelectItem key={method} value={method}>
-                        {method}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Payment terms"
-                htmlFor={id('payment-terms')}
-                readOnly={readOnly}
-                value={form.payment_terms}
-              >
-                <Select
-                  value={form.payment_terms}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      payment_terms: value as PaymentTerms,
-                    }))
-                  }
-                >
-                  <SelectTrigger id={id('payment-terms')}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_TERMS_OPTIONS.map((terms) => (
-                      <SelectItem key={terms} value={terms}>
-                        {terms}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Target date"
-                htmlFor={id('target-date')}
-                readOnly={readOnly}
-                value={toDatetimeLocalValue(form.requested_target_date) || form.requested_target_date}
-                className="md:col-span-2"
-              >
-                <Input
-                  id={id('target-date')}
-                  type="datetime-local"
-                  value={toDatetimeLocalValue(form.requested_target_date)}
-                  disabled={saving}
-                  onChange={(e) => {
-                    const iso = fromDatetimeLocalValue(e.target.value);
-                    if (iso) {
-                      onFormChange((prev) => ({ ...prev, requested_target_date: iso }));
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Fulfillment method"
+                    htmlFor={id('fulfillment')}
+                    readOnly={readOnly}
+                    value={fulfillmentMethodLabel(form.requested_fulfillment_method)}
+                  >
+                    <Select
+                      value={form.requested_fulfillment_method}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          requested_fulfillment_method: value as FulfillmentType,
+                          requested_pick_up_store_id:
+                            value === 'pick_up' ? prev.requested_pick_up_store_id : null,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id={id('fulfillment')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FULFILLMENT_TYPE_OPTIONS.map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {fulfillmentMethodLabel(method)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Payment terms"
+                    htmlFor={id('payment-terms')}
+                    readOnly={readOnly}
+                    value={formatPaymentTermsLabel(form.payment_terms)}
+                  >
+                    <Select
+                      value={form.payment_terms}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          payment_terms: value as PaymentTerms,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id={id('payment-terms')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_TERMS_OPTIONS.map((terms) => (
+                          <SelectItem key={terms} value={terms}>
+                            {formatPaymentTermsLabel(terms)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Target date"
+                    htmlFor={id('target-date')}
+                    readOnly={readOnly}
+                    value={
+                      toDatetimeLocalValue(form.requested_target_date) || form.requested_target_date
                     }
-                  }}
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="PO number"
-                htmlFor={id('po-number')}
-                readOnly={readOnly}
-                value={form.po_number}
-              >
-                <Input
-                  id={id('po-number')}
-                  value={form.po_number ?? ''}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      po_number: e.target.value || null,
-                    }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Notes"
-                htmlFor={id('notes')}
-                readOnly={readOnly}
-                value={<span className="whitespace-pre-wrap">{form.notes}</span>}
-                className="md:col-span-2"
-              >
-                <Textarea
-                  id={id('notes')}
-                  rows={4}
-                  value={form.notes ?? ''}
-                  disabled={saving}
-                  onChange={(e) => onFormChange((prev) => ({ ...prev, notes: e.target.value }))}
-                />
-              </SalesOrderFormField>
+                  >
+                    <Input
+                      id={id('target-date')}
+                      type="datetime-local"
+                      value={toDatetimeLocalValue(form.requested_target_date)}
+                      disabled={saving}
+                      onChange={(e) => {
+                        const iso = fromDatetimeLocalValue(e.target.value);
+                        if (iso) {
+                          onFormChange((prev) => ({ ...prev, requested_target_date: iso }));
+                        }
+                      }}
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="PO number"
+                    htmlFor={id('po-number')}
+                    readOnly={readOnly}
+                    value={form.po_number}
+                  >
+                    <Input
+                      id={id('po-number')}
+                      value={form.po_number ?? ''}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          po_number: e.target.value || null,
+                        }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection title="Notes">
+                <SalesOrderFormField
+                  label="Order notes"
+                  htmlFor={id('notes')}
+                  readOnly={readOnly}
+                  value={<span className="whitespace-pre-wrap">{form.notes}</span>}
+                  valueClassName="min-h-[5.5rem] whitespace-pre-wrap"
+                >
+                  <Textarea
+                    id={id('notes')}
+                    rows={4}
+                    value={form.notes ?? ''}
+                    disabled={saving}
+                    onChange={(e) => onFormChange((prev) => ({ ...prev, notes: e.target.value }))}
+                  />
+                </SalesOrderFormField>
+              </SalesOrderFormSection>
             </div>
           </TabsContent>
 
@@ -330,18 +424,7 @@ export function SalesOrderEditorDialog({
                   requested_pick_up_store_id: storeId,
                 }))
               }
-              value={{
-                shipping_address: form.shipping_address,
-                shipping_city: form.shipping_city,
-                shipping_state: form.shipping_state,
-                shipping_postal_code: form.shipping_postal_code,
-                shipping_country: form.shipping_country,
-                billing_address: form.billing_address,
-                billing_city: form.billing_city,
-                billing_state: form.billing_state,
-                billing_postal_code: form.billing_postal_code,
-                billing_country: form.billing_country,
-              }}
+              value={pickOrderAddressFields(form)}
               onChange={(address) =>
                 onFormChange((prev) => ({
                   ...prev,
@@ -352,7 +435,7 @@ export function SalesOrderEditorDialog({
               readOnly={readOnly || isWholesale}
             />
             {isWholesale ? (
-              <p className="mt-4 text-sm text-muted-foreground">
+              <p className="mt-4 rounded-md border border-dashed bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
                 {form.requested_fulfillment_method === 'pick_up'
                   ? 'Wholesale pickup orders show the pickup store above. Billing details are edited on the B2B tab.'
                   : 'Wholesale orders save shipping and billing details from the B2B tab.'}
@@ -372,325 +455,346 @@ export function SalesOrderEditorDialog({
           </TabsContent>
 
           <TabsContent value="status" className={tabPanelClass}>
-            <div className="grid gap-4 py-1 md:grid-cols-2">
-              <SalesOrderFormField
-                label="Subtotal"
-                htmlFor={id('subtotal')}
-                readOnly={readOnly}
-                value={`$${Number(form.subtotal).toFixed(2)}`}
-                valueClassName="tabular-nums"
-              >
-                <Input
-                  id={id('subtotal')}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.subtotal}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) =>
-                      syncTotalsFromItems({ ...prev, subtotal: e.target.value }),
-                    )
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Tax total"
-                htmlFor={id('tax-total')}
-                readOnly={readOnly}
-                value={`$${Number(form.tax_total).toFixed(2)}`}
-                valueClassName="tabular-nums"
-              >
-                <Input
-                  id={id('tax-total')}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.tax_total}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) =>
-                      syncTotalsFromItems({ ...prev, tax_total: e.target.value }),
-                    )
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Shipping fee"
-                htmlFor={id('shipping-fee')}
-                readOnly={readOnly}
-                value={`$${Number(form.shipping_fee).toFixed(2)}`}
-                valueClassName="tabular-nums"
-              >
-                <Input
-                  id={id('shipping-fee')}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.shipping_fee}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) =>
-                      syncTotalsFromItems({ ...prev, shipping_fee: e.target.value }),
-                    )
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Grand total"
-                htmlFor={id('grand-total')}
-                readOnly={readOnly}
-                value={`$${Number(form.grand_total).toFixed(2)}`}
-                valueClassName="tabular-nums"
-              >
-                <Input
-                  id={id('grand-total')}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.grand_total}
-                  disabled={saving}
-                  readOnly
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Status"
-                htmlFor={id('status')}
-                readOnly={readOnly}
-                value={form.status}
-              >
-                <Select
-                  value={form.status}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    onFormChange((prev) => ({ ...prev, status: value as OrderStatus }))
-                  }
-                >
-                  <SelectTrigger id={id('status')}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ORDER_STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Status updated at (ISO)"
-                htmlFor={id('status-updated-at')}
-                readOnly={readOnly}
-                value={form.status_updated_at}
-              >
-                <Input
-                  id={id('status-updated-at')}
-                  value={form.status_updated_at ?? ''}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      status_updated_at: e.target.value || null,
-                    }))
-                  }
-                />
-              </SalesOrderFormField>
+            <div className="space-y-6 py-1">
+              <SalesOrderFormSection title="Order totals">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Subtotal"
+                    htmlFor={id('subtotal')}
+                    readOnly={readOnly}
+                    value={`$${Number(form.subtotal).toFixed(2)}`}
+                    valueClassName="tabular-nums"
+                  >
+                    <Input
+                      id={id('subtotal')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.subtotal}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) =>
+                          syncTotalsFromItems({ ...prev, subtotal: e.target.value }),
+                        )
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Tax total"
+                    htmlFor={id('tax-total')}
+                    readOnly={readOnly}
+                    value={`$${Number(form.tax_total).toFixed(2)}`}
+                    valueClassName="tabular-nums"
+                  >
+                    <Input
+                      id={id('tax-total')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.tax_total}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) =>
+                          syncTotalsFromItems({ ...prev, tax_total: e.target.value }),
+                        )
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Shipping fee"
+                    htmlFor={id('shipping-fee')}
+                    readOnly={readOnly}
+                    value={`$${Number(form.shipping_fee).toFixed(2)}`}
+                    valueClassName="tabular-nums"
+                  >
+                    <Input
+                      id={id('shipping-fee')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.shipping_fee}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) =>
+                          syncTotalsFromItems({ ...prev, shipping_fee: e.target.value }),
+                        )
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Grand total"
+                    htmlFor={id('grand-total')}
+                    readOnly={readOnly}
+                    value={`$${Number(form.grand_total).toFixed(2)}`}
+                    valueClassName="tabular-nums font-medium"
+                  >
+                    <Input
+                      id={id('grand-total')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.grand_total}
+                      disabled={saving}
+                      readOnly
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection title="Fulfillment status">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Status"
+                    htmlFor={id('status')}
+                    readOnly={readOnly}
+                    value={formatOrderStatusLabel(form.status)}
+                  >
+                    <Select
+                      value={form.status}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        onFormChange((prev) => ({ ...prev, status: value as OrderStatus }))
+                      }
+                    >
+                      <SelectTrigger id={id('status')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ORDER_STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {formatOrderStatusLabel(status)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Status updated at"
+                    htmlFor={id('status-updated-at')}
+                    readOnly={readOnly}
+                    value={form.status_updated_at}
+                  >
+                    <Input
+                      id={id('status-updated-at')}
+                      value={form.status_updated_at ?? ''}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          status_updated_at: e.target.value || null,
+                        }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
             </div>
           </TabsContent>
 
           <TabsContent value="payment" className={tabPanelClass}>
-            <div className="grid gap-4 py-1 md:grid-cols-2">
-              <SalesOrderFormField
-                label="Payment status"
-                htmlFor={id('payment-status')}
-                readOnly={readOnly}
-                value={form.payment.status}
+            <div className="space-y-6 py-1">
+              <SalesOrderFormSection title="Payment details">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Payment status"
+                    htmlFor={id('payment-status')}
+                    readOnly={readOnly}
+                    value={formatEnumLabel(form.payment.status)}
+                  >
+                    <Select
+                      value={form.payment.status}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          payment: { ...prev.payment, status: value as PaymentStatus },
+                        }))
+                      }
+                    >
+                      <SelectTrigger id={id('payment-status')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {formatEnumLabel(status)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Payment amount"
+                    htmlFor={id('payment-amount')}
+                    readOnly={readOnly}
+                    value={`$${Number(form.payment.amount).toFixed(2)}`}
+                    valueClassName="tabular-nums"
+                  >
+                    <Input
+                      id={id('payment-amount')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.payment.amount}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          payment: { ...prev.payment, amount: e.target.value },
+                        }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Payment mode"
+                    htmlFor={id('payment-mode')}
+                    readOnly={readOnly}
+                    value={form.payment.mode ? formatEnumLabel(form.payment.mode) : 'None'}
+                  >
+                    <Select
+                      value={form.payment.mode ?? 'null'}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          payment: {
+                            ...prev.payment,
+                            mode: value === 'null' ? null : (value as 'test' | 'live'),
+                          },
+                        }))
+                      }
+                    >
+                      <SelectTrigger id={id('payment-mode')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="null">None</SelectItem>
+                        <SelectItem value="test">Test</SelectItem>
+                        <SelectItem value="live">Live</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Payment method"
+                    htmlFor={id('payment-method')}
+                    readOnly={readOnly}
+                    value={formatEnumLabel(form.payment.method)}
+                  >
+                    <Select
+                      value={form.payment.method}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          payment: { ...prev.payment, method: value as PaymentMethod },
+                        }))
+                      }
+                    >
+                      <SelectTrigger id={id('payment-method')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHOD_OPTIONS.map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {formatEnumLabel(method)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Payment gateway"
+                    htmlFor={id('payment-gateway')}
+                    readOnly={readOnly}
+                    value={formatEnumLabel(form.payment.gateway)}
+                  >
+                    <Select
+                      value={form.payment.gateway}
+                      disabled={saving}
+                      onValueChange={(value) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          payment: { ...prev.payment, gateway: value as PaymentGateway },
+                        }))
+                      }
+                    >
+                      <SelectTrigger id={id('payment-gateway')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_GATEWAY_OPTIONS.map((gateway) => (
+                          <SelectItem key={gateway} value={gateway}>
+                            {formatEnumLabel(gateway)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Gateway transaction ID"
+                    htmlFor={id('gateway-txn')}
+                    readOnly={readOnly}
+                    value={form.payment.gateway_transaction_id}
+                    className="md:col-span-2"
+                    valueClassName="break-all font-mono text-xs"
+                  >
+                    <Input
+                      id={id('gateway-txn')}
+                      value={form.payment.gateway_transaction_id}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          payment: {
+                            ...prev.payment,
+                            gateway_transaction_id: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
+
+              <SalesOrderFormSection
+                title="Order tokens"
+                description="Customer-facing cancel and tracking links."
               >
-                <Select
-                  value={form.payment.status}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      payment: { ...prev.payment, status: value as PaymentStatus },
-                    }))
-                  }
-                >
-                  <SelectTrigger id={id('payment-status')}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Payment amount"
-                htmlFor={id('payment-amount')}
-                readOnly={readOnly}
-                value={`$${Number(form.payment.amount).toFixed(2)}`}
-                valueClassName="tabular-nums"
-              >
-                <Input
-                  id={id('payment-amount')}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.payment.amount}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      payment: { ...prev.payment, amount: e.target.value },
-                    }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Payment mode"
-                htmlFor={id('payment-mode')}
-                readOnly={readOnly}
-                value={form.payment.mode ?? 'None'}
-              >
-                <Select
-                  value={form.payment.mode ?? 'null'}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      payment: {
-                        ...prev.payment,
-                        mode: value === 'null' ? null : (value as 'test' | 'live'),
-                      },
-                    }))
-                  }
-                >
-                  <SelectTrigger id={id('payment-mode')}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="null">None</SelectItem>
-                    <SelectItem value="test">test</SelectItem>
-                    <SelectItem value="live">live</SelectItem>
-                  </SelectContent>
-                </Select>
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Payment method"
-                htmlFor={id('payment-method')}
-                readOnly={readOnly}
-                value={form.payment.method}
-              >
-                <Select
-                  value={form.payment.method}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      payment: { ...prev.payment, method: value as PaymentMethod },
-                    }))
-                  }
-                >
-                  <SelectTrigger id={id('payment-method')}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHOD_OPTIONS.map((method) => (
-                      <SelectItem key={method} value={method}>
-                        {method}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Payment gateway"
-                htmlFor={id('payment-gateway')}
-                readOnly={readOnly}
-                value={form.payment.gateway}
-              >
-                <Select
-                  value={form.payment.gateway}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      payment: { ...prev.payment, gateway: value as PaymentGateway },
-                    }))
-                  }
-                >
-                  <SelectTrigger id={id('payment-gateway')}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_GATEWAY_OPTIONS.map((gateway) => (
-                      <SelectItem key={gateway} value={gateway}>
-                        {gateway}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Gateway transaction ID"
-                htmlFor={id('gateway-txn')}
-                readOnly={readOnly}
-                value={form.payment.gateway_transaction_id}
-                className="md:col-span-2"
-                valueClassName="break-all font-mono text-xs"
-              >
-                <Input
-                  id={id('gateway-txn')}
-                  value={form.payment.gateway_transaction_id}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({
-                      ...prev,
-                      payment: {
-                        ...prev.payment,
-                        gateway_transaction_id: e.target.value,
-                      },
-                    }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Cancel token"
-                htmlFor={id('cancel-token')}
-                readOnly={readOnly}
-                value={form.cancel_token}
-                valueClassName="break-all font-mono text-xs"
-              >
-                <Input
-                  id={id('cancel-token')}
-                  value={form.cancel_token ?? ''}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({ ...prev, cancel_token: e.target.value }))
-                  }
-                />
-              </SalesOrderFormField>
-              <SalesOrderFormField
-                label="Tracking token"
-                htmlFor={id('tracking-token')}
-                readOnly={readOnly}
-                value={form.tracking_token}
-                valueClassName="break-all font-mono text-xs"
-              >
-                <Input
-                  id={id('tracking-token')}
-                  value={form.tracking_token ?? ''}
-                  disabled={saving}
-                  onChange={(e) =>
-                    onFormChange((prev) => ({ ...prev, tracking_token: e.target.value }))
-                  }
-                />
-              </SalesOrderFormField>
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Cancel token"
+                    htmlFor={id('cancel-token')}
+                    readOnly={readOnly}
+                    value={form.cancel_token}
+                    valueClassName="break-all font-mono text-xs"
+                  >
+                    <Input
+                      id={id('cancel-token')}
+                      value={form.cancel_token ?? ''}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({ ...prev, cancel_token: e.target.value }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Tracking token"
+                    htmlFor={id('tracking-token')}
+                    readOnly={readOnly}
+                    value={form.tracking_token}
+                    valueClassName="break-all font-mono text-xs"
+                  >
+                    <Input
+                      id={id('tracking-token')}
+                      value={form.tracking_token ?? ''}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({ ...prev, tracking_token: e.target.value }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                </div>
+              </SalesOrderFormSection>
             </div>
           </TabsContent>
 

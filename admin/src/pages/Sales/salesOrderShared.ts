@@ -1,3 +1,5 @@
+import type { OrderType } from './orderType';
+import { normalizeAustralianStateForStorage } from '@/lib/australian-states';
 import {
   defaultOrderAddressFields,
   emptyB2BForm,
@@ -58,6 +60,8 @@ export type ItemUom = 'CASE' | 'EACH' | 'LBS' | 'KG';
 export type SalesOrderRow = {
   id: number;
   is_testing: boolean;
+  order_type: OrderType;
+  customer_account: string | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -75,20 +79,10 @@ export type SalesOrderRow = {
   notes: string | null;
   cancel_token: string | null;
   tracking_token: string | null;
-  shipping_address: string;
-  shipping_city: string;
-  shipping_state: string;
-  shipping_postal_code: string;
-  shipping_country: string;
-  billing_address: string;
-  billing_city: string;
-  billing_state: string;
-  billing_postal_code: string;
-  billing_country: string;
   status_updated_at: string | null;
   created_at: string;
   payment_status?: PaymentStatus;
-};
+} & OrderAddressDbFields;
 
 export type SalesOrderItemRow = {
   id: number;
@@ -114,27 +108,56 @@ export type SalesOrderPaymentForm = {
 
 export type SalesOrderForm = Omit<
   SalesOrderRow,
-  'id' | 'created_at' | 'payment_status' | 'is_testing'
+  'id' | 'order_type' | 'created_at' | 'payment_status' | 'is_testing'
 > & {
   items: SalesOrderItemForm[];
   b2b: SalesOrderB2BForm;
   payment: SalesOrderPaymentForm;
+  created_at?: string | null;
+  is_testing?: boolean;
 };
+
+export function pickOrderAddressFields(
+  source: Pick<SalesOrderForm, keyof OrderAddressDbFields>,
+): OrderAddressDbFields {
+  return {
+    shipping_dba_name: source.shipping_dba_name,
+    shipping_special_instructions: source.shipping_special_instructions,
+    shipping_preferred_window: source.shipping_preferred_window,
+    shipping_address: source.shipping_address,
+    shipping_city: source.shipping_city,
+    shipping_state: normalizeAustralianStateForStorage(source.shipping_state),
+    shipping_postal_code: source.shipping_postal_code,
+    shipping_country: source.shipping_country,
+    billing_legal_name: source.billing_legal_name,
+    billing_tax_id: source.billing_tax_id,
+    billing_address: source.billing_address,
+    billing_city: source.billing_city,
+    billing_state: normalizeAustralianStateForStorage(source.billing_state),
+    billing_postal_code: source.billing_postal_code,
+    billing_country: source.billing_country,
+  };
+}
 
 export function orderAddressFromForm(
   form: Pick<SalesOrderForm, keyof OrderAddressDbFields>,
 ): OrderAddressDbFields {
   return {
-    shipping_address: form.shipping_address,
-    shipping_city: form.shipping_city,
-    shipping_state: form.shipping_state,
-    shipping_postal_code: form.shipping_postal_code,
-    shipping_country: form.shipping_country,
-    billing_address: form.billing_address,
-    billing_city: form.billing_city,
-    billing_state: form.billing_state,
-    billing_postal_code: form.billing_postal_code,
-    billing_country: form.billing_country,
+    shipping_dba_name: form.shipping_dba_name?.trim() || null,
+    shipping_special_instructions: form.shipping_special_instructions?.trim() || null,
+    shipping_preferred_window: form.shipping_preferred_window?.trim() || null,
+    shipping_address: form.shipping_address.trim() || 'N/A',
+    shipping_city: form.shipping_city.trim() || 'N/A',
+    shipping_state: normalizeAustralianStateForStorage(form.shipping_state) || 'N/A',
+    shipping_postal_code: form.shipping_postal_code.trim() || '0000',
+    shipping_country: form.shipping_country.trim() || 'Australia',
+    billing_legal_name: form.billing_legal_name?.trim() || null,
+    billing_tax_id: form.billing_tax_id?.trim() || null,
+    billing_address: form.billing_address.trim() || 'N/A',
+    billing_city: form.billing_city.trim() || 'N/A',
+    billing_state: normalizeAustralianStateForStorage(form.billing_state) || 'N/A',
+    billing_postal_code: form.billing_postal_code.trim() || '0000',
+    billing_country: form.billing_country.trim() || 'Australia',
   };
 }
 
@@ -264,6 +287,7 @@ export function emptyOrderForm(
 ): SalesOrderForm {
   const targetDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   return {
+    customer_account: null,
     customer_name: '',
     customer_email: '',
     customer_phone: '',
@@ -321,6 +345,7 @@ export function orderToForm(
   const itemPayload: SalesOrderItemForm[] = items.map((item) => mapDbItemToForm(item));
 
   return {
+    customer_account: order.customer_account,
     customer_name: order.customer_name,
     customer_email: order.customer_email,
     customer_phone: order.customer_phone,
@@ -339,16 +364,9 @@ export function orderToForm(
     cancel_token: order.cancel_token,
     tracking_token: order.tracking_token,
     status_updated_at: order.status_updated_at,
-    shipping_address: order.shipping_address,
-    shipping_city: order.shipping_city,
-    shipping_state: order.shipping_state,
-    shipping_postal_code: order.shipping_postal_code,
-    shipping_country: order.shipping_country,
-    billing_address: order.billing_address,
-    billing_city: order.billing_city,
-    billing_state: order.billing_state,
-    billing_postal_code: order.billing_postal_code,
-    billing_country: order.billing_country,
+    created_at: order.created_at,
+    is_testing: order.is_testing,
+    ...pickOrderAddressFields(order),
     items: itemPayload,
     b2b: parseB2BFormFromRow(order),
     payment: payment ?? emptyPaymentForm(defaultPaymentMode),
