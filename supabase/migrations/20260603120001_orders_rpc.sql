@@ -9,6 +9,21 @@
 -- Shared child tables (order_items, order_payments, order_fulfillments) reference order_id
 -- without FK so rows survive draft -> orders -> archived_orders moves.
 
+create or replace function public.format_order_invoice_number(
+  p_order_id bigint,
+  p_created_at timestamptz default now()
+)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select 'SE-INV-' || extract(year from p_created_at)::text || '-' || lpad(p_order_id::text, 4, '0');
+$$;
+
+comment on function public.format_order_invoice_number(bigint, timestamptz) is
+  'Stable invoice label for an order id and issue date (e.g. SE-INV-2026-0042).';
+
 create or replace function public.find_order_id_by_gateway_transaction(
   p_gateway public.order_payment_gateway,
   p_gateway_transaction_id text
@@ -136,6 +151,7 @@ begin
     is_testing,
     order_type,
     status,
+    invoice_number,
     cancel_token,
     tracking_token,
     customer_account,
@@ -176,6 +192,7 @@ begin
     d.is_testing,
     d.order_type,
     p_status,
+    coalesce(d.invoice_number, public.format_order_invoice_number(d.id, d.created_at)),
     p_cancel_token,
     p_tracking_token,
     d.customer_account,
@@ -299,6 +316,7 @@ declare
   v_billing_country text;
   v_payment_terms public.order_payment_terms;
   v_po_number varchar(100);
+  v_invoice_number text;
 begin
   if p_order_payload is null or jsonb_typeof(p_order_payload) <> 'object' then
     raise exception 'order_payload must be a json object';
@@ -340,6 +358,7 @@ begin
     'prepaid'::public.order_payment_terms
   );
   v_po_number := nullif(p_order_payload->>'po_number', '');
+  v_invoice_number := nullif(p_order_payload->>'invoice_number', '');
   v_subtotal := nullif(p_order_payload->>'subtotal', '')::numeric(10, 2);
   v_tax_total := coalesce(nullif(p_order_payload->>'tax_total', '')::numeric(10, 2), 0::numeric(10, 2));
   v_shipping_fee := coalesce(nullif(p_order_payload->>'shipping_fee', '')::numeric(10, 2), 0::numeric(10, 2));
@@ -441,6 +460,7 @@ begin
       is_testing,
       order_type,
       status,
+      invoice_number,
       cancel_token,
       tracking_token,
       customer_account,
@@ -479,6 +499,7 @@ begin
       v_is_testing,
       v_order_type,
       'confirmed',
+      v_invoice_number,
       v_cancel_token,
       v_tracking_token,
       v_customer_account,
@@ -515,6 +536,12 @@ begin
     )
     returning id
     into v_order_id;
+
+    if v_invoice_number is null then
+      update public.orders
+      set invoice_number = public.format_order_invoice_number(v_order_id, now())
+      where id = v_order_id;
+    end if;
   end if;
 
   -- Line items: draft checkout already inserted rows; otherwise insert from payload.
@@ -672,6 +699,7 @@ begin
     is_testing,
     order_type,
     status,
+    invoice_number,
     cancel_token,
     tracking_token,
     customer_account,
@@ -715,6 +743,7 @@ begin
     v_order.is_testing,
     v_order.order_type,
     v_order.status,
+    v_order.invoice_number,
     v_order.cancel_token,
     v_order.tracking_token,
     v_order.customer_account,
@@ -763,6 +792,7 @@ $$;
 comment on function public.archive_and_delete_order(bigint, text) is
   'Archives an orders row to archived_orders (same id) and deletes the live header. Child rows remain in shared tables for history.';
 
+grant execute on function public.format_order_invoice_number(bigint, timestamptz) to service_role;
 grant execute on function public.find_order_id_by_gateway_transaction(public.order_payment_gateway, text) to service_role;
 grant execute on function public.find_order_id_by_stripe_session(text) to service_role;
 grant execute on function public.insert_order_items_from_payload(bigint, public.order_type, jsonb) to service_role;

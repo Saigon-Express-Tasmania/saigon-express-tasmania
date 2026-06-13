@@ -139,6 +139,7 @@ type DraftOrderRow = {
   id: number;
   order_type: OrderType;
   is_testing: boolean;
+  invoice_number: string | null;
   requested_fulfillment_method: OrderFulfillmentType;
   customer_account: string | null;
   customer_name: string | null;
@@ -219,6 +220,14 @@ function computeCheckoutTotals(input: OrderCheckoutInput): {
 
 function formatMoney(amount: number): string {
   return amount.toFixed(2);
+}
+
+export function formatOrderInvoiceNumber(
+  orderId: number,
+  createdAt: string | Date = new Date(),
+): string {
+  const year = new Date(createdAt).getFullYear();
+  return `SE-INV-${year}-${String(orderId).padStart(4, "0")}`;
 }
 
 function formatStreetLine(street1: string, street2?: string | null): string {
@@ -509,23 +518,36 @@ async function orderHasPaidPayment(
   return data != null;
 }
 
-async function fetchTrackingTokenForPaidOrder(
+async function fetchTrackingDetailsForPaidOrder(
   supabase: ReturnType<typeof createServiceClient>,
   orderId: number,
-): Promise<string | null> {
+): Promise<{ trackingToken: string | null; invoiceNumber: string | null }> {
   if (!(await orderHasPaidPayment(supabase, orderId))) {
-    return null;
+    return { trackingToken: null, invoiceNumber: null };
   }
 
   const { data, error } = await supabase
     .from("orders")
-    .select("tracking_token")
+    .select("tracking_token, invoice_number")
     .eq("id", orderId)
     .maybeSingle();
 
-  if (error || !data) return null;
-  const token = data.tracking_token as string | null;
-  return token ?? null;
+  if (error || !data) {
+    return { trackingToken: null, invoiceNumber: null };
+  }
+
+  return {
+    trackingToken: (data.tracking_token as string | null) ?? null,
+    invoiceNumber: (data.invoice_number as string | null) ?? null,
+  };
+}
+
+async function fetchTrackingTokenForPaidOrder(
+  supabase: ReturnType<typeof createServiceClient>,
+  orderId: number,
+): Promise<string | null> {
+  const { trackingToken } = await fetchTrackingDetailsForPaidOrder(supabase, orderId);
+  return trackingToken;
 }
 
 const ORDER_TOKEN_LENGTH = 12;
@@ -812,6 +834,9 @@ function buildOrderPayload(
   return {
     order_type: draftOrder.order_type,
     is_testing: draftOrder.is_testing || paymentMode === "test",
+    invoice_number:
+      draftOrder.invoice_number ??
+      formatOrderInvoiceNumber(draftOrder.id, requestedTargetDate),
     requested_fulfillment_method: draftOrder.requested_fulfillment_method,
     requested_target_date: requestedTargetDate,
     customer_account: customerAccount,
@@ -1196,6 +1221,17 @@ export async function createOrderCheckoutSession(
     throw new Error(draftOrderError?.message ?? "Failed to create draft order");
   }
   const draftOrderId = draftOrder.id as number;
+  const invoiceNumber = formatOrderInvoiceNumber(draftOrderId);
+
+  const { error: invoiceNumberError } = await supabase
+    .from("draft_orders")
+    .update({ invoice_number: invoiceNumber })
+    .eq("id", draftOrderId);
+
+  if (invoiceNumberError) {
+    await supabase.from("draft_orders").delete().eq("id", draftOrderId);
+    throw new Error(invoiceNumberError.message);
+  }
 
   try {
     await insertOrderItemsForDraft(
@@ -1382,11 +1418,27 @@ export async function getOrderTrackingToken(orderId: number): Promise<string | n
   return fetchTrackingTokenForPaidOrder(supabase, orderId);
 }
 
-export async function getOrderTrackingTokenBySessionId(sessionId: string): Promise<string | null> {
+export async function getOrderTrackingDetails(
+  orderId: number,
+): Promise<{ trackingToken: string | null; invoiceNumber: string | null }> {
+  const supabase = createServiceClient();
+  return fetchTrackingDetailsForPaidOrder(supabase, orderId);
+}
+
+export async function getOrderTrackingTokenBySessionId(
+  sessionId: string,
+): Promise<string | null> {
+  const details = await getOrderTrackingDetailsBySessionId(sessionId);
+  return details.trackingToken;
+}
+
+export async function getOrderTrackingDetailsBySessionId(
+  sessionId: string,
+): Promise<{ trackingToken: string | null; invoiceNumber: string | null }> {
   const supabase = createServiceClient();
   const orderId = await findOrderIdByStripeSession(supabase, sessionId);
-  if (!orderId) return null;
-  return fetchTrackingTokenForPaidOrder(supabase, orderId);
+  if (!orderId) return { trackingToken: null, invoiceNumber: null };
+  return fetchTrackingDetailsForPaidOrder(supabase, orderId);
 }
 
 function getDraftOrderIdFromSession(session: Stripe.Checkout.Session): number | null {
@@ -1414,7 +1466,7 @@ async function fetchDraftOrder(
   const { data, error } = await supabase
     .from("draft_orders")
     .select(
-      "id, order_type, is_testing, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_pick_up_store_id, requested_target_date, payment_terms, po_number, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
+      "id, order_type, is_testing, invoice_number, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_pick_up_store_id, requested_target_date, payment_terms, po_number, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
     )
     .eq("id", draftOrderId)
     .maybeSingle();
@@ -1427,6 +1479,7 @@ async function fetchDraftOrder(
     id: Number(row.id),
     order_type: orderType,
     is_testing: Boolean(row.is_testing),
+    invoice_number: (row.invoice_number as string | null) ?? null,
     requested_fulfillment_method:
       parseFulfillmentType(row.requested_fulfillment_method) ??
       resolveFulfillmentType(orderType, null),

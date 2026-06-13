@@ -1,5 +1,8 @@
 import { handleCors, jsonResponse } from "../_shared/cors.ts";
-import { getOrderTrackingToken, getOrderTrackingTokenBySessionId } from "../_shared/order.ts";
+import {
+  getOrderTrackingDetails,
+  getOrderTrackingDetailsBySessionId,
+} from "../_shared/order.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -19,10 +22,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const trackingToken = sessionId
-      ? await getOrderTrackingTokenBySessionId(sessionId)
-      : await getOrderTrackingToken(orderId);
-    return jsonResponse({ trackingToken });
+    const details = sessionId
+      ? await getOrderTrackingDetailsBySessionId(sessionId)
+      : await getOrderTrackingDetails(orderId);
+
+    return jsonResponse({
+      trackingToken: details.trackingToken,
+      invoiceNumber: details.invoiceNumber,
+    });
   } catch (err) {
     console.error("[order-tracking-token]", err);
     return jsonResponse({ error: "Failed to load tracking token" }, 500);

@@ -63,6 +63,8 @@ export type TrackedOrderItem = {
   menu_item_id: number;
   sku: string;
   qty: number;
+  uom: string;
+  is_catch_weight: boolean;
   unit_price: number;
   line_total: number;
   item_name: string;
@@ -71,6 +73,7 @@ export type TrackedOrderItem = {
 
 export type TrackedOrder = {
   id: number;
+  invoice_number: string | null;
   order_type: string;
   customer_name: string;
   subtotal: number;
@@ -126,7 +129,7 @@ function isTestingOrders(): boolean {
 }
 
 const TRACKED_ORDER_SELECT =
-  "id, order_type, customer_name, customer_email, customer_phone, subtotal, tax_total, shipping_fee, grand_total, status, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, store_id, created_at, status_updated_at, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms";
+  "id, invoice_number, order_type, customer_name, customer_email, customer_phone, subtotal, tax_total, shipping_fee, grand_total, status, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, store_id, created_at, status_updated_at, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms";
 
 function buildTrackedOrderB2B(row: Record<string, unknown>): WholesaleOrderB2B {
   const b2b = parseWholesaleOrderB2B(row);
@@ -159,6 +162,8 @@ function mapTrackedOrderItem(
     menu_item_id: productId,
     sku: String(item.sku ?? item.name ?? item.item_name ?? ""),
     qty,
+    uom: String(item.uom ?? "EACH").trim() || "EACH",
+    is_catch_weight: Boolean(item.is_catch_weight),
     unit_price: unitPrice,
     line_total: Number(item.line_total ?? qty * unitPrice),
     item_name: String(item.name ?? item.item_name ?? ""),
@@ -210,6 +215,8 @@ function mapTrackedOrderRow(
 
   return {
     id: Number(row.id),
+    invoice_number:
+      row.invoice_number == null ? null : String(row.invoice_number).trim() || null,
     order_type: String(row.order_type ?? "pickup"),
     customer_name: String(row.customer_name ?? ""),
     subtotal: Number(row.subtotal ?? 0),
@@ -262,7 +269,7 @@ async function fetchTrackedOrderForMode(
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
     .select(
-      "id, product_id, sku, quantity, unit_price, line_total, name",
+      "id, product_id, sku, quantity, uom, is_catch_weight, unit_price, line_total, name",
     )
     .eq("order_id", Number(orderRow.id));
 

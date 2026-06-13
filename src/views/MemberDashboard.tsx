@@ -635,9 +635,9 @@ export default function MemberDashboard({
                 </h2>
                 <Link
                   href="/member/profile"
-                  className={`rounded border border-white/15 px-3 py-1 text-[11px] text-white/75 transition-colors hover:bg-white/10 ${MEMBER_PORTAL_BOX_SURFACE}`}
+                  className="px-3 absolute right-1 top-4 text-white/35 transition-colors hover:text-white/70"
                 >
-                  Manage
+                  <Pencil className="h-4 w-4" />
                 </Link>
               </div>
               {address ? (

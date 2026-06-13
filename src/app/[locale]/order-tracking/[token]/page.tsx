@@ -6,7 +6,7 @@ import {
   getOrderTrackingNotFoundRedirect,
   parseTrackingTokenFromParam,
 } from "@/lib/supabase/order-tracking";
-import { resolveTrackedOrderPickupStore } from "@/lib/supabase/order-tracking-pickup-store";
+import { resolveOrderTrackingStores } from "@/lib/supabase/order-tracking-stores";
 import OrderTrackingDetails from "@/views/OrderTrackingDetails";
 
 type PageProps = {
@@ -46,7 +46,14 @@ export default async function LocaleOrderTrackingDetailsPage({
     redirect(getOrderTrackingNotFoundRedirect(locale));
   }
 
-  const pickupStore = await resolveTrackedOrderPickupStore(order);
+  const { pickupStore, invoiceCreatorStore } =
+    await resolveOrderTrackingStores(order);
 
-  return <OrderTrackingDetails order={order} pickupStore={pickupStore} />;
+  return (
+    <OrderTrackingDetails
+      order={order}
+      pickupStore={pickupStore}
+      invoiceCreatorStore={invoiceCreatorStore}
+    />
+  );
 }

@@ -27,7 +27,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -38,6 +37,11 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
+import {
+  SalesOrderFormField,
+  SalesOrderFormSection,
+  salesOrderFormGridClass,
+} from '@/pages/Sales/SalesOrderFormField';
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -50,8 +54,10 @@ type StoreLocationRow = {
   lat: string | null;
   lng: string | null;
   phone: string | null;
+  email: string | null;
   hours: string | null;
   is_active: boolean;
+  is_invoice_creator: boolean;
   delivery_url: string | null;
   google_map_url: string | null;
   is_franchise: boolean;
@@ -63,7 +69,7 @@ type StoreLocationRow = {
 };
 
 const SELECT_COLUMNS =
-  'id, name, address, suburb, lat, lng, phone, hours, is_active, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
+  'id, name, address, suburb, lat, lng, phone, email, hours, is_active, is_invoice_creator, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
 
 const emptyStoreLocationInput = (): StoreLocationRow => ({
   id: 0,
@@ -73,8 +79,10 @@ const emptyStoreLocationInput = (): StoreLocationRow => ({
   lat: '',
   lng: '',
   phone: '',
+  email: '',
   hours: '',
   is_active: true,
+  is_invoice_creator: false,
   delivery_url: '',
   google_map_url: '',
   is_franchise: false,
@@ -115,8 +123,10 @@ function rowToForm(row: StoreLocationRow): StoreLocationRow {
     lat: row.lat ?? '',
     lng: row.lng ?? '',
     phone: row.phone ?? '',
+    email: row.email ?? '',
     hours: formatHoursForEdit(row.hours),
     is_active: row.is_active,
+    is_invoice_creator: row.is_invoice_creator,
     delivery_url: row.delivery_url ?? '',
     google_map_url: row.google_map_url ?? '',
     is_franchise: row.is_franchise,
@@ -146,8 +156,10 @@ function formToPayload(form: StoreLocationRow): StoreLocationRow {
     lat: form.lat?.trim() || null,
     lng: form.lng?.trim() || null,
     phone: form.phone?.trim() || null,
+    email: form.email?.trim() || null,
     hours: hoursValue,
     is_active: form.is_active,
+    is_invoice_creator: form.is_invoice_creator,
     delivery_url: form.delivery_url?.trim() || null,
     google_map_url: form.google_map_url?.trim() || null,
     is_franchise: form.is_franchise,
@@ -214,7 +226,8 @@ export function StoreLocations() {
         loc.name.toLowerCase().includes(term) ||
         loc.address.toLowerCase().includes(term) ||
         (loc.suburb ?? '').toLowerCase().includes(term) ||
-        (loc.phone ?? '').toLowerCase().includes(term)
+        (loc.phone ?? '').toLowerCase().includes(term) ||
+        (loc.email ?? '').toLowerCase().includes(term)
       );
     });
   }, [locations, search]);
@@ -276,8 +289,10 @@ export function StoreLocations() {
             lat: payload.lat,
             lng: payload.lng,
             phone: payload.phone,
+            email: payload.email,
             hours: payload.hours,
             is_active: payload.is_active,
+            is_invoice_creator: payload.is_invoice_creator,
             delivery_url: payload.delivery_url,
             google_map_url: payload.google_map_url,
             is_franchise: payload.is_franchise,
@@ -302,8 +317,10 @@ export function StoreLocations() {
             lat: payload.lat,
             lng: payload.lng,
             phone: payload.phone,
+            email: payload.email,
             hours: payload.hours,
             is_active: payload.is_active,
+            is_invoice_creator: payload.is_invoice_creator,
             delivery_url: payload.delivery_url,
             google_map_url: payload.google_map_url,
             is_franchise: payload.is_franchise,
@@ -401,7 +418,7 @@ export function StoreLocations() {
             )}
 
             <Input
-              placeholder="Search by name, address, suburb or phone…"
+              placeholder="Search by name, address, suburb, phone or email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
@@ -434,6 +451,9 @@ export function StoreLocations() {
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Active
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Invoice
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Franchise
@@ -469,6 +489,15 @@ export function StoreLocations() {
                             variant={loc.is_active ? 'default' : 'secondary'}
                           >
                             {loc.is_active ? 'Yes' : 'No'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={
+                              loc.is_invoice_creator ? 'default' : 'secondary'
+                            }
+                          >
+                            {loc.is_invoice_creator ? 'Yes' : 'No'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -524,236 +553,311 @@ export function StoreLocations() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+          <DialogHeader className="border-b px-6 py-5 text-left">
             <DialogTitle>
               {editingId !== null ? 'Edit store location' : 'Add store location'}
             </DialogTitle>
             <DialogDescription>
-              Active locations appear on the public store finder.
+              Active locations appear on the public store finder. Invoice creator
+              locations supply company details on wholesale order invoices.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="loc-id">ID</Label>
-              <Input
-                id="loc-id"
-                type="number"
-                value={form.id}
-                disabled={editingId !== null}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, id: Number(e.target.value) || 0 }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="loc-active">Active</Label>
-              <Select
-                value={form.is_active ? 'yes' : 'no'}
-                onValueChange={(value) =>
-                  setForm((f) => ({ ...f, is_active: value === 'yes' }))
-                }
-              >
-                <SelectTrigger id="loc-active">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Yes</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+            <SalesOrderFormSection
+              title="Basics"
+              description="Core identity and visibility on the public site."
+            >
+              <div className={salesOrderFormGridClass}>
+                <SalesOrderFormField label="ID" htmlFor="loc-id">
+                  <Input
+                    id="loc-id"
+                    type="number"
+                    value={form.id}
+                    disabled={editingId !== null}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, id: Number(e.target.value) || 0 }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Active" htmlFor="loc-active">
+                  <Select
+                    value={form.is_active ? 'yes' : 'no'}
+                    onValueChange={(value) =>
+                      setForm((f) => ({ ...f, is_active: value === 'yes' }))
+                    }
+                  >
+                    <SelectTrigger id="loc-active">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SalesOrderFormField>
+                <SalesOrderFormField
+                  label="Invoice creator"
+                  htmlFor="loc-invoice-creator"
+                  className="md:col-span-2"
+                >
+                  <Select
+                    value={form.is_invoice_creator ? 'yes' : 'no'}
+                    onValueChange={(value) =>
+                      setForm((f) => ({
+                        ...f,
+                        is_invoice_creator: value === 'yes',
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="loc-invoice-creator">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">
+                        Yes — use this location on order invoices
+                      </SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SalesOrderFormField>
+                <SalesOrderFormField
+                  label="Name"
+                  htmlFor="loc-name"
+                  className="md:col-span-2"
+                >
+                  <Input
+                    id="loc-name"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+              </div>
+            </SalesOrderFormSection>
 
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="loc-name">Name</Label>
-              <Input
-                id="loc-name"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
-            </div>
+            <SalesOrderFormSection
+              title="Location & contact"
+              description="Street address, suburb, and map coordinates."
+            >
+              <div className={salesOrderFormGridClass}>
+                <SalesOrderFormField
+                  label="Address"
+                  htmlFor="loc-address"
+                  className="md:col-span-2"
+                >
+                  <Input
+                    id="loc-address"
+                    value={form.address}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, address: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Suburb" htmlFor="loc-suburb">
+                  <Input
+                    id="loc-suburb"
+                    value={form.suburb ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, suburb: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Phone" htmlFor="loc-phone">
+                  <Input
+                    id="loc-phone"
+                    value={form.phone ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, phone: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Email" htmlFor="loc-email">
+                  <Input
+                    id="loc-email"
+                    type="email"
+                    value={form.email ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    placeholder="info@saigonexpress.com.au"
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Latitude" htmlFor="loc-lat">
+                  <Input
+                    id="loc-lat"
+                    value={form.lat ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, lat: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Longitude" htmlFor="loc-lng">
+                  <Input
+                    id="loc-lng"
+                    value={form.lng ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, lng: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+              </div>
+            </SalesOrderFormSection>
 
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="loc-address">Address</Label>
-              <Input
-                id="loc-address"
-                value={form.address}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, address: e.target.value }))
-                }
-              />
-            </div>
+            <SalesOrderFormSection
+              title="Links & hours"
+              description="Delivery partners, map links, and opening hours."
+            >
+              <div className="space-y-4">
+                <div className={salesOrderFormGridClass}>
+                  <SalesOrderFormField
+                    label="Delivery URL"
+                    htmlFor="loc-delivery"
+                    className="md:col-span-2"
+                  >
+                    <Input
+                      id="loc-delivery"
+                      value={form.delivery_url ?? ''}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, delivery_url: e.target.value }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Google Map URL"
+                    htmlFor="loc-google-map"
+                    className="md:col-span-2"
+                  >
+                    <Input
+                      id="loc-google-map"
+                      type="url"
+                      value={form.google_map_url ?? ''}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          google_map_url: e.target.value,
+                        }))
+                      }
+                      placeholder="https://maps.google.com/..."
+                    />
+                  </SalesOrderFormField>
+                </div>
+                <SalesOrderFormField label="Hours (JSON)" htmlFor="loc-hours">
+                  <Textarea
+                    id="loc-hours"
+                    rows={5}
+                    value={form.hours ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, hours: e.target.value }))
+                    }
+                    placeholder='{"mon":"11:00 AM - 8:30 PM","tue":"11:00 AM - 8:30 PM",...}'
+                    className="font-mono text-xs"
+                  />
+                </SalesOrderFormField>
+              </div>
+            </SalesOrderFormSection>
 
-            <div className="grid gap-2">
-              <Label htmlFor="loc-suburb">Suburb</Label>
-              <Input
-                id="loc-suburb"
-                value={form.suburb ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, suburb: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="loc-phone">Phone</Label>
-              <Input
-                id="loc-phone"
-                value={form.phone ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, phone: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="loc-lat">Latitude</Label>
-              <Input
-                id="loc-lat"
-                value={form.lat ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, lat: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="loc-lng">Longitude</Label>
-              <Input
-                id="loc-lng"
-                value={form.lng ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, lng: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="loc-delivery">Delivery URL</Label>
-              <Input
-                id="loc-delivery"
-                value={form.delivery_url ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, delivery_url: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="loc-google-map">Google Map URL</Label>
-              <Input
-                id="loc-google-map"
-                type="url"
-                value={form.google_map_url ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, google_map_url: e.target.value }))
-                }
-                placeholder="https://maps.google.com/..."
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="loc-hours">Hours (JSON)</Label>
-              <Textarea
-                id="loc-hours"
-                rows={4}
-                value={form.hours ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, hours: e.target.value }))
-                }
-                placeholder='{"mon":"11:00 AM - 8:30 PM","tue":"11:00 AM - 8:30 PM",...}'
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="loc-franchise">Franchise location</Label>
-              <Select
-                value={form.is_franchise ? 'yes' : 'no'}
-                onValueChange={(value) =>
-                  setForm((f) => ({ ...f, is_franchise: value === 'yes' }))
-                }
-              >
-                <SelectTrigger id="loc-franchise">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Yes</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="loc-fee">Platform fee %</Label>
-              <Input
-                id="loc-fee"
-                value={form.platform_fee_percent ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    platform_fee_percent: e.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="loc-owner-name">Franchise owner name</Label>
-              <Input
-                id="loc-owner-name"
-                value={form.franchise_owner_name ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    franchise_owner_name: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="loc-owner-email">Franchise owner email</Label>
-              <Input
-                id="loc-owner-email"
-                type="email"
-                value={form.franchise_owner_email ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    franchise_owner_email: e.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="loc-stripe-id">Stripe Connect account ID</Label>
-              <Input
-                id="loc-stripe-id"
-                value={form.stripe_connect_account_id ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    stripe_connect_account_id: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="loc-stripe-status">Stripe Connect status</Label>
-              <Input
-                id="loc-stripe-status"
-                value={form.stripe_connect_status ?? ''}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    stripe_connect_status: e.target.value,
-                  }))
-                }
-              />
-            </div>
+            <SalesOrderFormSection
+              title="Franchise & payments"
+              description="Franchise ownership and Stripe Connect settings."
+            >
+              <div className={salesOrderFormGridClass}>
+                <SalesOrderFormField label="Franchise location" htmlFor="loc-franchise">
+                  <Select
+                    value={form.is_franchise ? 'yes' : 'no'}
+                    onValueChange={(value) =>
+                      setForm((f) => ({ ...f, is_franchise: value === 'yes' }))
+                    }
+                  >
+                    <SelectTrigger id="loc-franchise">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Platform fee %" htmlFor="loc-fee">
+                  <Input
+                    id="loc-fee"
+                    value={form.platform_fee_percent ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        platform_fee_percent: e.target.value,
+                      }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField
+                  label="Franchise owner name"
+                  htmlFor="loc-owner-name"
+                >
+                  <Input
+                    id="loc-owner-name"
+                    value={form.franchise_owner_name ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        franchise_owner_name: e.target.value,
+                      }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField
+                  label="Franchise owner email"
+                  htmlFor="loc-owner-email"
+                >
+                  <Input
+                    id="loc-owner-email"
+                    type="email"
+                    value={form.franchise_owner_email ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        franchise_owner_email: e.target.value,
+                      }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField
+                  label="Stripe Connect account ID"
+                  htmlFor="loc-stripe-id"
+                >
+                  <Input
+                    id="loc-stripe-id"
+                    value={form.stripe_connect_account_id ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        stripe_connect_account_id: e.target.value,
+                      }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField
+                  label="Stripe Connect status"
+                  htmlFor="loc-stripe-status"
+                >
+                  <Input
+                    id="loc-stripe-status"
+                    value={form.stripe_connect_status ?? ''}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        stripe_connect_status: e.target.value,
+                      }))
+                    }
+                  />
+                </SalesOrderFormField>
+              </div>
+            </SalesOrderFormSection>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="border-t bg-muted/20 px-6 py-4">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
@@ -768,7 +872,7 @@ export function StoreLocations() {
                   Saving…
                 </>
               ) : (
-                'Save'
+                'Save location'
               )}
             </Button>
           </DialogFooter>

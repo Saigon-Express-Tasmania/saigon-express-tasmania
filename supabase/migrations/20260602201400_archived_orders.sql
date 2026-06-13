@@ -5,6 +5,7 @@ create table public.archived_orders (
   is_testing boolean not null default false,
   order_type public.order_type not null,
   status public.order_status not null,
+  invoice_number text,
   cancel_token text,
   tracking_token text,
 

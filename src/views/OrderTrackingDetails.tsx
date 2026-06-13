@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import OrderInvoiceDialog from "@/components/OrderInvoiceDialog";
 import Link from "@/components/link";
 import AppImage from "@/components/AppImage";
 import MemberHeader, {
@@ -56,6 +57,7 @@ import type { StoreLocation } from "@/types";
 type OrderTrackingDetailsProps = {
   order: TrackedOrder;
   pickupStore?: StoreLocation | null;
+  invoiceCreatorStore?: StoreLocation | null;
 };
 
 function statusBadgeClass(status: OrderStatus): string {
@@ -116,10 +118,12 @@ function getMemberId(userId: string): string {
 export default function OrderTrackingDetails({
   order,
   pickupStore = null,
+  invoiceCreatorStore = null,
 }: OrderTrackingDetailsProps) {
   const t = useTranslations("OrderTrackingDetails");
   const router = useRouter();
   const { profile, authMetadata, signOut } = useSupabase();
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
 
   const member = useMemo<MemberHeaderMember | null>(() => {
     if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
@@ -493,13 +497,25 @@ export default function OrderTrackingDetails({
               </div>
 
               <div className="mt-6 grid gap-2.5 md:grid-cols-3">
-                <ActionButton label={t("actions.viewInvoice")} disabled />
+                <ActionButton
+                  label={t("actions.viewInvoice")}
+                  onClick={() => setInvoiceOpen(true)}
+                />
                 <ActionButton label={t("actions.downloadPackingSlip")} disabled />
-                <ActionButton label={t("actions.reportIssue")} href="/contact" />                
+                <ActionButton label={t("actions.reportIssue")} href="/contact" />
               </div>
             </div>
           </section>
         </div>
+
+        <OrderInvoiceDialog
+          open={invoiceOpen}
+          onOpenChange={setInvoiceOpen}
+          order={order}
+          pickupStore={pickupStore}
+          invoiceCreatorStore={invoiceCreatorStore}
+          statusLabel={statusLabel(order.status, statusLabels)}
+        />
 
         <div className="mt-8 flex justify-flex-start">
           <Link
@@ -559,11 +575,13 @@ function ActionButton({
   label,
   disabled,
   href,
+  onClick,
   variant = "default",
 }: {
   label: string;
   disabled?: boolean;
   href?: string;
+  onClick?: () => void;
   variant?: "default" | "primary";
 }) {
   const className =
@@ -586,6 +604,7 @@ function ActionButton({
     <button
       type="button"
       disabled={disabled}
+      onClick={onClick}
       className={`rounded-md border px-3 py-3 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     >
       {label}

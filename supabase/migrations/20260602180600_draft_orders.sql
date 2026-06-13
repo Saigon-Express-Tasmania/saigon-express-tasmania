@@ -5,6 +5,7 @@ create table public.draft_orders (
   is_testing boolean not null default false,
   order_type public.order_type not null,
   status public.order_status not null default 'awaiting_payment',
+  invoice_number text,
   cancel_token text unique,
   tracking_token text unique,
 

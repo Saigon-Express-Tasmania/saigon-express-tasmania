@@ -15,6 +15,9 @@ function stripLocalePrefix(pathname: string): string {
 }
 
 function matchesSectionWildcard(path: string, section: string): boolean {
+  if (path.endsWith("/landing-shop")) {
+    return false;
+  }
   return path.startsWith(`${section}/`) || (path === section && section !== "/member");
 }
 
