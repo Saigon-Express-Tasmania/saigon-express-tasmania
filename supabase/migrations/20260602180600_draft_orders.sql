@@ -2,6 +2,7 @@
 
 create table public.draft_orders (
   id bigint not null default nextval('public.order_id_seq') primary key,
+  is_testing boolean not null default false,
   order_type public.order_type not null,
   status public.order_status not null default 'awaiting_payment',
   cancel_token text unique,
@@ -43,6 +44,7 @@ create table public.draft_orders (
   updated_at timestamptz not null default now()
 );
 
+create index draft_orders_is_testing_idx on public.draft_orders (is_testing);
 create index draft_orders_store_id_idx on public.draft_orders (store_id);
 create index draft_orders_expires_at_idx on public.draft_orders (expires_at);
 create index draft_orders_customer_email_idx on public.draft_orders (customer_email) where customer_email is not null;

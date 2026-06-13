@@ -44,6 +44,8 @@ export type {
   WholesaleBillingAddress,
   WholesaleOrderBuyer,
   WholesaleOrderFinancialDetails,
+  WholesaleOrderReviewForm,
+  OrderFulfillmentMethod,
   WholesaleShippingAddress,
 } from "./WholesaleB2BOrder";
 export {

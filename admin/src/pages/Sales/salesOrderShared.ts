@@ -57,6 +57,7 @@ export type ItemUom = 'CASE' | 'EACH' | 'LBS' | 'KG';
 
 export type SalesOrderRow = {
   id: number;
+  is_testing: boolean;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -115,7 +116,7 @@ export type SalesOrderPaymentForm = {
 
 export type SalesOrderForm = Omit<
   SalesOrderRow,
-  'id' | 'created_at' | 'financial_details' | 'payment_status'
+  'id' | 'created_at' | 'financial_details' | 'payment_status' | 'is_testing'
 > & {
   items: SalesOrderItemForm[];
   b2b: SalesOrderB2BForm;
@@ -149,7 +150,7 @@ export type SalesOrderItemForm = {
 };
 
 export type SalesOrdersDataset = {
-  ordersTable: 'orders' | 'test_orders';
+  isTestingFilter: boolean;
   itemsTable: 'order_items';
   pageLabel: string;
   tableDescription: string;
@@ -214,7 +215,7 @@ export const PAYMENT_GATEWAY_OPTIONS: PaymentGateway[] = [
 export const ITEM_UOM_OPTIONS: ItemUom[] = ['CASE', 'EACH', 'LBS', 'KG'];
 
 export const LIVE_ORDERS_DATASET: SalesOrdersDataset = {
-  ordersTable: 'orders',
+  isTestingFilter: false,
   itemsTable: 'order_items',
   pageLabel: 'Orders',
   tableDescription: 'Manage confirmed and historical orders.',
@@ -228,10 +229,10 @@ export const LIVE_ORDERS_DATASET: SalesOrdersDataset = {
 };
 
 export const TEST_ORDERS_DATASET: SalesOrdersDataset = {
-  ordersTable: 'test_orders',
+  isTestingFilter: true,
   itemsTable: 'order_items',
   pageLabel: 'Test orders',
-  tableDescription: 'Stripe test-mode orders (separate from live orders).',
+  tableDescription: 'Stripe test-mode orders (is_testing = true).',
   entityName: 'test order',
   entityNameTitle: 'Test order',
   addButtonLabel: 'Add test order',

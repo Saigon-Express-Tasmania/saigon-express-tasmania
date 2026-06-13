@@ -59,8 +59,8 @@ export type FetchWholesaleOrdersResult = {
 const ORDER_HEADER_SELECT =
   "id, order_type, subtotal, tax_total, shipping_fee, grand_total, status, tracking_token, requested_target_date, requested_fulfillment_method, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details, payment_terms, created_at";
 
-function getOrdersTable(): "orders" | "test_orders" {
-  return getClientStripeMode() === "test" ? "test_orders" : "orders";
+function isTestingOrders(): boolean {
+  return getClientStripeMode() === "test";
 }
 
 function buildWholesaleOrderB2B(row: Record<string, unknown>): WholesaleOrderB2B {
@@ -158,15 +158,15 @@ async function fetchPaymentStatusByOrderId(
 export async function fetchWholesaleOrders(
   params: FetchWholesaleOrdersParams,
 ): Promise<FetchWholesaleOrdersResult> {
-  const table = getOrdersTable();
   const from = (params.page - 1) * WHOLESALE_ORDERS_PAGE_SIZE;
   const to = from + WHOLESALE_ORDERS_PAGE_SIZE - 1;
 
   let query = supabase
-    .from(table)
+    .from("orders")
     .select(ORDER_HEADER_SELECT, { count: "exact" })
     .eq("customer_account", params.userId)
     .eq("order_type", "wholesale")
+    .eq("is_testing", isTestingOrders())
     .order("created_at", { ascending: false });
 
   if (params.status && params.status !== "all") {

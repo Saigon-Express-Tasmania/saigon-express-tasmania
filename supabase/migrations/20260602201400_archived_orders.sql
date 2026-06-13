@@ -2,6 +2,7 @@
 
 create table public.archived_orders (
   id bigint not null primary key,
+  is_testing boolean not null default false,
   order_type public.order_type not null,
   status public.order_status not null,
   cancel_token text,
@@ -44,6 +45,7 @@ create table public.archived_orders (
   updated_at timestamptz not null default now()
 );
 
+create index archived_orders_is_testing_idx on public.archived_orders (is_testing);
 create index archived_orders_customer_account_idx
   on public.archived_orders (customer_account, archived_at desc)
   where customer_account is not null;

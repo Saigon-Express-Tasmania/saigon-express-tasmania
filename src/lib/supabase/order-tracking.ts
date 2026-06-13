@@ -78,8 +78,8 @@ function createTrackingSupabaseClient(trackingToken: string): SupabaseClient {
   });
 }
 
-function getOrdersTable(): "orders" | "test_orders" {
-  return getClientStripeMode() === "test" ? "test_orders" : "orders";
+function isTestingOrders(): boolean {
+  return getClientStripeMode() === "test";
 }
 
 const TRACKED_ORDER_SELECT =
@@ -150,20 +150,21 @@ function mapTrackedOrderRow(
   };
 }
 
-async function fetchTrackedOrderFromTable(
+async function fetchTrackedOrderForMode(
   trackingToken: string,
-  table: "orders" | "test_orders",
+  isTesting: boolean,
 ): Promise<TrackedOrder | null> {
   const supabase = createTrackingSupabaseClient(trackingToken);
 
   const { data, error } = await supabase
-    .from(table)
+    .from("orders")
     .select(TRACKED_ORDER_SELECT)
     .eq("tracking_token", trackingToken)
+    .eq("is_testing", isTesting)
     .maybeSingle();
 
   if (error) {
-    throw new Error(`${table}: ${error.message}`);
+    throw new Error(`orders: ${error.message}`);
   }
 
   if (!data) {
@@ -196,15 +197,13 @@ export async function fetchOrderByTrackingToken(
     return null;
   }
 
-  const primaryTable = getOrdersTable();
-  const fallbackTable = primaryTable === "orders" ? "test_orders" : "orders";
-
-  const primary = await fetchTrackedOrderFromTable(trimmed, primaryTable);
+  const primaryIsTesting = isTestingOrders();
+  const primary = await fetchTrackedOrderForMode(trimmed, primaryIsTesting);
   if (primary) {
     return primary;
   }
 
-  return fetchTrackedOrderFromTable(trimmed, fallbackTable);
+  return fetchTrackedOrderForMode(trimmed, !primaryIsTesting);
 }
 
 export function parseTrackingTokenFromParam(token: string): string {

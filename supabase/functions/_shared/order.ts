@@ -68,6 +68,7 @@ export type OrderCheckoutInput = {
   storeId?: number | null;
   pickupTime?: string;
   notes?: string;
+  poNumber?: string;
   origin: string;
   returnTo?: string;
   successReturnTo?: string;
@@ -122,6 +123,7 @@ type OrderAddressDbFields = {
 type DraftOrderRow = {
   id: number;
   order_type: OrderType;
+  is_testing: boolean;
   requested_fulfillment_method: OrderFulfillmentType;
   customer_account: string | null;
   customer_name: string | null;
@@ -140,9 +142,7 @@ type DraftOrderRow = {
 
 type CreatePaidOrderWithItemsResponse = number;
 
-function createPaidOrderRpc(mode: StripePaymentMode): string {
-  return mode === "test" ? "create_paid_test_order_with_items" : "create_paid_order_with_items";
-}
+const PAID_ORDER_RPC = "create_paid_order_with_items";
 
 const ORDER_PAYMENT_TERMS = [
   "prepaid",
@@ -381,17 +381,24 @@ async function fetchDraftOrderItems(
 }
 
 function mapCheckoutItemsToPayload(items: DraftOrderItemRow[], orderType: OrderType) {
-  return items.map((item) => ({
-    menuItemId: item.menuItemId,
-    productId: item.menuItemId,
-    ...(orderType === "wholesale" ? { wholesaleItemId: item.menuItemId } : {}),
-    qty: item.qty,
-    quantity: item.qty,
-    unitPrice: item.unitPrice,
-    itemName: item.itemName,
-    name: item.itemName,
-    sku: item.itemName,
-  }));
+  return items.map((item) => {
+    const lineTotal = item.qty * item.unitPrice;
+    const row: Record<string, unknown> = {
+      sku: item.itemName,
+      name: item.itemName,
+      quantity: item.qty,
+      uom: "EACH",
+      is_catch_weight: false,
+      unit_price: item.unitPrice,
+      line_total: lineTotal,
+    };
+    if (orderType === "wholesale") {
+      row.wholesale_item_id = item.menuItemId;
+    } else {
+      row.menu_item_id = item.menuItemId;
+    }
+    return row;
+  });
 }
 
 async function findOrderIdByStripeSession(
@@ -431,19 +438,15 @@ async function fetchTrackingTokenForPaidOrder(
     return null;
   }
 
-  for (const table of ["orders", "test_orders"] as const) {
-    const { data, error } = await supabase
-      .from(table)
-      .select("tracking_token")
-      .eq("id", orderId)
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("tracking_token")
+    .eq("id", orderId)
+    .maybeSingle();
 
-    if (error || !data) continue;
-    const token = data.tracking_token as string | null;
-    if (token) return token;
-  }
-
-  return null;
+  if (error || !data) return null;
+  const token = data.tracking_token as string | null;
+  return token ?? null;
 }
 
 function randomHex(byteLength: number): string {
@@ -679,12 +682,9 @@ function resolveCustomerAccount(
   return null;
 }
 
-function buildPaidOrderPayload(
+function buildOrderPayload(
   draftOrder: DraftOrderRow,
-  parsedItems: DraftOrderItemRow[],
   paymentMode: StripePaymentMode,
-  session: Stripe.Checkout.Session,
-  draftOrderId: number,
   cancelToken: string,
   trackingToken: string,
   customerAccount: string | null,
@@ -698,10 +698,9 @@ function buildPaidOrderPayload(
 
   return {
     order_type: draftOrder.order_type,
+    is_testing: draftOrder.is_testing || paymentMode === "test",
     requested_fulfillment_method: draftOrder.requested_fulfillment_method,
     requested_target_date: requestedTargetDate,
-    fulfillment_type: draftOrder.requested_fulfillment_method,
-    pickup_time: requestedTargetDate,
     customer_account: customerAccount,
     customer_name: draftOrder.customer_name ?? "",
     customer_email: draftOrder.customer_email ?? "",
@@ -712,15 +711,10 @@ function buildPaidOrderPayload(
     tax_total: formatMoney(taxTotal),
     shipping_fee: formatMoney(shippingFee),
     grand_total: formatMoney(grandTotal),
-    total: formatMoney(grandTotal),
     notes: draftOrder.notes ?? null,
-    stripe_mode: paymentMode,
-    stripe_checkout_session_id: session.id,
     cancel_token: cancelToken,
     tracking_token: trackingToken,
     status_updated_at: new Date().toISOString(),
-    items: mapCheckoutItemsToPayload(parsedItems, draftOrder.order_type),
-    draft_order_id: draftOrderId,
     shipping_address: draftOrder.shipping_address,
     shipping_city: draftOrder.shipping_city,
     shipping_state: draftOrder.shipping_state,
@@ -732,6 +726,107 @@ function buildPaidOrderPayload(
     billing_postal_code: draftOrder.billing_postal_code,
     billing_country: draftOrder.billing_country,
     financial_details: draftOrder.financial_details,
+  };
+}
+
+function stripeResourceId(
+  value: string | Stripe.Customer | Stripe.PaymentIntent | null | undefined,
+): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") return value;
+  return value.id ?? null;
+}
+
+function omitEmptyGatewayFields(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry == null) continue;
+    if (typeof entry === "object" && !Array.isArray(entry)) {
+      const nested = omitEmptyGatewayFields(entry as Record<string, unknown>);
+      if (Object.keys(nested).length > 0) {
+        result[key] = nested;
+      }
+      continue;
+    }
+    if (Array.isArray(entry) && entry.length === 0) continue;
+    result[key] = entry;
+  }
+  return result;
+}
+
+function buildStripeCheckoutGatewayData(
+  session: Stripe.Checkout.Session,
+): Record<string, unknown> {
+  const customerDetails = session.customer_details;
+  const totalDetails = session.total_details;
+
+  return omitEmptyGatewayFields({
+    stripe_checkout_session_id: session.id,
+    stripe_object: session.object,
+    stripe_livemode: session.livemode,
+    stripe_mode: session.mode,
+    stripe_status: session.status,
+    stripe_payment_status: session.payment_status,
+    stripe_currency: session.currency,
+    stripe_amount_total: session.amount_total,
+    stripe_amount_subtotal: session.amount_subtotal,
+    stripe_created: session.created,
+    stripe_expires_at: session.expires_at,
+    stripe_payment_intent_id: stripeResourceId(session.payment_intent),
+    stripe_customer_id: stripeResourceId(session.customer),
+    stripe_customer_email: session.customer_email,
+    stripe_client_reference_id: session.client_reference_id,
+    stripe_payment_method_types: session.payment_method_types,
+    stripe_metadata: session.metadata,
+    stripe_success_url: session.success_url,
+    stripe_cancel_url: session.cancel_url,
+    stripe_customer_details: customerDetails
+      ? {
+          email: customerDetails.email,
+          name: customerDetails.name,
+          phone: customerDetails.phone,
+          tax_exempt: customerDetails.tax_exempt,
+          tax_ids: customerDetails.tax_ids?.map((taxId) => ({
+            type: taxId.type,
+            value: taxId.value,
+          })),
+          address: customerDetails.address
+            ? {
+                city: customerDetails.address.city,
+                country: customerDetails.address.country,
+                line1: customerDetails.address.line1,
+                line2: customerDetails.address.line2,
+                postal_code: customerDetails.address.postal_code,
+                state: customerDetails.address.state,
+              }
+            : undefined,
+        }
+      : undefined,
+    stripe_total_details: totalDetails
+      ? {
+          amount_tax: totalDetails.amount_tax,
+          amount_discount: totalDetails.amount_discount,
+          amount_shipping: totalDetails.amount_shipping,
+        }
+      : undefined,
+  });
+}
+
+function buildPaymentPayload(
+  grandTotal: number,
+  paymentMode: StripePaymentMode,
+  session: Stripe.Checkout.Session,
+): Record<string, unknown> {
+  return {
+    amount: formatMoney(grandTotal),
+    status: "paid",
+    mode: paymentMode,
+    method: "credit_card",
+    gateway: "stripe",
+    gateway_transaction_id: session.id,
+    gateway_data: buildStripeCheckoutGatewayData(session),
   };
 }
 
@@ -754,6 +849,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   const pickupTimeRaw = data.pickupTime != null ? String(data.pickupTime).trim() : "";
   const origin = String(data.origin ?? "").trim();
   const notes = data.notes != null ? String(data.notes).trim() : undefined;
+  const poNumber = data.poNumber != null ? String(data.poNumber).trim() : undefined;
   const customerAccount = parseOptionalCustomerAccount(data.customerAccount);
   const returnTo = data.returnTo != null ? String(data.returnTo).trim() : undefined;
   const successReturnTo =
@@ -819,6 +915,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     storeId,
     pickupTime,
     notes: notes || undefined,
+    poNumber: poNumber || undefined,
     origin,
     returnTo: returnTo || undefined,
     successReturnTo: successReturnTo || undefined,
@@ -945,6 +1042,7 @@ export async function createOrderCheckoutSession(
     .from("draft_orders")
     .insert({
       order_type: input.orderType,
+      is_testing: input.mode === "test",
       status: "awaiting_payment",
       requested_fulfillment_method: input.fulfillmentType,
       customer_account: input.customerAccount ?? null,
@@ -959,6 +1057,7 @@ export async function createOrderCheckoutSession(
       shipping_fee: formatMoney(totals.shipping_fee),
       grand_total: formatMoney(totals.grand_total),
       notes: input.notes ?? null,
+      po_number: input.poNumber ?? null,
       ...addressFields,
       financial_details: financialDetails,
     })
@@ -1105,18 +1204,18 @@ export async function markOrderPaidFromStripeSession(
   const trackingToken = randomHex(24);
   const customerAccount = resolveCustomerAccount(draftOrder, session);
   const { data: createdOrderId, error: createOrderError } = await supabase.rpc(
-    createPaidOrderRpc(paymentMode),
+    PAID_ORDER_RPC,
     {
-      p_payload: buildPaidOrderPayload(
+      p_draft_order_id: draftOrderId,
+      p_items: mapCheckoutItemsToPayload(parsedItems, draftOrder.order_type),
+      p_order_payload: buildOrderPayload(
         draftOrder,
-        parsedItems,
         paymentMode,
-        session,
-        draftOrderId,
         cancelToken,
         trackingToken,
         customerAccount,
       ),
+      p_payment_payload: buildPaymentPayload(grandTotal, paymentMode, session),
     },
   );
 
@@ -1184,7 +1283,7 @@ async function fetchDraftOrder(
   const { data, error } = await supabase
     .from("draft_orders")
     .select(
-      "id, order_type, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_target_date, payment_terms, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details",
+      "id, order_type, is_testing, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_target_date, payment_terms, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details",
     )
     .eq("id", draftOrderId)
     .maybeSingle();
@@ -1196,6 +1295,7 @@ async function fetchDraftOrder(
   return {
     id: Number(row.id),
     order_type: orderType,
+    is_testing: Boolean(row.is_testing),
     requested_fulfillment_method:
       parseFulfillmentType(row.requested_fulfillment_method) ??
       resolveFulfillmentType(orderType, null),

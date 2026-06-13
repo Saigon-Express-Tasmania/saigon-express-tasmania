@@ -10,7 +10,7 @@ import type {
 } from './salesOrderShared';
 
 export const ORDER_HEADER_COLUMNS =
-  'id, customer_name, customer_email, customer_phone, store_id, requested_fulfillment_method, requested_target_date, payment_terms, po_number, subtotal, tax_total, shipping_fee, grand_total, status, notes, cancel_token, tracking_token, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details, status_updated_at, created_at';
+  'id, is_testing, customer_name, customer_email, customer_phone, store_id, requested_fulfillment_method, requested_target_date, payment_terms, po_number, subtotal, tax_total, shipping_fee, grand_total, status, notes, cancel_token, tracking_token, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details, status_updated_at, created_at';
 
 export const DRAFT_ORDER_COLUMNS = `${ORDER_HEADER_COLUMNS}, expires_at, updated_at`;
 

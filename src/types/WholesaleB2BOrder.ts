@@ -45,6 +45,41 @@ export type WholesaleB2BCheckoutPayload = {
   financialDetails: WholesaleOrderFinancialDetails;
 };
 
+/** Wholesale checkout review aligned with public.orders header columns. */
+export type OrderFulfillmentMethod = "pick_up" | "delivery" | "shipping";
+
+export type WholesaleOrderReviewForm = {
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  requested_fulfillment_method: OrderFulfillmentMethod;
+  requested_target_date: string;
+  shipping_address: string;
+  shipping_street_2: string | null;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postal_code: string;
+  shipping_country: string;
+  shipping_dba_name: string;
+  shipping_special_instructions: string | null;
+  shipping_preferred_window: string | null;
+  billing_address: string;
+  billing_street_2: string | null;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: string;
+  billing_legal_name: string;
+  billing_tax_id: string | null;
+  payment_terms: string;
+  po_number: string | null;
+  notes: string | null;
+  subtotal: number;
+  tax_total: number;
+  shipping_fee: number;
+  grand_total: number;
+};
+
 /** Parsed B2B metadata from order header jsonb columns. */
 export type WholesaleOrderB2B = {
   buyer: WholesaleOrderBuyer | null;

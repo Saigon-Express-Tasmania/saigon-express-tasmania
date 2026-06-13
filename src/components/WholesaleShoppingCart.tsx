@@ -12,13 +12,12 @@ import { DEFAULT_LOCALE } from "@/config/localize";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import WholesaleOrderReviewPanel from "@/components/WholesaleOrderReviewPanel";
 import {
-  buildWholesaleB2BFromProfile,
-  buildWholesaleFinancialDetails,
-  getWholesaleContactName,
-  serializeWholesaleB2BForCheckout,
-  validateWholesaleB2BReview,
+  buildWholesaleOrderReviewFromProfile,
+  buildWholesaleOrderTotals,
+  serializeWholesaleOrderReviewForCheckout,
+  validateWholesaleOrderReview,
 } from "@/lib/wholesale-b2b-order";
-import type { WholesaleB2BCheckoutPayload } from "@/types";
+import type { WholesaleOrderReviewForm } from "@/types";
 import {
   ChevronRight,
   CreditCard,
@@ -331,7 +330,7 @@ export default function WholesaleShoppingCart() {
     null,
   );
   const [cartView, setCartView] = useState<CartSidebarView>("cart");
-  const [b2bReview, setB2bReview] = useState<WholesaleB2BCheckoutPayload | null>(
+  const [orderReview, setOrderReview] = useState<WholesaleOrderReviewForm | null>(
     null,
   );
   const highlightedItemRef = useRef<HTMLDivElement | null>(null);
@@ -368,7 +367,7 @@ export default function WholesaleShoppingCart() {
       setEditingQtyProductId(null);
       setSliderDragProductId(null);
       setCartView("cart");
-      setB2bReview(null);
+      setOrderReview(null);
     }
   }, [cartOpen]);
 
@@ -496,34 +495,28 @@ export default function WholesaleShoppingCart() {
       return;
     }
 
-    const draft = buildWholesaleB2BFromProfile(profile, customerEmail);
-    draft.financialDetails = buildWholesaleFinancialDetails(cartTotal);
-    setB2bReview(draft);
+    setOrderReview(buildWholesaleOrderReviewFromProfile(profile, customerEmail, cartTotal));
     setCartView("review");
   };
 
   const handleConfirmPayment = async () => {
-    if (!user || !profile || !b2bReview) {
+    if (!user || !profile || !orderReview) {
       toast.error("Please sign in to checkout.");
       return;
     }
 
-    const validationError = validateWholesaleB2BReview(b2bReview);
+    const validationError = validateWholesaleOrderReview({
+      ...orderReview,
+      ...buildWholesaleOrderTotals(cartTotal),
+    });
     if (validationError) {
       toast.error(validationError);
       return;
     }
 
-    const customerName = getWholesaleContactName(profile);
-    const customerEmail =
-      b2bReview.buyer.contact_email?.trim() ||
-      profile.email?.trim() ||
-      user.email?.trim() ||
-      "";
-    const customerPhone = b2bReview.buyer.contact_phone.trim();
-    const b2bPayload = serializeWholesaleB2BForCheckout({
-      ...b2bReview,
-      financialDetails: buildWholesaleFinancialDetails(cartTotal),
+    const checkoutFields = serializeWholesaleOrderReviewForCheckout({
+      ...orderReview,
+      ...buildWholesaleOrderTotals(cartTotal),
     });
 
     setIsCheckingOut(true);
@@ -534,13 +527,10 @@ export default function WholesaleShoppingCart() {
           mode: getClientStripeMode(),
           orderType: "wholesale",
           customerAccount: profile.id,
-          customerName,
-          customerEmail,
-          customerPhone,
           origin: window.location.origin,
           returnTo: wholesaleDashboardPath,
           successReturnTo: wholesaleOrdersPath,
-          ...b2bPayload,
+          ...checkoutFields,
           items: cart.map((item) => ({
             productId: item.productId,
             qty: item.qty,
@@ -612,12 +602,19 @@ export default function WholesaleShoppingCart() {
             }`}
             {...panelMotion}
           >
-        {cartView === "review" && b2bReview ? (
+        {cartView === "review" && orderReview ? (
           <WholesaleOrderReviewPanel
             items={sortedCart}
-            financialDetails={buildWholesaleFinancialDetails(cartTotal)}
-            b2b={b2bReview}
-            onB2bChange={setB2bReview}
+            review={{
+              ...orderReview,
+              ...buildWholesaleOrderTotals(cartTotal),
+            }}
+            onReviewChange={(next) =>
+              setOrderReview({
+                ...next,
+                ...buildWholesaleOrderTotals(cartTotal),
+              })
+            }
             onBack={() => setCartView("cart")}
             onConfirm={() => void handleConfirmPayment()}
             isCheckingOut={isCheckingOut}

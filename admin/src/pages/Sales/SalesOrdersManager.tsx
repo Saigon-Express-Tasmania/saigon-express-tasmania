@@ -71,9 +71,10 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
       setError(null);
       setLoading(true);
       const { data, error: fetchError } = await supabase
-        .from(dataset.ordersTable)
+        .from('orders')
         .select(SALES_ORDER_COLUMNS)
         .eq('order_type', orderType)
+        .eq('is_testing', dataset.isTestingFilter)
         .order('id', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -94,7 +95,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
     } finally {
       setLoading(false);
     }
-  }, [dataset.entityName, dataset.ordersTable, orderType]);
+  }, [dataset.entityName, dataset.isTestingFilter, orderType]);
 
   useEffect(() => {
     if (isAdmin && orderType) {
@@ -230,6 +231,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         cancel_token: syncedForm.cancel_token?.trim() || null,
         tracking_token: syncedForm.tracking_token?.trim() || null,
         status_updated_at: syncedForm.status_updated_at || null,
+        is_testing: dataset.isTestingFilter,
         ...addressPayload,
       };
 
@@ -237,13 +239,14 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
       if (editingOrderId !== null) {
         const { error: updateError } = await supabase
-          .from(dataset.ordersTable)
+          .from('orders')
           .update(orderPayload)
-          .eq('id', editingOrderId);
+          .eq('id', editingOrderId)
+          .eq('is_testing', dataset.isTestingFilter);
         if (updateError) throw updateError;
       } else {
         const { data: insertedOrder, error: insertError } = await supabase
-          .from(dataset.ordersTable)
+          .from('orders')
           .insert(orderPayload)
           .select('id')
           .single();
@@ -293,9 +296,10 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         toast.success(`${dataset.entityNameTitle} archived and deleted.`);
       } else {
         const { error: deleteError } = await supabase
-          .from(dataset.ordersTable)
+          .from('orders')
           .delete()
-          .eq('id', deleteTarget.id);
+          .eq('id', deleteTarget.id)
+          .eq('is_testing', dataset.isTestingFilter);
         if (deleteError) throw deleteError;
         toast.success(`${dataset.entityNameTitle} deleted.`);
       }

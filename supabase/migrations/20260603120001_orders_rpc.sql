@@ -1,4 +1,16 @@
-create or replace function public.find_order_id_by_stripe_session(
+-- Order lifecycle RPCs used by edge functions (checkout, stripe-webhook) and admin.
+--
+-- Flow (online checkout):
+--   1. checkout creates draft_orders + order_items (shared order_id_seq)
+--   2. payment webhook calls create_paid_order_with_items(draft_order_id, items, order_payload, payment_payload)
+--   3. create_paid_order_with_items_impl promotes the draft (same id) or inserts a new order,
+--      ensures line items exist, records order_payments, and updates wholesale inventory
+--
+-- Shared child tables (order_items, order_payments, order_fulfillments) reference order_id
+-- without FK so rows survive draft -> orders -> archived_orders moves.
+
+create or replace function public.find_order_id_by_gateway_transaction(
+  p_gateway public.order_payment_gateway,
   p_gateway_transaction_id text
 )
 returns bigint
@@ -8,14 +20,35 @@ set search_path = public
 as $$
   select op.order_id
   from public.order_payments as op
-  where op.gateway = 'stripe'::public.order_payment_gateway
+  where op.gateway = p_gateway
     and op.gateway_transaction_id = p_gateway_transaction_id
   limit 1;
 $$;
 
-comment on function public.find_order_id_by_stripe_session(text) is
-  'Returns the shared order id for a Stripe checkout session (idempotent webhook helper).';
+comment on function public.find_order_id_by_gateway_transaction(public.order_payment_gateway, text) is
+  'Idempotency lookup: returns order_id already linked to a gateway transaction id.';
 
+-- Back-compat wrapper for Stripe checkout session ids.
+create or replace function public.find_order_id_by_stripe_session(
+  p_gateway_transaction_id text
+)
+returns bigint
+language sql
+stable
+set search_path = public
+as $$
+  select public.find_order_id_by_gateway_transaction(
+    'stripe'::public.order_payment_gateway,
+    p_gateway_transaction_id
+  );
+$$;
+
+comment on function public.find_order_id_by_stripe_session(text) is
+  'Stripe shorthand for find_order_id_by_gateway_transaction(''stripe'', session_id).';
+
+-- Inserts line items from a jsonb array whose objects match public.order_items columns
+-- (menu_item_id, wholesale_item_id, catering_item_id, sku, name, quantity, uom, unit_price, line_total).
+-- Skips invalid rows silently; callers must verify at least one row was inserted.
 create or replace function public.insert_order_items_from_payload(
   p_order_id bigint,
   p_order_type public.order_type,
@@ -43,50 +76,42 @@ begin
   select
     p_order_id,
     p_order_type,
-    case
-      when p_order_type = 'wholesale'::public.order_type then null
-      else coalesce((item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint)
-    end,
-    case
-      when p_order_type = 'wholesale'::public.order_type
-        then coalesce((item ->> 'wholesaleItemId')::bigint, (item ->> 'menuItemId')::bigint, (item ->> 'productId')::bigint)
-      else null
-    end,
-    case
-      when p_order_type = 'catering'::public.order_type
-        then coalesce((item ->> 'cateringItemId')::bigint, (item ->> 'menuItemId')::bigint)
-      else null
-    end,
-    coalesce(nullif(trim(item ->> 'sku'), ''), nullif(trim(item ->> 'itemName'), ''), 'UNKNOWN'),
-    coalesce(item ->> 'name', item ->> 'itemName'),
-    coalesce((item ->> 'quantity')::numeric(10, 2), (item ->> 'qty')::numeric(10, 2)),
+    nullif(item ->> 'menu_item_id', '')::bigint,
+    nullif(item ->> 'wholesale_item_id', '')::bigint,
+    nullif(item ->> 'catering_item_id', '')::bigint,
+    coalesce(nullif(trim(item ->> 'sku'), ''), 'UNKNOWN'),
+    item ->> 'name',
+    (item ->> 'quantity')::numeric(10, 2),
     coalesce(nullif(item ->> 'uom', ''), 'EACH')::public.order_item_uom,
-    coalesce((item ->> 'isCatchWeight')::boolean, false),
-    (item ->> 'unitPrice')::numeric(10, 2),
+    coalesce((item ->> 'is_catch_weight')::boolean, false),
+    (item ->> 'unit_price')::numeric(10, 2),
     coalesce(
-      (item ->> 'lineTotal')::numeric(10, 2),
-      coalesce((item ->> 'quantity')::numeric(10, 2), (item ->> 'qty')::numeric(10, 2))
-        * (item ->> 'unitPrice')::numeric(10, 2)
+      (item ->> 'line_total')::numeric(10, 2),
+      (item ->> 'quantity')::numeric(10, 2) * (item ->> 'unit_price')::numeric(10, 2)
     )
   from jsonb_array_elements(p_items) as item
   where
     jsonb_typeof(item) = 'object'
     and coalesce(
-      (item ->> 'menuItemId')::bigint,
-      (item ->> 'productId')::bigint,
-      (item ->> 'wholesaleItemId')::bigint,
-      (item ->> 'cateringItemId')::bigint,
+      nullif(item ->> 'menu_item_id', '')::bigint,
+      nullif(item ->> 'wholesale_item_id', '')::bigint,
+      nullif(item ->> 'catering_item_id', '')::bigint,
       0
     ) > 0
-    and coalesce((item ->> 'quantity')::numeric(10, 2), (item ->> 'qty')::numeric(10, 2), 0) > 0
-    and coalesce((item ->> 'unitPrice')::numeric, -1) >= 0
-    and nullif(trim(coalesce(item ->> 'name', item ->> 'itemName')), '') is not null;
+    and coalesce((item ->> 'quantity')::numeric(10, 2), 0) > 0
+    and coalesce((item ->> 'unit_price')::numeric, -1) >= 0
+    and nullif(trim(item ->> 'name'), '') is not null;
 end;
 $$;
 
+comment on function public.insert_order_items_from_payload(bigint, public.order_type, jsonb) is
+  'Bulk-inserts order_items for an order from a jsonb array. item_type is set from p_order_type; product id columns depend on order type.';
+
+-- Promotes a draft_orders row into public.orders, preserving the shared id and any
+-- order_items already linked to that id. Address and B2B fields come from the draft;
+-- status, tokens, totals, and customer contact fields are supplied by the caller.
 create or replace function public.move_draft_to_paid_order(
   p_draft_id bigint,
-  p_target_table text,
   p_status public.order_status,
   p_cancel_token text,
   p_tracking_token text,
@@ -107,17 +132,296 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if p_target_table not in ('orders', 'test_orders') then
-    raise exception 'Invalid paid order target table';
-  end if;
-
   if not exists (select 1 from public.draft_orders where id = p_draft_id) then
     raise exception 'Draft order % not found', p_draft_id;
   end if;
 
-  execute format($sql$
-    insert into public.%I (
-      id,
+  insert into public.orders (
+    id,
+    is_testing,
+    order_type,
+    status,
+    cancel_token,
+    tracking_token,
+    customer_account,
+    customer_name,
+    customer_email,
+    customer_phone,
+    store_id,
+    requested_fulfillment_method,
+    requested_target_date,
+    shipping_address,
+    shipping_city,
+    shipping_state,
+    shipping_postal_code,
+    shipping_country,
+    billing_address,
+    billing_city,
+    billing_state,
+    billing_postal_code,
+    billing_country,
+    payment_terms,
+    po_number,
+    subtotal,
+    tax_total,
+    shipping_fee,
+    grand_total,
+    financial_details,
+    notes,
+    status_updated_at,
+    created_at
+  )
+  select
+    d.id,
+    d.is_testing,
+    d.order_type,
+    p_status,
+    p_cancel_token,
+    p_tracking_token,
+    d.customer_account,
+    p_customer_name,
+    p_customer_email,
+    p_customer_phone,
+    d.store_id,
+    p_requested_fulfillment_method,
+    p_requested_target_date,
+    d.shipping_address,
+    d.shipping_city,
+    d.shipping_state,
+    d.shipping_postal_code,
+    d.shipping_country,
+    d.billing_address,
+    d.billing_city,
+    d.billing_state,
+    d.billing_postal_code,
+    d.billing_country,
+    d.payment_terms,
+    d.po_number,
+    p_subtotal,
+    p_tax_total,
+    p_shipping_fee,
+    p_grand_total,
+    d.financial_details,
+    coalesce(p_notes, d.notes),
+    p_status_updated_at,
+    d.created_at
+  from public.draft_orders as d
+  where d.id = p_draft_id;
+
+  delete from public.draft_orders where id = p_draft_id;
+end;
+$$;
+
+comment on function public.move_draft_to_paid_order(
+  bigint,
+  public.order_status,
+  text,
+  text,
+  text,
+  text,
+  text,
+  public.order_fulfillment_type,
+  timestamptz,
+  numeric,
+  numeric,
+  numeric,
+  numeric,
+  text,
+  timestamptz
+) is
+  'Moves draft_orders -> orders with the same id, then deletes the draft. Child order_items stay attached.';
+
+-- Core paid-order creator.
+--   p_draft_order_id   when set, promotes that draft (same id) instead of inserting a new header
+--   p_items            jsonb array of order_items-shaped objects (used when not promoting a draft)
+--   p_order_payload    jsonb object matching public.orders columns (snake_case)
+--   p_payment_payload  jsonb object matching public.order_payments columns; gateway +
+--                      gateway_transaction_id enable idempotency and payment insert
+create or replace function public.create_paid_order_with_items_impl(
+  p_draft_order_id bigint,
+  p_items jsonb,
+  p_order_payload jsonb,
+  p_payment_payload jsonb
+)
+returns bigint
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_order_id bigint;
+  v_has_items boolean;
+  v_is_testing boolean;
+  v_order_type public.order_type;
+  v_requested_fulfillment_method public.order_fulfillment_type;
+  v_customer_account uuid;
+  v_customer_name text;
+  v_customer_email text;
+  v_customer_phone text;
+  v_store_id bigint;
+  v_requested_target_date timestamptz;
+  v_subtotal numeric(10, 2);
+  v_tax_total numeric(10, 2);
+  v_shipping_fee numeric(10, 2);
+  v_grand_total numeric(10, 2);
+  v_notes text;
+  v_payment_amount numeric(10, 2);
+  v_payment_status public.order_payment_status;
+  v_payment_mode text;
+  v_payment_method public.order_payment_method;
+  v_payment_gateway public.order_payment_gateway;
+  v_payment_gateway_transaction_id text;
+  v_payment_gateway_data jsonb;
+  v_cancel_token text;
+  v_tracking_token text;
+  v_status_updated_at timestamptz;
+  v_items jsonb;
+  v_draft_order_id bigint;
+  v_shipping_address text;
+  v_shipping_city text;
+  v_shipping_state text;
+  v_shipping_postal_code text;
+  v_shipping_country text;
+  v_billing_address text;
+  v_billing_city text;
+  v_billing_state text;
+  v_billing_postal_code text;
+  v_billing_country text;
+  v_financial_details jsonb;
+  v_payment_terms public.order_payment_terms;
+  v_po_number varchar(100);
+begin
+  if p_order_payload is null or jsonb_typeof(p_order_payload) <> 'object' then
+    raise exception 'order_payload must be a json object';
+  end if;
+
+  v_draft_order_id := p_draft_order_id;
+  v_items := coalesce(p_items, '[]'::jsonb);
+
+  -- public.orders columns from p_order_payload
+  v_is_testing := coalesce((p_order_payload->>'is_testing')::boolean, false);
+  v_order_type := (p_order_payload->>'order_type')::public.order_type;
+  v_requested_fulfillment_method :=
+    nullif(p_order_payload->>'requested_fulfillment_method', '')::public.order_fulfillment_type;
+  v_customer_account := nullif(p_order_payload->>'customer_account', '')::uuid;
+  v_customer_name := coalesce(p_order_payload->>'customer_name', '');
+  v_customer_email := coalesce(p_order_payload->>'customer_email', '');
+  v_customer_phone := coalesce(p_order_payload->>'customer_phone', '');
+  v_store_id := nullif(p_order_payload->>'store_id', '')::bigint;
+  v_requested_target_date := nullif(p_order_payload->>'requested_target_date', '')::timestamptz;
+  v_shipping_address := p_order_payload->>'shipping_address';
+  v_shipping_city := p_order_payload->>'shipping_city';
+  v_shipping_state := p_order_payload->>'shipping_state';
+  v_shipping_postal_code := p_order_payload->>'shipping_postal_code';
+  v_shipping_country := p_order_payload->>'shipping_country';
+  v_billing_address := p_order_payload->>'billing_address';
+  v_billing_city := p_order_payload->>'billing_city';
+  v_billing_state := p_order_payload->>'billing_state';
+  v_billing_postal_code := p_order_payload->>'billing_postal_code';
+  v_billing_country := p_order_payload->>'billing_country';
+  v_payment_terms := coalesce(
+    nullif(p_order_payload->>'payment_terms', '')::public.order_payment_terms,
+    'prepaid'::public.order_payment_terms
+  );
+  v_po_number := nullif(p_order_payload->>'po_number', '');
+  v_subtotal := nullif(p_order_payload->>'subtotal', '')::numeric(10, 2);
+  v_tax_total := coalesce(nullif(p_order_payload->>'tax_total', '')::numeric(10, 2), 0::numeric(10, 2));
+  v_shipping_fee := coalesce(nullif(p_order_payload->>'shipping_fee', '')::numeric(10, 2), 0::numeric(10, 2));
+  v_grand_total := nullif(p_order_payload->>'grand_total', '')::numeric(10, 2);
+  v_financial_details := p_order_payload->'financial_details';
+  v_notes := nullif(p_order_payload->>'notes', '');
+  v_cancel_token := nullif(p_order_payload->>'cancel_token', '');
+  v_tracking_token := nullif(p_order_payload->>'tracking_token', '');
+  v_status_updated_at := coalesce(
+    nullif(p_order_payload->>'status_updated_at', '')::timestamptz,
+    now()
+  );
+
+  if p_payment_payload is not null and jsonb_typeof(p_payment_payload) = 'object' then
+    v_payment_gateway :=
+      nullif(p_payment_payload->>'gateway', '')::public.order_payment_gateway;
+    v_payment_gateway_transaction_id :=
+      nullif(p_payment_payload->>'gateway_transaction_id', '');
+    v_payment_amount := nullif(p_payment_payload->>'amount', '')::numeric(10, 2);
+    v_payment_status := coalesce(
+      nullif(p_payment_payload->>'status', '')::public.order_payment_status,
+      'paid'::public.order_payment_status
+    );
+    v_payment_mode := nullif(p_payment_payload->>'mode', '');
+    v_payment_method := coalesce(
+      nullif(p_payment_payload->>'method', '')::public.order_payment_method,
+      'credit_card'::public.order_payment_method
+    );
+    v_payment_gateway_data := p_payment_payload->'gateway_data';
+  end if;
+
+  if v_order_type is null then
+    raise exception 'order_type is required';
+  end if;
+
+  if v_requested_fulfillment_method is null then
+    raise exception 'requested_fulfillment_method is required';
+  end if;
+
+  if v_requested_target_date is null then
+    raise exception 'requested_target_date is required';
+  end if;
+
+  -- Idempotency: return existing order if this gateway transaction was already processed.
+  if v_payment_gateway is not null
+    and v_payment_gateway <> 'none'::public.order_payment_gateway
+    and v_payment_gateway_transaction_id is not null then
+    v_order_id := public.find_order_id_by_gateway_transaction(
+      v_payment_gateway,
+      v_payment_gateway_transaction_id
+    );
+
+    if v_order_id is not null then
+      if v_draft_order_id is not null then
+        delete from public.draft_orders where id = v_draft_order_id;
+      end if;
+      return v_order_id;
+    end if;
+  end if;
+
+  if v_grand_total is null or v_grand_total <= 0 then
+    raise exception 'Order grand total must be greater than zero';
+  end if;
+
+  if v_subtotal is null then
+    v_subtotal := greatest(v_grand_total - v_tax_total - v_shipping_fee, 0);
+  end if;
+
+  -- Header: promote draft (keeps id + existing items) or insert a new orders row.
+  if v_draft_order_id is not null then
+    perform public.move_draft_to_paid_order(
+      v_draft_order_id,
+      'confirmed'::public.order_status,
+      v_cancel_token,
+      v_tracking_token,
+      v_customer_name,
+      v_customer_email,
+      v_customer_phone,
+      v_requested_fulfillment_method,
+      v_requested_target_date,
+      v_subtotal,
+      v_tax_total,
+      v_shipping_fee,
+      v_grand_total,
+      v_notes,
+      v_status_updated_at
+    );
+    v_order_id := v_draft_order_id;
+    select o.is_testing
+    into v_is_testing
+    from public.orders as o
+    where o.id = v_order_id;
+  else
+    if jsonb_typeof(v_items) <> 'array' or jsonb_array_length(v_items) = 0 then
+      raise exception 'Order items must be a non-empty array';
+    end if;
+
+    insert into public.orders (
+      is_testing,
       order_type,
       status,
       cancel_token,
@@ -147,300 +451,12 @@ begin
       grand_total,
       financial_details,
       notes,
-      status_updated_at,
-      created_at
+      status_updated_at
     )
-    select
-      d.id,
-      d.order_type,
-      $1,
-      $2,
-      $3,
-      d.customer_account,
-      $4,
-      $5,
-      $6,
-      d.store_id,
-      $7,
-      $8,
-      d.shipping_address,
-      d.shipping_city,
-      d.shipping_state,
-      d.shipping_postal_code,
-      d.shipping_country,
-      d.billing_address,
-      d.billing_city,
-      d.billing_state,
-      d.billing_postal_code,
-      d.billing_country,
-      d.payment_terms,
-      d.po_number,
-      $9,
-      $10,
-      $11,
-      $12,
-      d.financial_details,
-      coalesce($13, d.notes),
-      $14,
-      d.created_at
-    from public.draft_orders as d
-    where d.id = $15
-  $sql$, p_target_table)
-  using
-    p_status,
-    p_cancel_token,
-    p_tracking_token,
-    p_customer_name,
-    p_customer_email,
-    p_customer_phone,
-    p_requested_fulfillment_method,
-    p_requested_target_date,
-    p_subtotal,
-    p_tax_total,
-    p_shipping_fee,
-    p_grand_total,
-    p_notes,
-    p_status_updated_at,
-    p_draft_id;
-
-  delete from public.draft_orders where id = p_draft_id;
-end;
-$$;
-
-create or replace function public.create_paid_order_with_items_impl(
-  p_orders_table text,
-  p_payload jsonb
-)
-returns bigint
-language plpgsql
-set search_path = public
-as $$
-declare
-  v_order_id bigint;
-  v_has_items boolean;
-  v_order_type public.order_type;
-  v_requested_fulfillment_method public.order_fulfillment_type;
-  v_customer_account uuid;
-  v_customer_name text;
-  v_customer_email text;
-  v_customer_phone text;
-  v_store_id bigint;
-  v_requested_target_date timestamptz;
-  v_subtotal numeric(10, 2);
-  v_tax_total numeric(10, 2);
-  v_shipping_fee numeric(10, 2);
-  v_grand_total numeric(10, 2);
-  v_notes text;
-  v_stripe_mode text;
-  v_stripe_checkout_session_id text;
-  v_cancel_token text;
-  v_tracking_token text;
-  v_status_updated_at timestamptz;
-  v_items jsonb;
-  v_draft_order_id bigint;
-  v_shipping_address text;
-  v_shipping_city text;
-  v_shipping_state text;
-  v_shipping_postal_code text;
-  v_shipping_country text;
-  v_billing_address text;
-  v_billing_city text;
-  v_billing_state text;
-  v_billing_postal_code text;
-  v_billing_country text;
-  v_financial_details jsonb;
-  v_payment_terms public.order_payment_terms;
-  v_po_number varchar(100);
-  v_legacy_pickup_time text;
-  v_legacy_total numeric(10, 2);
-begin
-  if p_orders_table not in ('orders', 'test_orders') then
-    raise exception 'Invalid paid order target table';
-  end if;
-
-  if p_payload is null or jsonb_typeof(p_payload) <> 'object' then
-    raise exception 'Order payload must be a json object';
-  end if;
-
-  v_order_type := (p_payload->>'order_type')::public.order_type;
-  v_requested_fulfillment_method := coalesce(
-    nullif(p_payload->>'requested_fulfillment_method', '')::public.order_fulfillment_type,
-    nullif(p_payload->>'fulfillment_type', '')::public.order_fulfillment_type,
-    'pick_up'::public.order_fulfillment_type
-  );
-  v_customer_account := nullif(p_payload->>'customer_account', '')::uuid;
-  v_customer_name := coalesce(p_payload->>'customer_name', '');
-  v_customer_email := coalesce(p_payload->>'customer_email', '');
-  v_customer_phone := coalesce(p_payload->>'customer_phone', '');
-  v_store_id := nullif(p_payload->>'store_id', '')::bigint;
-  v_legacy_pickup_time := coalesce(p_payload->>'pickup_time', '');
-  v_requested_target_date := coalesce(
-    nullif(p_payload->>'requested_target_date', '')::timestamptz,
-    nullif(v_legacy_pickup_time, '')::timestamptz,
-    now() + interval '1 day'
-  );
-  v_legacy_total := nullif(p_payload->>'total', '')::numeric(10, 2);
-  v_subtotal := coalesce(
-    nullif(p_payload->>'subtotal', '')::numeric(10, 2),
-    nullif(p_payload->'financial_details'->>'subtotal_ex_gst', '')::numeric(10, 2),
-    v_legacy_total
-  );
-  v_tax_total := coalesce(
-    nullif(p_payload->>'tax_total', '')::numeric(10, 2),
-    nullif(p_payload->'financial_details'->>'gst_total', '')::numeric(10, 2),
-    0::numeric(10, 2)
-  );
-  v_shipping_fee := coalesce(nullif(p_payload->>'shipping_fee', '')::numeric(10, 2), 0::numeric(10, 2));
-  v_grand_total := coalesce(
-    nullif(p_payload->>'grand_total', '')::numeric(10, 2),
-    nullif(p_payload->'financial_details'->>'grand_total_inc_gst', '')::numeric(10, 2),
-    v_legacy_total
-  );
-  v_notes := nullif(p_payload->>'notes', '');
-  v_stripe_mode := nullif(p_payload->>'stripe_mode', '');
-  v_stripe_checkout_session_id := nullif(p_payload->>'stripe_checkout_session_id', '');
-  v_cancel_token := nullif(p_payload->>'cancel_token', '');
-  v_tracking_token := nullif(p_payload->>'tracking_token', '');
-  v_status_updated_at := coalesce(
-    nullif(p_payload->>'status_updated_at', '')::timestamptz,
-    now()
-  );
-  v_items := coalesce(p_payload->'items', '[]'::jsonb);
-  v_draft_order_id := nullif(p_payload->>'draft_order_id', '')::bigint;
-  v_financial_details := p_payload->'financial_details';
-
-  if jsonb_typeof(p_payload->'shipping_address') = 'object' then
-    v_shipping_address := coalesce(
-      nullif(trim(concat_ws(', ',
-        nullif(p_payload->'shipping_address'->>'street_1', ''),
-        nullif(p_payload->'shipping_address'->>'street_2', '')
-      )), ''),
-      'N/A'
-    );
-    v_shipping_city := coalesce(nullif(trim(p_payload->'shipping_address'->>'city'), ''), 'N/A');
-    v_shipping_state := coalesce(nullif(trim(p_payload->'shipping_address'->>'state'), ''), 'N/A');
-    v_shipping_postal_code := coalesce(nullif(trim(p_payload->'shipping_address'->>'postal_code'), ''), '0000');
-    v_shipping_country := coalesce(nullif(trim(p_payload->'shipping_address'->>'country'), ''), 'Australia');
-  else
-    v_shipping_address := coalesce(nullif(trim(p_payload->>'shipping_address'), ''), 'N/A');
-    v_shipping_city := coalesce(nullif(trim(p_payload->>'shipping_city'), ''), 'N/A');
-    v_shipping_state := coalesce(nullif(trim(p_payload->>'shipping_state'), ''), 'N/A');
-    v_shipping_postal_code := coalesce(nullif(trim(p_payload->>'shipping_postal_code'), ''), '0000');
-    v_shipping_country := coalesce(nullif(trim(p_payload->>'shipping_country'), ''), 'Australia');
-  end if;
-
-  if jsonb_typeof(p_payload->'billing_address') = 'object' then
-    v_billing_address := coalesce(
-      nullif(trim(concat_ws(', ',
-        nullif(p_payload->'billing_address'->>'street_1', ''),
-        nullif(p_payload->'billing_address'->>'street_2', '')
-      )), ''),
-      'N/A'
-    );
-    v_billing_city := coalesce(nullif(trim(p_payload->'billing_address'->>'city'), ''), 'N/A');
-    v_billing_state := coalesce(nullif(trim(p_payload->'billing_address'->>'state'), ''), 'N/A');
-    v_billing_postal_code := coalesce(nullif(trim(p_payload->'billing_address'->>'postal_code'), ''), '0000');
-    v_billing_country := coalesce(nullif(trim(p_payload->'billing_address'->>'country'), ''), 'Australia');
-  else
-    v_billing_address := coalesce(nullif(trim(p_payload->>'billing_address'), ''), 'N/A');
-    v_billing_city := coalesce(nullif(trim(p_payload->>'billing_city'), ''), 'N/A');
-    v_billing_state := coalesce(nullif(trim(p_payload->>'billing_state'), ''), 'N/A');
-    v_billing_postal_code := coalesce(nullif(trim(p_payload->>'billing_postal_code'), ''), '0000');
-    v_billing_country := coalesce(nullif(trim(p_payload->>'billing_country'), ''), 'Australia');
-  end if;
-  v_payment_terms := coalesce(
-    nullif(p_payload->>'payment_terms', '')::public.order_payment_terms,
-    'prepaid'::public.order_payment_terms
-  );
-  v_po_number := nullif(p_payload->>'po_number', '');
-
-  if v_stripe_checkout_session_id is not null then
-    v_order_id := public.find_order_id_by_stripe_session(v_stripe_checkout_session_id);
-
-    if v_order_id is not null then
-      if v_draft_order_id is not null then
-        delete from public.draft_orders where id = v_draft_order_id;
-      end if;
-      return v_order_id;
-    end if;
-  end if;
-
-  if v_grand_total is null or v_grand_total <= 0 then
-    raise exception 'Order grand total must be greater than zero';
-  end if;
-
-  if v_subtotal is null then
-    v_subtotal := greatest(v_grand_total - v_tax_total - v_shipping_fee, 0);
-  end if;
-
-  if v_draft_order_id is not null then
-    perform public.move_draft_to_paid_order(
-      v_draft_order_id,
-      p_orders_table,
-      'confirmed'::public.order_status,
-      v_cancel_token,
-      v_tracking_token,
-      v_customer_name,
-      v_customer_email,
-      v_customer_phone,
-      v_requested_fulfillment_method,
-      v_requested_target_date,
-      v_subtotal,
-      v_tax_total,
-      v_shipping_fee,
-      v_grand_total,
-      v_notes,
-      v_status_updated_at
-    );
-    v_order_id := v_draft_order_id;
-  else
-    if jsonb_typeof(v_items) <> 'array' or jsonb_array_length(v_items) = 0 then
-      raise exception 'Order items must be a non-empty array';
-    end if;
-
-    execute format($sql$
-      insert into public.%I (
-        order_type,
-        status,
-        cancel_token,
-        tracking_token,
-        customer_account,
-        customer_name,
-        customer_email,
-        customer_phone,
-        store_id,
-        requested_fulfillment_method,
-        requested_target_date,
-        shipping_address,
-        shipping_city,
-        shipping_state,
-        shipping_postal_code,
-        shipping_country,
-        billing_address,
-        billing_city,
-        billing_state,
-        billing_postal_code,
-        billing_country,
-        payment_terms,
-        po_number,
-        subtotal,
-        tax_total,
-        shipping_fee,
-        grand_total,
-        financial_details,
-        notes,
-        status_updated_at
-      )
-      values (
-        $1, 'confirmed', $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-        $22, $23, $24, $25, $26, $27, $28, $29
-      )
-      returning id
-    $sql$, p_orders_table)
-    into v_order_id
-    using
+    values (
+      v_is_testing,
       v_order_type,
+      'confirmed',
       v_cancel_token,
       v_tracking_token,
       v_customer_account,
@@ -468,9 +484,13 @@ begin
       v_grand_total,
       v_financial_details,
       v_notes,
-      v_status_updated_at;
+      v_status_updated_at
+    )
+    returning id
+    into v_order_id;
   end if;
 
+  -- Line items: draft checkout already inserted rows; otherwise insert from payload.
   select exists (
     select 1
     from public.order_items
@@ -497,7 +517,10 @@ begin
     raise exception 'No valid order items found';
   end if;
 
-  if v_stripe_checkout_session_id is not null then
+  -- Payment record when a gateway transaction id is supplied.
+  if v_payment_gateway is not null
+    and v_payment_gateway <> 'none'::public.order_payment_gateway
+    and v_payment_gateway_transaction_id is not null then
     begin
       insert into public.order_payments (
         order_id,
@@ -511,17 +534,20 @@ begin
       )
       values (
         v_order_id,
-        v_grand_total,
-        'paid'::public.order_payment_status,
-        v_stripe_mode,
-        'credit_card'::public.order_payment_method,
-        'stripe'::public.order_payment_gateway,
-        v_stripe_checkout_session_id,
-        jsonb_build_object('stripe_checkout_session_id', v_stripe_checkout_session_id)
+        coalesce(v_payment_amount, v_grand_total),
+        coalesce(v_payment_status, 'paid'::public.order_payment_status),
+        v_payment_mode,
+        coalesce(v_payment_method, 'credit_card'::public.order_payment_method),
+        v_payment_gateway,
+        v_payment_gateway_transaction_id,
+        v_payment_gateway_data
       );
     exception
       when unique_violation then
-        v_order_id := public.find_order_id_by_stripe_session(v_stripe_checkout_session_id);
+        v_order_id := public.find_order_id_by_gateway_transaction(
+          v_payment_gateway,
+          v_payment_gateway_transaction_id
+        );
         if v_order_id is null then
           raise;
         end if;
@@ -529,9 +555,9 @@ begin
     end;
   end if;
 
-  if v_order_type = 'wholesale'::public.order_type then
+  -- Wholesale daily inventory: live orders only (is_testing orders do not consume stock).
+  if v_order_type = 'wholesale'::public.order_type and not v_is_testing then
     perform public.record_wholesale_inventory_sales(
-      p_orders_table,
       v_order_id,
       v_customer_account
     );
@@ -541,34 +567,63 @@ begin
 end;
 $$;
 
-comment on function public.create_paid_order_with_items_impl is
-  'Internal helper: promotes a draft or creates a paid order while preserving shared child rows.';
+comment on function public.create_paid_order_with_items_impl(
+  bigint,
+  jsonb,
+  jsonb,
+  jsonb
+) is
+  'Internal: atomically creates a confirmed paid order from separate order, item, and payment payloads.';
 
-create or replace function public.create_paid_order_with_items(p_payload jsonb)
+-- Public entry point for live paid orders. Called by payment webhooks.
+create or replace function public.create_paid_order_with_items(
+  p_draft_order_id bigint,
+  p_items jsonb,
+  p_order_payload jsonb,
+  p_payment_payload jsonb
+)
 returns bigint
 language plpgsql
 set search_path = public
 as $$
 begin
-  return public.create_paid_order_with_items_impl('orders', p_payload);
+  return public.create_paid_order_with_items_impl(
+    p_draft_order_id,
+    p_items,
+    p_order_payload,
+    p_payment_payload
+  );
 end;
 $$;
 
-create or replace function public.create_paid_test_order_with_items(p_payload jsonb)
+-- Back-compat wrapper: forces is_testing = true in order_payload.
+create or replace function public.create_paid_test_order_with_items(
+  p_draft_order_id bigint,
+  p_items jsonb,
+  p_order_payload jsonb,
+  p_payment_payload jsonb
+)
 returns bigint
 language plpgsql
 set search_path = public
 as $$
 begin
-  return public.create_paid_order_with_items_impl('test_orders', p_payload);
+  return public.create_paid_order_with_items_impl(
+    p_draft_order_id,
+    p_items,
+    coalesce(p_order_payload, '{}'::jsonb) || jsonb_build_object('is_testing', true),
+    p_payment_payload
+  );
 end;
 $$;
 
-comment on function public.create_paid_order_with_items(jsonb) is
-  'Atomically creates a paid confirmed live order from a jsonb payload.';
-comment on function public.create_paid_test_order_with_items(jsonb) is
-  'Atomically creates a paid confirmed test order from a jsonb payload.';
+comment on function public.create_paid_order_with_items(bigint, jsonb, jsonb, jsonb) is
+  'Creates a confirmed live paid order. Primary payment-webhook entry point.';
+comment on function public.create_paid_test_order_with_items(bigint, jsonb, jsonb, jsonb) is
+  'Creates a confirmed test paid order by setting is_testing = true on order_payload.';
 
+-- Soft-delete: copies the order header to archived_orders, then removes it from orders.
+-- order_items, order_payments, and order_fulfillments are not moved (shared by order_id).
 create or replace function public.archive_and_delete_order(
   p_order_id bigint,
   p_archived_reason text default null
@@ -592,6 +647,7 @@ begin
 
   insert into public.archived_orders (
     id,
+    is_testing,
     order_type,
     status,
     cancel_token,
@@ -629,6 +685,7 @@ begin
   )
   values (
     v_order.id,
+    v_order.is_testing,
     v_order.order_type,
     v_order.status,
     v_order.cancel_token,
@@ -672,13 +729,13 @@ end;
 $$;
 
 comment on function public.archive_and_delete_order(bigint, text) is
-  'Moves an active order to archived_orders by id; child rows stay in shared tables.';
+  'Archives an orders row to archived_orders (same id) and deletes the live header. Child rows remain in shared tables for history.';
 
+grant execute on function public.find_order_id_by_gateway_transaction(public.order_payment_gateway, text) to service_role;
 grant execute on function public.find_order_id_by_stripe_session(text) to service_role;
 grant execute on function public.insert_order_items_from_payload(bigint, public.order_type, jsonb) to service_role;
 grant execute on function public.move_draft_to_paid_order(
   bigint,
-  text,
   public.order_status,
   text,
   text,
@@ -694,7 +751,7 @@ grant execute on function public.move_draft_to_paid_order(
   text,
   timestamptz
 ) to service_role;
-grant execute on function public.create_paid_order_with_items_impl(text, jsonb) to service_role;
-grant execute on function public.create_paid_order_with_items(jsonb) to service_role;
-grant execute on function public.create_paid_test_order_with_items(jsonb) to service_role;
+grant execute on function public.create_paid_order_with_items_impl(bigint, jsonb, jsonb, jsonb) to service_role;
+grant execute on function public.create_paid_order_with_items(bigint, jsonb, jsonb, jsonb) to service_role;
+grant execute on function public.create_paid_test_order_with_items(bigint, jsonb, jsonb, jsonb) to service_role;
 grant execute on function public.archive_and_delete_order(bigint, text) to authenticated, service_role;

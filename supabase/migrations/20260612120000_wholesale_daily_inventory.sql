@@ -25,7 +25,7 @@ create table public.wholesale_inventory_sales (
   customer_account uuid
     references public.user_profiles (id) on delete set null,
   order_source text not null
-    check (order_source in ('orders', 'test_orders')),
+    check (order_source = 'orders'),
   order_id bigint not null,
   order_item_id bigint not null,
   qty integer not null check (qty > 0),
@@ -218,7 +218,6 @@ comment on function public.get_wholesale_products_availability(uuid, date) is
   'Bulk availability for all active wholesale products.';
 
 create or replace function public.record_wholesale_inventory_sales(
-  p_order_source text,
   p_order_id bigint,
   p_customer_account uuid,
   p_sale_date date default public.wholesale_business_date()
@@ -229,49 +228,43 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_order_source not in ('orders', 'test_orders') then
-    raise exception 'invalid order source';
-  end if;
-
   if p_customer_account is null then
     raise exception 'customer account is required for wholesale inventory';
   end if;
 
-  execute format($sql$
-    insert into public.wholesale_inventory_sales (
-      product_id,
-      customer_account,
-      order_source,
-      order_id,
-      order_item_id,
-      qty,
-      sale_date
-    )
-    select
-      coalesce(oi.wholesale_item_id, oi.menu_item_id),
-      $2,
-      $3,
-      o.id,
-      oi.id,
-      trunc(oi.quantity)::integer,
-      $4
-    from public.order_items as oi
-    inner join public.%I as o on o.id = oi.order_id
-    where o.id = $1
-      and o.order_type = 'wholesale'::public.order_type
-    on conflict (order_source, order_item_id) do nothing
-  $sql$, p_order_source)
-  using p_order_id, p_customer_account, p_order_source, p_sale_date;
+  insert into public.wholesale_inventory_sales (
+    product_id,
+    customer_account,
+    order_source,
+    order_id,
+    order_item_id,
+    qty,
+    sale_date
+  )
+  select
+    coalesce(oi.wholesale_item_id, oi.menu_item_id),
+    p_customer_account,
+    'orders',
+    o.id,
+    oi.id,
+    trunc(oi.quantity)::integer,
+    p_sale_date
+  from public.order_items as oi
+  inner join public.orders as o on o.id = oi.order_id
+  where o.id = p_order_id
+    and o.order_type = 'wholesale'::public.order_type
+    and o.is_testing = false
+  on conflict (order_source, order_item_id) do nothing;
 end;
 $$;
 
-comment on function public.record_wholesale_inventory_sales(text, bigint, uuid, date) is
-  'Records paid wholesale line items into the daily inventory ledger (idempotent).';
+comment on function public.record_wholesale_inventory_sales(bigint, uuid, date) is
+  'Records paid live wholesale line items into the daily inventory ledger (idempotent).';
 
 grant execute on function public.wholesale_business_date(timestamptz) to anon, authenticated, service_role;
 grant execute on function public.get_wholesale_product_availability(bigint, uuid, date) to anon, authenticated, service_role;
 grant execute on function public.get_wholesale_products_availability(uuid, date) to anon, authenticated, service_role;
-grant execute on function public.record_wholesale_inventory_sales(text, bigint, uuid, date) to service_role;
+grant execute on function public.record_wholesale_inventory_sales(bigint, uuid, date) to service_role;
 
 -- Paid order RPCs are defined in 20260531160000_orders.sql and call
 -- record_wholesale_inventory_sales after line items are inserted.

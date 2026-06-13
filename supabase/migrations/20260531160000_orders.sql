@@ -51,11 +51,12 @@ create type public.order_payment_gateway as enum (
 
 create type public.order_item_uom as enum ('CASE', 'EACH', 'LBS', 'KG');
 
--- Shared across orders, draft_orders, test_orders, and archived_orders.
+-- Shared across orders, draft_orders, and archived_orders.
 create sequence public.order_id_seq;
 
 create table public.orders (
   id bigint not null default nextval('public.order_id_seq') primary key,
+  is_testing boolean not null default false,
   order_type public.order_type not null,
   status public.order_status not null default 'pending',
   cancel_token text unique,
@@ -69,11 +70,13 @@ create table public.orders (
   store_id bigint references public.store_locations (id) on delete set null,
   requested_fulfillment_method public.order_fulfillment_type not null,
   requested_target_date timestamptz not null,
+
   shipping_address text not null,
   shipping_city text not null,
   shipping_state text not null,
   shipping_postal_code text not null,
   shipping_country text not null,
+  
   billing_address text not null,
   billing_city text not null,
   billing_state text not null,
@@ -141,6 +144,7 @@ create table public.order_fulfillments (
   exception_notes text
 );
 
+create index orders_is_testing_idx on public.orders (is_testing);
 create index orders_store_id_idx on public.orders (store_id);
 create index orders_status_idx on public.orders (status);
 create index orders_tracking_token_idx on public.orders (tracking_token) where tracking_token is not null;
@@ -166,7 +170,7 @@ comment on table public.order_items is 'Line items shared across all order lifec
 comment on table public.order_payments is 'Payment ledger entries shared across all order lifecycle tables.';
 comment on table public.order_fulfillments is 'Fulfillment events shared across all order lifecycle tables.';
 comment on column public.order_items.order_id is
-  'References an order id from orders, draft_orders, test_orders, or archived_orders (no FK).';
+  'References an order id from orders, draft_orders, or archived_orders (no FK).';
 
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;

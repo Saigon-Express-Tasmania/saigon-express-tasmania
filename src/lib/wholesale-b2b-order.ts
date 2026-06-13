@@ -6,6 +6,8 @@ import type {
   WholesaleOrderB2B,
   WholesaleOrderBuyer,
   WholesaleOrderFinancialDetails,
+  WholesaleOrderReviewForm,
+  OrderFulfillmentMethod,
   WholesaleShippingAddress,
 } from "@/types/WholesaleB2BOrder";
 
@@ -68,6 +70,261 @@ export function buildWholesaleFinancialDetails(
     gst_total: gst,
     grand_total_inc_gst: Number((subtotal + gst).toFixed(2)),
     currency: "AUD",
+  };
+}
+
+export const AUSTRALIAN_STATES = [
+  { value: "ACT", label: "Australian Capital Territory" },
+  { value: "NSW", label: "New South Wales" },
+  { value: "NT", label: "Northern Territory" },
+  { value: "QLD", label: "Queensland" },
+  { value: "SA", label: "South Australia" },
+  { value: "TAS", label: "Tasmania" },
+  { value: "VIC", label: "Victoria" },
+  { value: "WA", label: "Western Australia" },
+] as const;
+
+export const WHOLESALE_DEFAULT_COUNTRY = "Australia";
+
+export const WHOLESALE_FULFILLMENT_OPTIONS: {
+  value: OrderFulfillmentMethod;
+  label: string;
+}[] = [
+  { value: "delivery", label: "Delivery" },
+  { value: "shipping", label: "Shipping" },
+  { value: "pick_up", label: "Pick up" },
+];
+
+export const WHOLESALE_PAYMENT_TERMS_OPTIONS = [
+  { value: "prepaid", label: "Prepaid" },
+  { value: "due_on_receipt", label: "Due on receipt" },
+  { value: "deposit_required", label: "Deposit required" },
+  { value: "net_30", label: "Net 30" },
+  { value: "net_60", label: "Net 60" },
+  { value: "net_90", label: "Net 90" },
+] as const;
+
+const AUSTRALIAN_STATE_NAME_TO_CODE: Record<string, string> = {
+  "australian capital territory": "ACT",
+  act: "ACT",
+  "new south wales": "NSW",
+  nsw: "NSW",
+  "northern territory": "NT",
+  nt: "NT",
+  queensland: "QLD",
+  qld: "QLD",
+  "south australia": "SA",
+  sa: "SA",
+  tasmania: "TAS",
+  tas: "TAS",
+  victoria: "VIC",
+  vic: "VIC",
+  "western australia": "WA",
+  wa: "WA",
+};
+
+export function normalizeAustralianState(value: string | null | undefined): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "TAS";
+  const upper = raw.toUpperCase();
+  if (AUSTRALIAN_STATES.some((state) => state.value === upper)) return upper;
+  const fromName = AUSTRALIAN_STATE_NAME_TO_CODE[raw.toLowerCase()];
+  return fromName ?? "TAS";
+}
+
+function normalizePaymentTerms(value: string | null | undefined): string {
+  const raw = String(value ?? "prepaid").trim().toLowerCase().replace(/\s+/g, "_");
+  if (raw === "prepaid" || raw === "due_on_receipt" || raw === "deposit_required") {
+    return raw;
+  }
+  if (raw === "net_30" || raw === "net_60" || raw === "net_90") return raw;
+  if (raw === "net30") return "net_30";
+  if (raw === "net60") return "net_60";
+  if (raw === "net90") return "net_90";
+  return "prepaid";
+}
+
+export function defaultRequestedTargetDateLocal(): string {
+  const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function requestedTargetDateLocalToIso(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const parsed = new Date(`${trimmed}T09:00:00`);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  const parsed = Date.parse(trimmed);
+  if (Number.isNaN(parsed)) {
+    return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  }
+  return new Date(parsed).toISOString();
+}
+
+export function buildWholesaleOrderTotals(
+  cartTotalExGst: number,
+): Pick<
+  WholesaleOrderReviewForm,
+  "subtotal" | "tax_total" | "shipping_fee" | "grand_total"
+> {
+  const subtotal = Number(cartTotalExGst.toFixed(2));
+  const tax_total = Number((subtotal * 0.1).toFixed(2));
+  const shipping_fee = 0;
+  const grand_total = Number((subtotal + tax_total + shipping_fee).toFixed(2));
+  return { subtotal, tax_total, shipping_fee, grand_total };
+}
+
+export function buildWholesaleOrderReviewFromProfile(
+  profile: UserProfile,
+  email: string,
+  cartTotalExGst: number,
+): WholesaleOrderReviewForm {
+  const customer_name = getWholesaleContactName(profile);
+  const city = profile.city?.trim() || profile.suburb?.trim() || "";
+  const street_1 = profile.address_line1?.trim() ?? "";
+  const businessName = profile.business_name?.trim() || customer_name;
+
+  return {
+    customer_name,
+    customer_email: email,
+    customer_phone: profile.phone?.trim() ?? "",
+    requested_fulfillment_method: "delivery",
+    requested_target_date: defaultRequestedTargetDateLocal(),
+    shipping_dba_name: businessName,
+    shipping_address: street_1,
+    shipping_street_2: profile.address_line2?.trim() || null,
+    shipping_city: city,
+    shipping_state: normalizeAustralianState(profile.state),
+    shipping_postal_code: profile.postal_code?.trim() ?? "",
+    shipping_country: WHOLESALE_DEFAULT_COUNTRY,
+    shipping_special_instructions: null,
+    shipping_preferred_window: null,
+    billing_legal_name: businessName,
+    billing_address: street_1,
+    billing_street_2: profile.address_line2?.trim() || null,
+    billing_city: city,
+    billing_state: normalizeAustralianState(profile.state),
+    billing_postal_code: profile.postal_code?.trim() ?? "",
+    billing_country: WHOLESALE_DEFAULT_COUNTRY,
+    billing_tax_id: profile.abn?.trim() || null,
+    payment_terms: normalizePaymentTerms("prepaid"),
+    po_number: null,
+    notes: null,
+    ...buildWholesaleOrderTotals(cartTotalExGst),
+  };
+}
+
+export function isBillingSameAsShippingForm(
+  form: WholesaleOrderReviewForm,
+): boolean {
+  return (
+    form.billing_legal_name === form.shipping_dba_name &&
+    form.billing_address === form.shipping_address &&
+    (form.billing_street_2 ?? "") === (form.shipping_street_2 ?? "") &&
+    form.billing_city === form.shipping_city &&
+    form.billing_state === form.shipping_state &&
+    form.billing_postal_code === form.shipping_postal_code &&
+    form.billing_country === form.shipping_country
+  );
+}
+
+export function billingFromShippingForm(
+  form: WholesaleOrderReviewForm,
+): WholesaleOrderReviewForm {
+  return {
+    ...form,
+    billing_legal_name: form.shipping_dba_name,
+    billing_address: form.shipping_address,
+    billing_street_2: form.shipping_street_2,
+    billing_city: form.shipping_city,
+    billing_state: form.shipping_state,
+    billing_postal_code: form.shipping_postal_code,
+    billing_country: WHOLESALE_DEFAULT_COUNTRY,
+    shipping_country: WHOLESALE_DEFAULT_COUNTRY,
+  };
+}
+
+export function validateWholesaleOrderReview(
+  form: WholesaleOrderReviewForm,
+): string | null {
+  if (!form.customer_name.trim()) return "Customer name is required.";
+  if (!form.customer_email.trim()) return "Customer email is required.";
+  if (!form.customer_phone.trim()) return "Customer phone is required.";
+  if (!form.requested_target_date.trim()) {
+    return "Requested delivery date is required.";
+  }
+  if (!form.shipping_address.trim()) return "Shipping street address is required.";
+  if (!form.shipping_city.trim()) return "Shipping city is required.";
+  if (!form.shipping_state.trim()) return "Shipping state is required.";
+  if (!form.shipping_postal_code.trim()) return "Shipping postal code is required.";
+  if (!form.billing_legal_name.trim()) return "Billing legal name is required.";
+  if (!form.billing_address.trim()) return "Billing street address is required.";
+  if (!form.billing_city.trim()) return "Billing city is required.";
+  if (!form.billing_state.trim()) return "Billing state is required.";
+  if (!form.billing_postal_code.trim()) return "Billing postal code is required.";
+  if (form.grand_total <= 0) return "Order total must be greater than zero.";
+  return null;
+}
+
+export function serializeWholesaleOrderReviewForCheckout(
+  form: WholesaleOrderReviewForm,
+) {
+  const shippingAddress: WholesaleShippingAddress = {
+    dba_name: form.shipping_dba_name.trim(),
+    street_1: form.shipping_address.trim(),
+    street_2: form.shipping_street_2?.trim() || null,
+    city: form.shipping_city.trim(),
+    state: form.shipping_state.trim(),
+    postal_code: form.shipping_postal_code.trim(),
+    country: WHOLESALE_DEFAULT_COUNTRY,
+    special_instructions: form.shipping_special_instructions?.trim() || null,
+    preferred_window: form.shipping_preferred_window?.trim() || null,
+  };
+
+  const billingAddress: WholesaleBillingAddress = {
+    legal_name: form.billing_legal_name.trim(),
+    street_1: form.billing_address.trim(),
+    street_2: form.billing_street_2?.trim() || null,
+    city: form.billing_city.trim(),
+    state: form.billing_state.trim(),
+    postal_code: form.billing_postal_code.trim(),
+    country: WHOLESALE_DEFAULT_COUNTRY,
+    tax_id: form.billing_tax_id?.trim() || null,
+    payment_terms: form.payment_terms,
+  };
+
+  const financialDetails: WholesaleOrderFinancialDetails = {
+    subtotal_ex_gst: form.subtotal,
+    gst_total: form.tax_total,
+    grand_total_inc_gst: form.grand_total,
+    currency: "AUD",
+  };
+
+  return {
+    fulfillmentType: form.requested_fulfillment_method,
+    pickupTime: requestedTargetDateLocalToIso(form.requested_target_date),
+    notes: form.notes?.trim() || undefined,
+    customerName: form.customer_name.trim(),
+    customerEmail: form.customer_email.trim(),
+    customerPhone: form.customer_phone.trim(),
+    buyer: {
+      name: form.customer_name.trim(),
+      role: null,
+      contact_phone: form.customer_phone.trim(),
+      contact_email: form.customer_email.trim() || null,
+    },
+    shippingAddress,
+    billingAddress,
+    financialDetails,
   };
 }
 

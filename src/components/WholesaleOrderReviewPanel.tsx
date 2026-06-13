@@ -1,18 +1,43 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { format, parseISO } from "date-fns";
+import { DayPicker } from "react-day-picker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { WholesaleCartItem } from "@/contexts/WholesaleCartContext";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  billingAddressFromShipping,
-  isBillingSameAsShipping,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AUSTRALIAN_STATES,
+  billingFromShippingForm,
+  isBillingSameAsShippingForm,
+  WHOLESALE_DEFAULT_COUNTRY,
+  WHOLESALE_FULFILLMENT_OPTIONS,
+  WHOLESALE_PAYMENT_TERMS_OPTIONS,
 } from "@/lib/wholesale-b2b-order";
-import type { WholesaleB2BCheckoutPayload } from "@/types/WholesaleB2BOrder";
-import { ArrowLeft, CreditCard, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { WholesaleOrderReviewForm } from "@/types/WholesaleB2BOrder";
+import { ArrowLeft, CalendarIcon, CreditCard, Loader2 } from "lucide-react";
+import "react-day-picker/style.css";
 
 const fieldClass =
   "w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40";
+
+const selectTriggerClass =
+  "h-10 w-full border-white/15 bg-black/40 text-white shadow-none focus-visible:border-primary/50 focus-visible:ring-primary/30 [&>span]:text-white";
+
+const selectContentClass =
+  "z-[60] border-white/15 bg-[#121212] text-white shadow-2xl";
+
+const selectItemClass =
+  "text-white focus:bg-white/10 data-[highlighted]:bg-white/10";
 
 function Field({
   label,
@@ -31,67 +56,181 @@ function Field({
   );
 }
 
+function SectionTitle({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      {description ? (
+        <p className="mt-0.5 text-xs text-white/40">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ReviewSelect({
+  label,
+  value,
+  onValueChange,
+  options,
+  placeholder = "Select…",
+}: {
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) {
+  return (
+    <Field label={label}>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger className={selectTriggerClass}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent className={selectContentClass}>
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className={selectItemClass}
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
+}
+
+function ReviewDatePicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedDate = useMemo(() => {
+    if (!value) return undefined;
+    const datePart = value.length >= 10 ? value.slice(0, 10) : value;
+    try {
+      const parsed = parseISO(datePart);
+      return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+    } catch {
+      return undefined;
+    }
+  }, [value]);
+
+  const today = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
+
+  return (
+    <Field label={label}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              fieldClass,
+              "flex items-center justify-between gap-2 text-left",
+            )}
+          >
+            <span>
+              {selectedDate
+                ? format(selectedDate, "d MMMM yyyy")
+                : "Select delivery date"}
+            </span>
+            <CalendarIcon className="h-4 w-4 shrink-0 text-white/45" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="z-[60] w-auto border-white/15 bg-[#121212] p-3 text-white shadow-2xl"
+        >
+          <DayPicker
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => {
+              if (!date) return;
+              onChange(format(date, "yyyy-MM-dd"));
+              setOpen(false);
+            }}
+            disabled={{ before: today }}
+            className="wholesale-review-calendar"
+            classNames={{
+              root: "text-white",
+              month_caption: "flex justify-center pb-2 text-sm font-semibold",
+              weekday: "w-9 text-center text-xs text-white/45",
+              day: "p-0",
+              day_button:
+                "h-9 w-9 rounded-md text-sm text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              selected:
+                "[&>button]:bg-primary [&>button]:text-white [&>button]:hover:bg-primary/90",
+              today: "[&>button]:border [&>button]:border-primary/50",
+              outside: "[&>button]:text-white/25",
+              disabled: "[&>button]:text-white/20 [&>button]:hover:bg-transparent",
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    </Field>
+  );
+}
+
 export default function WholesaleOrderReviewPanel({
   items,
-  financialDetails,
-  b2b,
-  onB2bChange,
+  review,
+  onReviewChange,
   onBack,
   onConfirm,
   isCheckingOut,
 }: {
   items: WholesaleCartItem[];
-  financialDetails: WholesaleB2BCheckoutPayload["financialDetails"];
-  b2b: WholesaleB2BCheckoutPayload;
-  onB2bChange: (next: WholesaleB2BCheckoutPayload) => void;
+  review: WholesaleOrderReviewForm;
+  onReviewChange: (next: WholesaleOrderReviewForm) => void;
   onBack: () => void;
   onConfirm: () => void;
   isCheckingOut: boolean;
 }) {
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(() =>
-    isBillingSameAsShipping(b2b.shippingAddress, b2b.billingAddress),
+    isBillingSameAsShippingForm(review),
   );
 
-  const updateShipping = (
-    patch: Partial<WholesaleB2BCheckoutPayload["shippingAddress"]>,
-  ) => {
-    const nextShipping = { ...b2b.shippingAddress, ...patch };
-    onB2bChange({
-      ...b2b,
-      shippingAddress: nextShipping,
-      billingAddress: billingSameAsShipping
-        ? billingAddressFromShipping(nextShipping, b2b.billingAddress)
-        : b2b.billingAddress,
-    });
+  const withAustralia = (
+    next: Partial<WholesaleOrderReviewForm>,
+  ): Partial<WholesaleOrderReviewForm> => ({
+    ...next,
+    shipping_country: WHOLESALE_DEFAULT_COUNTRY,
+    billing_country: WHOLESALE_DEFAULT_COUNTRY,
+  });
+
+  const patch = (next: Partial<WholesaleOrderReviewForm>) => {
+    onReviewChange({ ...review, ...withAustralia(next) });
   };
 
-  const updateBilling = (
-    patch: Partial<WholesaleB2BCheckoutPayload["billingAddress"]>,
-  ) => {
-    onB2bChange({
-      ...b2b,
-      billingAddress: { ...b2b.billingAddress, ...patch },
-    });
+  const patchShipping = (next: Partial<WholesaleOrderReviewForm>) => {
+    const merged = { ...review, ...withAustralia(next) };
+    onReviewChange(
+      billingSameAsShipping ? billingFromShippingForm(merged) : merged,
+    );
   };
 
   const handleBillingSameAsShippingChange = (checked: boolean) => {
     setBillingSameAsShipping(checked);
     if (checked) {
-      onB2bChange({
-        ...b2b,
-        billingAddress: billingAddressFromShipping(
-          b2b.shippingAddress,
-          b2b.billingAddress,
-        ),
-      });
+      onReviewChange(billingFromShippingForm(review));
     }
-  };
-
-  const updateBuyer = (patch: Partial<WholesaleB2BCheckoutPayload["buyer"]>) => {
-    onB2bChange({
-      ...b2b,
-      buyer: { ...b2b.buyer, ...patch },
-    });
   };
 
   return (
@@ -118,7 +257,62 @@ export default function WholesaleOrderReviewPanel({
 
       <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-white">Order items</h3>
+          <SectionTitle
+            title="Delivery"
+            description="Fulfillment method and requested shipping date"
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ReviewSelect
+              label="Fulfillment method"
+              value={review.requested_fulfillment_method}
+              onValueChange={(value) =>
+                patch({
+                  requested_fulfillment_method:
+                    value as WholesaleOrderReviewForm["requested_fulfillment_method"],
+                })
+              }
+              options={WHOLESALE_FULFILLMENT_OPTIONS}
+            />
+            <ReviewDatePicker
+              label="Requested shipping date"
+              value={review.requested_target_date}
+              onChange={(value) => patch({ requested_target_date: value })}
+            />
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle title="Customer" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Customer name">
+              <input
+                className={fieldClass}
+                value={review.customer_name}
+                onChange={(e) => patch({ customer_name: e.target.value })}
+              />
+            </Field>
+            <Field label="Phone">
+              <input
+                className={fieldClass}
+                value={review.customer_phone}
+                onChange={(e) => patch({ customer_phone: e.target.value })}
+              />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Email">
+                <input
+                  type="email"
+                  className={fieldClass}
+                  value={review.customer_email}
+                  onChange={(e) => patch({ customer_email: e.target.value })}
+                />
+              </Field>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle title="Order items" />
           <div className="space-y-2">
             {items.map((item) => (
               <div
@@ -131,7 +325,9 @@ export default function WholesaleOrderReviewPanel({
                   size="sm"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">{item.productName}</p>
+                  <p className="text-sm font-medium text-white">
+                    {item.productName}
+                  </p>
                   <p className="text-xs text-white/40 mt-0.5">
                     {item.qty} × ${Number(item.unitPrice).toFixed(2)} ex GST
                   </p>
@@ -145,84 +341,55 @@ export default function WholesaleOrderReviewPanel({
         </section>
 
         <section className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2 text-sm">
-          <div className="flex justify-between text-white/60">
-            <span>Subtotal (ex GST)</span>
-            <span className="tabular-nums text-white">
-              ${financialDetails.subtotal_ex_gst.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between text-white/60">
-            <span>GST (10%)</span>
-            <span className="tabular-nums text-white">
-              ${financialDetails.gst_total.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
-            <span>Total (inc GST)</span>
-            <span className="tabular-nums text-primary">
-              ${financialDetails.grand_total_inc_gst.toFixed(2)}
-            </span>
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-white">Buyer</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Name">
-              <input
-                className={fieldClass}
-                value={b2b.buyer.name}
-                onChange={(e) => updateBuyer({ name: e.target.value })}
-              />
-            </Field>
-            <Field label="Role">
-              <input
-                className={fieldClass}
-                value={b2b.buyer.role ?? ""}
-                onChange={(e) => updateBuyer({ role: e.target.value })}
-                placeholder="e.g. Head Chef"
-              />
-            </Field>
-            <Field label="Phone">
-              <input
-                className={fieldClass}
-                value={b2b.buyer.contact_phone}
-                onChange={(e) => updateBuyer({ contact_phone: e.target.value })}
-              />
-            </Field>
-            <Field label="Email">
-              <input
-                className={fieldClass}
-                value={b2b.buyer.contact_email ?? ""}
-                onChange={(e) => updateBuyer({ contact_email: e.target.value })}
-              />
-            </Field>
+          <SectionTitle title="Totals" />
+          <div className="mt-3 space-y-2">
+            <div className="flex justify-between text-white/60">
+              <span>Subtotal (ex GST)</span>
+              <span className="tabular-nums text-white">
+                ${review.subtotal.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between text-white/60">
+              <span>Tax total (GST)</span>
+              <span className="tabular-nums text-white">
+                ${review.tax_total.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between text-white/60">
+              <span>Shipping fee</span>
+              <span className="tabular-nums text-white">
+                ${review.shipping_fee.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
+              <span>Grand total (inc GST)</span>
+              <span className="tabular-nums text-primary">
+                ${review.grand_total.toFixed(2)}
+              </span>
+            </div>
           </div>
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-white">Shipping address</h3>
+          <SectionTitle title="Shipping address" />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Business / DBA name">
+            <Field label="DBA / business name">
               <input
                 className={fieldClass}
-                value={b2b.shippingAddress.dba_name}
-                onChange={(e) => updateShipping({ dba_name: e.target.value })}
-              />
-            </Field>
-            <Field label="City">
-              <input
-                className={fieldClass}
-                value={b2b.shippingAddress.city}
-                onChange={(e) => updateShipping({ city: e.target.value })}
+                value={review.shipping_dba_name}
+                onChange={(e) =>
+                  patchShipping({ shipping_dba_name: e.target.value })
+                }
               />
             </Field>
             <div className="sm:col-span-2">
               <Field label="Street address">
                 <input
                   className={fieldClass}
-                  value={b2b.shippingAddress.street_1}
-                  onChange={(e) => updateShipping({ street_1: e.target.value })}
+                  value={review.shipping_address}
+                  onChange={(e) =>
+                    patchShipping({ shipping_address: e.target.value })
+                  }
                 />
               </Field>
             </div>
@@ -230,37 +397,48 @@ export default function WholesaleOrderReviewPanel({
               <Field label="Street line 2">
                 <input
                   className={fieldClass}
-                  value={b2b.shippingAddress.street_2 ?? ""}
+                  value={review.shipping_street_2 ?? ""}
                   onChange={(e) =>
-                    updateShipping({ street_2: e.target.value || null })
+                    patchShipping({
+                      shipping_street_2: e.target.value || null,
+                    })
                   }
                 />
               </Field>
             </div>
-            <Field label="State">
+            <Field label="City">
               <input
                 className={fieldClass}
-                value={b2b.shippingAddress.state ?? ""}
-                onChange={(e) =>
-                  updateShipping({ state: e.target.value || null })
-                }
+                value={review.shipping_city}
+                onChange={(e) => patchShipping({ shipping_city: e.target.value })}
               />
             </Field>
+            <ReviewSelect
+              label="State"
+              value={review.shipping_state}
+              onValueChange={(value) => patchShipping({ shipping_state: value })}
+              options={AUSTRALIAN_STATES.map((state) => ({
+                value: state.value,
+                label: state.label,
+              }))}
+            />
             <Field label="Postal code">
               <input
                 className={fieldClass}
-                value={b2b.shippingAddress.postal_code}
-                onChange={(e) => updateShipping({ postal_code: e.target.value })}
+                value={review.shipping_postal_code}
+                onChange={(e) =>
+                  patchShipping({ shipping_postal_code: e.target.value })
+                }
               />
             </Field>
             <div className="sm:col-span-2">
               <Field label="Delivery instructions">
                 <textarea
                   className={`${fieldClass} min-h-[72px] resize-y`}
-                  value={b2b.shippingAddress.special_instructions ?? ""}
+                  value={review.shipping_special_instructions ?? ""}
                   onChange={(e) =>
-                    updateShipping({
-                      special_instructions: e.target.value || null,
+                    patchShipping({
+                      shipping_special_instructions: e.target.value || null,
                     })
                   }
                   placeholder="Loading dock, access codes, etc."
@@ -271,10 +449,10 @@ export default function WholesaleOrderReviewPanel({
               <Field label="Preferred delivery window">
                 <input
                   className={fieldClass}
-                  value={b2b.shippingAddress.preferred_window ?? ""}
+                  value={review.shipping_preferred_window ?? ""}
                   onChange={(e) =>
-                    updateShipping({
-                      preferred_window: e.target.value || null,
+                    patchShipping({
+                      shipping_preferred_window: e.target.value || null,
                     })
                   }
                   placeholder="e.g. 06:00 - 09:30"
@@ -286,7 +464,7 @@ export default function WholesaleOrderReviewPanel({
 
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-white">Billing address</h3>
+            <SectionTitle title="Billing address" />
             <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
               <input
                 type="checkbox"
@@ -312,9 +490,9 @@ export default function WholesaleOrderReviewPanel({
                 <Field label="Legal name">
                   <input
                     className={fieldClass}
-                    value={b2b.billingAddress.legal_name}
+                    value={review.billing_legal_name}
                     onChange={(e) =>
-                      updateBilling({ legal_name: e.target.value })
+                      patch({ billing_legal_name: e.target.value })
                     }
                   />
                 </Field>
@@ -322,9 +500,9 @@ export default function WholesaleOrderReviewPanel({
                   <Field label="Street address">
                     <input
                       className={fieldClass}
-                      value={b2b.billingAddress.street_1}
+                      value={review.billing_address}
                       onChange={(e) =>
-                        updateBilling({ street_1: e.target.value })
+                        patch({ billing_address: e.target.value })
                       }
                     />
                   </Field>
@@ -333,9 +511,11 @@ export default function WholesaleOrderReviewPanel({
                   <Field label="Street line 2">
                     <input
                       className={fieldClass}
-                      value={b2b.billingAddress.street_2 ?? ""}
+                      value={review.billing_street_2 ?? ""}
                       onChange={(e) =>
-                        updateBilling({ street_2: e.target.value || null })
+                        patch({
+                          billing_street_2: e.target.value || null,
+                        })
                       }
                     />
                   </Field>
@@ -343,40 +523,66 @@ export default function WholesaleOrderReviewPanel({
                 <Field label="City">
                   <input
                     className={fieldClass}
-                    value={b2b.billingAddress.city}
-                    onChange={(e) => updateBilling({ city: e.target.value })}
+                    value={review.billing_city}
+                    onChange={(e) => patch({ billing_city: e.target.value })}
                   />
                 </Field>
+                <ReviewSelect
+                  label="State"
+                  value={review.billing_state}
+                  onValueChange={(value) => patch({ billing_state: value })}
+                  options={AUSTRALIAN_STATES.map((state) => ({
+                    value: state.value,
+                    label: state.label,
+                  }))}
+                />
                 <Field label="Postal code">
                   <input
                     className={fieldClass}
-                    value={b2b.billingAddress.postal_code}
+                    value={review.billing_postal_code}
                     onChange={(e) =>
-                      updateBilling({ postal_code: e.target.value })
+                      patch({ billing_postal_code: e.target.value })
                     }
                   />
                 </Field>
               </>
-            ) : null}
+            ) : (
+              <Field label="Legal name">
+                <input
+                  className={fieldClass}
+                  value={review.billing_legal_name}
+                  onChange={(e) => patch({ billing_legal_name: e.target.value })}
+                />
+              </Field>
+            )}
             <Field label="Tax ID / ABN">
               <input
                 className={fieldClass}
-                value={b2b.billingAddress.tax_id ?? ""}
+                value={review.billing_tax_id ?? ""}
                 onChange={(e) =>
-                  updateBilling({ tax_id: e.target.value || null })
+                  patch({ billing_tax_id: e.target.value || null })
                 }
               />
             </Field>
-            <Field label="Payment terms">
-              <input
-                className={fieldClass}
-                value={b2b.billingAddress.payment_terms ?? ""}
-                onChange={(e) =>
-                  updateBilling({ payment_terms: e.target.value || null })
-                }
-                readOnly
-              />
-            </Field>
+            <ReviewSelect
+              label="Payment terms"
+              value={review.payment_terms}
+              onValueChange={(value) => patch({ payment_terms: value })}
+              options={WHOLESALE_PAYMENT_TERMS_OPTIONS.map((option) => ({
+                value: option.value,
+                label: option.label,
+              }))}
+            />
+            <div className="sm:col-span-2">
+              <Field label="Order notes">
+                <textarea
+                  className={`${fieldClass} min-h-[72px] resize-y`}
+                  value={review.notes ?? ""}
+                  onChange={(e) => patch({ notes: e.target.value || null })}
+                  placeholder="Additional instructions for this order"
+                />
+              </Field>
+            </div>
           </div>
         </section>
       </div>
@@ -396,7 +602,7 @@ export default function WholesaleOrderReviewPanel({
           ) : (
             <>
               <CreditCard className="h-4 w-4" />
-              Pay ${financialDetails.grand_total_inc_gst.toFixed(2)} with Card
+              Pay ${review.grand_total.toFixed(2)} with Card
             </>
           )}
         </button>
