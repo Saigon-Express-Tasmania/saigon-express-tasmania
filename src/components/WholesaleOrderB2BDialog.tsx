@@ -8,8 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  formatWholesalePaymentTerms,
   formatWholesaleStreetAddress,
+  WHOLESALE_PAYMENT_TERMS_OPTIONS,
 } from "@/lib/wholesale-b2b-order";
 import { formatWholesaleOrderId } from "@/lib/supabase/wholesale-orders";
 import type { WholesalePickupStore } from "@/lib/supabase/wholesale-orders";
@@ -191,7 +191,13 @@ function BillingSection({ address }: { address: WholesaleBillingAddress }) {
       <Detail label="Tax ID / ABN" value={address.tax_id} />
       <Detail
         label="Payment terms"
-        value={formatWholesalePaymentTerms(address.payment_terms)}
+        value={
+          address.payment_terms
+            ? WHOLESALE_PAYMENT_TERMS_OPTIONS.find(
+                (option) => option.value === address.payment_terms,
+              )?.label ?? address.payment_terms
+            : "—"
+        }
       />
       <AddressBlock
         label="Address"

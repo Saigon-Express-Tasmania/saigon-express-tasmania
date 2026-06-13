@@ -26,7 +26,7 @@ import {
   hasWholesalePickupStoreSelected,
 } from "@/lib/wholesale-b2b-order";
 import { cn } from "@/lib/utils";
-import type { WholesaleOrderReviewForm } from "@/types/WholesaleB2BOrder";
+import type { AustralianStateCode, WholesaleOrderReviewForm } from "@/types/WholesaleB2BOrder";
 import type { StoreLocation } from "@/types";
 import { ArrowLeft, CalendarIcon, Check, CreditCard, Loader2, MapPin, Phone } from "lucide-react";
 import "react-day-picker/style.css";
@@ -36,6 +36,8 @@ const fieldClass =
 
 const selectTriggerClass =
   "h-10 w-full border-white/15 bg-black/40 text-white shadow-none focus-visible:border-primary/50 focus-visible:ring-primary/30 [&>span]:text-white";
+
+const selectIconClass = "text-white/60";
 
 const selectContentClass =
   "z-[60] border-white/15 bg-[#121212] text-white shadow-2xl";
@@ -93,7 +95,7 @@ function ReviewSelect({
   return (
     <Field label={label}>
       <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className={selectTriggerClass}>
+        <SelectTrigger className={selectTriggerClass} iconClassName={selectIconClass}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent className={selectContentClass}>
@@ -193,9 +195,9 @@ function ReviewDatePicker({
 }
 
 function fulfillmentDateLabel(method: WholesaleOrderReviewForm["requested_fulfillment_method"]) {
-  if (method === "pick_up") return "Requested pickup date";
-  if (method === "shipping") return "Requested shipping date";
-  return "Requested delivery date";
+  if (method === "pick_up") return "When would you like to pick up your order?";
+  if (method === "shipping") return "When would you like your order to be shipped?";
+  return "When would you like your order to be delivered?";
 }
 
 function fulfillmentSectionDescription(
@@ -400,15 +402,9 @@ export default function WholesaleOrderReviewPanel({
 
       <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
         <section className="space-y-3">
-          <SectionTitle
-            title={isPickup ? "Pickup" : "Delivery"}
-            description={fulfillmentSectionDescription(
-              review.requested_fulfillment_method,
-            )}
-          />
           <div className="grid gap-3 sm:grid-cols-2">
             <ReviewSelect
-              label="Fulfillment method"
+              label="How do you want to receive your order?"
               value={review.requested_fulfillment_method}
               onValueChange={(value) => {
                 const method = value as WholesaleOrderReviewForm["requested_fulfillment_method"];
@@ -466,33 +462,124 @@ export default function WholesaleOrderReviewPanel({
           ) : null}
         </section>
 
+        {!isPickup ? (
+          <section className="space-y-3">
+            <SectionTitle title="Shipping address" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="DBA / business name">
+                <input
+                  className={fieldClass}
+                  value={review.shipping_dba_name}
+                  onChange={(e) =>
+                    patchShipping({ shipping_dba_name: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Phone">
+                <input
+                  className={fieldClass}
+                  value={review.customer_phone}
+                  onChange={(e) => patch({ customer_phone: e.target.value })}
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Street address">
+                  <input
+                    className={fieldClass}
+                    value={review.shipping_address}
+                    onChange={(e) =>
+                      patchShipping({ shipping_address: e.target.value })
+                    }
+                  />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Street line 2">
+                  <input
+                    className={fieldClass}
+                    value={review.shipping_street_2 ?? ""}
+                    onChange={(e) =>
+                      patchShipping({
+                        shipping_street_2: e.target.value || null,
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+              <Field label="City">
+                <input
+                  className={fieldClass}
+                  value={review.shipping_city}
+                  onChange={(e) => patchShipping({ shipping_city: e.target.value })}
+                />
+              </Field>
+              <ReviewSelect
+                label="State"
+                value={review.shipping_state}
+                onValueChange={(value) =>
+                  patchShipping({ shipping_state: value as AustralianStateCode })
+                }
+                options={AUSTRALIAN_STATES.map((state) => ({
+                  value: state.value,
+                  label: state.label,
+                }))}
+              />
+              <Field label="Postal code">
+                <input
+                  className={fieldClass}
+                  value={review.shipping_postal_code}
+                  onChange={(e) =>
+                    patchShipping({ shipping_postal_code: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Preferred delivery window">
+                <input
+                  className={fieldClass}
+                  value={review.shipping_preferred_window ?? ""}
+                  onChange={(e) =>
+                    patchShipping({
+                      shipping_preferred_window: e.target.value || null,
+                    })
+                  }
+                  placeholder="e.g. 06:00 - 09:30"
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Delivery instructions">
+                  <textarea
+                    className={`${fieldClass} min-h-[72px] resize-y`}
+                    value={review.shipping_special_instructions ?? ""}
+                    onChange={(e) =>
+                      patchShipping({
+                        shipping_special_instructions: e.target.value || null,
+                      })
+                    }
+                    placeholder="Loading dock, access codes, etc."
+                  />
+                </Field>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         <section className="space-y-3">
-          <SectionTitle title="Customer" />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Customer name">
+            <Field label="Your name">
               <input
                 className={fieldClass}
                 value={review.customer_name}
                 onChange={(e) => patch({ customer_name: e.target.value })}
               />
-            </Field>
-            <Field label="Phone">
+            </Field>            
+            <Field label="Email">
               <input
+                type="email"
                 className={fieldClass}
-                value={review.customer_phone}
-                onChange={(e) => patch({ customer_phone: e.target.value })}
+                value={review.customer_email}
+                onChange={(e) => patch({ customer_email: e.target.value })}
               />
             </Field>
-            <div className="sm:col-span-2">
-              <Field label="Email">
-                <input
-                  type="email"
-                  className={fieldClass}
-                  value={review.customer_email}
-                  onChange={(e) => patch({ customer_email: e.target.value })}
-                />
-              </Field>
-            </div>
           </div>
         </section>
 
@@ -553,101 +640,7 @@ export default function WholesaleOrderReviewPanel({
               </span>
             </div>
           </div>
-        </section>
-
-        {!isPickup ? (
-          <section className="space-y-3">
-            <SectionTitle title="Shipping address" />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="DBA / business name">
-                <input
-                  className={fieldClass}
-                  value={review.shipping_dba_name}
-                  onChange={(e) =>
-                    patchShipping({ shipping_dba_name: e.target.value })
-                  }
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Street address">
-                  <input
-                    className={fieldClass}
-                    value={review.shipping_address}
-                    onChange={(e) =>
-                      patchShipping({ shipping_address: e.target.value })
-                    }
-                  />
-                </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <Field label="Street line 2">
-                  <input
-                    className={fieldClass}
-                    value={review.shipping_street_2 ?? ""}
-                    onChange={(e) =>
-                      patchShipping({
-                        shipping_street_2: e.target.value || null,
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-              <Field label="City">
-                <input
-                  className={fieldClass}
-                  value={review.shipping_city}
-                  onChange={(e) => patchShipping({ shipping_city: e.target.value })}
-                />
-              </Field>
-              <ReviewSelect
-                label="State"
-                value={review.shipping_state}
-                onValueChange={(value) => patchShipping({ shipping_state: value })}
-                options={AUSTRALIAN_STATES.map((state) => ({
-                  value: state.value,
-                  label: state.label,
-                }))}
-              />
-              <Field label="Postal code">
-                <input
-                  className={fieldClass}
-                  value={review.shipping_postal_code}
-                  onChange={(e) =>
-                    patchShipping({ shipping_postal_code: e.target.value })
-                  }
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Delivery instructions">
-                  <textarea
-                    className={`${fieldClass} min-h-[72px] resize-y`}
-                    value={review.shipping_special_instructions ?? ""}
-                    onChange={(e) =>
-                      patchShipping({
-                        shipping_special_instructions: e.target.value || null,
-                      })
-                    }
-                    placeholder="Loading dock, access codes, etc."
-                  />
-                </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <Field label="Preferred delivery window">
-                  <input
-                    className={fieldClass}
-                    value={review.shipping_preferred_window ?? ""}
-                    onChange={(e) =>
-                      patchShipping({
-                        shipping_preferred_window: e.target.value || null,
-                      })
-                    }
-                    placeholder="e.g. 06:00 - 09:30"
-                  />
-                </Field>
-              </div>
-            </div>
-          </section>
-        ) : null}
+        </section>        
 
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -692,6 +685,15 @@ export default function WholesaleOrderReviewPanel({
                     }
                   />
                 </Field>
+                <Field label="Tax ID / ABN">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_tax_id ?? ""}
+                    onChange={(e) =>
+                      patch({ billing_tax_id: e.target.value || null })
+                    }
+                  />
+                </Field>
                 <div className="sm:col-span-2">
                   <Field label="Street address">
                     <input
@@ -726,7 +728,9 @@ export default function WholesaleOrderReviewPanel({
                 <ReviewSelect
                   label="State"
                   value={review.billing_state}
-                  onValueChange={(value) => patch({ billing_state: value })}
+                  onValueChange={(value) =>
+                    patch({ billing_state: value as AustralianStateCode })
+                  }
                   options={AUSTRALIAN_STATES.map((state) => ({
                     value: state.value,
                     label: state.label,
@@ -743,24 +747,26 @@ export default function WholesaleOrderReviewPanel({
                 </Field>
               </>
             ) : (
-              <Field label="Legal name">
-                <input
-                  className={fieldClass}
-                  value={review.billing_legal_name}
-                  onChange={(e) => patch({ billing_legal_name: e.target.value })}
-                />
-              </Field>
-            )}
-            <Field label="Tax ID / ABN">
-              <input
-                className={fieldClass}
-                value={review.billing_tax_id ?? ""}
-                onChange={(e) =>
-                  patch({ billing_tax_id: e.target.value || null })
-                }
-              />
-            </Field>
-            <ReviewSelect
+              <>
+                <Field label="Legal name">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_legal_name}
+                    onChange={(e) => patch({ billing_legal_name: e.target.value })}
+                  />
+                </Field>
+                <Field label="Tax ID / ABN">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_tax_id ?? ""}
+                    onChange={(e) =>
+                      patch({ billing_tax_id: e.target.value || null })
+                    }
+                  />
+                </Field>
+              </>
+            )}            
+            {/* <ReviewSelect
               label="Payment terms"
               value={review.payment_terms}
               onValueChange={(value) => patch({ payment_terms: value })}
@@ -768,7 +774,7 @@ export default function WholesaleOrderReviewPanel({
                 value: option.value,
                 label: option.label,
               }))}
-            />
+            />             */}
             <div className="sm:col-span-2">
               <Field label="Order notes">
                 <textarea

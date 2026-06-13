@@ -146,11 +146,16 @@ begin
     requested_fulfillment_method,
     requested_target_date,
     requested_pick_up_store_id,
+    shipping_dba_name,
+    shipping_special_instructions,
+    shipping_preferred_window,
     shipping_address,
     shipping_city,
     shipping_state,
     shipping_postal_code,
     shipping_country,
+    billing_legal_name,
+    billing_tax_id,
     billing_address,
     billing_city,
     billing_state,
@@ -181,11 +186,16 @@ begin
     p_requested_fulfillment_method,
     p_requested_target_date,
     d.requested_pick_up_store_id,
+    d.shipping_dba_name,
+    d.shipping_special_instructions,
+    d.shipping_preferred_window,
     d.shipping_address,
     d.shipping_city,
     d.shipping_state,
     d.shipping_postal_code,
     d.shipping_country,
+    d.billing_legal_name,
+    d.billing_tax_id,
     d.billing_address,
     d.billing_city,
     d.billing_state,
@@ -272,11 +282,16 @@ declare
   v_status_updated_at timestamptz;
   v_items jsonb;
   v_draft_order_id bigint;
+  v_shipping_dba_name text;
+  v_shipping_special_instructions text;
+  v_shipping_preferred_window text;
   v_shipping_address text;
   v_shipping_city text;
   v_shipping_state text;
   v_shipping_postal_code text;
   v_shipping_country text;
+  v_billing_legal_name text;
+  v_billing_tax_id text;
   v_billing_address text;
   v_billing_city text;
   v_billing_state text;
@@ -305,11 +320,16 @@ begin
   v_requested_pick_up_store_id :=
     nullif(p_order_payload->>'requested_pick_up_store_id', '')::bigint;
   v_requested_target_date := nullif(p_order_payload->>'requested_target_date', '')::timestamptz;
+  v_shipping_dba_name := nullif(p_order_payload->>'shipping_dba_name', '');
+  v_shipping_special_instructions := nullif(p_order_payload->>'shipping_special_instructions', '');
+  v_shipping_preferred_window := nullif(p_order_payload->>'shipping_preferred_window', '');
   v_shipping_address := p_order_payload->>'shipping_address';
   v_shipping_city := p_order_payload->>'shipping_city';
   v_shipping_state := p_order_payload->>'shipping_state';
   v_shipping_postal_code := p_order_payload->>'shipping_postal_code';
   v_shipping_country := p_order_payload->>'shipping_country';
+  v_billing_legal_name := nullif(p_order_payload->>'billing_legal_name', '');
+  v_billing_tax_id := nullif(p_order_payload->>'billing_tax_id', '');
   v_billing_address := p_order_payload->>'billing_address';
   v_billing_city := p_order_payload->>'billing_city';
   v_billing_state := p_order_payload->>'billing_state';
@@ -375,6 +395,7 @@ begin
       if v_draft_order_id is not null then
         delete from public.draft_orders where id = v_draft_order_id;
       end if;
+      perform public.ensure_wholesale_inventory_sales_for_order(v_order_id);
       return v_order_id;
     end if;
   end if;
@@ -430,11 +451,16 @@ begin
       requested_fulfillment_method,
       requested_target_date,
       requested_pick_up_store_id,
+      shipping_dba_name,
+      shipping_special_instructions,
+      shipping_preferred_window,
       shipping_address,
       shipping_city,
       shipping_state,
       shipping_postal_code,
       shipping_country,
+      billing_legal_name,
+      billing_tax_id,
       billing_address,
       billing_city,
       billing_state,
@@ -463,11 +489,16 @@ begin
       v_requested_fulfillment_method,
       v_requested_target_date,
       v_requested_pick_up_store_id,
+      v_shipping_dba_name,
+      v_shipping_special_instructions,
+      v_shipping_preferred_window,
       v_shipping_address,
       v_shipping_city,
       v_shipping_state,
       v_shipping_postal_code,
       v_shipping_country,
+      v_billing_legal_name,
+      v_billing_tax_id,
       v_billing_address,
       v_billing_city,
       v_billing_state,
@@ -547,17 +578,12 @@ begin
         if v_order_id is null then
           raise;
         end if;
+        perform public.ensure_wholesale_inventory_sales_for_order(v_order_id);
         return v_order_id;
     end;
   end if;
 
-  -- Wholesale daily inventory: live orders only (is_testing orders do not consume stock).
-  if v_order_type = 'wholesale'::public.order_type and not v_is_testing then
-    perform public.record_wholesale_inventory_sales(
-      v_order_id,
-      v_customer_account
-    );
-  end if;
+  perform public.ensure_wholesale_inventory_sales_for_order(v_order_id);
 
   return v_order_id;
 end;
@@ -656,11 +682,16 @@ begin
     requested_fulfillment_method,
     requested_target_date,
     requested_pick_up_store_id,
+    shipping_dba_name,
+    shipping_special_instructions,
+    shipping_preferred_window,
     shipping_address,
     shipping_city,
     shipping_state,
     shipping_postal_code,
     shipping_country,
+    billing_legal_name,
+    billing_tax_id,
     billing_address,
     billing_city,
     billing_state,
@@ -694,11 +725,16 @@ begin
     v_order.requested_fulfillment_method,
     v_order.requested_target_date,
     v_order.requested_pick_up_store_id,
+    v_order.shipping_dba_name,
+    v_order.shipping_special_instructions,
+    v_order.shipping_preferred_window,
     v_order.shipping_address,
     v_order.shipping_city,
     v_order.shipping_state,
     v_order.shipping_postal_code,
     v_order.shipping_country,
+    v_order.billing_legal_name,
+    v_order.billing_tax_id,
     v_order.billing_address,
     v_order.billing_city,
     v_order.billing_state,

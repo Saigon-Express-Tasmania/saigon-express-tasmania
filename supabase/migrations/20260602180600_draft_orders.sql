@@ -18,12 +18,17 @@ create table public.draft_orders (
   requested_target_date timestamptz,
   requested_pick_up_store_id bigint references public.store_locations (id) on delete set null,
 
+  shipping_dba_name text,
+  shipping_special_instructions text,
+  shipping_preferred_window text,
   shipping_address text not null,
   shipping_city text not null,
   shipping_state text not null,
   shipping_postal_code text not null,
   shipping_country text not null,
   
+  billing_legal_name text,
+  billing_tax_id text,
   billing_address text not null,
   billing_city text not null,
   billing_state text not null,

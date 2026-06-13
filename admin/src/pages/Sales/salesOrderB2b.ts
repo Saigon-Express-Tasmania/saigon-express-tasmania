@@ -38,11 +38,16 @@ export type SalesOrderB2BForm = {
 };
 
 export type OrderAddressDbFields = {
+  shipping_dba_name: string | null;
+  shipping_special_instructions: string | null;
+  shipping_preferred_window: string | null;
   shipping_address: string;
   shipping_city: string;
   shipping_state: string;
   shipping_postal_code: string;
   shipping_country: string;
+  billing_legal_name: string | null;
+  billing_tax_id: string | null;
   billing_address: string;
   billing_city: string;
   billing_state: string;
@@ -66,11 +71,16 @@ function formatStreetLine(street1: string, street2: string): string {
 
 export function defaultOrderAddressFields(): OrderAddressDbFields {
   return {
+    shipping_dba_name: null,
+    shipping_special_instructions: null,
+    shipping_preferred_window: null,
     shipping_address: 'N/A',
     shipping_city: 'N/A',
     shipping_state: 'N/A',
     shipping_postal_code: '0000',
     shipping_country: 'Australia',
+    billing_legal_name: null,
+    billing_tax_id: null,
     billing_address: 'N/A',
     billing_city: 'N/A',
     billing_state: 'N/A',
@@ -117,11 +127,16 @@ export function parseB2BFormFromRow(row: {
   customer_email?: string | null;
   customer_phone?: string | null;
   payment_terms?: string | null;
+  shipping_dba_name?: string | null;
+  shipping_special_instructions?: string | null;
+  shipping_preferred_window?: string | null;
   shipping_address?: unknown;
   shipping_city?: string | null;
   shipping_state?: string | null;
   shipping_postal_code?: string | null;
   shipping_country?: string | null;
+  billing_legal_name?: string | null;
+  billing_tax_id?: string | null;
   billing_address?: unknown;
   billing_city?: string | null;
   billing_state?: string | null;
@@ -143,25 +158,25 @@ export function parseB2BFormFromRow(row: {
         contact_email: str(row.customer_email),
       },
       shipping_address: {
-        dba_name: str(row.customer_name),
+        dba_name: str(row.shipping_dba_name) || str(row.customer_name),
         street_1: str(row.shipping_address),
         street_2: '',
         city: str(row.shipping_city),
         state: str(row.shipping_state),
         postal_code: str(row.shipping_postal_code),
         country: str(row.shipping_country),
-        special_instructions: '',
-        preferred_window: '',
+        special_instructions: str(row.shipping_special_instructions),
+        preferred_window: str(row.shipping_preferred_window),
       },
       billing_address: {
-        legal_name: str(row.customer_name),
+        legal_name: str(row.billing_legal_name) || str(row.customer_name),
         street_1: str(row.billing_address),
         street_2: '',
         city: str(row.billing_city),
         state: str(row.billing_state),
         postal_code: str(row.billing_postal_code),
         country: str(row.billing_country),
-        tax_id: '',
+        tax_id: str(row.billing_tax_id),
         payment_terms: str(row.payment_terms),
       },
     };
@@ -243,6 +258,15 @@ export function serializeB2BForDb(
   }
 
   return {
+    shipping_dba_name: shippingHasData
+      ? form.shipping_address.dba_name.trim() || null
+      : null,
+    shipping_special_instructions: shippingHasData
+      ? form.shipping_address.special_instructions.trim() || null
+      : null,
+    shipping_preferred_window: shippingHasData
+      ? form.shipping_address.preferred_window.trim() || null
+      : null,
     shipping_address: shippingHasData
       ? formatStreetLine(
           form.shipping_address.street_1,
@@ -253,6 +277,12 @@ export function serializeB2BForDb(
     shipping_state: form.shipping_address.state.trim() || 'N/A',
     shipping_postal_code: form.shipping_address.postal_code.trim() || '0000',
     shipping_country: form.shipping_address.country.trim() || 'Australia',
+    billing_legal_name: billingHasData
+      ? form.billing_address.legal_name.trim() || null
+      : null,
+    billing_tax_id: billingHasData
+      ? form.billing_address.tax_id.trim() || null
+      : null,
     billing_address: billingHasData
       ? formatStreetLine(
           form.billing_address.street_1,

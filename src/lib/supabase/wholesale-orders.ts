@@ -68,7 +68,7 @@ export type FetchWholesaleOrdersResult = {
 };
 
 const ORDER_HEADER_SELECT =
-  "id, order_type, subtotal, tax_total, shipping_fee, grand_total, status, tracking_token, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms, created_at";
+  "id, order_type, subtotal, tax_total, shipping_fee, grand_total, status, tracking_token, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, customer_name, customer_email, customer_phone, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms, created_at";
 
 function isTestingOrders(): boolean {
   return getClientStripeMode() === "test";

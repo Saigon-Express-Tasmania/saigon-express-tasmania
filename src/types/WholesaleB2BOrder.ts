@@ -1,5 +1,25 @@
 /** B2B wholesale order metadata stored on order headers (jsonb address + financial columns). */
 
+/** Matches public.order_payment_terms in Postgres. */
+export type OrderPaymentTerms =
+  | "prepaid"
+  | "due_on_receipt"
+  | "deposit_required"
+  | "net_30"
+  | "net_60"
+  | "net_90";
+
+/** Australian state/territory codes stored on order address columns. */
+export type AustralianStateCode =
+  | "ACT"
+  | "NSW"
+  | "NT"
+  | "QLD"
+  | "SA"
+  | "TAS"
+  | "VIC"
+  | "WA";
+
 export type WholesaleOrderBuyer = {
   name: string;
   role?: string | null;
@@ -12,7 +32,7 @@ export type WholesaleShippingAddress = {
   street_1: string;
   street_2?: string | null;
   city: string;
-  state?: string | null;
+  state?: AustralianStateCode | null;
   postal_code: string;
   country?: string | null;
   special_instructions?: string | null;
@@ -24,11 +44,11 @@ export type WholesaleBillingAddress = {
   street_1: string;
   street_2?: string | null;
   city: string;
-  state?: string | null;
+  state?: AustralianStateCode | null;
   postal_code: string;
   country?: string | null;
   tax_id?: string | null;
-  payment_terms?: string | null;
+  payment_terms?: OrderPaymentTerms | null;
 };
 
 export type WholesaleOrderFinancialDetails = {
@@ -59,7 +79,7 @@ export type WholesaleOrderReviewForm = {
   shipping_address: string;
   shipping_street_2: string | null;
   shipping_city: string;
-  shipping_state: string;
+  shipping_state: AustralianStateCode;
   shipping_postal_code: string;
   shipping_country: string;
   shipping_dba_name: string;
@@ -68,12 +88,12 @@ export type WholesaleOrderReviewForm = {
   billing_address: string;
   billing_street_2: string | null;
   billing_city: string;
-  billing_state: string;
+  billing_state: AustralianStateCode;
   billing_postal_code: string;
   billing_country: string;
   billing_legal_name: string;
   billing_tax_id: string | null;
-  payment_terms: string;
+  payment_terms: OrderPaymentTerms;
   po_number: string | null;
   notes: string | null;
   subtotal: number;

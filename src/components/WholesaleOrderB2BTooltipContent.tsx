@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import type { WholesalePickupStore } from "@/lib/supabase/wholesale-orders";
 import { formatStoreHours } from "@/lib/store-hours";
 import {
-  formatWholesalePaymentTerms,
   formatWholesaleStreetAddress,
+  WHOLESALE_PAYMENT_TERMS_OPTIONS,
 } from "@/lib/wholesale-b2b-order";
 import type {
   WholesaleOrderB2B,
@@ -128,7 +128,13 @@ export function WholesaleOrderB2BTooltipContent({
         <TooltipRow label="Tax ID / ABN" value={address.tax_id} />
         <TooltipRow
           label="Payment terms"
-          value={formatWholesalePaymentTerms(address.payment_terms)}
+          value={
+            address.payment_terms
+              ? WHOLESALE_PAYMENT_TERMS_OPTIONS.find(
+                  (option) => option.value === address.payment_terms,
+                )?.label ?? address.payment_terms
+              : "—"
+          }
         />
         {lines.length > 0 ? (
           <TooltipRow label="Address" value={lines.join(", ")} />

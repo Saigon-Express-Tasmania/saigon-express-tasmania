@@ -8,6 +8,8 @@ import type {
   WholesaleOrderFinancialDetails,
   WholesaleOrderReviewForm,
   OrderFulfillmentMethod,
+  OrderPaymentTerms,
+  AustralianStateCode,
   WholesaleShippingAddress,
 } from "@/types/WholesaleB2BOrder";
 
@@ -73,7 +75,10 @@ export function buildWholesaleFinancialDetails(
   };
 }
 
-export const AUSTRALIAN_STATES = [
+export const AUSTRALIAN_STATES: {
+  value: AustralianStateCode;
+  label: string;
+}[] = [
   { value: "ACT", label: "Australian Capital Territory" },
   { value: "NSW", label: "New South Wales" },
   { value: "NT", label: "Northern Territory" },
@@ -82,7 +87,17 @@ export const AUSTRALIAN_STATES = [
   { value: "TAS", label: "Tasmania" },
   { value: "VIC", label: "Victoria" },
   { value: "WA", label: "Western Australia" },
-] as const;
+];
+
+function isAustralianStateCode(value: string): value is AustralianStateCode {
+  return AUSTRALIAN_STATES.some((state) => state.value === value);
+}
+
+function parseAustralianStateCode(value: unknown): AustralianStateCode | null {
+  if (value == null) return null;
+  const raw = String(value).trim();
+  return isAustralianStateCode(raw) ? raw : null;
+}
 
 export const WHOLESALE_DEFAULT_COUNTRY = "Australia";
 
@@ -90,57 +105,30 @@ export const WHOLESALE_FULFILLMENT_OPTIONS: {
   value: OrderFulfillmentMethod;
   label: string;
 }[] = [
-  { value: "shipping", label: "Shipping" },
-  { value: "pick_up", label: "Pick up" },
+  { value: "shipping", label: "Ship to you" },
+  { value: "pick_up", label: "Pick up at a store" },
 ];
 
-export const WHOLESALE_PAYMENT_TERMS_OPTIONS = [
+export const WHOLESALE_PAYMENT_TERMS_OPTIONS: {
+  value: OrderPaymentTerms;
+  label: string;
+}[] = [
   { value: "prepaid", label: "Prepaid" },
   { value: "due_on_receipt", label: "Due on receipt" },
   { value: "deposit_required", label: "Deposit required" },
   { value: "net_30", label: "Net 30" },
   { value: "net_60", label: "Net 60" },
   { value: "net_90", label: "Net 90" },
-] as const;
+];
 
-const AUSTRALIAN_STATE_NAME_TO_CODE: Record<string, string> = {
-  "australian capital territory": "ACT",
-  act: "ACT",
-  "new south wales": "NSW",
-  nsw: "NSW",
-  "northern territory": "NT",
-  nt: "NT",
-  queensland: "QLD",
-  qld: "QLD",
-  "south australia": "SA",
-  sa: "SA",
-  tasmania: "TAS",
-  tas: "TAS",
-  victoria: "VIC",
-  vic: "VIC",
-  "western australia": "WA",
-  wa: "WA",
-};
-
-export function normalizeAustralianState(value: string | null | undefined): string {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "TAS";
-  const upper = raw.toUpperCase();
-  if (AUSTRALIAN_STATES.some((state) => state.value === upper)) return upper;
-  const fromName = AUSTRALIAN_STATE_NAME_TO_CODE[raw.toLowerCase()];
-  return fromName ?? "TAS";
+function isOrderPaymentTerms(value: string): value is OrderPaymentTerms {
+  return WHOLESALE_PAYMENT_TERMS_OPTIONS.some((option) => option.value === value);
 }
 
-function normalizePaymentTerms(value: string | null | undefined): string {
-  const raw = String(value ?? "prepaid").trim().toLowerCase().replace(/\s+/g, "_");
-  if (raw === "prepaid" || raw === "due_on_receipt" || raw === "deposit_required") {
-    return raw;
-  }
-  if (raw === "net_30" || raw === "net_60" || raw === "net_90") return raw;
-  if (raw === "net30") return "net_30";
-  if (raw === "net60") return "net_60";
-  if (raw === "net90") return "net_90";
-  return "prepaid";
+function parseOrderPaymentTerms(value: unknown): OrderPaymentTerms | null {
+  if (value == null) return null;
+  const raw = String(value).trim();
+  return isOrderPaymentTerms(raw) ? raw : null;
 }
 
 export function defaultRequestedTargetDateLocal(): string {
@@ -196,14 +184,14 @@ export function buildWholesaleOrderReviewFromProfile(
     customer_name,
     customer_email: email,
     customer_phone: profile.phone?.trim() ?? "",
-    requested_fulfillment_method: "delivery",
+    requested_fulfillment_method: "pick_up",
     requested_target_date: defaultRequestedTargetDateLocal(),
     requested_pick_up_store_id: null,
     shipping_dba_name: businessName,
     shipping_address: street_1,
     shipping_street_2: profile.address_line2?.trim() || null,
     shipping_city: city,
-    shipping_state: normalizeAustralianState(profile.state),
+    shipping_state: parseAustralianStateCode(profile.state) ?? "TAS",
     shipping_postal_code: profile.postal_code?.trim() ?? "",
     shipping_country: WHOLESALE_DEFAULT_COUNTRY,
     shipping_special_instructions: null,
@@ -212,11 +200,11 @@ export function buildWholesaleOrderReviewFromProfile(
     billing_address: street_1,
     billing_street_2: profile.address_line2?.trim() || null,
     billing_city: city,
-    billing_state: normalizeAustralianState(profile.state),
+    billing_state: parseAustralianStateCode(profile.state) ?? "TAS",
     billing_postal_code: profile.postal_code?.trim() ?? "",
     billing_country: WHOLESALE_DEFAULT_COUNTRY,
     billing_tax_id: profile.abn?.trim() || null,
-    payment_terms: normalizePaymentTerms("prepaid"),
+    payment_terms: "prepaid",
     po_number: null,
     notes: null,
     ...buildWholesaleOrderTotals(cartTotalExGst),
@@ -308,7 +296,7 @@ export function serializeWholesaleOrderReviewForCheckout(
         street_1: form.shipping_address.trim(),
         street_2: form.shipping_street_2?.trim() || null,
         city: form.shipping_city.trim(),
-        state: form.shipping_state.trim(),
+        state: form.shipping_state,
         postal_code: form.shipping_postal_code.trim(),
         country: WHOLESALE_DEFAULT_COUNTRY,
         special_instructions: form.shipping_special_instructions?.trim() || null,
@@ -320,7 +308,7 @@ export function serializeWholesaleOrderReviewForCheckout(
     street_1: form.billing_address.trim(),
     street_2: form.billing_street_2?.trim() || null,
     city: form.billing_city.trim(),
-    state: form.billing_state.trim(),
+    state: form.billing_state,
     postal_code: form.billing_postal_code.trim(),
     country: WHOLESALE_DEFAULT_COUNTRY,
     tax_id: form.billing_tax_id?.trim() || null,
@@ -343,6 +331,7 @@ export function serializeWholesaleOrderReviewForCheckout(
         ? form.requested_pick_up_store_id
         : undefined,
     notes: form.notes?.trim() || undefined,
+    poNumber: form.po_number?.trim() || undefined,
     customerName: form.customer_name.trim(),
     customerEmail: form.customer_email.trim(),
     customerPhone: form.customer_phone.trim(),
@@ -375,7 +364,7 @@ export function buildWholesaleB2BFromProfile(
     street_1: profile.address_line1?.trim() ?? "",
     street_2: profile.address_line2?.trim() || null,
     city,
-    state: profile.state?.trim() || null,
+    state: parseAustralianStateCode(profile.state),
     postal_code: profile.postal_code?.trim() ?? "",
     country: profile.country?.trim() || "Australia",
     special_instructions: null,
@@ -387,11 +376,11 @@ export function buildWholesaleB2BFromProfile(
     street_1: profile.address_line1?.trim() ?? "",
     street_2: profile.address_line2?.trim() || null,
     city,
-    state: profile.state?.trim() || null,
+    state: parseAustralianStateCode(profile.state),
     postal_code: profile.postal_code?.trim() ?? "",
     country: profile.country?.trim() || "Australia",
     tax_id: profile.abn?.trim() || null,
-    payment_terms: "PREPAID",
+    payment_terms: "prepaid",
   };
 
   return {
@@ -477,7 +466,7 @@ export function parseWholesaleShippingAddress(
     street_1,
     street_2: optionalString(row.street_2),
     city,
-    state: optionalString(row.state),
+    state: parseAustralianStateCode(row.state),
     postal_code,
     country: optionalString(row.country),
     special_instructions: optionalString(row.special_instructions),
@@ -500,11 +489,11 @@ export function parseWholesaleBillingAddress(
     street_1,
     street_2: optionalString(row.street_2),
     city,
-    state: optionalString(row.state),
+    state: parseAustralianStateCode(row.state),
     postal_code,
     country: optionalString(row.country),
     tax_id: optionalString(row.tax_id),
-    payment_terms: optionalString(row.payment_terms),
+    payment_terms: parseOrderPaymentTerms(row.payment_terms),
   };
 }
 
@@ -579,11 +568,16 @@ export type OrderAddressDbRow = OrderFinancialDbRow & {
   customer_email?: string | null;
   customer_phone?: string | null;
   payment_terms?: string | null;
+  shipping_dba_name?: string | null;
+  shipping_special_instructions?: string | null;
+  shipping_preferred_window?: string | null;
   shipping_address?: string | null;
   shipping_city?: string | null;
   shipping_state?: string | null;
   shipping_postal_code?: string | null;
   shipping_country?: string | null;
+  billing_legal_name?: string | null;
+  billing_tax_id?: string | null;
   billing_address?: string | null;
   billing_city?: string | null;
   billing_state?: string | null;
@@ -614,6 +608,11 @@ export function isPlaceholderAddressValue(value: string | null | undefined): boo
   );
 }
 
+function australianStateLabel(code: string | null | undefined): string | null {
+  if (!code || isPlaceholderAddressValue(code)) return null;
+  return AUSTRALIAN_STATES.find((state) => state.value === code)?.label ?? code;
+}
+
 export function extractOrderFlatAddress(row: OrderAddressDbRow): OrderFlatAddress {
   return {
     shipping_address: requiredString(row.shipping_address),
@@ -636,7 +635,12 @@ export function formatFlatAddressLines(parts: {
   postal_code: string;
   country?: string | null;
 }): string[] {
-  const locality = [parts.city, parts.state, parts.postal_code, parts.country]
+  const locality = [
+    parts.city,
+    australianStateLabel(parts.state),
+    parts.postal_code,
+    parts.country,
+  ]
     .filter((part) => part && !isPlaceholderAddressValue(part))
     .join(", ");
 
@@ -688,15 +692,15 @@ function parseWholesaleShippingFromFlatRow(
   const postalCode = flat.shipping_postal_code;
 
   return {
-    dba_name: requiredString(row.customer_name) || "—",
+    dba_name: optionalString(row.shipping_dba_name) || requiredString(row.customer_name) || "—",
     street_1: street || "—",
     street_2: null,
     city: city || "—",
-    state: optionalString(row.shipping_state),
+    state: parseAustralianStateCode(row.shipping_state),
     postal_code: postalCode || "—",
     country: optionalString(row.shipping_country),
-    special_instructions: null,
-    preferred_window: null,
+    special_instructions: optionalString(row.shipping_special_instructions),
+    preferred_window: optionalString(row.shipping_preferred_window),
   };
 }
 
@@ -711,15 +715,15 @@ function parseWholesaleBillingFromFlatRow(
   const postalCode = flat.billing_postal_code;
 
   return {
-    legal_name: requiredString(row.customer_name) || "—",
+    legal_name: optionalString(row.billing_legal_name) || requiredString(row.customer_name) || "—",
     street_1: street || "—",
     street_2: null,
     city: city || "—",
-    state: optionalString(row.billing_state),
+    state: parseAustralianStateCode(row.billing_state),
     postal_code: postalCode || "—",
     country: optionalString(row.billing_country),
-    tax_id: null,
-    payment_terms: optionalString(row.payment_terms),
+    tax_id: optionalString(row.billing_tax_id),
+    payment_terms: parseOrderPaymentTerms(row.payment_terms),
   };
 }
 
@@ -764,15 +768,6 @@ export function hasWholesaleOrderB2B(b2b: WholesaleOrderB2B): boolean {
   );
 }
 
-export function formatWholesalePaymentTerms(terms: string | null | undefined): string {
-  if (!terms) return "—";
-  if (terms === "PREPAID") return "Prepaid";
-  if (terms.startsWith("NET_")) {
-    return `Net ${terms.slice(4)} days`;
-  }
-  return terms.replaceAll("_", " ");
-}
-
 export function formatWholesaleStreetAddress(
   address: Pick<
     WholesaleShippingAddress,
@@ -781,7 +776,7 @@ export function formatWholesaleStreetAddress(
 ): string[] {
   const locality = [
     address.city,
-    address.state,
+    australianStateLabel(address.state),
     address.postal_code,
     address.country,
   ]

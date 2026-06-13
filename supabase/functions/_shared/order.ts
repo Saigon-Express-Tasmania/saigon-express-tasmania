@@ -118,11 +118,16 @@ type OrderPaymentTerms =
   | "net_90";
 
 type OrderAddressDbFields = {
+  shipping_dba_name: string | null;
+  shipping_special_instructions: string | null;
+  shipping_preferred_window: string | null;
   shipping_address: string;
   shipping_city: string;
   shipping_state: string;
   shipping_postal_code: string;
   shipping_country: string;
+  billing_legal_name: string | null;
+  billing_tax_id: string | null;
   billing_address: string;
   billing_city: string;
   billing_state: string;
@@ -148,6 +153,7 @@ type DraftOrderRow = {
   shipping_fee: number | string | null;
   grand_total: number | string | null;
   notes: string | null;
+  po_number: string | null;
 } & OrderAddressDbFields;
 
 type CreatePaidOrderWithItemsResponse = number;
@@ -221,11 +227,16 @@ function formatStreetLine(street1: string, street2?: string | null): string {
 
 function defaultOrderAddressFields(): OrderAddressDbFields {
   return {
+    shipping_dba_name: null,
+    shipping_special_instructions: null,
+    shipping_preferred_window: null,
     shipping_address: "In-store pickup",
     shipping_city: "N/A",
     shipping_state: "N/A",
     shipping_postal_code: "0000",
     shipping_country: "Australia",
+    billing_legal_name: null,
+    billing_tax_id: null,
     billing_address: "In-store pickup",
     billing_city: "N/A",
     billing_state: "N/A",
@@ -238,6 +249,9 @@ function shippingAddressToDbFields(
   address: WholesaleShippingAddress,
 ): Pick<
   OrderAddressDbFields,
+  | "shipping_dba_name"
+  | "shipping_special_instructions"
+  | "shipping_preferred_window"
   | "shipping_address"
   | "shipping_city"
   | "shipping_state"
@@ -245,6 +259,9 @@ function shippingAddressToDbFields(
   | "shipping_country"
 > {
   return {
+    shipping_dba_name: address.dba_name.trim() || null,
+    shipping_special_instructions: address.special_instructions?.trim() || null,
+    shipping_preferred_window: address.preferred_window?.trim() || null,
     shipping_address: formatStreetLine(address.street_1, address.street_2),
     shipping_city: address.city.trim(),
     shipping_state: (address.state ?? "N/A").trim() || "N/A",
@@ -257,6 +274,8 @@ function billingAddressToDbFields(
   address: WholesaleBillingAddress,
 ): Pick<
   OrderAddressDbFields,
+  | "billing_legal_name"
+  | "billing_tax_id"
   | "billing_address"
   | "billing_city"
   | "billing_state"
@@ -264,6 +283,8 @@ function billingAddressToDbFields(
   | "billing_country"
 > {
   return {
+    billing_legal_name: address.legal_name.trim() || null,
+    billing_tax_id: address.tax_id?.trim() || null,
     billing_address: formatStreetLine(address.street_1, address.street_2),
     billing_city: address.city.trim(),
     billing_state: (address.state ?? "N/A").trim() || "N/A",
@@ -455,6 +476,21 @@ async function findOrderIdByStripeSession(
   if (error || data == null) return null;
   const orderId = Number(data);
   return Number.isFinite(orderId) && orderId > 0 ? orderId : null;
+}
+
+async function ensureWholesaleInventoryForOrder(
+  supabase: ReturnType<typeof createServiceClient>,
+  orderId: number,
+): Promise<void> {
+  const { error } = await supabase.rpc("ensure_wholesale_inventory_sales_for_order", {
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    throw new Error(
+      `Failed to record wholesale inventory for order #${orderId}: ${error.message}`,
+    );
+  }
 }
 
 async function orderHasPaidPayment(
@@ -766,6 +802,7 @@ function buildOrderPayload(
     store_id: draftOrder.store_id,
     requested_pick_up_store_id: draftOrder.requested_pick_up_store_id,
     payment_terms: draftOrder.payment_terms,
+    po_number: draftOrder.po_number,
     subtotal: formatMoney(subtotal),
     tax_total: formatMoney(taxTotal),
     shipping_fee: formatMoney(shippingFee),
@@ -774,11 +811,16 @@ function buildOrderPayload(
     cancel_token: cancelToken,
     tracking_token: trackingToken,
     status_updated_at: new Date().toISOString(),
+    shipping_dba_name: draftOrder.shipping_dba_name,
+    shipping_special_instructions: draftOrder.shipping_special_instructions,
+    shipping_preferred_window: draftOrder.shipping_preferred_window,
     shipping_address: draftOrder.shipping_address,
     shipping_city: draftOrder.shipping_city,
     shipping_state: draftOrder.shipping_state,
     shipping_postal_code: draftOrder.shipping_postal_code,
     shipping_country: draftOrder.shipping_country,
+    billing_legal_name: draftOrder.billing_legal_name,
+    billing_tax_id: draftOrder.billing_tax_id,
     billing_address: draftOrder.billing_address,
     billing_city: draftOrder.billing_city,
     billing_state: draftOrder.billing_state,
@@ -1241,6 +1283,7 @@ export async function markOrderPaidFromStripeSession(
   const draftOrderId = getDraftOrderIdFromSession(session);
   const existingOrderId = await findExistingOrderIdBySession(session.id, paymentMode, supabase);
   if (existingOrderId) {
+    await ensureWholesaleInventoryForOrder(supabase, existingOrderId);
     if (draftOrderId) {
       await supabase.from("draft_orders").delete().eq("id", draftOrderId);
     }
@@ -1352,7 +1395,7 @@ async function fetchDraftOrder(
   const { data, error } = await supabase
     .from("draft_orders")
     .select(
-      "id, order_type, is_testing, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_pick_up_store_id, requested_target_date, payment_terms, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
+      "id, order_type, is_testing, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_pick_up_store_id, requested_target_date, payment_terms, po_number, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
     )
     .eq("id", draftOrderId)
     .maybeSingle();
@@ -1384,6 +1427,11 @@ async function fetchDraftOrder(
     shipping_fee: row.shipping_fee as number | string | null,
     grand_total: row.grand_total as number | string | null,
     notes: (row.notes as string | null) ?? null,
+    po_number: (row.po_number as string | null) ?? null,
+    shipping_dba_name: (row.shipping_dba_name as string | null) ?? null,
+    shipping_special_instructions:
+      (row.shipping_special_instructions as string | null) ?? null,
+    shipping_preferred_window: (row.shipping_preferred_window as string | null) ?? null,
     shipping_address: String(row.shipping_address ?? defaultOrderAddressFields().shipping_address),
     shipping_city: String(row.shipping_city ?? defaultOrderAddressFields().shipping_city),
     shipping_state: String(row.shipping_state ?? defaultOrderAddressFields().shipping_state),
@@ -1391,6 +1439,8 @@ async function fetchDraftOrder(
       row.shipping_postal_code ?? defaultOrderAddressFields().shipping_postal_code,
     ),
     shipping_country: String(row.shipping_country ?? defaultOrderAddressFields().shipping_country),
+    billing_legal_name: (row.billing_legal_name as string | null) ?? null,
+    billing_tax_id: (row.billing_tax_id as string | null) ?? null,
     billing_address: String(row.billing_address ?? defaultOrderAddressFields().billing_address),
     billing_city: String(row.billing_city ?? defaultOrderAddressFields().billing_city),
     billing_state: String(row.billing_state ?? defaultOrderAddressFields().billing_state),

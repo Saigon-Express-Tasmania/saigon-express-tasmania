@@ -13,6 +13,7 @@ import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import { resizeImageFile } from "@/lib/image-resize";
 import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
+import { AUSTRALIAN_STATES } from "@/lib/wholesale-b2b-order";
 import type { BusinessType, UserProfile, UserProfileSelfUpdate } from "@/types";
 import { Loader2, Upload, User, X } from "lucide-react";
 import { toast } from "sonner";
@@ -30,8 +31,6 @@ const BUSINESS_CATEGORIES = [
   { value: "corporate", label: "Corporate" },
   { value: "other", label: "Other" },
 ] as const;
-
-const AU_STATES = ["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"] as const;
 
 const COUNTRY_OPTIONS = [{ value: "AU", label: "Australia" }] as const;
 
@@ -271,13 +270,13 @@ export default function MemberProfile() {
 
   const stateOptions = useMemo((): WholesaleFormSelectOption[] => {
     if (!form) return [];
-    const options: WholesaleFormSelectOption[] = AU_STATES.map((state) => ({
-      value: state,
-      label: state,
+    const options: WholesaleFormSelectOption[] = AUSTRALIAN_STATES.map((state) => ({
+      value: state.value,
+      label: state.label,
     }));
     if (
       form.state &&
-      !AU_STATES.includes(form.state as (typeof AU_STATES)[number])
+      !AUSTRALIAN_STATES.some((state) => state.value === form.state)
     ) {
       options.push({ value: form.state, label: form.state });
     }
@@ -556,35 +555,23 @@ export default function MemberProfile() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label htmlFor="suburb" className={LABEL_CLASS}>
-                        Suburb
-                      </label>
-                      <input
-                        id="suburb"
-                        type="text"
-                        value={form.suburb}
-                        onChange={(event) =>
-                          handleFieldChange("suburb", event.target.value)
-                        }
-                        className={INPUT_CLASS}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
                       <label htmlFor="state" className={LABEL_CLASS}>
                         State
                       </label>
                       <WholesaleFormSelect
                         id="state"
                         value={form.state}
-                        onValueChange={(value) => handleFieldChange("state", value)}
+                        onValueChange={(value) =>
+                          handleFieldChange("state", value)
+                        }
                         options={stateOptions}
                         placeholder="Select state"
                         allowEmpty
                         emptyLabel="Select state"
                       />
                     </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label htmlFor="postal_code" className={LABEL_CLASS}>
                         Postal Code
@@ -600,8 +587,6 @@ export default function MemberProfile() {
                         autoComplete="postal-code"
                       />
                     </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label htmlFor="country" className={LABEL_CLASS}>
                         Country
@@ -615,10 +600,10 @@ export default function MemberProfile() {
                         options={countryOptions}
                         placeholder="Select country"
                       />
-                    </div>                    
+                    </div>
                   </div>
                 </div>
-              </section>              
+              </section>
             </div>
 
             <div className="space-y-6">
@@ -644,7 +629,7 @@ export default function MemberProfile() {
                   </div>
                   <div className="space-y-1.5">
                     <label htmlFor="abn" className={LABEL_CLASS}>
-                      ABN
+                      Tax ID / ABN                    
                     </label>
                     <input
                       id="abn"
@@ -672,10 +657,10 @@ export default function MemberProfile() {
                       allowEmpty
                       emptyLabel="Select business category"
                     />
-                  </div>                  
+                  </div>
                 </div>
               </section>
-              
+
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="submit"

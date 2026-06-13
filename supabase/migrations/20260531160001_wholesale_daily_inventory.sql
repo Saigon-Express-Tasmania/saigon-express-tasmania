@@ -207,7 +207,7 @@ comment on function public.get_wholesale_products_availability(uuid, date) is
 
 create or replace function public.record_wholesale_inventory_sales(
   p_order_id bigint,
-  p_customer_account uuid,
+  p_customer_account uuid default null,
   p_sale_date date default public.wholesale_business_date()
 )
 returns void
@@ -215,9 +215,16 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_customer_account uuid;
 begin
-  if p_customer_account is null then
-    raise exception 'customer account is required for wholesale inventory';
+  select coalesce(p_customer_account, o.customer_account)
+  into v_customer_account
+  from public.orders as o
+  where o.id = p_order_id;
+
+  if v_customer_account is null then
+    raise exception 'customer account is required for wholesale inventory (order %)', p_order_id;
   end if;
 
   insert into public.wholesale_inventory_sales (
@@ -231,7 +238,7 @@ begin
   )
   select
     oi.product_id,
-    p_customer_account,
+    v_customer_account,
     'orders',
     o.id,
     oi.id,
@@ -241,19 +248,54 @@ begin
   inner join public.orders as o on o.id = oi.order_id
   where o.id = p_order_id
     and o.order_type = 'wholesale'::public.order_type
-    and o.is_testing = false
     and oi.product_id is not null
   on conflict (order_source, order_item_id) do nothing;
 end;
 $$;
 
 comment on function public.record_wholesale_inventory_sales(bigint, uuid, date) is
-  'Records paid live wholesale line items into the daily inventory ledger (idempotent).';
+  'Records paid wholesale line items into the daily inventory ledger (idempotent).';
+
+create or replace function public.ensure_wholesale_inventory_sales_for_order(
+  p_order_id bigint,
+  p_sale_date date default public.wholesale_business_date()
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order_type public.order_type;
+  v_customer_account uuid;
+begin
+  select o.order_type, o.customer_account
+  into v_order_type, v_customer_account
+  from public.orders as o
+  where o.id = p_order_id;
+
+  if not found then
+    return;
+  end if;
+
+  if v_order_type = 'wholesale'::public.order_type then
+    perform public.record_wholesale_inventory_sales(
+      p_order_id,
+      v_customer_account,
+      p_sale_date
+    );
+  end if;
+end;
+$$;
+
+comment on function public.ensure_wholesale_inventory_sales_for_order(bigint, date) is
+  'Idempotently records wholesale inventory for a paid order when line items exist.';
 
 grant execute on function public.wholesale_business_date(timestamptz) to anon, authenticated, service_role;
 grant execute on function public.get_wholesale_product_availability(bigint, uuid, date) to anon, authenticated, service_role;
 grant execute on function public.get_wholesale_products_availability(uuid, date) to anon, authenticated, service_role;
 grant execute on function public.record_wholesale_inventory_sales(bigint, uuid, date) to service_role;
+grant execute on function public.ensure_wholesale_inventory_sales_for_order(bigint, date) to service_role;
 
 -- Paid order RPCs are defined in 20260603120001_orders_rpc.sql and call
--- record_wholesale_inventory_sales after line items are inserted.
+-- ensure_wholesale_inventory_sales_for_order after line items are inserted.
