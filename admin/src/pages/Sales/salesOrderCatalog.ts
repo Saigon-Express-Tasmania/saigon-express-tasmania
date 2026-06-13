@@ -1,11 +1,15 @@
+import { normalizeImageUrls, previewFromImageUrls } from '@/lib/image-urls';
 import supabase from '@/lib/supabase/client';
 import { useEffect, useState } from 'react';
 import type { OrderType } from './orderType';
+
+const CATALOG_IMAGE_SIZES = [256, 512, 1024, 1448];
 
 export type SalesOrderCatalogOption = {
   id: number;
   name: string;
   unitPrice: number;
+  imageUrl: string | null;
 };
 
 export function getOrderItemIdColumnLabel(_orderType: OrderType): string {
@@ -16,36 +20,53 @@ export function usesWholesaleCatalog(orderType: OrderType): boolean {
   return orderType === 'wholesale';
 }
 
+function mapCatalogRow(
+  row: { id: unknown; name: unknown; image_urls?: unknown },
+  unitPrice: number,
+): SalesOrderCatalogOption {
+  return {
+    id: Number(row.id),
+    name: String(row.name ?? '').trim(),
+    unitPrice,
+    imageUrl: previewFromImageUrls(
+      normalizeImageUrls(row.image_urls),
+      CATALOG_IMAGE_SIZES,
+    ),
+  };
+}
+
 async function fetchMenuCatalog(): Promise<SalesOrderCatalogOption[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, price')
+    .select('id, name, price, image_urls')
     .eq('product_type', 'alacarte')
     .order('name', { ascending: true });
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
-    id: Number(row.id),
-    name: String(row.name ?? '').trim(),
-    unitPrice: Number.parseFloat(String(row.price ?? '0')) || 0,
-  }));
+  return (data ?? []).map((row) =>
+    mapCatalogRow(
+      row,
+      Number.parseFloat(String(row.price ?? '0')) || 0,
+    ),
+  );
 }
 
 async function fetchWholesaleCatalog(): Promise<SalesOrderCatalogOption[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, unit_price')
+    .select('id, name, unit_price, image_urls')
     .eq('product_type', 'wholesale')
     .order('name', { ascending: true });
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
-    id: Number(row.id),
-    name: String(row.name ?? '').trim(),
-    unitPrice: Number.parseFloat(String(row.unit_price ?? '0')) || 0,
-  }));
+  return (data ?? []).map((row) =>
+    mapCatalogRow(
+      row,
+      Number.parseFloat(String(row.unit_price ?? '0')) || 0,
+    ),
+  );
 }
 
 export async function fetchSalesOrderCatalog(

@@ -64,6 +64,7 @@ type ArchivedOrderRow = {
   store_id: number | null;
   requested_fulfillment_method: FulfillmentType;
   requested_target_date: string;
+  requested_pick_up_store_id: number | null;
   payment_terms: PaymentTerms;
   po_number: string | null;
   subtotal: string;
@@ -86,6 +87,7 @@ type ArchivedOrderForm = {
   store_id: number | null;
   requested_fulfillment_method: FulfillmentType;
   requested_target_date: string;
+  requested_pick_up_store_id: number | null;
   payment_terms: PaymentTerms;
   po_number: string;
   subtotal: string;
@@ -107,6 +109,7 @@ function archivedRowToForm(row: ArchivedOrderRow, items: SalesOrderItemForm[]): 
     store_id: row.store_id,
     requested_fulfillment_method: row.requested_fulfillment_method,
     requested_target_date: row.requested_target_date,
+    requested_pick_up_store_id: row.requested_pick_up_store_id,
     payment_terms: row.payment_terms,
     po_number: row.po_number ?? '',
     subtotal: String(row.subtotal),
@@ -257,6 +260,7 @@ export function ArchivedOrders() {
         store_id: form.store_id,
         requested_fulfillment_method: form.requested_fulfillment_method,
         requested_target_date: targetDate.toISOString(),
+        requested_pick_up_store_id: form.requested_pick_up_store_id,
         payment_terms: form.payment_terms,
         po_number: form.po_number.trim() || null,
         subtotal: subtotal.toFixed(2),
@@ -481,7 +485,12 @@ export function ArchivedOrders() {
                   onValueChange={(value) =>
                     setForm((prev) =>
                       prev
-                        ? { ...prev, requested_fulfillment_method: value as FulfillmentType }
+                        ? {
+                            ...prev,
+                            requested_fulfillment_method: value as FulfillmentType,
+                            requested_pick_up_store_id:
+                              value === 'pick_up' ? prev.requested_pick_up_store_id : null,
+                          }
                         : prev,
                     )
                   }
@@ -625,6 +634,13 @@ export function ArchivedOrders() {
               <div className="grid gap-2 md:col-span-2">
                 <SalesOrderAddressEditor
                   idPrefix="archived-order"
+                  fulfillmentMethod={form.requested_fulfillment_method}
+                  requestedPickUpStoreId={form.requested_pick_up_store_id}
+                  onPickupStoreChange={(storeId) =>
+                    setForm((prev) =>
+                      prev ? { ...prev, requested_pick_up_store_id: storeId } : prev,
+                    )
+                  }
                   value={{
                     shipping_address: form.shipping_address,
                     shipping_city: form.shipping_city,

@@ -12,6 +12,8 @@ import {
   formatWholesaleStreetAddress,
 } from "@/lib/wholesale-b2b-order";
 import { formatWholesaleOrderId } from "@/lib/supabase/wholesale-orders";
+import type { WholesalePickupStore } from "@/lib/supabase/wholesale-orders";
+import { formatStoreHours } from "@/lib/store-hours";
 import type {
   WholesaleOrderB2B,
   WholesaleOrderB2BSection,
@@ -138,6 +140,26 @@ function AddressBlock({
   );
 }
 
+function PickupSection({ store }: { store: WholesalePickupStore }) {
+  return (
+    <SectionCard
+      id="b2b-pickup"
+      icon={<MapPin className="h-4 w-4" />}
+      title="Pickup location"
+    >
+      <Detail label="Store" value={store.name} />
+      <AddressBlock
+        label="Address"
+        lines={[store.address, store.suburb].filter(
+          (line): line is string => Boolean(line?.trim()),
+        )}
+      />
+      <Detail label="Phone" value={store.phone} />
+      <Detail label="Hours" value={formatStoreHours(store.hours)} />
+    </SectionCard>
+  );
+}
+
 function ShippingSection({ address }: { address: WholesaleShippingAddress }) {
   return (
     <SectionCard
@@ -237,6 +259,9 @@ export default function WholesaleOrderB2BDialog({
   orderTotal,
   b2b,
   section,
+  isPickup = false,
+  pickupStore = null,
+  pickupStoreId = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -244,6 +269,9 @@ export default function WholesaleOrderB2BDialog({
   orderTotal: number;
   b2b: WholesaleOrderB2B;
   section: WholesaleOrderB2BSection;
+  isPickup?: boolean;
+  pickupStore?: WholesalePickupStore | null;
+  pickupStoreId?: number | null;
 }) {
   const showBuyer = section === "all" || section === "buyer";
   const showShipping = section === "all" || section === "shipping";
@@ -269,7 +297,10 @@ export default function WholesaleOrderB2BDialog({
 
         <div className="space-y-4 overflow-y-auto px-5 py-4">
           {showBuyer && b2b.buyer ? <BuyerSection buyer={b2b.buyer} /> : null}
-          {showShipping && b2b.shippingAddress ? (
+          {showShipping && isPickup && pickupStore ? (
+            <PickupSection store={pickupStore} />
+          ) : null}
+          {showShipping && !isPickup && b2b.shippingAddress ? (
             <ShippingSection address={b2b.shippingAddress} />
           ) : null}
           {showBilling && b2b.billingAddress ? (
@@ -283,7 +314,8 @@ export default function WholesaleOrderB2BDialog({
           ) : null}
           {section !== "all" &&
           ((section === "buyer" && !b2b.buyer) ||
-            (section === "shipping" && !b2b.shippingAddress) ||
+            (section === "shipping" &&
+              (isPickup ? !pickupStore && pickupStoreId == null : !b2b.shippingAddress)) ||
             (section === "billing" && !b2b.billingAddress) ||
             (section === "financials" && !b2b.financialDetails)) ? (
             <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-white/45">

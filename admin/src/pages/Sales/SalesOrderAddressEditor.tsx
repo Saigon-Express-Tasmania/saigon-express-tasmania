@@ -1,6 +1,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { OrderAddressDbFields } from './salesOrderB2b';
+import { SalesOrderPickupStoreSection } from './SalesOrderPickupStoreSection';
+import type { FulfillmentType } from './salesOrderShared';
 
 type SalesOrderAddressEditorProps = {
   value: OrderAddressDbFields;
@@ -8,6 +10,9 @@ type SalesOrderAddressEditorProps = {
   idPrefix: string;
   disabled?: boolean;
   readOnly?: boolean;
+  fulfillmentMethod: FulfillmentType;
+  requestedPickUpStoreId: number | null;
+  onPickupStoreChange?: (storeId: number | null) => void;
 };
 
 function AddressField({
@@ -53,7 +58,12 @@ export function SalesOrderAddressEditor({
   idPrefix,
   disabled = false,
   readOnly = false,
+  fulfillmentMethod,
+  requestedPickUpStoreId,
+  onPickupStoreChange,
 }: SalesOrderAddressEditorProps) {
+  const isPickup = fulfillmentMethod === 'pick_up';
+
   const field = (name: keyof OrderAddressDbFields, label: string) => {
     const id = `${idPrefix}-${name}`;
     return (
@@ -71,14 +81,29 @@ export function SalesOrderAddressEditor({
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="md:col-span-2 text-sm font-medium">Shipping address</div>
-        {field('shipping_address', 'Street address')}
-        {field('shipping_city', 'City')}
-        {field('shipping_state', 'State')}
-        {field('shipping_postal_code', 'Postal code')}
-        {field('shipping_country', 'Country')}
-      </div>
+      {isPickup ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2 text-sm font-medium">Pickup location</div>
+          <div className="md:col-span-2">
+            <SalesOrderPickupStoreSection
+              storeId={requestedPickUpStoreId}
+              onStoreChange={onPickupStoreChange}
+              idPrefix={idPrefix}
+              disabled={disabled}
+              readOnly={readOnly}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2 text-sm font-medium">Shipping address</div>
+          {field('shipping_address', 'Street address')}
+          {field('shipping_city', 'City')}
+          {field('shipping_state', 'State')}
+          {field('shipping_postal_code', 'Postal code')}
+          {field('shipping_country', 'Country')}
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2 text-sm font-medium">Billing address</div>
         {field('billing_address', 'Street address')}

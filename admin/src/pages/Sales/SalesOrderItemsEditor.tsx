@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { useMemo } from 'react';
 import type { OrderType } from './orderType';
 import { SalesOrderItemPicker } from './SalesOrderItemPicker';
 import {
@@ -50,6 +51,13 @@ export function SalesOrderItemsEditor({
   const { options, loading, error } = useSalesOrderCatalog(orderType);
   const itemIdLabel = getOrderItemIdColumnLabel(orderType);
   const fieldsDisabled = disabled || readOnly;
+  const imageByProductId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const option of options) {
+      if (option.imageUrl) map.set(option.id, option.imageUrl);
+    }
+    return map;
+  }, [options]);
 
   const itemsTotal = items.reduce((sum, item) => {
     const qty = Number(item.qty);
@@ -89,6 +97,9 @@ export function SalesOrderItemsEditor({
           <table className="w-full min-w-[960px]">
             <thead>
               <tr className="border-b bg-muted/50">
+                <th className="w-16 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                  <span className="sr-only">Image</span>
+                </th>
                 <th className="w-28 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
                   {itemIdLabel}
                 </th>
@@ -123,9 +134,27 @@ export function SalesOrderItemsEditor({
                 const unitPrice = Number(item.unit_price);
                 const lineTotal =
                   Number.isFinite(qty) && Number.isFinite(unitPrice) ? qty * unitPrice : 0;
+                const imageUrl =
+                  item.menu_item_id > 0 ? imageByProductId.get(item.menu_item_id) : undefined;
 
                 return (
                   <tr key={`${idPrefix}-item-${index}`} className="border-b last:border-b-0">
+                    <td className="px-3 py-2 align-top">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt=""
+                          className="size-12 shrink-0 rounded border object-cover bg-muted"
+                        />
+                      ) : (
+                        <div
+                          className="flex size-12 shrink-0 items-center justify-center rounded border bg-muted text-muted-foreground"
+                          aria-hidden
+                        >
+                          <ImageIcon className="size-5" />
+                        </div>
+                      )}
+                    </td>
                     <td className="px-3 py-2 align-top text-sm font-mono text-muted-foreground">
                       {item.menu_item_id > 0 ? item.menu_item_id : '—'}
                     </td>
@@ -264,7 +293,7 @@ export function SalesOrderItemsEditor({
             </tbody>
             <tfoot>
               <tr className="bg-muted/30">
-                <td colSpan={6} className="px-3 py-2 text-right text-sm font-semibold">
+                <td colSpan={7} className="px-3 py-2 text-right text-sm font-semibold">
                   Items subtotal
                 </td>
                 <td className="px-3 py-2 text-right text-sm font-semibold tabular-nums">

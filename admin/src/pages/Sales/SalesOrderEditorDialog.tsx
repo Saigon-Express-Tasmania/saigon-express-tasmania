@@ -218,6 +218,8 @@ export function SalesOrderEditorDialog({
                     onFormChange((prev) => ({
                       ...prev,
                       requested_fulfillment_method: value as FulfillmentType,
+                      requested_pick_up_store_id:
+                        value === 'pick_up' ? prev.requested_pick_up_store_id : null,
                     }))
                   }
                 >
@@ -320,6 +322,14 @@ export function SalesOrderEditorDialog({
           <TabsContent value="addresses" className={tabPanelClass}>
             <SalesOrderAddressEditor
               idPrefix={dataset.formIdPrefix}
+              fulfillmentMethod={form.requested_fulfillment_method}
+              requestedPickUpStoreId={form.requested_pick_up_store_id}
+              onPickupStoreChange={(storeId) =>
+                onFormChange((prev) => ({
+                  ...prev,
+                  requested_pick_up_store_id: storeId,
+                }))
+              }
               value={{
                 shipping_address: form.shipping_address,
                 shipping_city: form.shipping_city,
@@ -343,7 +353,9 @@ export function SalesOrderEditorDialog({
             />
             {isWholesale ? (
               <p className="mt-4 text-sm text-muted-foreground">
-                Wholesale orders save shipping and billing details from the B2B tab.
+                {form.requested_fulfillment_method === 'pick_up'
+                  ? 'Wholesale pickup orders show the pickup store above. Billing details are edited on the B2B tab.'
+                  : 'Wholesale orders save shipping and billing details from the B2B tab.'}
               </p>
             ) : null}
           </TabsContent>
@@ -690,6 +702,8 @@ export function SalesOrderEditorDialog({
                 idPrefix={dataset.formIdPrefix}
                 disabled={saving}
                 readOnly={readOnly}
+                fulfillmentMethod={form.requested_fulfillment_method}
+                requestedPickUpStoreId={form.requested_pick_up_store_id}
               />
             </TabsContent>
           ) : null}

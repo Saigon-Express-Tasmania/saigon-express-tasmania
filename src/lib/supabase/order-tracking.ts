@@ -83,7 +83,7 @@ function isTestingOrders(): boolean {
 }
 
 const TRACKED_ORDER_SELECT =
-  "id, order_type, customer_name, customer_email, customer_phone, subtotal, tax_total, shipping_fee, grand_total, status, requested_target_date, requested_fulfillment_method, store_id, created_at, status_updated_at, notes, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details, payment_terms";
+  "id, order_type, customer_name, customer_email, customer_phone, subtotal, tax_total, shipping_fee, grand_total, status, requested_target_date, requested_fulfillment_method, store_id, created_at, status_updated_at, notes, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms";
 
 function buildTrackedOrderB2B(row: Record<string, unknown>): WholesaleOrderB2B {
   const b2b = parseWholesaleOrderB2B(row);

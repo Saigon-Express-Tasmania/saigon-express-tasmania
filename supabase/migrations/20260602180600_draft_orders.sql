@@ -16,6 +16,7 @@ create table public.draft_orders (
   store_id bigint references public.store_locations (id) on delete set null,
   requested_fulfillment_method public.order_fulfillment_type not null default 'pick_up',
   requested_target_date timestamptz,
+  requested_pick_up_store_id bigint references public.store_locations (id) on delete set null,
 
   shipping_address text not null,
   shipping_city text not null,
@@ -35,8 +36,7 @@ create table public.draft_orders (
   tax_total numeric(10, 2) default 0.00,
   shipping_fee numeric(10, 2) default 0.00,
   grand_total numeric(10, 2),
-  financial_details jsonb,
-
+  
   notes text,
   expires_at timestamptz,
   status_updated_at timestamptz,

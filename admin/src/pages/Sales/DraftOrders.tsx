@@ -74,6 +74,7 @@ type DraftOrderRow = {
   store_id: number | null;
   requested_fulfillment_method: FulfillmentType;
   requested_target_date: string | null;
+  requested_pick_up_store_id: number | null;
   subtotal: string | null;
   tax_total: string | null;
   shipping_fee: string | null;
@@ -91,6 +92,7 @@ type DraftOrderForm = {
   store_id: number | null;
   requested_fulfillment_method: FulfillmentType;
   requested_target_date: string;
+  requested_pick_up_store_id: number | null;
   subtotal: string;
   tax_total: string;
   shipping_fee: string;
@@ -108,6 +110,7 @@ function emptyDraftOrderForm(orderType: string): DraftOrderForm {
     store_id: null,
     requested_fulfillment_method: defaultFulfillmentForOrderType(orderType),
     requested_target_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    requested_pick_up_store_id: null,
     subtotal: '0.00',
     tax_total: '0.00',
     shipping_fee: '0.00',
@@ -143,6 +146,7 @@ function draftRowToForm(row: DraftOrderRow, items: SalesOrderItemForm[]): DraftO
     store_id: row.store_id,
     requested_fulfillment_method: row.requested_fulfillment_method,
     requested_target_date: row.requested_target_date ?? new Date().toISOString(),
+    requested_pick_up_store_id: row.requested_pick_up_store_id,
     subtotal: row.subtotal ? String(row.subtotal) : '0.00',
     tax_total: row.tax_total ? String(row.tax_total) : '0.00',
     shipping_fee: row.shipping_fee ? String(row.shipping_fee) : '0.00',
@@ -282,6 +286,7 @@ export function DraftOrders() {
         store_id: synced.store_id,
         requested_fulfillment_method: synced.requested_fulfillment_method,
         requested_target_date: targetDate.toISOString(),
+        requested_pick_up_store_id: synced.requested_pick_up_store_id,
         shipping_address: synced.shipping_address.trim() || 'N/A',
         shipping_city: synced.shipping_city.trim() || 'N/A',
         shipping_state: synced.shipping_state.trim() || 'N/A',
@@ -541,6 +546,8 @@ export function DraftOrders() {
                   setForm((prev) => ({
                     ...prev,
                     requested_fulfillment_method: value as FulfillmentType,
+                    requested_pick_up_store_id:
+                      value === 'pick_up' ? prev.requested_pick_up_store_id : null,
                   }))
                 }
               >
@@ -620,6 +627,11 @@ export function DraftOrders() {
             <div className="grid gap-2 md:col-span-2">
               <SalesOrderAddressEditor
                 idPrefix="draft-order"
+                fulfillmentMethod={form.requested_fulfillment_method}
+                requestedPickUpStoreId={form.requested_pick_up_store_id}
+                onPickupStoreChange={(storeId) =>
+                  setForm((prev) => ({ ...prev, requested_pick_up_store_id: storeId }))
+                }
                 value={{
                   shipping_address: form.shipping_address,
                   shipping_city: form.shipping_city,

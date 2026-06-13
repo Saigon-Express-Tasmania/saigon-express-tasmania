@@ -2,6 +2,7 @@
 
 import { WholesaleOrderB2BTooltipContent } from "@/components/WholesaleOrderB2BTooltipContent";
 import { TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { WholesalePickupStore } from "@/lib/supabase/wholesale-orders";
 import type { WholesaleOrderB2B, WholesaleOrderB2BSection } from "@/types/WholesaleB2BOrder";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type { LucideIcon } from "lucide-react";
@@ -23,12 +24,18 @@ export default function WholesaleOrderB2BIconTooltip({
   icon: Icon,
   b2b,
   disabled,
+  isPickup = false,
+  pickupStore = null,
+  pickupStoreId = null,
 }: {
   section: Exclude<WholesaleOrderB2BSection, "all">;
   label: string;
   icon: LucideIcon;
   b2b: WholesaleOrderB2B;
   disabled?: boolean;
+  isPickup?: boolean;
+  pickupStore?: WholesalePickupStore | null;
+  pickupStoreId?: number | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -77,7 +84,13 @@ export default function WholesaleOrderB2BIconTooltip({
         sideOffset={8}
         className="max-w-[min(calc(100vw-2rem),18rem)] border border-white/15 bg-neutral-900 px-3 py-2.5 text-white shadow-2xl [&>svg]:bg-neutral-900 [&>svg]:fill-neutral-900"
       >
-        <WholesaleOrderB2BTooltipContent section={section} b2b={b2b} />
+        <WholesaleOrderB2BTooltipContent
+          section={section}
+          b2b={b2b}
+          isPickup={isPickup}
+          pickupStore={pickupStore}
+          pickupStoreId={pickupStoreId}
+        />
       </TooltipContent>
     </TooltipPrimitive.Root>
   );

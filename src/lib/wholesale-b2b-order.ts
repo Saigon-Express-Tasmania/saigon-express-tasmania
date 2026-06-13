@@ -90,7 +90,6 @@ export const WHOLESALE_FULFILLMENT_OPTIONS: {
   value: OrderFulfillmentMethod;
   label: string;
 }[] = [
-  { value: "delivery", label: "Delivery" },
   { value: "shipping", label: "Shipping" },
   { value: "pick_up", label: "Pick up" },
 ];
@@ -199,6 +198,7 @@ export function buildWholesaleOrderReviewFromProfile(
     customer_phone: profile.phone?.trim() ?? "",
     requested_fulfillment_method: "delivery",
     requested_target_date: defaultRequestedTargetDateLocal(),
+    requested_pick_up_store_id: null,
     shipping_dba_name: businessName,
     shipping_address: street_1,
     shipping_street_2: profile.address_line2?.trim() || null,
@@ -253,6 +253,17 @@ export function billingFromShippingForm(
   };
 }
 
+export function hasWholesalePickupStoreSelected(
+  form: Pick<
+    WholesaleOrderReviewForm,
+    "requested_fulfillment_method" | "requested_pick_up_store_id"
+  >,
+): boolean {
+  if (form.requested_fulfillment_method !== "pick_up") return true;
+  const id = form.requested_pick_up_store_id;
+  return id != null && Number.isFinite(id) && id > 0;
+}
+
 export function validateWholesaleOrderReview(
   form: WholesaleOrderReviewForm,
 ): string | null {
@@ -262,10 +273,20 @@ export function validateWholesaleOrderReview(
   if (!form.requested_target_date.trim()) {
     return "Requested delivery date is required.";
   }
-  if (!form.shipping_address.trim()) return "Shipping street address is required.";
-  if (!form.shipping_city.trim()) return "Shipping city is required.";
-  if (!form.shipping_state.trim()) return "Shipping state is required.";
-  if (!form.shipping_postal_code.trim()) return "Shipping postal code is required.";
+  if (
+    form.requested_fulfillment_method === "pick_up" &&
+    !hasWholesalePickupStoreSelected(form)
+  ) {
+    return "Please select a pickup store before checkout.";
+  }
+  if (form.requested_fulfillment_method !== "pick_up") {
+    if (!form.shipping_address.trim()) return "Shipping street address is required.";
+    if (!form.shipping_city.trim()) return "Shipping city is required.";
+    if (!form.shipping_state.trim()) return "Shipping state is required.";
+    if (!form.shipping_postal_code.trim()) {
+      return "Shipping postal code is required.";
+    }
+  }
   if (!form.billing_legal_name.trim()) return "Billing legal name is required.";
   if (!form.billing_address.trim()) return "Billing street address is required.";
   if (!form.billing_city.trim()) return "Billing city is required.";
@@ -278,17 +299,21 @@ export function validateWholesaleOrderReview(
 export function serializeWholesaleOrderReviewForCheckout(
   form: WholesaleOrderReviewForm,
 ) {
-  const shippingAddress: WholesaleShippingAddress = {
-    dba_name: form.shipping_dba_name.trim(),
-    street_1: form.shipping_address.trim(),
-    street_2: form.shipping_street_2?.trim() || null,
-    city: form.shipping_city.trim(),
-    state: form.shipping_state.trim(),
-    postal_code: form.shipping_postal_code.trim(),
-    country: WHOLESALE_DEFAULT_COUNTRY,
-    special_instructions: form.shipping_special_instructions?.trim() || null,
-    preferred_window: form.shipping_preferred_window?.trim() || null,
-  };
+  const isPickup = form.requested_fulfillment_method === "pick_up";
+
+  const shippingAddress: WholesaleShippingAddress | undefined = isPickup
+    ? undefined
+    : {
+        dba_name: form.shipping_dba_name.trim(),
+        street_1: form.shipping_address.trim(),
+        street_2: form.shipping_street_2?.trim() || null,
+        city: form.shipping_city.trim(),
+        state: form.shipping_state.trim(),
+        postal_code: form.shipping_postal_code.trim(),
+        country: WHOLESALE_DEFAULT_COUNTRY,
+        special_instructions: form.shipping_special_instructions?.trim() || null,
+        preferred_window: form.shipping_preferred_window?.trim() || null,
+      };
 
   const billingAddress: WholesaleBillingAddress = {
     legal_name: form.billing_legal_name.trim(),
@@ -312,6 +337,11 @@ export function serializeWholesaleOrderReviewForCheckout(
   return {
     fulfillmentType: form.requested_fulfillment_method,
     pickupTime: requestedTargetDateLocalToIso(form.requested_target_date),
+    requestedPickUpStoreId: form.requested_pick_up_store_id,
+    storeId:
+      form.requested_fulfillment_method === "pick_up"
+        ? form.requested_pick_up_store_id
+        : undefined,
     notes: form.notes?.trim() || undefined,
     customerName: form.customer_name.trim(),
     customerEmail: form.customer_email.trim(),
@@ -487,15 +517,64 @@ export function parseWholesaleFinancialDetails(
   const gst = Number(row.gst_total);
   const grand = Number(row.grand_total_inc_gst);
   if (!Number.isFinite(subtotal) && !Number.isFinite(grand)) return null;
+  const shippingFee = Number(row.shipping_fee);
   return {
     subtotal_ex_gst: Number.isFinite(subtotal) ? subtotal : 0,
     gst_total: Number.isFinite(gst) ? gst : 0,
     grand_total_inc_gst: Number.isFinite(grand) ? grand : 0,
+    shipping_fee: Number.isFinite(shippingFee) ? shippingFee : undefined,
     currency: optionalString(row.currency) ?? "AUD",
   };
 }
 
-export type OrderAddressDbRow = {
+export type OrderFinancialDbRow = {
+  subtotal?: number | string | null;
+  tax_total?: number | string | null;
+  shipping_fee?: number | string | null;
+  grand_total?: number | string | null;
+};
+
+/** Build tooltip/dialog totals from orders.subtotal, tax_total, shipping_fee, grand_total. */
+export function parseWholesaleFinancialDetailsFromOrderRow(
+  row: OrderFinancialDbRow,
+): WholesaleOrderFinancialDetails | null {
+  const subtotal = Number(row.subtotal);
+  const taxTotal = Number(row.tax_total);
+  const shippingFee = Number(row.shipping_fee ?? 0);
+  const grandTotal = Number(row.grand_total);
+
+  if (
+    !Number.isFinite(grandTotal) &&
+    !Number.isFinite(subtotal) &&
+    !Number.isFinite(taxTotal)
+  ) {
+    return null;
+  }
+
+  const resolvedSubtotal = Number.isFinite(subtotal)
+    ? subtotal
+    : Number.isFinite(grandTotal)
+      ? Math.max(grandTotal - (Number.isFinite(taxTotal) ? taxTotal : 0) - shippingFee, 0)
+      : 0;
+  const resolvedTax = Number.isFinite(taxTotal) ? taxTotal : 0;
+  const resolvedGrand = Number.isFinite(grandTotal)
+    ? grandTotal
+    : resolvedSubtotal + resolvedTax + shippingFee;
+
+  if (resolvedGrand <= 0 && resolvedSubtotal <= 0) {
+    return null;
+  }
+
+  return {
+    subtotal_ex_gst: resolvedSubtotal,
+    gst_total: resolvedTax,
+    shipping_fee: shippingFee > 0 ? shippingFee : undefined,
+    grand_total_inc_gst: resolvedGrand,
+    currency: "AUD",
+  };
+}
+
+export type OrderAddressDbRow = OrderFinancialDbRow & {
   customer_name?: string | null;
   customer_email?: string | null;
   customer_phone?: string | null;
@@ -510,15 +589,7 @@ export type OrderAddressDbRow = {
   billing_state?: string | null;
   billing_postal_code?: string | null;
   billing_country?: string | null;
-  financial_details?: unknown;
 };
-
-function financialExtras(
-  value: unknown,
-): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
-}
 
 export type OrderFlatAddress = {
   shipping_address: string;
@@ -616,19 +687,16 @@ function parseWholesaleShippingFromFlatRow(
   const city = flat.shipping_city;
   const postalCode = flat.shipping_postal_code;
 
-  const extras = financialExtras(row.financial_details);
   return {
-    dba_name:
-      optionalString(extras.shipping_dba_name) ??
-      (requiredString(row.customer_name) || "—"),
+    dba_name: requiredString(row.customer_name) || "—",
     street_1: street || "—",
-    street_2: optionalString(extras.shipping_street_2),
+    street_2: null,
     city: city || "—",
     state: optionalString(row.shipping_state),
     postal_code: postalCode || "—",
     country: optionalString(row.shipping_country),
-    special_instructions: optionalString(extras.shipping_special_instructions),
-    preferred_window: optionalString(extras.shipping_preferred_window),
+    special_instructions: null,
+    preferred_window: null,
   };
 }
 
@@ -642,18 +710,15 @@ function parseWholesaleBillingFromFlatRow(
   const city = flat.billing_city;
   const postalCode = flat.billing_postal_code;
 
-  const extras = financialExtras(row.financial_details);
   return {
-    legal_name:
-      optionalString(extras.billing_legal_name) ??
-      (requiredString(row.customer_name) || "—"),
+    legal_name: requiredString(row.customer_name) || "—",
     street_1: street || "—",
-    street_2: optionalString(extras.billing_street_2),
+    street_2: null,
     city: city || "—",
     state: optionalString(row.billing_state),
     postal_code: postalCode || "—",
     country: optionalString(row.billing_country),
-    tax_id: optionalString(extras.billing_tax_id),
+    tax_id: null,
     payment_terms: optionalString(row.payment_terms),
   };
 }
@@ -671,12 +736,14 @@ function hasFlatAddressColumns(row: OrderAddressDbRow): boolean {
 export function parseWholesaleOrderB2B(
   row: OrderAddressDbRow & { buyer?: unknown },
 ): WholesaleOrderB2B {
+  const financialDetails = parseWholesaleFinancialDetailsFromOrderRow(row);
+
   if (hasFlatAddressColumns(row)) {
     return {
       buyer: parseWholesaleOrderBuyer(row.buyer),
       shippingAddress: parseWholesaleShippingFromFlatRow(row),
       billingAddress: parseWholesaleBillingFromFlatRow(row),
-      financialDetails: parseWholesaleFinancialDetails(row.financial_details),
+      financialDetails,
     };
   }
 
@@ -684,7 +751,7 @@ export function parseWholesaleOrderB2B(
     buyer: parseWholesaleOrderBuyer(row.buyer),
     shippingAddress: parseWholesaleShippingAddress(row.shipping_address),
     billingAddress: parseWholesaleBillingAddress(row.billing_address),
-    financialDetails: parseWholesaleFinancialDetails(row.financial_details),
+    financialDetails,
   };
 }
 

@@ -145,6 +145,7 @@ begin
     store_id,
     requested_fulfillment_method,
     requested_target_date,
+    requested_pick_up_store_id,
     shipping_address,
     shipping_city,
     shipping_state,
@@ -161,7 +162,6 @@ begin
     tax_total,
     shipping_fee,
     grand_total,
-    financial_details,
     notes,
     status_updated_at,
     created_at
@@ -180,6 +180,7 @@ begin
     d.store_id,
     p_requested_fulfillment_method,
     p_requested_target_date,
+    d.requested_pick_up_store_id,
     d.shipping_address,
     d.shipping_city,
     d.shipping_state,
@@ -196,7 +197,6 @@ begin
     p_tax_total,
     p_shipping_fee,
     p_grand_total,
-    d.financial_details,
     coalesce(p_notes, d.notes),
     p_status_updated_at,
     d.created_at
@@ -253,6 +253,7 @@ declare
   v_customer_email text;
   v_customer_phone text;
   v_store_id bigint;
+  v_requested_pick_up_store_id bigint;
   v_requested_target_date timestamptz;
   v_subtotal numeric(10, 2);
   v_tax_total numeric(10, 2);
@@ -281,7 +282,6 @@ declare
   v_billing_state text;
   v_billing_postal_code text;
   v_billing_country text;
-  v_financial_details jsonb;
   v_payment_terms public.order_payment_terms;
   v_po_number varchar(100);
 begin
@@ -302,6 +302,8 @@ begin
   v_customer_email := coalesce(p_order_payload->>'customer_email', '');
   v_customer_phone := coalesce(p_order_payload->>'customer_phone', '');
   v_store_id := nullif(p_order_payload->>'store_id', '')::bigint;
+  v_requested_pick_up_store_id :=
+    nullif(p_order_payload->>'requested_pick_up_store_id', '')::bigint;
   v_requested_target_date := nullif(p_order_payload->>'requested_target_date', '')::timestamptz;
   v_shipping_address := p_order_payload->>'shipping_address';
   v_shipping_city := p_order_payload->>'shipping_city';
@@ -322,7 +324,6 @@ begin
   v_tax_total := coalesce(nullif(p_order_payload->>'tax_total', '')::numeric(10, 2), 0::numeric(10, 2));
   v_shipping_fee := coalesce(nullif(p_order_payload->>'shipping_fee', '')::numeric(10, 2), 0::numeric(10, 2));
   v_grand_total := nullif(p_order_payload->>'grand_total', '')::numeric(10, 2);
-  v_financial_details := p_order_payload->'financial_details';
   v_notes := nullif(p_order_payload->>'notes', '');
   v_cancel_token := nullif(p_order_payload->>'cancel_token', '');
   v_tracking_token := nullif(p_order_payload->>'tracking_token', '');
@@ -428,6 +429,7 @@ begin
       store_id,
       requested_fulfillment_method,
       requested_target_date,
+      requested_pick_up_store_id,
       shipping_address,
       shipping_city,
       shipping_state,
@@ -444,7 +446,6 @@ begin
       tax_total,
       shipping_fee,
       grand_total,
-      financial_details,
       notes,
       status_updated_at
     )
@@ -461,6 +462,7 @@ begin
       v_store_id,
       v_requested_fulfillment_method,
       v_requested_target_date,
+      v_requested_pick_up_store_id,
       v_shipping_address,
       v_shipping_city,
       v_shipping_state,
@@ -477,7 +479,6 @@ begin
       v_tax_total,
       v_shipping_fee,
       v_grand_total,
-      v_financial_details,
       v_notes,
       v_status_updated_at
     )
@@ -654,6 +655,7 @@ begin
     store_id,
     requested_fulfillment_method,
     requested_target_date,
+    requested_pick_up_store_id,
     shipping_address,
     shipping_city,
     shipping_state,
@@ -670,7 +672,6 @@ begin
     tax_total,
     shipping_fee,
     grand_total,
-    financial_details,
     notes,
     archived_reason,
     archived_at,
@@ -692,6 +693,7 @@ begin
     v_order.store_id,
     v_order.requested_fulfillment_method,
     v_order.requested_target_date,
+    v_order.requested_pick_up_store_id,
     v_order.shipping_address,
     v_order.shipping_city,
     v_order.shipping_state,
@@ -708,7 +710,6 @@ begin
     v_order.tax_total,
     v_order.shipping_fee,
     v_order.grand_total,
-    v_order.financial_details,
     v_order.notes,
     p_archived_reason,
     now(),

@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import type { WholesalePickupStore } from "@/lib/supabase/wholesale-orders";
+import { formatStoreHours } from "@/lib/store-hours";
 import {
   formatWholesalePaymentTerms,
   formatWholesaleStreetAddress,
@@ -46,9 +48,15 @@ function formatMoney(financials: WholesaleOrderFinancialDetails, amount: number)
 export function WholesaleOrderB2BTooltipContent({
   section,
   b2b,
+  isPickup = false,
+  pickupStore = null,
+  pickupStoreId = null,
 }: {
   section: Exclude<WholesaleOrderB2BSection, "all">;
   b2b: WholesaleOrderB2B;
+  isPickup?: boolean;
+  pickupStore?: WholesalePickupStore | null;
+  pickupStoreId?: number | null;
 }) {
   if (section === "buyer") {
     if (!b2b.buyer) {
@@ -65,6 +73,29 @@ export function WholesaleOrderB2BTooltipContent({
   }
 
   if (section === "shipping") {
+    if (isPickup) {
+      if (!pickupStore && pickupStoreId == null) {
+        return <p className="text-xs text-white/50">No pickup location saved.</p>;
+      }
+      return (
+        <TooltipBlock title="Pickup location">
+          <TooltipRow label="Store" value={pickupStore?.name} />
+          <TooltipRow
+            label="Address"
+            value={
+              pickupStore
+                ? [pickupStore.address, pickupStore.suburb].filter(Boolean).join(", ")
+                : null
+            }
+          />
+          <TooltipRow label="Phone" value={pickupStore?.phone} />
+          <TooltipRow
+            label="Hours"
+            value={formatStoreHours(pickupStore?.hours)}
+          />
+        </TooltipBlock>
+      );
+    }
     if (!b2b.shippingAddress) {
       return <p className="text-xs text-white/50">No shipping data saved.</p>;
     }
@@ -117,6 +148,12 @@ export function WholesaleOrderB2BTooltipContent({
         value={formatMoney(financials, financials.subtotal_ex_gst)}
       />
       <TooltipRow label="GST" value={formatMoney(financials, financials.gst_total)} />
+      {financials.shipping_fee != null && financials.shipping_fee > 0 ? (
+        <TooltipRow
+          label="Shipping fee"
+          value={formatMoney(financials, financials.shipping_fee)}
+        />
+      ) : null}
       <div className="rounded-md border border-primary/25 bg-primary/10 px-2 py-1.5">
         <TooltipRow
           label="Grand total (inc GST)"

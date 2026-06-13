@@ -205,10 +205,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
       const addressPayload =
         orderType === 'wholesale'
           ? b2bPayload
-          : {
-              ...orderAddressFromForm(syncedForm),
-              financial_details: null,
-            };
+          : orderAddressFromForm(syncedForm);
 
       const orderPayload = {
         order_type: orderType,
@@ -217,6 +214,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         customer_phone: syncedForm.customer_phone.trim(),
         store_id: syncedForm.store_id,
         requested_fulfillment_method: syncedForm.requested_fulfillment_method,
+        requested_pick_up_store_id: syncedForm.requested_pick_up_store_id,
         requested_target_date: targetDate.toISOString(),
         payment_terms: billingTerms.trim()
           ? parsePaymentTerms(billingTerms)

@@ -23,6 +23,15 @@ export type WholesaleOrderItem = {
   item_name: string;
 };
 
+export type WholesalePickupStore = {
+  id: number;
+  name: string;
+  address: string;
+  suburb: string | null;
+  phone: string | null;
+  hours: string | null;
+};
+
 export type WholesaleOrder = {
   id: number;
   order_type: string;
@@ -37,6 +46,8 @@ export type WholesaleOrder = {
   tracking_token: string | null;
   requested_target_date: string | null;
   requested_fulfillment_method: string | null;
+  requested_pick_up_store_id: number | null;
+  pickup_store: WholesalePickupStore | null;
   created_at: string;
   items: WholesaleOrderItem[];
   address: OrderFlatAddress;
@@ -57,7 +68,7 @@ export type FetchWholesaleOrdersResult = {
 };
 
 const ORDER_HEADER_SELECT =
-  "id, order_type, subtotal, tax_total, shipping_fee, grand_total, status, tracking_token, requested_target_date, requested_fulfillment_method, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details, payment_terms, created_at";
+  "id, order_type, subtotal, tax_total, shipping_fee, grand_total, status, tracking_token, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms, created_at";
 
 function isTestingOrders(): boolean {
   return getClientStripeMode() === "test";
@@ -101,9 +112,14 @@ function mapOrderRow(
   row: Record<string, unknown>,
   itemsByOrderId: Map<number, Record<string, unknown>[]>,
   paymentStatusByOrderId: Map<number, string>,
+  storesById: Map<number, WholesalePickupStore>,
 ): WholesaleOrder {
   const orderId = Number(row.id);
   const grandTotal = Number(row.grand_total ?? row.total ?? 0);
+  const pickupStoreId =
+    row.requested_pick_up_store_id == null
+      ? null
+      : Number(row.requested_pick_up_store_id);
 
   return {
     id: orderId,
@@ -119,11 +135,37 @@ function mapOrderRow(
     requested_target_date: (row.requested_target_date as string | null) ?? null,
     requested_fulfillment_method:
       (row.requested_fulfillment_method as string | null) ?? null,
+    requested_pick_up_store_id:
+      pickupStoreId != null && Number.isFinite(pickupStoreId) && pickupStoreId > 0
+        ? pickupStoreId
+        : null,
+    pickup_store:
+      pickupStoreId != null && pickupStoreId > 0
+        ? storesById.get(pickupStoreId) ?? null
+        : null,
     created_at: String(row.created_at),
     items: (itemsByOrderId.get(orderId) ?? []).map((item) => mapOrderItem(item)),
     address: extractOrderFlatAddress(row),
     b2b: buildWholesaleOrderB2B(row),
   };
+}
+
+async function fetchStoreLocationsById(): Promise<Map<number, WholesalePickupStore>> {
+  const { data, error } = await supabase
+    .from("store_locations")
+    .select("id, name, address, suburb, phone, hours")
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const storesById = new Map<number, WholesalePickupStore>();
+  for (const row of data ?? []) {
+    const store = row as WholesalePickupStore;
+    storesById.set(Number(store.id), store);
+  }
+  return storesById;
 }
 
 async function fetchPaymentStatusByOrderId(
@@ -188,6 +230,7 @@ export async function fetchWholesaleOrders(
   const orderRows = (data ?? []) as Record<string, unknown>[];
   const orderIds = orderRows.map((row) => Number(row.id)).filter((id) => id > 0);
   const itemsByOrderId = new Map<number, Record<string, unknown>[]>();
+  const storesById = await fetchStoreLocationsById();
 
   if (orderIds.length > 0) {
     const [{ data: items, error: itemsError }, paymentStatusByOrderId] =
@@ -214,7 +257,7 @@ export async function fetchWholesaleOrders(
 
     return {
       orders: orderRows.map((row) =>
-        mapOrderRow(row, itemsByOrderId, paymentStatusByOrderId),
+        mapOrderRow(row, itemsByOrderId, paymentStatusByOrderId, storesById),
       ),
       totalCount: count ?? 0,
     };
@@ -222,7 +265,7 @@ export async function fetchWholesaleOrders(
 
   return {
     orders: orderRows.map((row) =>
-      mapOrderRow(row, itemsByOrderId, new Map()),
+      mapOrderRow(row, itemsByOrderId, new Map(), storesById),
     ),
     totalCount: count ?? 0,
   };
@@ -280,4 +323,24 @@ export function getOrderTypeLabel(orderType: string): string {
   if (orderType === "delivery") return "Delivery";
   if (orderType === "catering") return "Catering";
   return orderType.charAt(0).toUpperCase() + orderType.slice(1);
+}
+
+export function isWholesalePickupOrder(
+  order: Pick<WholesaleOrder, "requested_fulfillment_method">,
+): boolean {
+  return order.requested_fulfillment_method === "pick_up";
+}
+
+export function formatWholesalePickupStoreSummary(
+  store: WholesalePickupStore | null,
+  storeId: number | null,
+): string | null {
+  if (store) {
+    const locality = [store.address, store.suburb].filter(Boolean).join(", ");
+    return locality ? `${store.name} · ${locality}` : store.name;
+  }
+  if (storeId != null && storeId > 0) {
+    return `Pickup store #${storeId}`;
+  }
+  return null;
 }

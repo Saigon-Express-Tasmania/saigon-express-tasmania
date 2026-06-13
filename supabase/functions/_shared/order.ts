@@ -66,6 +66,7 @@ export type OrderCheckoutInput = {
   customerEmail: string;
   customerPhone: string;
   storeId?: number | null;
+  requestedPickUpStoreId?: number | null;
   pickupTime?: string;
   notes?: string;
   poNumber?: string;
@@ -97,6 +98,15 @@ type DraftOrderItemRow = {
   qty: number;
   unitPrice: number;
   itemName: string;
+  sku: string;
+  uom: string;
+  isCatchWeight: boolean;
+};
+
+type ProductOrderFields = {
+  sku: string;
+  uom: string;
+  isCatchWeight: boolean;
 };
 
 type OrderPaymentTerms =
@@ -130,6 +140,7 @@ type DraftOrderRow = {
   customer_email: string | null;
   customer_phone: string | null;
   store_id: number | null;
+  requested_pick_up_store_id: number | null;
   requested_target_date: string | null;
   payment_terms: OrderPaymentTerms;
   subtotal: number | string | null;
@@ -137,7 +148,6 @@ type DraftOrderRow = {
   shipping_fee: number | string | null;
   grand_total: number | string | null;
   notes: string | null;
-  financial_details: WholesaleFinancialDetails | null;
 } & OrderAddressDbFields;
 
 type CreatePaidOrderWithItemsResponse = number;
@@ -263,66 +273,93 @@ function billingAddressToDbFields(
 }
 
 function resolveOrderAddressFields(input: OrderCheckoutInput): OrderAddressDbFields {
-  if (input.orderType === "wholesale" && input.shippingAddress && input.billingAddress) {
-    return {
-      ...shippingAddressToDbFields(input.shippingAddress),
-      ...billingAddressToDbFields(input.billingAddress),
-    };
+  if (input.orderType === "wholesale" && input.billingAddress) {
+    const billing = billingAddressToDbFields(input.billingAddress);
+    if (input.fulfillmentType === "pick_up") {
+      return {
+        ...defaultOrderAddressFields(),
+        ...billing,
+      };
+    }
+    if (input.shippingAddress) {
+      return {
+        ...shippingAddressToDbFields(input.shippingAddress),
+        ...billing,
+      };
+    }
   }
   return defaultOrderAddressFields();
 }
 
-function enrichFinancialDetailsForDb(
-  financialDetails: WholesaleFinancialDetails | undefined,
-  shippingAddress?: WholesaleShippingAddress,
-  billingAddress?: WholesaleBillingAddress,
-): Record<string, unknown> | null {
-  const payload: Record<string, unknown> = financialDetails
-    ? { ...financialDetails }
-    : {};
-
-  if (shippingAddress?.dba_name.trim()) {
-    payload.shipping_dba_name = shippingAddress.dba_name.trim();
-  }
-  if (shippingAddress?.street_2?.trim()) {
-    payload.shipping_street_2 = shippingAddress.street_2.trim();
-  }
-  if (shippingAddress?.special_instructions?.trim()) {
-    payload.shipping_special_instructions = shippingAddress.special_instructions.trim();
-  }
-  if (shippingAddress?.preferred_window?.trim()) {
-    payload.shipping_preferred_window = shippingAddress.preferred_window.trim();
-  }
-  if (billingAddress?.legal_name.trim()) {
-    payload.billing_legal_name = billingAddress.legal_name.trim();
-  }
-  if (billingAddress?.street_2?.trim()) {
-    payload.billing_street_2 = billingAddress.street_2.trim();
-  }
-  if (billingAddress?.tax_id?.trim()) {
-    payload.billing_tax_id = billingAddress.tax_id.trim();
+async function fetchProductsForOrderItems(
+  supabase: ReturnType<typeof createServiceClient>,
+  productIds: number[],
+): Promise<Map<number, ProductOrderFields>> {
+  const uniqueIds = [...new Set(productIds.filter((id) => id > 0))];
+  if (uniqueIds.length === 0) {
+    return new Map();
   }
 
-  return Object.keys(payload).length > 0 ? payload : null;
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, sku, uom, is_catch_weight")
+    .in("id", uniqueIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const productsById = new Map<number, ProductOrderFields>();
+  for (const row of data ?? []) {
+    const record = row as Record<string, unknown>;
+    const id = Number(record.id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+
+    const sku = String(record.sku ?? "").trim();
+    if (!sku) {
+      throw new Error(`Product #${id} is missing a SKU`);
+    }
+
+    const uom = String(record.uom ?? "EACH").trim() || "EACH";
+    productsById.set(id, {
+      sku,
+      uom,
+      isCatchWeight: Boolean(record.is_catch_weight),
+    });
+  }
+
+  for (const id of uniqueIds) {
+    if (!productsById.has(id)) {
+      throw new Error(`Product #${id} not found`);
+    }
+  }
+
+  return productsById;
 }
 
 function buildOrderItemInsertRows(
   orderId: number,
   orderType: OrderType,
   items: OrderCheckoutItem[],
+  productsById: Map<number, ProductOrderFields>,
 ): Record<string, unknown>[] {
   return items.map((item) => {
     const lineTotal = item.qty * item.unitPrice;
     const productId = item.productId;
+    const product = productsById.get(productId);
+    if (!product) {
+      throw new Error(`Product #${productId} not found`);
+    }
+
     return {
       order_id: orderId,
       item_type: orderType,
       product_id: productId,
-      sku: item.itemName,
+      sku: product.sku,
       name: item.itemName,
       quantity: item.qty,
-      uom: "EACH",
-      is_catch_weight: false,
+      uom: product.uom,
+      is_catch_weight: product.isCatchWeight,
       unit_price: formatMoney(item.unitPrice),
       line_total: formatMoney(lineTotal),
     };
@@ -335,7 +372,11 @@ async function insertOrderItemsForDraft(
   orderType: OrderType,
   items: OrderCheckoutItem[],
 ): Promise<void> {
-  const rows = buildOrderItemInsertRows(orderId, orderType, items);
+  const productsById = await fetchProductsForOrderItems(
+    supabase,
+    items.map((item) => item.productId),
+  );
+  const rows = buildOrderItemInsertRows(orderId, orderType, items, productsById);
   const { error } = await supabase.from("order_items").insert(rows);
   if (error) {
     throw new Error(error.message);
@@ -349,7 +390,7 @@ async function fetchDraftOrderItems(
 ): Promise<DraftOrderItemRow[]> {
   const { data, error } = await supabase
     .from("order_items")
-    .select("product_id, quantity, unit_price, name")
+    .select("product_id, quantity, unit_price, name, sku, uom, is_catch_weight")
     .eq("order_id", orderId);
 
   if (error) {
@@ -363,13 +404,25 @@ async function fetchDraftOrderItems(
     const qty = Number(record.quantity);
     const unitPrice = Number(record.unit_price);
     const itemName = String(record.name ?? "").trim();
+    const sku = String(record.sku ?? "").trim();
+    const uom = String(record.uom ?? "EACH").trim() || "EACH";
+    const isCatchWeight = Boolean(record.is_catch_weight);
 
     if (!Number.isFinite(productId) || productId <= 0) continue;
     if (!Number.isFinite(qty) || qty <= 0) continue;
     if (!Number.isFinite(unitPrice) || unitPrice < 0) continue;
     if (!itemName) continue;
+    if (!sku) continue;
 
-    parsed.push({ productId, qty, unitPrice, itemName });
+    parsed.push({
+      productId,
+      qty,
+      unitPrice,
+      itemName,
+      sku,
+      uom,
+      isCatchWeight,
+    });
   }
 
   return parsed;
@@ -380,11 +433,11 @@ function mapCheckoutItemsToPayload(items: DraftOrderItemRow[]) {
     const lineTotal = item.qty * item.unitPrice;
     return {
       product_id: item.productId,
-      sku: item.itemName,
+      sku: item.sku,
       name: item.itemName,
       quantity: item.qty,
-      uom: "EACH",
-      is_catch_weight: false,
+      uom: item.uom,
+      is_catch_weight: item.isCatchWeight,
       unit_price: item.unitPrice,
       line_total: lineTotal,
     };
@@ -615,6 +668,21 @@ function parseOptionalStoreId(value: unknown): number | null {
   return storeId;
 }
 
+function resolveRequestedPickUpStoreId(input: OrderCheckoutInput): number | null {
+  if (input.requestedPickUpStoreId != null) {
+    return input.requestedPickUpStoreId;
+  }
+  if (input.fulfillmentType === "pick_up" && input.storeId != null) {
+    return input.storeId;
+  }
+  return null;
+}
+
+function resolveStripeConnectStoreId(input: OrderCheckoutInput): number | null {
+  if (input.storeId != null) return input.storeId;
+  return resolveRequestedPickUpStoreId(input);
+}
+
 function normalizeReturnPath(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
 }
@@ -696,6 +764,7 @@ function buildOrderPayload(
     customer_email: draftOrder.customer_email ?? "",
     customer_phone: draftOrder.customer_phone ?? "",
     store_id: draftOrder.store_id,
+    requested_pick_up_store_id: draftOrder.requested_pick_up_store_id,
     payment_terms: draftOrder.payment_terms,
     subtotal: formatMoney(subtotal),
     tax_total: formatMoney(taxTotal),
@@ -715,7 +784,6 @@ function buildOrderPayload(
     billing_state: draftOrder.billing_state,
     billing_postal_code: draftOrder.billing_postal_code,
     billing_country: draftOrder.billing_country,
-    financial_details: draftOrder.financial_details,
   };
 }
 
@@ -836,6 +904,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   const customerEmail = String(data.customerEmail ?? "").trim();
   const customerPhone = String(data.customerPhone ?? "").trim();
   const storeId = parseOptionalStoreId(data.storeId);
+  const requestedPickUpStoreId = parseOptionalStoreId(data.requestedPickUpStoreId);
   const pickupTimeRaw = data.pickupTime != null ? String(data.pickupTime).trim() : "";
   const origin = String(data.origin ?? "").trim();
   const notes = data.notes != null ? String(data.notes).trim() : undefined;
@@ -854,6 +923,13 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     if (storeId == null) throw new Error("Please select a pickup store");
     if (!pickupTimeRaw) throw new Error("Please select a pickup time");
   }
+  if (
+    orderType === "wholesale" &&
+    fulfillmentType === "pick_up" &&
+    (requestedPickUpStoreId == null || requestedPickUpStoreId <= 0)
+  ) {
+    throw new Error("Please select a pickup store before checkout");
+  }
   if (!origin) throw new Error("Missing site origin");
 
   const pickupTime =
@@ -869,8 +945,11 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   const financialDetails = parseWholesaleFinancialDetails(data.financialDetails);
 
   if (orderType === "wholesale") {
-    if (!buyer || !shippingAddress || !billingAddress || !financialDetails) {
-      throw new Error("Wholesale checkout requires buyer, shipping, billing, and totals");
+    if (!buyer || !billingAddress || !financialDetails) {
+      throw new Error("Wholesale checkout requires buyer, billing, and totals");
+    }
+    if (fulfillmentType !== "pick_up" && !shippingAddress) {
+      throw new Error("Wholesale checkout requires shipping address for delivery or shipping");
     }
   }
 
@@ -903,6 +982,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     customerEmail,
     customerPhone,
     storeId,
+    requestedPickUpStoreId,
     pickupTime,
     notes: notes || undefined,
     poNumber: poNumber || undefined,
@@ -1022,11 +1102,8 @@ export async function createOrderCheckoutSession(
   );
   const requestedTargetDate = parseRequestedTargetDate(input.pickupTime);
   const addressFields = resolveOrderAddressFields(input);
-  const financialDetails = enrichFinancialDetailsForDb(
-    input.financialDetails,
-    input.shippingAddress,
-    input.billingAddress,
-  );
+  const requestedPickUpStoreId = resolveRequestedPickUpStoreId(input);
+  const stripeConnectStoreId = resolveStripeConnectStoreId(input);
 
   const { data: draftOrder, error: draftOrderError } = await supabase
     .from("draft_orders")
@@ -1039,7 +1116,8 @@ export async function createOrderCheckoutSession(
       customer_name: input.customerName,
       customer_email: input.customerEmail,
       customer_phone: input.customerPhone,
-      store_id: input.storeId ?? null,
+      store_id: stripeConnectStoreId,
+      requested_pick_up_store_id: requestedPickUpStoreId,
       requested_target_date: requestedTargetDate,
       payment_terms: paymentTerms,
       subtotal: formatMoney(totals.subtotal),
@@ -1049,7 +1127,6 @@ export async function createOrderCheckoutSession(
       notes: input.notes ?? null,
       po_number: input.poNumber ?? null,
       ...addressFields,
-      financial_details: financialDetails,
     })
     .select("id")
     .single();
@@ -1075,11 +1152,11 @@ export async function createOrderCheckoutSession(
   let connectStatus: string | null = null;
   let platformFeePercent = 5;
 
-  if (input.storeId != null) {
+  if (stripeConnectStoreId != null) {
     const { data: store, error: storeError } = await supabase
       .from("store_locations")
       .select("id, stripe_connect_account_id, stripe_connect_status, platform_fee_percent")
-      .eq("id", input.storeId)
+      .eq("id", stripeConnectStoreId)
       .maybeSingle();
 
     if (storeError) {
@@ -1115,7 +1192,9 @@ export async function createOrderCheckoutSession(
     customerName: input.customerName,
     customerEmail: input.customerEmail,
     pickupTime: input.pickupTime ?? "",
-    storeId: input.storeId != null ? String(input.storeId) : "",
+    storeId: stripeConnectStoreId != null ? String(stripeConnectStoreId) : "",
+    requestedPickUpStoreId:
+      requestedPickUpStoreId != null ? String(requestedPickUpStoreId) : "",
   };
   if (input.customerAccount) {
     stripeMetadata.customerAccount = input.customerAccount;
@@ -1273,7 +1352,7 @@ async function fetchDraftOrder(
   const { data, error } = await supabase
     .from("draft_orders")
     .select(
-      "id, order_type, is_testing, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_target_date, payment_terms, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country, financial_details",
+      "id, order_type, is_testing, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_pick_up_store_id, requested_target_date, payment_terms, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
     )
     .eq("id", draftOrderId)
     .maybeSingle();
@@ -1294,6 +1373,10 @@ async function fetchDraftOrder(
     customer_email: (row.customer_email as string | null) ?? null,
     customer_phone: (row.customer_phone as string | null) ?? null,
     store_id: row.store_id == null ? null : Number(row.store_id),
+    requested_pick_up_store_id:
+      row.requested_pick_up_store_id == null
+        ? null
+        : Number(row.requested_pick_up_store_id),
     requested_target_date: (row.requested_target_date as string | null) ?? null,
     payment_terms: parsePaymentTerms(row.payment_terms),
     subtotal: row.subtotal as number | string | null,
@@ -1315,6 +1398,5 @@ async function fetchDraftOrder(
       row.billing_postal_code ?? defaultOrderAddressFields().billing_postal_code,
     ),
     billing_country: String(row.billing_country ?? defaultOrderAddressFields().billing_country),
-    financial_details: row.financial_details as WholesaleFinancialDetails | null,
   };
 }

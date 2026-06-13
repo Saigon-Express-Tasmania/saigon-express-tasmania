@@ -35,6 +35,7 @@ export type WholesaleOrderFinancialDetails = {
   subtotal_ex_gst: number;
   gst_total: number;
   grand_total_inc_gst: number;
+  shipping_fee?: number;
   currency?: string;
 };
 
@@ -54,6 +55,7 @@ export type WholesaleOrderReviewForm = {
   customer_phone: string;
   requested_fulfillment_method: OrderFulfillmentMethod;
   requested_target_date: string;
+  requested_pick_up_store_id: number | null;
   shipping_address: string;
   shipping_street_2: string | null;
   shipping_city: string;

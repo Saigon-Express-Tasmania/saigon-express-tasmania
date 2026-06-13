@@ -64,6 +64,7 @@ export type SalesOrderRow = {
   store_id: number | null;
   requested_fulfillment_method: FulfillmentType;
   requested_target_date: string;
+  requested_pick_up_store_id: number | null;
   payment_terms: PaymentTerms;
   po_number: string | null;
   subtotal: string;
@@ -84,7 +85,6 @@ export type SalesOrderRow = {
   billing_state: string;
   billing_postal_code: string;
   billing_country: string;
-  financial_details: unknown;
   status_updated_at: string | null;
   created_at: string;
   payment_status?: PaymentStatus;
@@ -114,7 +114,7 @@ export type SalesOrderPaymentForm = {
 
 export type SalesOrderForm = Omit<
   SalesOrderRow,
-  'id' | 'created_at' | 'financial_details' | 'payment_status' | 'is_testing'
+  'id' | 'created_at' | 'payment_status' | 'is_testing'
 > & {
   items: SalesOrderItemForm[];
   b2b: SalesOrderB2BForm;
@@ -270,6 +270,7 @@ export function emptyOrderForm(
     store_id: null,
     requested_fulfillment_method: defaultFulfillmentForOrderType(orderType),
     requested_target_date: targetDate,
+    requested_pick_up_store_id: null,
     payment_terms: 'prepaid',
     po_number: null,
     subtotal: '0.00',
@@ -326,6 +327,7 @@ export function orderToForm(
     store_id: order.store_id,
     requested_fulfillment_method: order.requested_fulfillment_method,
     requested_target_date: order.requested_target_date,
+    requested_pick_up_store_id: order.requested_pick_up_store_id,
     payment_terms: order.payment_terms,
     po_number: order.po_number,
     subtotal: order.subtotal,

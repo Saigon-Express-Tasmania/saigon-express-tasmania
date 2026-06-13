@@ -26,8 +26,10 @@ import {
   formatOrderDate,
   formatOrderDateShort,
   formatWholesaleOrderId,
+  formatWholesalePickupStoreSummary,
   getOrderItemCount,
   getOrderTypeLabel,
+  isWholesalePickupOrder,
   WHOLESALE_ORDERS_PAGE_SIZE,
   type WholesaleOrder,
   type WholesaleOrderStatus,
@@ -40,6 +42,7 @@ import {
   getWholesaleOrderB2BSummary,
   hasMeaningfulFlatShippingAddress,
   hasWholesaleOrderB2B,
+  parseWholesaleFinancialDetailsFromOrderRow,
 } from "@/lib/wholesale-b2b-order";
 import type { UserProfile, WholesaleProduct } from "@/types";
 import type { WholesaleOrderB2BSection } from "@/types/WholesaleB2BOrder";
@@ -193,6 +196,14 @@ const B2B_ICON_TOOLTIPS: B2BIconTooltip[] = [
   { section: "financials", label: "Order totals", icon: Calculator },
 ];
 
+function getB2BIconTooltips(isPickup: boolean): B2BIconTooltip[] {
+  return B2B_ICON_TOOLTIPS.map((tooltip) =>
+    tooltip.section === "shipping" && isPickup
+      ? { ...tooltip, label: "Pickup location" }
+      : tooltip,
+  );
+}
+
 function OrderRow({
   order,
   expanded,
@@ -207,12 +218,28 @@ function OrderRow({
   const trackingUrl = order.tracking_token
     ? `/order-tracking/${order.tracking_token}`
     : null;
-  const hasB2B = hasWholesaleOrderB2B(order.b2b);
-  const b2bSummary =
-    getWholesaleOrderB2BSummary(order.b2b) ??
-    (hasMeaningfulFlatShippingAddress(order.address)
-      ? formatFlatShippingLines(order.address).join(" · ")
-      : null);
+  const b2bForDisplay = useMemo(
+    () => ({
+      ...order.b2b,
+      financialDetails:
+        parseWholesaleFinancialDetailsFromOrderRow(order) ??
+        order.b2b.financialDetails,
+    }),
+    [order],
+  );
+  const hasB2B = hasWholesaleOrderB2B(b2bForDisplay);
+  const isPickup = isWholesalePickupOrder(order);
+  const pickupSummary = formatWholesalePickupStoreSummary(
+    order.pickup_store,
+    order.requested_pick_up_store_id,
+  );
+  const b2bSummary = isPickup
+    ? pickupSummary
+    : getWholesaleOrderB2BSummary(b2bForDisplay) ??
+      (hasMeaningfulFlatShippingAddress(order.address)
+        ? formatFlatShippingLines(order.address).join(" · ")
+        : null);
+  const b2bIconTooltips = getB2BIconTooltips(isPickup);
 
   const openB2BDialog = (event: MouseEvent) => {
     event.stopPropagation();
@@ -441,13 +468,16 @@ function OrderRow({
                 className="ml-auto flex shrink-0 items-center gap-1.5 lg:gap-2"
                 onClick={(event) => event.stopPropagation()}
               >
-                {B2B_ICON_TOOLTIPS.map(({ section, label, icon }) => (
+                {b2bIconTooltips.map(({ section, label, icon }) => (
                   <WholesaleOrderB2BIconTooltip
                     key={section}
                     section={section}
                     label={label}
                     icon={icon}
-                    b2b={order.b2b}
+                    b2b={b2bForDisplay}
+                    isPickup={isPickup}
+                    pickupStore={order.pickup_store}
+                    pickupStoreId={order.requested_pick_up_store_id}
                   />
                 ))}
                 <button
@@ -469,8 +499,11 @@ function OrderRow({
         onOpenChange={setB2bDialogOpen}
         orderId={order.id}
         orderTotal={order.grand_total}
-        b2b={order.b2b}
+        b2b={b2bForDisplay}
         section="all"
+        isPickup={isPickup}
+        pickupStore={order.pickup_store}
+        pickupStoreId={order.requested_pick_up_store_id}
       />
     </article>
   );

@@ -1,11 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { WholesaleCartItem } from "@/contexts/WholesaleCartContext";
+import { useStoreLocations } from "@/lib/supabase/use-store-locations";
+import { formatStoreHours } from "@/lib/store-hours";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -21,10 +23,12 @@ import {
   WHOLESALE_DEFAULT_COUNTRY,
   WHOLESALE_FULFILLMENT_OPTIONS,
   WHOLESALE_PAYMENT_TERMS_OPTIONS,
+  hasWholesalePickupStoreSelected,
 } from "@/lib/wholesale-b2b-order";
 import { cn } from "@/lib/utils";
 import type { WholesaleOrderReviewForm } from "@/types/WholesaleB2BOrder";
-import { ArrowLeft, CalendarIcon, CreditCard, Loader2 } from "lucide-react";
+import type { StoreLocation } from "@/types";
+import { ArrowLeft, CalendarIcon, Check, CreditCard, Loader2, MapPin, Phone } from "lucide-react";
 import "react-day-picker/style.css";
 
 const fieldClass =
@@ -188,6 +192,117 @@ function ReviewDatePicker({
   );
 }
 
+function fulfillmentDateLabel(method: WholesaleOrderReviewForm["requested_fulfillment_method"]) {
+  if (method === "pick_up") return "Requested pickup date";
+  if (method === "shipping") return "Requested shipping date";
+  return "Requested delivery date";
+}
+
+function fulfillmentSectionDescription(
+  method: WholesaleOrderReviewForm["requested_fulfillment_method"],
+) {
+  if (method === "pick_up") {
+    return "Choose where and when you will collect your order";
+  }
+  if (method === "shipping") {
+    return "Fulfillment method and requested shipping date";
+  }
+  return "Fulfillment method and requested delivery date";
+}
+
+function PickupStorePicker({
+  stores,
+  loading,
+  error,
+  selectedId,
+  onSelect,
+}: {
+  stores: StoreLocation[];
+  loading: boolean;
+  error: string | null;
+  selectedId: number | null;
+  onSelect: (storeId: number) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/45">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading pickup locations…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        {error}
+      </div>
+    );
+  }
+
+  if (stores.length === 0) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/45">
+        No pickup locations are available right now.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {stores.map((store) => {
+        const selected = selectedId === store.id;
+        return (
+          <button
+            key={store.id}
+            type="button"
+            onClick={() => onSelect(store.id)}
+            className={cn(
+              "group relative flex w-full flex-col gap-2 rounded-xl border p-4 text-left transition-all",
+              selected
+                ? "border-primary/70 bg-primary/10 ring-1 ring-primary/40"
+                : "border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/[0.07]",
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-2.5">
+                <span
+                  className={cn(
+                    "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+                    selected
+                      ? "border-primary/50 bg-primary/20 text-primary"
+                      : "border-white/10 bg-black/30 text-white/45 group-hover:text-white/70",
+                  )}
+                >
+                  <MapPin className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">{store.name}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-white/45">
+                    {store.address}
+                    {store.suburb ? `, ${store.suburb}` : ""}
+                  </p>
+                </div>
+              </div>
+              {selected ? (
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                  <Check className="h-3.5 w-3.5" />
+                </span>
+              ) : null}
+            </div>
+            {store.phone ? (
+              <p className="flex items-center gap-1.5 pl-10 text-xs text-white/35">
+                <Phone className="h-3 w-3 shrink-0" />
+                {store.phone}
+              </p>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function WholesaleOrderReviewPanel({
   items,
   review,
@@ -203,9 +318,37 @@ export default function WholesaleOrderReviewPanel({
   onConfirm: () => void;
   isCheckingOut: boolean;
 }) {
+  const { stores, loading: storesLoading, error: storesError } = useStoreLocations();
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(() =>
     isBillingSameAsShippingForm(review),
   );
+  const isPickup = review.requested_fulfillment_method === "pick_up";
+  const selectedPickupStore = useMemo(
+    () =>
+      review.requested_pick_up_store_id != null
+        ? stores.find((store) => store.id === review.requested_pick_up_store_id) ?? null
+        : null,
+    [review.requested_pick_up_store_id, stores],
+  );
+  const selectedPickupHours = formatStoreHours(selectedPickupStore?.hours ?? null);
+
+  useEffect(() => {
+    if (isPickup && billingSameAsShipping) {
+      setBillingSameAsShipping(false);
+    }
+  }, [isPickup, billingSameAsShipping]);
+
+  const showFullBillingFields = isPickup || !billingSameAsShipping;
+  const pickupStoreMissing =
+    isPickup && !hasWholesalePickupStoreSelected(review);
+  const pickupStoreInvalid =
+    isPickup &&
+    hasWholesalePickupStoreSelected(review) &&
+    !storesLoading &&
+    stores.length > 0 &&
+    !stores.some((store) => store.id === review.requested_pick_up_store_id);
+  const canConfirmCheckout =
+    !pickupStoreMissing && !pickupStoreInvalid && !storesLoading;
 
   const withAustralia = (
     next: Partial<WholesaleOrderReviewForm>,
@@ -258,27 +401,69 @@ export default function WholesaleOrderReviewPanel({
       <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
         <section className="space-y-3">
           <SectionTitle
-            title="Delivery"
-            description="Fulfillment method and requested shipping date"
+            title={isPickup ? "Pickup" : "Delivery"}
+            description={fulfillmentSectionDescription(
+              review.requested_fulfillment_method,
+            )}
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <ReviewSelect
               label="Fulfillment method"
               value={review.requested_fulfillment_method}
-              onValueChange={(value) =>
+              onValueChange={(value) => {
+                const method = value as WholesaleOrderReviewForm["requested_fulfillment_method"];
+                if (method === "pick_up") {
+                  setBillingSameAsShipping(false);
+                }
                 patch({
-                  requested_fulfillment_method:
-                    value as WholesaleOrderReviewForm["requested_fulfillment_method"],
-                })
-              }
+                  requested_fulfillment_method: method,
+                  requested_pick_up_store_id:
+                    method === "pick_up" ? review.requested_pick_up_store_id : null,
+                });
+              }}
               options={WHOLESALE_FULFILLMENT_OPTIONS}
             />
             <ReviewDatePicker
-              label="Requested shipping date"
+              label={fulfillmentDateLabel(review.requested_fulfillment_method)}
               value={review.requested_target_date}
               onChange={(value) => patch({ requested_target_date: value })}
             />
           </div>
+          {isPickup ? (
+            <div className="space-y-2 pt-1">
+              <Field label="Pickup store (required)">
+                <PickupStorePicker
+                  stores={stores}
+                  loading={storesLoading}
+                  error={storesError}
+                  selectedId={review.requested_pick_up_store_id}
+                  onSelect={(storeId) =>
+                    patch({ requested_pick_up_store_id: storeId })
+                  }
+                />
+              </Field>
+              {pickupStoreMissing ? (
+                <p className="text-xs font-medium text-amber-400/90">
+                  Select a pickup store to continue to payment.
+                </p>
+              ) : pickupStoreInvalid ? (
+                <p className="text-xs font-medium text-destructive">
+                  The selected pickup store is no longer available. Please choose
+                  another location.
+                </p>
+              ) : selectedPickupStore ? (
+                <p className="text-xs text-white/40">
+                  You will collect your order from{" "}
+                  <span className="text-white/70">{selectedPickupStore.name}</span>
+                  {selectedPickupHours ? ` · ${selectedPickupHours}` : ""}
+                </p>
+              ) : (
+                <p className="text-xs text-white/40">
+                  Select the store where you would like to pick up your wholesale order.
+                </p>
+              )}
+            </div>
+          ) : null}
         </section>
 
         <section className="space-y-3">
@@ -370,122 +555,133 @@ export default function WholesaleOrderReviewPanel({
           </div>
         </section>
 
-        <section className="space-y-3">
-          <SectionTitle title="Shipping address" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="DBA / business name">
-              <input
-                className={fieldClass}
-                value={review.shipping_dba_name}
-                onChange={(e) =>
-                  patchShipping({ shipping_dba_name: e.target.value })
-                }
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="Street address">
+        {!isPickup ? (
+          <section className="space-y-3">
+            <SectionTitle title="Shipping address" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="DBA / business name">
                 <input
                   className={fieldClass}
-                  value={review.shipping_address}
+                  value={review.shipping_dba_name}
                   onChange={(e) =>
-                    patchShipping({ shipping_address: e.target.value })
+                    patchShipping({ shipping_dba_name: e.target.value })
                   }
                 />
               </Field>
-            </div>
-            <div className="sm:col-span-2">
-              <Field label="Street line 2">
+              <div className="sm:col-span-2">
+                <Field label="Street address">
+                  <input
+                    className={fieldClass}
+                    value={review.shipping_address}
+                    onChange={(e) =>
+                      patchShipping({ shipping_address: e.target.value })
+                    }
+                  />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Street line 2">
+                  <input
+                    className={fieldClass}
+                    value={review.shipping_street_2 ?? ""}
+                    onChange={(e) =>
+                      patchShipping({
+                        shipping_street_2: e.target.value || null,
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+              <Field label="City">
                 <input
                   className={fieldClass}
-                  value={review.shipping_street_2 ?? ""}
-                  onChange={(e) =>
-                    patchShipping({
-                      shipping_street_2: e.target.value || null,
-                    })
-                  }
+                  value={review.shipping_city}
+                  onChange={(e) => patchShipping({ shipping_city: e.target.value })}
                 />
               </Field>
-            </div>
-            <Field label="City">
-              <input
-                className={fieldClass}
-                value={review.shipping_city}
-                onChange={(e) => patchShipping({ shipping_city: e.target.value })}
+              <ReviewSelect
+                label="State"
+                value={review.shipping_state}
+                onValueChange={(value) => patchShipping({ shipping_state: value })}
+                options={AUSTRALIAN_STATES.map((state) => ({
+                  value: state.value,
+                  label: state.label,
+                }))}
               />
-            </Field>
-            <ReviewSelect
-              label="State"
-              value={review.shipping_state}
-              onValueChange={(value) => patchShipping({ shipping_state: value })}
-              options={AUSTRALIAN_STATES.map((state) => ({
-                value: state.value,
-                label: state.label,
-              }))}
-            />
-            <Field label="Postal code">
-              <input
-                className={fieldClass}
-                value={review.shipping_postal_code}
-                onChange={(e) =>
-                  patchShipping({ shipping_postal_code: e.target.value })
-                }
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="Delivery instructions">
-                <textarea
-                  className={`${fieldClass} min-h-[72px] resize-y`}
-                  value={review.shipping_special_instructions ?? ""}
-                  onChange={(e) =>
-                    patchShipping({
-                      shipping_special_instructions: e.target.value || null,
-                    })
-                  }
-                  placeholder="Loading dock, access codes, etc."
-                />
-              </Field>
-            </div>
-            <div className="sm:col-span-2">
-              <Field label="Preferred delivery window">
+              <Field label="Postal code">
                 <input
                   className={fieldClass}
-                  value={review.shipping_preferred_window ?? ""}
+                  value={review.shipping_postal_code}
                   onChange={(e) =>
-                    patchShipping({
-                      shipping_preferred_window: e.target.value || null,
-                    })
+                    patchShipping({ shipping_postal_code: e.target.value })
                   }
-                  placeholder="e.g. 06:00 - 09:30"
                 />
               </Field>
+              <div className="sm:col-span-2">
+                <Field label="Delivery instructions">
+                  <textarea
+                    className={`${fieldClass} min-h-[72px] resize-y`}
+                    value={review.shipping_special_instructions ?? ""}
+                    onChange={(e) =>
+                      patchShipping({
+                        shipping_special_instructions: e.target.value || null,
+                      })
+                    }
+                    placeholder="Loading dock, access codes, etc."
+                  />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Preferred delivery window">
+                  <input
+                    className={fieldClass}
+                    value={review.shipping_preferred_window ?? ""}
+                    onChange={(e) =>
+                      patchShipping({
+                        shipping_preferred_window: e.target.value || null,
+                      })
+                    }
+                    placeholder="e.g. 06:00 - 09:30"
+                  />
+                </Field>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <SectionTitle title="Billing address" />
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
-              <input
-                type="checkbox"
-                checked={billingSameAsShipping}
-                onChange={(e) =>
-                  handleBillingSameAsShippingChange(e.target.checked)
-                }
-                disabled={isCheckingOut}
-                className="h-4 w-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary/40"
-              />
-              Same as shipping address
-            </label>
+            <SectionTitle
+              title="Billing address"
+              description={
+                isPickup
+                  ? "Required for your invoice and tax records"
+                  : undefined
+              }
+            />
+            {!isPickup ? (
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
+                <input
+                  type="checkbox"
+                  checked={billingSameAsShipping}
+                  onChange={(e) =>
+                    handleBillingSameAsShippingChange(e.target.checked)
+                  }
+                  disabled={isCheckingOut}
+                  className="h-4 w-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary/40"
+                />
+                Same as shipping address
+              </label>
+            ) : null}
           </div>
-          {billingSameAsShipping ? (
+          {!isPickup && billingSameAsShipping ? (
             <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/45">
               Billing address matches shipping. Tax ID and payment terms still
               apply below.
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
-            {!billingSameAsShipping ? (
+            {showFullBillingFields ? (
               <>
                 <Field label="Legal name">
                   <input
@@ -591,7 +787,7 @@ export default function WholesaleOrderReviewPanel({
         <button
           type="button"
           onClick={onConfirm}
-          disabled={isCheckingOut}
+          disabled={isCheckingOut || !canConfirmCheckout}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
           {isCheckingOut ? (
@@ -606,6 +802,11 @@ export default function WholesaleOrderReviewPanel({
             </>
           )}
         </button>
+        {pickupStoreMissing ? (
+          <p className="mt-2 text-center text-xs text-amber-400/80">
+            A pickup location is required before you can pay.
+          </p>
+        ) : null}
         <p className="mt-2 text-center text-xs text-white/30">
           Secure payment via Stripe · Card & Apple Pay accepted
         </p>

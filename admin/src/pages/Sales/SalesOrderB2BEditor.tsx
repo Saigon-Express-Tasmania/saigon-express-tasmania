@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 import type { SalesOrderB2BForm } from './salesOrderB2b';
 import { SalesOrderFormField } from './SalesOrderFormField';
+import { SalesOrderPickupStoreSection } from './SalesOrderPickupStoreSection';
+import type { FulfillmentType } from './salesOrderShared';
 
 type SalesOrderB2BEditorProps = {
   b2b: SalesOrderB2BForm;
@@ -12,6 +14,8 @@ type SalesOrderB2BEditorProps = {
   idPrefix: string;
   disabled?: boolean;
   readOnly?: boolean;
+  fulfillmentMethod?: FulfillmentType;
+  requestedPickUpStoreId?: number | null;
 };
 
 type B2BSectionProps = {
@@ -105,8 +109,11 @@ export function SalesOrderB2BEditor({
   idPrefix,
   disabled = false,
   readOnly = false,
+  fulfillmentMethod = 'delivery',
+  requestedPickUpStoreId = null,
 }: SalesOrderB2BEditorProps) {
   const fieldId = (name: string) => `${idPrefix}-b2b-${name}`;
+  const isPickup = fulfillmentMethod === 'pick_up';
 
   const updateBuyer = (patch: Partial<SalesOrderB2BForm['buyer']>) => {
     onB2bChange(patchB2B(b2b, 'buyer', patch));
@@ -120,16 +127,13 @@ export function SalesOrderB2BEditor({
     onB2bChange(patchB2B(b2b, 'billing_address', patch));
   };
 
-  const updateFinancials = (patch: Partial<SalesOrderB2BForm['financial_details']>) => {
-    onB2bChange(patchB2B(b2b, 'financial_details', patch));
-  };
-
   return (
     <div className="grid gap-4">
       <div className="grid gap-1">
         <Label>B2B order data</Label>
         <p className="text-xs text-muted-foreground">
-          Wholesale checkout fields stored as JSON on the order.
+          Buyer and address fields for wholesale orders. Order totals are edited on
+          the Order tab (subtotal, tax, shipping fee, grand total).
         </p>
       </div>
 
@@ -169,81 +173,93 @@ export function SalesOrderB2BEditor({
         />
       </B2BSection>
 
-      <B2BSection title="Shipping address">
-        <B2BField
-          id={fieldId('shipping-dba-name')}
-          label="DBA name"
-          value={b2b.shipping_address.dba_name}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ dba_name: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-preferred-window')}
-          label="Preferred window"
-          value={b2b.shipping_address.preferred_window}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ preferred_window: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-street-1')}
-          label="Street 1"
-          value={b2b.shipping_address.street_1}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ street_1: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-street-2')}
-          label="Street 2"
-          value={b2b.shipping_address.street_2}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ street_2: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-city')}
-          label="City"
-          value={b2b.shipping_address.city}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ city: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-state')}
-          label="State"
-          value={b2b.shipping_address.state}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ state: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-postal-code')}
-          label="Postal code"
-          value={b2b.shipping_address.postal_code}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ postal_code: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-country')}
-          label="Country"
-          value={b2b.shipping_address.country}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateShipping({ country: value })}
-        />
-        <B2BField
-          id={fieldId('shipping-special-instructions')}
-          label="Special instructions"
-          value={b2b.shipping_address.special_instructions}
-          disabled={disabled}
-          fullWidth
-          multiline
-          onChange={(value) => updateShipping({ special_instructions: value })}
-        />
-      </B2BSection>
+      {isPickup ? (
+        <div className="rounded-lg border bg-muted/20 p-4">
+          <h3 className="mb-3 text-sm font-semibold">Pickup location</h3>
+          <SalesOrderPickupStoreSection
+            storeId={requestedPickUpStoreId}
+            idPrefix={`${idPrefix}-b2b`}
+            disabled={disabled}
+            readOnly
+          />
+        </div>
+      ) : (
+        <B2BSection title="Shipping address">
+          <B2BField
+            id={fieldId('shipping-dba-name')}
+            label="DBA name"
+            value={b2b.shipping_address.dba_name}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ dba_name: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-preferred-window')}
+            label="Preferred window"
+            value={b2b.shipping_address.preferred_window}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ preferred_window: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-street-1')}
+            label="Street 1"
+            value={b2b.shipping_address.street_1}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ street_1: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-street-2')}
+            label="Street 2"
+            value={b2b.shipping_address.street_2}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ street_2: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-city')}
+            label="City"
+            value={b2b.shipping_address.city}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ city: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-state')}
+            label="State"
+            value={b2b.shipping_address.state}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ state: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-postal-code')}
+            label="Postal code"
+            value={b2b.shipping_address.postal_code}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ postal_code: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-country')}
+            label="Country"
+            value={b2b.shipping_address.country}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(value) => updateShipping({ country: value })}
+          />
+          <B2BField
+            id={fieldId('shipping-special-instructions')}
+            label="Special instructions"
+            value={b2b.shipping_address.special_instructions}
+            disabled={disabled}
+            fullWidth
+            multiline
+            onChange={(value) => updateShipping({ special_instructions: value })}
+          />
+        </B2BSection>
+      )}
 
       <B2BSection title="Billing address">
         <B2BField
@@ -317,44 +333,6 @@ export function SalesOrderB2BEditor({
           disabled={disabled}
           fullWidth
           onChange={(value) => updateBilling({ payment_terms: value })}
-        />
-      </B2BSection>
-
-      <B2BSection title="Financial details">
-        <B2BField
-          id={fieldId('financial-subtotal-ex-gst')}
-          label="Subtotal (ex GST)"
-          type="number"
-          value={b2b.financial_details.subtotal_ex_gst}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateFinancials({ subtotal_ex_gst: value })}
-        />
-        <B2BField
-          id={fieldId('financial-gst-total')}
-          label="GST total"
-          type="number"
-          value={b2b.financial_details.gst_total}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateFinancials({ gst_total: value })}
-        />
-        <B2BField
-          id={fieldId('financial-grand-total-inc-gst')}
-          label="Grand total (inc GST)"
-          type="number"
-          value={b2b.financial_details.grand_total_inc_gst}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateFinancials({ grand_total_inc_gst: value })}
-        />
-        <B2BField
-          id={fieldId('financial-currency')}
-          label="Currency"
-          value={b2b.financial_details.currency}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(value) => updateFinancials({ currency: value })}
         />
       </B2BSection>
     </div>
