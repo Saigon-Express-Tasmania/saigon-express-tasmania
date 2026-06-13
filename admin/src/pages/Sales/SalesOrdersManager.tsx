@@ -16,6 +16,7 @@ import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SalesOrderDeleteDialog } from './SalesOrderDeleteDialog';
 import { SalesOrderEditorDialog } from './SalesOrderEditorDialog';
+import { SalesOrderFulfillmentDialog } from './SalesOrderFulfillmentDialog';
 import { SalesOrdersTable } from './SalesOrdersTable';
 import { serializeB2BForDb } from './salesOrderB2b';
 import {
@@ -31,10 +32,12 @@ import {
   syncTotalsFromItems,
   validateOrderItems,
   SALES_ORDER_COLUMNS,
+  type OrderStatus,
   type SalesOrderForm,
   type SalesOrderRow,
   type SalesOrdersDataset,
 } from './salesOrderShared';
+import { formatOrderStatusLabel } from './salesOrderFulfillment';
 import { useSalesOrderType } from './useSalesOrderType';
 
 type SalesOrdersManagerProps = {
@@ -63,6 +66,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
   );
 
   const [deleteTarget, setDeleteTarget] = useState<SalesOrderRow | null>(null);
+  const [fulfillTarget, setFulfillTarget] = useState<SalesOrderRow | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!orderType) return;
@@ -281,6 +285,52 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
     }
   };
 
+  const handleFulfillStatusUpdate = async (
+    orderId: number,
+    status: OrderStatus,
+    successMessage: string,
+  ) => {
+    setSaving(true);
+    try {
+      const statusUpdatedAt = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          status,
+          status_updated_at: statusUpdatedAt,
+        })
+        .eq('id', orderId)
+        .eq('is_testing', dataset.isTestingFilter);
+      if (updateError) throw updateError;
+
+      toast.success(successMessage);
+      setFulfillTarget((current) =>
+        current?.id === orderId
+          ? { ...current, status, status_updated_at: statusUpdatedAt }
+          : current,
+      );
+      await loadOrders();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : `Failed to update ${dataset.entityName} status.`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFulfillStatusChange = (orderId: number, status: OrderStatus) => {
+    void handleFulfillStatusUpdate(
+      orderId,
+      status,
+      `Order status updated to ${formatOrderStatusLabel(status)}.`,
+    );
+  };
+
+  const handleFulfillCancel = (orderId: number) => {
+    void handleFulfillStatusUpdate(orderId, 'cancelled', 'Order cancelled.');
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setSaving(true);
@@ -379,6 +429,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
                 saving={saving}
                 onView={(order) => void openOrderDialog(order, true)}
                 onEdit={(order) => void openOrderDialog(order, false)}
+                onFulfill={setFulfillTarget}
                 onDelete={setDeleteTarget}
               />
             )}
@@ -405,6 +456,14 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         saving={saving}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onConfirm={() => void handleDelete()}
+      />
+
+      <SalesOrderFulfillmentDialog
+        order={fulfillTarget}
+        saving={saving}
+        onOpenChange={(open) => !open && setFulfillTarget(null)}
+        onStatusChange={handleFulfillStatusChange}
+        onCancelOrder={handleFulfillCancel}
       />
     </DashboardLayout>
   );

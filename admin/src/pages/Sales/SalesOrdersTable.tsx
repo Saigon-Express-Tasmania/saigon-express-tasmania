@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Eye, PackageCheck, Pencil, Trash2 } from 'lucide-react';
 import { formatTargetDateDisplay } from './salesOrderDb';
 import type { SalesOrderRow } from './salesOrderShared';
 
@@ -9,6 +9,7 @@ type SalesOrdersTableProps = {
   saving: boolean;
   onView: (order: SalesOrderRow) => void;
   onEdit: (order: SalesOrderRow) => void;
+  onFulfill: (order: SalesOrderRow) => void;
   onDelete: (order: SalesOrderRow) => void;
 };
 
@@ -17,6 +18,7 @@ export function SalesOrdersTable({
   saving,
   onView,
   onEdit,
+  onFulfill,
   onDelete,
 }: SalesOrdersTableProps) {
   return (
@@ -69,6 +71,16 @@ export function SalesOrdersTable({
                     aria-label={`View order ${order.id}`}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onFulfill(order)}
+                    disabled={saving}
+                    aria-label={`Fulfill order ${order.id}`}
+                    title="Fulfill"
+                  >
+                    <PackageCheck className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
