@@ -385,10 +385,7 @@ export default function OrderTrackingDetails({
                         <div className="font-medium text-zinc-300">
                           {pickupStore.name}
                         </div>
-                        <div>{pickupStore.address}</div>
-                        {pickupStore.suburb ? (
-                          <div>{pickupStore.suburb}</div>
-                        ) : null}
+                        <div>{pickupStore.address}</div>                        
                         {pickupStore.phone ? (
                           <div className="mt-1">{pickupStore.phone}</div>
                         ) : null}                                                
@@ -496,13 +493,13 @@ export default function OrderTrackingDetails({
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-2.5 md:grid-cols-3">
+              <div className="mt-6 grid gap-2.5 md:grid-cols-2">
                 <ActionButton
                   label={t("actions.viewInvoice")}
                   onClick={() => setInvoiceOpen(true)}
+                  variant="primary"
                 />
-                <ActionButton label={t("actions.downloadPackingSlip")} disabled />
-                <ActionButton label={t("actions.reportIssue")} href="/contact" />
+                <ActionButton label={t("actions.reportIssue")} href="/contact" variant="default" />
               </div>
             </div>
           </section>
@@ -582,12 +579,14 @@ function ActionButton({
   disabled?: boolean;
   href?: string;
   onClick?: () => void;
-  variant?: "default" | "primary";
+  variant?: "default" | "primary" | "secondary";
 }) {
   const className =
     variant === "primary"
       ? "border-red-900 bg-red-950 text-red-400 hover:bg-red-900/80"
-      : "border-red-900/60 bg-red-950/40 text-red-300 hover:bg-red-950/70";
+      : variant === "secondary"
+        ? "border-red-900/60 bg-red-950/40 text-red-300 hover:bg-red-950/70"
+      : "border-zinc-700/60 bg-zinc-800/40 text-zinc-300 hover:bg-zinc-800/70";
 
   if (href && !disabled) {
     return (
