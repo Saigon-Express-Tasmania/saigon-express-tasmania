@@ -1,4 +1,4 @@
-import type { Session } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { updateUserProfile } from "@/lib/supabase/user-profiles";
 import type { BusinessType } from "@/types/UserProfile";
@@ -73,6 +73,20 @@ export function isAlreadyRegisteredAuthError(error: unknown): boolean {
   );
 }
 
+export function isEmailNotConfirmedAuthError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const authError = error as { message?: string; code?: string };
+  const message = (authError.message ?? "").toLowerCase();
+
+  return (
+    authError.code === "email_not_confirmed" ||
+    message.includes("email not confirmed")
+  );
+}
+
 export function getAuthErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof AlreadyRegisteredError) {
     return error.message;
@@ -80,6 +94,10 @@ export function getAuthErrorMessage(error: unknown, fallback: string): string {
 
   if (isAlreadyRegisteredAuthError(error)) {
     return "An account with this email already exists. Please sign in instead.";
+  }
+
+  if (isEmailNotConfirmedAuthError(error)) {
+    return "Please confirm your email address before signing in. Check your inbox for the confirmation link.";
   }
 
   if (error && typeof error === "object" && "message" in error) {
@@ -114,7 +132,7 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   metadata?: Record<string, unknown>,
-): Promise<{ session: Session | null }> {
+): Promise<{ session: Session | null; user: User | null }> {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim().toLowerCase(),
     password,
@@ -134,7 +152,7 @@ export async function signUpWithEmail(
     throw new AlreadyRegisteredError();
   }
 
-  return { session: data.session };
+  return { session: data.session, user: data.user };
 }
 
 export async function signOut(): Promise<void> {
@@ -146,6 +164,7 @@ export async function signOut(): Promise<void> {
 
 export type WholesaleRegistrationResult = {
   userId: string;
+  emailConfirmationRequired: boolean;
 };
 
 function buildWholesaleMemberAuthMetadata(
@@ -182,23 +201,35 @@ export async function registerWholesaleMemberApplication(
 
   const metadata = buildWholesaleMemberAuthMetadata(input);
 
-  const { session } = await signUpWithEmail(input.email, input.password, metadata);
+  const { session, user } = await signUpWithEmail(
+    input.email,
+    input.password,
+    metadata,
+  );
 
-  if (!session?.user) {
+  const signedUpUser = session?.user ?? user;
+  if (!signedUpUser?.id) {
     throw new Error(
       "Registration could not be completed. Please try again or contact support.",
     );
   }
 
-  await updateUserProfile(session.user.id, {
-    first_name,
-    last_name,
-    phone: input.phone ?? null,
-    address_line1: input.address ?? null,
-    business_name: input.business_name,
-    abn: input.abn ?? null,
-    business_category: input.business_category ?? null,
-  });
+  // Profile row is created by handle_new_auth_user from signup metadata.
+  // updateUserProfile requires an authenticated session.
+  if (session?.user) {
+    await updateUserProfile(session.user.id, {
+      first_name,
+      last_name,
+      phone: input.phone ?? null,
+      address_line1: input.address ?? null,
+      business_name: input.business_name,
+      abn: input.abn ?? null,
+      business_category: input.business_category ?? null,
+    });
+  }
 
-  return { userId: session.user.id };
+  return {
+    userId: signedUpUser.id,
+    emailConfirmationRequired: !session,
+  };
 }

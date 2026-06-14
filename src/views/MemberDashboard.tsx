@@ -15,6 +15,7 @@ import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import { getOrderStatusLabel, normalizeOrderStatus } from "@/lib/order-status";
 import { hasPortalPrivilege, hasPrivilege } from "@/lib/privileges";
+import { WHOLESALE_REGISTRATION_MESSAGES } from "@/lib/wholesale-registration-status";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { supabase } from "@/lib/supabase/client";
 import {
@@ -32,6 +33,7 @@ import type {
 import { pickWholesaleImageUrl } from "@/types";
 import {
   CreditCard,
+  Clock,
   Loader2,
   MapPin,
   Pencil,
@@ -482,6 +484,34 @@ export default function MemberDashboard({
         </div>
       </div>
 
+      {!hasWholesale ? (
+          <div className="container py-4">
+            <div className="flex items-start gap-4 rounded-xl border border-amber-400/55 bg-amber-500/20 px-5 py-4 shadow-[0_0_24px_rgba(251,191,36,0.12)] backdrop-blur-md">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-300/40 bg-amber-400/25">
+                <Clock className="h-5 w-5 text-amber-200" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-amber-50">
+                  Wholesale access pending approval
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-amber-100/85">
+                  {WHOLESALE_REGISTRATION_MESSAGES.pending_approval_banner}
+                </p>
+                <p className="mt-3 text-sm text-amber-50">
+                  <span className="font-semibold">What you can do now:</span>{" "}
+                  <Link
+                    href="/member/profile"
+                    className="font-semibold text-white underline underline-offset-2 hover:text-amber-50"
+                  >
+                    Update your profile
+                  </Link>{" "}
+                  with your latest business and delivery details while you wait.
+                </p>
+              </div>
+            </div>
+          </div>
+      ) : null}
+
       <div className="container py-8 pb-16">
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard
@@ -746,15 +776,7 @@ export default function MemberDashboard({
               </div>
             )}
           </div>
-        ) : (
-          <div
-            className={`${MEMBER_PORTAL_PANEL_CLASS} p-5 text-sm text-white/55`}
-          >
-            Wholesale portal access is pending approval. You can update your
-            profile and view account details here while an administrator reviews
-            your application.
-          </div>
-        )}
+        ) : null}
       </div>
     </MemberPortalBackground>
   );

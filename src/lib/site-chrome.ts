@@ -21,7 +21,7 @@ function matchesSectionWildcard(path: string, section: string): boolean {
   if (path === "/wholesale") {
     return false;
   }
-  return path.startsWith(`${section}/`) && section !== "/member";
+  return path.startsWith(`${section}/`);
 }
 
 export function shouldHideMainHeader(pathname: string): boolean {

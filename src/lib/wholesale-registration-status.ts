@@ -17,6 +17,8 @@ export type WholesaleRegistrationStatus = {
 export const WHOLESALE_REGISTRATION_MESSAGES = {
   pending_approval:
     "Registration submitted! You can sign in anytime. Portal access requires administrator approval (typically 1–2 business days).",
+  pending_email_confirmation:
+    "Registration submitted! Check your email to confirm your address, then sign in. Portal access requires administrator approval (typically 1–2 business days).",
   pending_approval_banner:
     "Your registration is pending administrator approval. You can sign in, but wholesale portal features are not available yet.",
 } as const;
@@ -75,6 +77,7 @@ export function buildWholesaleRegistrationStatus(input: {
   email: string;
   businessName: string;
   businessType: Extract<BusinessType, "wholesale" | "warehouse">;
+  emailConfirmationRequired?: boolean;
 }): WholesaleRegistrationStatus {
   return {
     email: input.email.trim().toLowerCase(),
@@ -82,7 +85,9 @@ export function buildWholesaleRegistrationStatus(input: {
     businessType: input.businessType,
     status: "pending_approval",
     submittedAt: new Date().toISOString(),
-    message: WHOLESALE_REGISTRATION_MESSAGES.pending_approval,
+    message: input.emailConfirmationRequired
+      ? WHOLESALE_REGISTRATION_MESSAGES.pending_email_confirmation
+      : WHOLESALE_REGISTRATION_MESSAGES.pending_approval,
   };
 }
 

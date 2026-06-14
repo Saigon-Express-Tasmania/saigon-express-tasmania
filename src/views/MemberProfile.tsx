@@ -17,7 +17,6 @@ import { useSupabase } from "@/hooks/useSupabase";
 import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import { resizeImageFile } from "@/lib/image-resize";
 import { resolvePortalType } from "@/lib/privileges";
-import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import { AUSTRALIAN_STATES } from "@/lib/wholesale-b2b-order";
 import type { BusinessType, UserProfile, UserProfileSelfUpdate } from "@/types";
 import { Loader2, Upload, User, X } from "lucide-react";
@@ -155,7 +154,7 @@ function formToUpdate(form: ProfileFormState): UserProfileSelfUpdate {
 
 export default function MemberProfile() {
   const router = useRouter();
-  const { profile, authMetadata, isLoading, signOut, updateOwnProfile } =
+  const { profile, authMetadata, isLoading, isSignedIn, signOut, updateOwnProfile } =
     useSupabase();
   const { uploadMedia, isUploading } = useSupabaseStorage();
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -164,11 +163,9 @@ export default function MemberProfile() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
 
   const me = useMemo(() => {
-    if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
-      return null;
-    }
+    if (!profile) return null;
     return {
-      businessName: profile.business_name ?? "Your Business",
+      businessName: profile.business_name?.trim() || getContactName(profile),
       contactName: getContactName(profile),
       portalType: resolvePortalType(authMetadata.privileges),
       privileges: authMetadata.privileges,
@@ -177,10 +174,10 @@ export default function MemberProfile() {
   }, [profile, authMetadata, avatarPreviewUrl]);
 
   useEffect(() => {
-    if (!isLoading && !me) {
+    if (!isLoading && !isSignedIn) {
       router.push("/member");
     }
-  }, [me, isLoading, router]);
+  }, [isLoading, isSignedIn, router]);
 
   useEffect(() => {
     if (profile) {
@@ -327,7 +324,7 @@ export default function MemberProfile() {
     return options;
   }, [form]);
 
-  if (isLoading || !me || !profile || !form) {
+  if (isLoading || !isSignedIn || !profile || !form || !me) {
     return (
       <MemberPortalBackground className="flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

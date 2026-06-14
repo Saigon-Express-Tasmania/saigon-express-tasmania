@@ -266,7 +266,7 @@ function MemberPortalContent() {
 
     setIsSubmitting(true);
     try {
-      await registerWholesaleMemberApplication({
+      const result = await registerWholesaleMemberApplication({
         business_name: regBusinessName,
         contactName: regContactName,
         email: regEmail,
@@ -283,6 +283,7 @@ function MemberPortalContent() {
         email: regEmail,
         businessName: regBusinessName,
         businessType: portalType,
+        emailConfirmationRequired: result.emailConfirmationRequired,
       });
       saveWholesaleRegistrationStatus(status);
       setRegistrationStatus(status);
