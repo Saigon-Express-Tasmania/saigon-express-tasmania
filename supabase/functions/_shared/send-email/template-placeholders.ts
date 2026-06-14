@@ -5,6 +5,11 @@ const SES_TEMPLATE_VAR_PATTERN = /\{\{([a-zA-Z0-9_]+)\}\}/g;
 export function sesPlaceholdersToBrevo(content: string): string {
   return content.replace(
     SES_TEMPLATE_VAR_PATTERN,
-    (_match, key: string) => `{{params.${key}}}`,
+    (_match, key: string) => {
+      if (/^extension_\d+$/.test(key)) {
+        return `{% autoescape off %}{{params.${key}}}{% endautoescape %}`;
+      }
+      return `{{params.${key}}}`;
+    },
   );
 }

@@ -1,4 +1,10 @@
 const TEMPLATE_VAR_PATTERN = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+const BREVO_CONTROL_TAG_PATTERN = /\{%[\s\S]*?%\}/g;
+
+/** Removes Brevo/Django control blocks (e.g. {% autoescape off %}) from preview output. */
+export function stripBrevoControlTags(template: string): string {
+  return template.replace(BREVO_CONTROL_TAG_PATTERN, '');
+}
 
 /** Unique {{variable}} names found in template parts. */
 export function extractTemplateVariables(
@@ -7,7 +13,8 @@ export function extractTemplateVariables(
   const names = new Set<string>();
   for (const part of parts) {
     if (!part) continue;
-    for (const match of part.matchAll(TEMPLATE_VAR_PATTERN)) {
+    const stripped = stripBrevoControlTags(part);
+    for (const match of stripped.matchAll(TEMPLATE_VAR_PATTERN)) {
       names.add(match[1]);
     }
   }
@@ -126,13 +133,14 @@ export function renderTemplateString(
   variables: Record<string, string>,
   options?: { highlightColor?: string },
 ): string {
-  return template.replace(TEMPLATE_VAR_PATTERN, (full, key: string, offset: number) => {
+  const stripped = stripBrevoControlTags(template);
+  return stripped.replace(TEMPLATE_VAR_PATTERN, (full, key: string, offset: number) => {
     const value = variables[key];
     if (value === undefined || value === '') return full;
 
     if (options?.highlightColor !== undefined) {
       const safeColor = sanitizePreviewHighlightColor(options.highlightColor);
-      if (safeColor && isInsideHtmlAttribute(template, offset)) {
+      if (safeColor && isInsideHtmlAttribute(stripped, offset)) {
         return value;
       }
       return applyPreviewSubstitution(value, safeColor);

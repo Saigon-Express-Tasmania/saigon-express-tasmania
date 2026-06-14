@@ -1402,6 +1402,16 @@ export async function markOrderPaidFromStripeSession(
   console.log(
     `[stripe-webhook] Draft #${draftOrderId} converted to paid ${orderLabel} #${orderId} (${paymentMode})`,
   );
+
+  try {
+    const { sendOrderConfirmationEmail } = await import("./order-confirmation-email.ts");
+    await sendOrderConfirmationEmail(orderId);
+  } catch (err) {
+    console.error(
+      `[stripe-webhook] Failed to send order confirmation for #${orderId}:`,
+      err,
+    );
+  }
 }
 
 export async function cancelOrderPaymentFailed(

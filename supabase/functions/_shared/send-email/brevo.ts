@@ -133,28 +133,72 @@ export async function upsertBrevoEmailTemplate(
 export async function sendEmailWithBrevo(
   opts: SendEmailOptions,
 ): Promise<SendEmailResult> {
-  const templateId = await findTemplateIdByTag(opts.templateId);
-  if (templateId == null) {
-    throw new Error(
-      `Brevo template not found for "${opts.templateId}". Sync the template first.`,
-    );
-  }
-
-  console.log(
-    `[send-email:brevo] Sending template ${opts.templateId} (#${templateId}) to ${opts.recipientEmails.join(", ")}`,
-  );
-
   const defaultSender = getDefaultSender();
   const sender = {
     email: opts.senderEmail.trim() || defaultSender.email,
     name: opts.senderName.trim() || defaultSender.name,
   };
 
+  const to = opts.recipientEmails.map((email) => ({ email }));
+  const htmlContent = opts.htmlContent?.trim();
+  const subject = opts.subject?.trim();
+
+  if (htmlContent) {
+    if (!subject) {
+      throw new Error("subject is required when sending pre-rendered htmlContent");
+    }
+
+    console.log(
+      `[send-email:brevo] Sending rendered HTML to ${opts.recipientEmails.join(", ")}`,
+    );
+
+    const body: Record<string, unknown> = {
+      sender,
+      to,
+      subject,
+      htmlContent,
+    };
+
+    if (opts.cc?.length) {
+      body.cc = opts.cc.map((email) => ({ email }));
+    }
+    if (opts.bcc?.length) {
+      body.bcc = opts.bcc.map((email) => ({ email }));
+    }
+
+    const result = await brevoRequest<{ messageId?: string }>("/smtp/email", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    console.log(
+      `[send-email:brevo] Sent${result.messageId ? ` (id: ${result.messageId})` : ""}`,
+    );
+
+    return { success: true, messageId: result.messageId };
+  }
+
+  const templateId = opts.templateId?.trim();
+  if (!templateId) {
+    throw new Error("templateId is required when htmlContent is not provided");
+  }
+
+  const brevoTemplateId = await findTemplateIdByTag(templateId);
+  if (brevoTemplateId == null) {
+    throw new Error(
+      `Brevo template not found for "${templateId}". Sync the template first.`,
+    );
+  }
+
+  console.log(
+    `[send-email:brevo] Sending template ${templateId} (#${brevoTemplateId}) to ${opts.recipientEmails.join(", ")}`,
+  );
+
   const body: Record<string, unknown> = {
-    templateId,
-    params: opts.templateVarialbles,
+    templateId: brevoTemplateId,
+    params: opts.templateVarialbles ?? {},
     sender,
-    to: opts.recipientEmails.map((email) => ({ email })),
+    to,
   };
 
   if (opts.cc?.length) {
