@@ -17,6 +17,8 @@ import {
   serializeWholesaleOrderReviewForCheckout,
   validateWholesaleOrderReview,
 } from "@/lib/wholesale-b2b-order";
+import { computeWholesaleTierDiscount } from "@/lib/wholesale-tier-discount";
+import { formatTierDiscountValue } from "@/types";
 import type { WholesaleOrderReviewForm } from "@/types";
 import {
   ChevronRight,
@@ -305,6 +307,7 @@ export default function WholesaleShoppingCart() {
   const {
     cart,
     cartTotal,
+    pricingTiers,
     minimumOrderValue,
     cartOpen,
     highlightProductId,
@@ -341,6 +344,16 @@ export default function WholesaleShoppingCart() {
         (a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0),
       ),
     [cart],
+  );
+
+  const tierTotals = useMemo(
+    () => computeWholesaleTierDiscount(cartTotal, pricingTiers),
+    [cartTotal, pricingTiers],
+  );
+
+  const orderTotals = useMemo(
+    () => buildWholesaleOrderTotals(cartTotal, pricingTiers),
+    [cartTotal, pricingTiers],
   );
 
   const hasMetMinimum = cartTotal >= minimumOrderValue;
@@ -495,7 +508,7 @@ export default function WholesaleShoppingCart() {
       return;
     }
 
-    setOrderReview(buildWholesaleOrderReviewFromProfile(profile, customerEmail, cartTotal));
+    setOrderReview(buildWholesaleOrderReviewFromProfile(profile, customerEmail, cartTotal, pricingTiers));
     setCartView("review");
   };
 
@@ -507,7 +520,7 @@ export default function WholesaleShoppingCart() {
 
     const validationError = validateWholesaleOrderReview({
       ...orderReview,
-      ...buildWholesaleOrderTotals(cartTotal),
+      ...orderTotals,
     });
     if (validationError) {
       toast.error(validationError);
@@ -516,7 +529,7 @@ export default function WholesaleShoppingCart() {
 
     const checkoutFields = serializeWholesaleOrderReviewForCheckout({
       ...orderReview,
-      ...buildWholesaleOrderTotals(cartTotal),
+      ...orderTotals,
     });
 
     setIsCheckingOut(true);
@@ -607,12 +620,12 @@ export default function WholesaleShoppingCart() {
             items={sortedCart}
             review={{
               ...orderReview,
-              ...buildWholesaleOrderTotals(cartTotal),
+              ...orderTotals,
             }}
             onReviewChange={(next) =>
               setOrderReview({
                 ...next,
-                ...buildWholesaleOrderTotals(cartTotal),
+                ...orderTotals,
               })
             }
             onBack={() => setCartView("cart")}
@@ -788,19 +801,30 @@ export default function WholesaleShoppingCart() {
             <div className="flex justify-between text-sm">
               <span className="text-white/60">Subtotal (ex GST)</span>
               <span className="font-bold text-white">
-                ${cartTotal.toFixed(2)}
+                ${tierTotals.subtotalExGst.toFixed(2)}
               </span>
             </div>
+            {tierTotals.wholesaleDiscount > 0 && tierTotals.appliedTier ? (
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">
+                  {tierTotals.appliedTier.label} tier (
+                  {formatTierDiscountValue(tierTotals.appliedTier.discountValue)} off)
+                </span>
+                <span className="font-bold text-green-300">
+                  -${tierTotals.wholesaleDiscount.toFixed(2)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between text-sm">
               <span className="text-white/60">GST (10%)</span>
               <span className="font-bold text-white">
-                ${(cartTotal * 0.1).toFixed(2)}
+                ${tierTotals.taxTotal.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between text-base font-bold border-t border-white/10 pt-3">
               <span className="text-white">Total (inc GST)</span>
               <span className="text-primary">
-                ${(cartTotal * 1.1).toFixed(2)}
+                ${tierTotals.grandTotal.toFixed(2)}
               </span>
             </div>
 

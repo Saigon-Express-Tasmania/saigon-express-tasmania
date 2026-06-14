@@ -56,6 +56,9 @@ export type WholesaleOrderFinancialDetails = {
   gst_total: number;
   grand_total_inc_gst: number;
   shipping_fee?: number;
+  coupon_code?: string;
+  coupon_discount?: number;
+  wholesale_discount?: number;
   currency?: string;
 };
 
@@ -97,6 +100,7 @@ export type WholesaleOrderReviewForm = {
   po_number: string | null;
   notes: string | null;
   subtotal: number;
+  wholesale_discount: number;
   tax_total: number;
   shipping_fee: number;
   grand_total: number;

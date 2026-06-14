@@ -621,6 +621,14 @@ export default function WholesaleOrderReviewPanel({
                 ${review.subtotal.toFixed(2)}
               </span>
             </div>
+            {review.wholesale_discount > 0 ? (
+              <div className="flex justify-between text-white/60">
+                <span>Wholesale tier discount</span>
+                <span className="tabular-nums text-green-300">
+                  -${review.wholesale_discount.toFixed(2)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between text-white/60">
               <span>Tax total (GST)</span>
               <span className="tabular-nums text-white">

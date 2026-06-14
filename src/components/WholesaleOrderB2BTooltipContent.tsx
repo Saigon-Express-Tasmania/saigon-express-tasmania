@@ -45,6 +45,28 @@ function formatMoney(financials: WholesaleOrderFinancialDetails, amount: number)
   }).format(amount);
 }
 
+function TooltipDiscountRow({
+  label,
+  amount,
+  financials,
+}: {
+  label: string;
+  amount?: number;
+  financials: WholesaleOrderFinancialDetails;
+}) {
+  if (amount == null || !Number.isFinite(amount) || amount <= 0) return null;
+  return (
+    <div className="space-y-0.5 text-left">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+        {label}
+      </p>
+      <p className="text-xs leading-snug text-emerald-300 tabular-nums">
+        −{formatMoney(financials, amount)}
+      </p>
+    </div>
+  );
+}
+
 export function WholesaleOrderB2BTooltipContent({
   section,
   b2b,
@@ -152,6 +174,20 @@ export function WholesaleOrderB2BTooltipContent({
       <TooltipRow
         label="Subtotal (ex GST)"
         value={formatMoney(financials, financials.subtotal_ex_gst)}
+      />
+      <TooltipDiscountRow
+        label="Wholesale tier discount"
+        amount={financials.wholesale_discount}
+        financials={financials}
+      />
+      <TooltipDiscountRow
+        label={
+          financials.coupon_code
+            ? `Coupon (${financials.coupon_code})`
+            : "Coupon discount"
+        }
+        amount={financials.coupon_discount}
+        financials={financials}
       />
       <TooltipRow label="GST" value={formatMoney(financials, financials.gst_total)} />
       {financials.shipping_fee != null && financials.shipping_fee > 0 ? (

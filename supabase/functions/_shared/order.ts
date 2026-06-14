@@ -1,6 +1,11 @@
 import type Stripe from "npm:stripe@17.7.0";
 import { createServiceClient } from "./supabase.ts";
 import {
+  computeWholesaleTierDiscountTotals,
+  type WholesaleTierRow,
+  wholesaleItemsSubtotalExGst,
+} from "./wholesale-tier-discount.ts";
+import {
   createStripeClient,
   type StripePaymentMode,
   parsePaymentMode,
@@ -54,6 +59,10 @@ export type WholesaleFinancialDetails = {
   subtotal_ex_gst: number;
   gst_total: number;
   grand_total_inc_gst: number;
+  shipping_fee?: number;
+  coupon_code?: string;
+  coupon_discount?: number;
+  wholesale_discount?: number;
   currency?: string;
 };
 
@@ -150,6 +159,9 @@ type DraftOrderRow = {
   requested_target_date: string | null;
   payment_terms: OrderPaymentTerms;
   subtotal: number | string | null;
+  coupon_code: string | null;
+  coupon_discount: number | string | null;
+  wholesale_discount: number | string | null;
   tax_total: number | string | null;
   shipping_fee: number | string | null;
   grand_total: number | string | null;
@@ -192,6 +204,9 @@ function parseRequestedTargetDate(pickupTime: string | null | undefined): string
 
 function computeCheckoutTotals(input: OrderCheckoutInput): {
   subtotal: number;
+  coupon_code: string | null;
+  coupon_discount: number;
+  wholesale_discount: number;
   tax_total: number;
   shipping_fee: number;
   grand_total: number;
@@ -204,14 +219,20 @@ function computeCheckoutTotals(input: OrderCheckoutInput): {
   if (input.financialDetails) {
     return {
       subtotal: input.financialDetails.subtotal_ex_gst,
+      coupon_code: input.financialDetails.coupon_code?.trim() || null,
+      coupon_discount: input.financialDetails.coupon_discount ?? 0,
+      wholesale_discount: 0,
       tax_total: input.financialDetails.gst_total,
-      shipping_fee: 0,
+      shipping_fee: input.financialDetails.shipping_fee ?? 0,
       grand_total: input.financialDetails.grand_total_inc_gst,
     };
   }
 
   return {
     subtotal: itemsSubtotal,
+    coupon_code: null,
+    coupon_discount: 0,
+    wholesale_discount: 0,
     tax_total: 0,
     shipping_fee: 0,
     grand_total: itemsSubtotal,
@@ -732,6 +753,16 @@ function parseWholesaleFinancialDetails(
     subtotal_ex_gst,
     gst_total,
     grand_total_inc_gst,
+    shipping_fee: Number.isFinite(Number(row.shipping_fee))
+      ? Number(row.shipping_fee)
+      : undefined,
+    coupon_code: row.coupon_code != null ? String(row.coupon_code).trim() || undefined : undefined,
+    coupon_discount: Number.isFinite(Number(row.coupon_discount))
+      ? Number(row.coupon_discount)
+      : undefined,
+    wholesale_discount: Number.isFinite(Number(row.wholesale_discount))
+      ? Number(row.wholesale_discount)
+      : undefined,
     currency: row.currency != null ? String(row.currency).trim() || undefined : undefined,
   };
 }
@@ -825,6 +856,9 @@ function buildOrderPayload(
   customerAccount: string | null,
 ): Record<string, unknown> {
   const subtotal = Number(draftOrder.subtotal ?? 0);
+  const couponCode = draftOrder.coupon_code?.trim() || null;
+  const couponDiscount = Number(draftOrder.coupon_discount ?? 0);
+  const wholesaleDiscount = Number(draftOrder.wholesale_discount ?? 0);
   const taxTotal = Number(draftOrder.tax_total ?? 0);
   const shippingFee = Number(draftOrder.shipping_fee ?? 0);
   const grandTotal = Number(draftOrder.grand_total ?? 0);
@@ -848,6 +882,9 @@ function buildOrderPayload(
     payment_terms: draftOrder.payment_terms,
     po_number: draftOrder.po_number,
     subtotal: formatMoney(subtotal),
+    coupon_code: couponCode,
+    coupon_discount: formatMoney(couponDiscount),
+    wholesale_discount: formatMoney(wholesaleDiscount),
     tax_total: formatMoney(taxTotal),
     shipping_fee: formatMoney(shippingFee),
     grand_total: formatMoney(grandTotal),
@@ -956,6 +993,43 @@ function buildStripeCheckoutGatewayData(
         }
       : undefined,
   });
+}
+
+function stripeCouponFromSession(session: Stripe.Checkout.Session): {
+  coupon_code: string | null;
+  coupon_discount: number;
+  grand_total: number | null;
+} {
+  const discountCents = session.total_details?.amount_discount ?? 0;
+  const coupon_discount = discountCents > 0 ? discountCents / 100 : 0;
+  const coupon_code = session.metadata?.couponCode?.trim() || null;
+  const grand_total =
+    session.amount_total != null && session.amount_total > 0
+      ? session.amount_total / 100
+      : null;
+
+  return { coupon_code, coupon_discount, grand_total };
+}
+
+function enrichOrderPayloadFromStripeSession(
+  orderPayload: Record<string, unknown>,
+  session: Stripe.Checkout.Session,
+): Record<string, unknown> {
+  const stripeCoupon = stripeCouponFromSession(session);
+  const enriched = { ...orderPayload };
+
+  if (stripeCoupon.coupon_discount > 0) {
+    enriched.coupon_discount = formatMoney(stripeCoupon.coupon_discount);
+    if (stripeCoupon.coupon_code) {
+      enriched.coupon_code = stripeCoupon.coupon_code;
+    }
+  }
+
+  if (stripeCoupon.grand_total != null && stripeCoupon.grand_total > 0) {
+    enriched.grand_total = formatMoney(stripeCoupon.grand_total);
+  }
+
+  return enriched;
 }
 
 function buildPaymentPayload(
@@ -1126,6 +1200,30 @@ function wholesaleInventoryLimitMessage(
   return `Only ${remaining} units of ${itemName} are available today. Please reduce the quantity in your cart.`;
 }
 
+async function fetchWholesaleTiers(
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<WholesaleTierRow[]> {
+  const { data, error } = await supabase
+    .from("wholesale_tiers")
+    .select("label, min_value, discount_value")
+    .gt("min_value", 0)
+    .gt("discount_value", 0)
+    .order("min_value", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load wholesale tiers: ${error.message}`);
+  }
+
+  return (data ?? []).map((row) => {
+    const record = row as Record<string, unknown>;
+    return {
+      label: String(record.label ?? ""),
+      min_value: Number(record.min_value),
+      discount_value: Number(record.discount_value),
+    };
+  });
+}
+
 async function validateWholesaleInventoryAvailability(
   supabase: ReturnType<typeof createServiceClient>,
   customerAccount: string,
@@ -1169,7 +1267,32 @@ export async function createOrderCheckoutSession(
   input: OrderCheckoutInput,
 ): Promise<OrderCheckoutResult> {
   const supabase = createServiceClient();
-  const totals = computeCheckoutTotals(input);
+  let totals = computeCheckoutTotals(input);
+  let stripeUnitPriceMultiplier = 1;
+
+  if (input.orderType === "wholesale") {
+    const tiers = await fetchWholesaleTiers(supabase);
+    const subtotalExGst = wholesaleItemsSubtotalExGst(input.items);
+    const wholesaleTotals = computeWholesaleTierDiscountTotals(
+      subtotalExGst,
+      tiers,
+      input.financialDetails?.shipping_fee ?? 0,
+    );
+
+    totals = {
+      subtotal: wholesaleTotals.subtotal,
+      coupon_code: null,
+      coupon_discount: 0,
+      wholesale_discount: wholesaleTotals.wholesale_discount,
+      tax_total: wholesaleTotals.tax_total,
+      shipping_fee: wholesaleTotals.shipping_fee,
+      grand_total: wholesaleTotals.grand_total,
+    };
+
+    if (wholesaleTotals.tier_discount_percent > 0) {
+      stripeUnitPriceMultiplier = 1 - wholesaleTotals.tier_discount_percent / 100;
+    }
+  }
 
   if (totals.grand_total <= 0) {
     throw new Error("Order total must be greater than zero");
@@ -1207,6 +1330,9 @@ export async function createOrderCheckoutSession(
       requested_target_date: requestedTargetDate,
       payment_terms: paymentTerms,
       subtotal: formatMoney(totals.subtotal),
+      coupon_code: totals.coupon_code,
+      coupon_discount: formatMoney(totals.coupon_discount),
+      wholesale_discount: formatMoney(totals.wholesale_discount),
       tax_total: formatMoney(totals.tax_total),
       shipping_fee: formatMoney(totals.shipping_fee),
       grand_total: formatMoney(totals.grand_total),
@@ -1276,7 +1402,7 @@ export async function createOrderCheckoutSession(
     price_data: {
       currency: "aud",
       product_data: { name: item.itemName },
-      unit_amount: Math.round(item.unitPrice * 100),
+      unit_amount: Math.round(item.unitPrice * stripeUnitPriceMultiplier * 100),
     },
     quantity: item.qty,
   }));
@@ -1370,19 +1496,24 @@ export async function markOrderPaidFromStripeSession(
   const cancelToken = randomCrockfordBase32(ORDER_TOKEN_LENGTH);
   const trackingToken = randomCrockfordBase32(ORDER_TOKEN_LENGTH);
   const customerAccount = resolveCustomerAccount(draftOrder, session);
+  const orderPayload = enrichOrderPayloadFromStripeSession(
+    buildOrderPayload(
+      draftOrder,
+      paymentMode,
+      cancelToken,
+      trackingToken,
+      customerAccount,
+    ),
+    session,
+  );
+  const paidGrandTotal = Number(orderPayload.grand_total ?? draftOrder.grand_total ?? 0);
   const { data: createdOrderId, error: createOrderError } = await supabase.rpc(
     PAID_ORDER_RPC,
     {
       p_draft_order_id: draftOrderId,
       p_items: mapCheckoutItemsToPayload(parsedItems),
-      p_order_payload: buildOrderPayload(
-        draftOrder,
-        paymentMode,
-        cancelToken,
-        trackingToken,
-        customerAccount,
-      ),
-      p_payment_payload: buildPaymentPayload(grandTotal, paymentMode, session),
+      p_order_payload: orderPayload,
+      p_payment_payload: buildPaymentPayload(paidGrandTotal, paymentMode, session),
     },
   );
 
@@ -1476,7 +1607,7 @@ async function fetchDraftOrder(
   const { data, error } = await supabase
     .from("draft_orders")
     .select(
-      "id, order_type, is_testing, invoice_number, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_pick_up_store_id, requested_target_date, payment_terms, po_number, subtotal, tax_total, shipping_fee, grand_total, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
+      "id, order_type, is_testing, invoice_number, requested_fulfillment_method, customer_account, customer_name, customer_email, customer_phone, store_id, requested_pick_up_store_id, requested_target_date, payment_terms, po_number, subtotal, coupon_code, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
     )
     .eq("id", draftOrderId)
     .maybeSingle();
@@ -1505,6 +1636,9 @@ async function fetchDraftOrder(
     requested_target_date: (row.requested_target_date as string | null) ?? null,
     payment_terms: parsePaymentTerms(row.payment_terms),
     subtotal: row.subtotal as number | string | null,
+    coupon_code: (row.coupon_code as string | null) ?? null,
+    coupon_discount: row.coupon_discount as number | string | null,
+    wholesale_discount: row.wholesale_discount as number | string | null,
     tax_total: row.tax_total as number | string | null,
     shipping_fee: row.shipping_fee as number | string | null,
     grand_total: row.grand_total as number | string | null,

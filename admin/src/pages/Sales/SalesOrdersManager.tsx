@@ -184,16 +184,22 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
     const syncedForm = syncTotalsFromItems({ ...form, items: parsedItems });
     const subtotal = Number(syncedForm.subtotal);
+    const couponDiscount = Number(syncedForm.coupon_discount);
+    const wholesaleDiscount = Number(syncedForm.wholesale_discount);
     const taxTotal = Number(syncedForm.tax_total);
     const shippingFee = Number(syncedForm.shipping_fee);
     const grandTotal = Number(syncedForm.grand_total);
 
     if (
       !Number.isFinite(subtotal) ||
+      !Number.isFinite(couponDiscount) ||
+      !Number.isFinite(wholesaleDiscount) ||
       !Number.isFinite(taxTotal) ||
       !Number.isFinite(shippingFee) ||
       !Number.isFinite(grandTotal) ||
       subtotal < 0 ||
+      couponDiscount < 0 ||
+      wholesaleDiscount < 0 ||
       taxTotal < 0 ||
       shippingFee < 0 ||
       grandTotal < 0
@@ -226,6 +232,9 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
           : syncedForm.payment_terms,
         po_number: syncedForm.po_number?.trim() || null,
         subtotal: subtotal.toFixed(2),
+        coupon_code: syncedForm.coupon_code?.trim() || null,
+        coupon_discount: couponDiscount.toFixed(2),
+        wholesale_discount: wholesaleDiscount.toFixed(2),
         tax_total: taxTotal.toFixed(2),
         shipping_fee: shippingFee.toFixed(2),
         grand_total: grandTotal.toFixed(2),

@@ -2,7 +2,7 @@ import WholesaleShop from "@/views/WholesaleShop";
 import { loadWholesalePageData } from "@/lib/wholesale-page";
 
 export default async function WholesaleShopPage() {
-  const { products, inventory, categoriesContent, minimumWholesaleOrderValue } =
+  const { products, inventory, categoriesContent, minimumWholesaleOrderValue, pricingTiers } =
     await loadWholesalePageData();
   return (
     <WholesaleShop
@@ -10,6 +10,7 @@ export default async function WholesaleShopPage() {
       inventory={inventory}
       categoriesContent={categoriesContent}
       minimumWholesaleOrderValue={minimumWholesaleOrderValue}
+      pricingTiers={pricingTiers}
     />
   );
 }

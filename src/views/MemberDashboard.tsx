@@ -30,7 +30,11 @@ import type {
   WholesalePricingTier,
   WholesaleProduct,
 } from "@/types";
-import { pickWholesaleImageUrl } from "@/types";
+import {
+  formatTierDiscountValue,
+  formatTierMinValue,
+  pickWholesaleImageUrl,
+} from "@/types";
 import {
   CreditCard,
   Clock,
@@ -115,11 +119,6 @@ function maskPhone(phone: string | null): string {
   const digits = phone.replace(/\D/g, "");
   if (digits.length <= 3) return "***";
   return `***${digits.slice(-3)}`;
-}
-
-function parseDiscountPercent(discount: string): number {
-  const match = discount.match(/(\d+(?:\.\d+)?)/);
-  return match ? Number(match[1]) : 0;
 }
 
 function isTestingOrders(): boolean {
@@ -306,7 +305,7 @@ export default function MemberDashboard({
     );
 
     const bestDiscount = pricingTiers.reduce((max, tier) => {
-      return Math.max(max, parseDiscountPercent(tier.discount));
+      return Math.max(max, tier.discountValue);
     }, 0);
     const ytdSavings = ytdSpend * (bestDiscount / 100);
 
@@ -362,7 +361,7 @@ export default function MemberDashboard({
 
     return pricingTiers.map(
       (tier) =>
-        `${tier.label}: ${tier.discount} off from ${tier.min} units${
+        `${tier.label}: ${formatTierDiscountValue(tier.discountValue)} off from ${formatTierMinValue(tier.minValue)}${
           tier.popular ? " (popular tier)" : ""
         }`,
     );

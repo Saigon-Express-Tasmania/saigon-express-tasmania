@@ -83,6 +83,9 @@ type DraftOrderRow = {
   requested_target_date: string | null;
   requested_pick_up_store_id: number | null;
   subtotal: string | null;
+  coupon_code: string | null;
+  coupon_discount: string | null;
+  wholesale_discount: string | null;
   tax_total: string | null;
   shipping_fee: string | null;
   grand_total: string | null;
@@ -101,6 +104,9 @@ type DraftOrderForm = {
   requested_target_date: string;
   requested_pick_up_store_id: number | null;
   subtotal: string;
+  coupon_code: string;
+  coupon_discount: string;
+  wholesale_discount: string;
   tax_total: string;
   shipping_fee: string;
   grand_total: string;
@@ -119,6 +125,9 @@ function emptyDraftOrderForm(orderType: string): DraftOrderForm {
     requested_target_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     requested_pick_up_store_id: null,
     subtotal: '0.00',
+    coupon_code: '',
+    coupon_discount: '0.00',
+    wholesale_discount: '0.00',
     tax_total: '0.00',
     shipping_fee: '0.00',
     grand_total: '0.00',
@@ -136,12 +145,17 @@ function syncDraftTotals(form: DraftOrderForm): DraftOrderForm {
     if (!Number.isFinite(qty) || !Number.isFinite(unitPrice)) return sum;
     return sum + qty * unitPrice;
   }, 0);
+  const couponDiscount = Number(form.coupon_discount) || 0;
+  const wholesaleDiscount = Number(form.wholesale_discount) || 0;
   const taxTotal = Number(form.tax_total) || 0;
   const shippingFee = Number(form.shipping_fee) || 0;
   return {
     ...form,
     subtotal: subtotal.toFixed(2),
-    grand_total: (subtotal + taxTotal + shippingFee).toFixed(2),
+    grand_total: Math.max(
+      subtotal - couponDiscount - wholesaleDiscount + taxTotal + shippingFee,
+      0,
+    ).toFixed(2),
   };
 }
 
@@ -155,6 +169,9 @@ function draftRowToForm(row: DraftOrderRow, items: SalesOrderItemForm[]): DraftO
     requested_target_date: row.requested_target_date ?? new Date().toISOString(),
     requested_pick_up_store_id: row.requested_pick_up_store_id,
     subtotal: row.subtotal ? String(row.subtotal) : '0.00',
+    coupon_code: row.coupon_code ?? '',
+    coupon_discount: row.coupon_discount ? String(row.coupon_discount) : '0.00',
+    wholesale_discount: row.wholesale_discount ? String(row.wholesale_discount) : '0.00',
     tax_total: row.tax_total ? String(row.tax_total) : '0.00',
     shipping_fee: row.shipping_fee ? String(row.shipping_fee) : '0.00',
     grand_total: row.grand_total ? String(row.grand_total) : '0.00',
@@ -287,6 +304,9 @@ export function DraftOrders() {
         requested_pick_up_store_id: synced.requested_pick_up_store_id,
         ...orderAddressFromForm(synced),
         subtotal: Number(synced.subtotal).toFixed(2),
+        coupon_code: synced.coupon_code.trim() || null,
+        coupon_discount: Number(synced.coupon_discount).toFixed(2),
+        wholesale_discount: Number(synced.wholesale_discount).toFixed(2),
         tax_total: Number(synced.tax_total).toFixed(2),
         shipping_fee: Number(synced.shipping_fee).toFixed(2),
         grand_total: Number(synced.grand_total).toFixed(2),
@@ -565,6 +585,43 @@ export function DraftOrders() {
                         setForm((prev) => ({ ...prev, requested_target_date: iso }));
                       }
                     }}
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Coupon code" htmlFor="draft-coupon-code">
+                  <Input
+                    id="draft-coupon-code"
+                    value={form.coupon_code}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, coupon_code: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Coupon discount" htmlFor="draft-coupon-discount">
+                  <Input
+                    id="draft-coupon-discount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.coupon_discount}
+                    onChange={(e) =>
+                      setForm((prev) =>
+                        syncDraftTotals({ ...prev, coupon_discount: e.target.value }),
+                      )
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Wholesale discount" htmlFor="draft-wholesale-discount">
+                  <Input
+                    id="draft-wholesale-discount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.wholesale_discount}
+                    onChange={(e) =>
+                      setForm((prev) =>
+                        syncDraftTotals({ ...prev, wholesale_discount: e.target.value }),
+                      )
+                    }
                   />
                 </SalesOrderFormField>
                 <SalesOrderFormField label="Tax total" htmlFor="draft-tax">

@@ -950,7 +950,8 @@
       "total": "Tổng",
       "packed": "Đóng gói",
       "packedYes": "Đã đóng gói",
-      "packedNo": "Chờ xử lý"
+      "packedNo": "Chờ xử lý",
+      "totalsTitle": "Tổng đơn hàng"
     },
     "actions": {
       "viewInvoice": "Xem hóa đơn",
@@ -977,6 +978,7 @@
       "unitPrice": "Đơn giá",
       "total": "Thành tiền",
       "subtotal": "Tạm tính",
+      "totalDiscount": "Tổng giảm giá",
       "gst": "GST (10%)",
       "shippingFee": "Phí vận chuyển",
       "grandTotal": "Tổng cộng",

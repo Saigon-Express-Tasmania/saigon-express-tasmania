@@ -1,5 +1,6 @@
 import type { WholesaleCartItem } from "@/contexts/WholesaleCartContext";
-import type { UserProfile } from "@/types";
+import { computeWholesaleTierDiscount } from "@/lib/wholesale-tier-discount";
+import type { UserProfile, WholesalePricingTier } from "@/types";
 import type {
   WholesaleB2BCheckoutPayload,
   WholesaleBillingAddress,
@@ -159,21 +160,26 @@ export function requestedTargetDateLocalToIso(value: string): string {
 
 export function buildWholesaleOrderTotals(
   cartTotalExGst: number,
+  pricingTiers: WholesalePricingTier[] = [],
 ): Pick<
   WholesaleOrderReviewForm,
-  "subtotal" | "tax_total" | "shipping_fee" | "grand_total"
+  "subtotal" | "wholesale_discount" | "tax_total" | "shipping_fee" | "grand_total"
 > {
-  const subtotal = Number(cartTotalExGst.toFixed(2));
-  const tax_total = Number((subtotal * 0.1).toFixed(2));
-  const shipping_fee = 0;
-  const grand_total = Number((subtotal + tax_total + shipping_fee).toFixed(2));
-  return { subtotal, tax_total, shipping_fee, grand_total };
+  const totals = computeWholesaleTierDiscount(cartTotalExGst, pricingTiers);
+  return {
+    subtotal: totals.subtotalExGst,
+    wholesale_discount: totals.wholesaleDiscount,
+    tax_total: totals.taxTotal,
+    shipping_fee: totals.shippingFee,
+    grand_total: totals.grandTotal,
+  };
 }
 
 export function buildWholesaleOrderReviewFromProfile(
   profile: UserProfile,
   email: string,
   cartTotalExGst: number,
+  pricingTiers: WholesalePricingTier[] = [],
 ): WholesaleOrderReviewForm {
   const customer_name = getWholesaleContactName(profile);
   const city = profile.city?.trim() || profile.suburb?.trim() || "";
@@ -207,7 +213,7 @@ export function buildWholesaleOrderReviewFromProfile(
     payment_terms: "prepaid",
     po_number: null,
     notes: null,
-    ...buildWholesaleOrderTotals(cartTotalExGst),
+    ...buildWholesaleOrderTotals(cartTotalExGst, pricingTiers),
   };
 }
 
@@ -518,6 +524,9 @@ export function parseWholesaleFinancialDetails(
 
 export type OrderFinancialDbRow = {
   subtotal?: number | string | null;
+  coupon_code?: string | null;
+  coupon_discount?: number | string | null;
+  wholesale_discount?: number | string | null;
   tax_total?: number | string | null;
   shipping_fee?: number | string | null;
   grand_total?: number | string | null;
@@ -528,6 +537,9 @@ export function parseWholesaleFinancialDetailsFromOrderRow(
   row: OrderFinancialDbRow,
 ): WholesaleOrderFinancialDetails | null {
   const subtotal = Number(row.subtotal);
+  const wholesaleDiscount = Number(row.wholesale_discount ?? 0);
+  const couponDiscount = Number(row.coupon_discount ?? 0);
+  const couponCode = optionalString(row.coupon_code);
   const taxTotal = Number(row.tax_total);
   const shippingFee = Number(row.shipping_fee ?? 0);
   const grandTotal = Number(row.grand_total);
@@ -540,15 +552,32 @@ export function parseWholesaleFinancialDetailsFromOrderRow(
     return null;
   }
 
+  const resolvedTax = Number.isFinite(taxTotal) ? taxTotal : 0;
+  const resolvedWholesaleDiscount = Number.isFinite(wholesaleDiscount)
+    ? Math.max(wholesaleDiscount, 0)
+    : 0;
+  const resolvedCouponDiscount = Number.isFinite(couponDiscount)
+    ? Math.max(couponDiscount, 0)
+    : 0;
   const resolvedSubtotal = Number.isFinite(subtotal)
     ? subtotal
     : Number.isFinite(grandTotal)
-      ? Math.max(grandTotal - (Number.isFinite(taxTotal) ? taxTotal : 0) - shippingFee, 0)
+      ? Math.max(
+          grandTotal -
+            resolvedTax -
+            shippingFee +
+            resolvedWholesaleDiscount +
+            resolvedCouponDiscount,
+          0,
+        )
       : 0;
-  const resolvedTax = Number.isFinite(taxTotal) ? taxTotal : 0;
   const resolvedGrand = Number.isFinite(grandTotal)
     ? grandTotal
-    : resolvedSubtotal + resolvedTax + shippingFee;
+    : resolvedSubtotal -
+      resolvedWholesaleDiscount -
+      resolvedCouponDiscount +
+      resolvedTax +
+      shippingFee;
 
   if (resolvedGrand <= 0 && resolvedSubtotal <= 0) {
     return null;
@@ -559,6 +588,10 @@ export function parseWholesaleFinancialDetailsFromOrderRow(
     gst_total: resolvedTax,
     shipping_fee: shippingFee > 0 ? shippingFee : undefined,
     grand_total_inc_gst: resolvedGrand,
+    wholesale_discount:
+      resolvedWholesaleDiscount > 0 ? resolvedWholesaleDiscount : undefined,
+    coupon_discount: resolvedCouponDiscount > 0 ? resolvedCouponDiscount : undefined,
+    coupon_code: couponCode ?? undefined,
     currency: "AUD",
   };
 }

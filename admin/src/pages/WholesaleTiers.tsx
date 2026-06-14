@@ -37,8 +37,8 @@ import { toast } from 'sonner';
 type WholesaleTierRow = {
   id: number;
   label: string;
-  min_units: string;
-  discount: string;
+  min_value: number;
+  discount_value: number;
   color: string;
   popular: boolean;
   sort_order: number;
@@ -46,8 +46,8 @@ type WholesaleTierRow = {
 
 type WholesaleTierInput = {
   label: string;
-  min_units: string;
-  discount: string;
+  min_value: string;
+  discount_value: string;
   color: string;
   popular: boolean;
   sort_order: number;
@@ -55,12 +55,29 @@ type WholesaleTierInput = {
 
 const emptyTierInput = (): WholesaleTierInput => ({
   label: '',
-  min_units: '',
-  discount: '',
+  min_value: '0',
+  discount_value: '0',
   color: '',
   popular: false,
   sort_order: 0,
 });
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatPercent(value: number): string {
+  const pct = Number(value);
+  if (pct === 0) return '0%';
+  const formatted =
+    pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1).replace(/\.0$/, '');
+  return `${formatted}%`;
+}
 
 export function WholesaleTiers() {
   const { profile, isLoading: profileLoading } = useUserProfile();
@@ -86,7 +103,9 @@ export function WholesaleTiers() {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('wholesale_tiers')
-        .select('id, label, min_units, discount, color, popular, sort_order')
+        .select(
+          'id, label, min_value, discount_value, color, popular, sort_order',
+        )
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
@@ -116,8 +135,8 @@ export function WholesaleTiers() {
     return tiers.filter((tier) => {
       return (
         tier.label.toLowerCase().includes(term) ||
-        tier.min_units.toLowerCase().includes(term) ||
-        tier.discount.toLowerCase().includes(term) ||
+        String(tier.min_value).includes(term) ||
+        String(tier.discount_value).includes(term) ||
         tier.color.toLowerCase().includes(term)
       );
     });
@@ -136,8 +155,8 @@ export function WholesaleTiers() {
     setEditingId(tier.id);
     setForm({
       label: tier.label,
-      min_units: tier.min_units,
-      discount: tier.discount,
+      min_value: String(tier.min_value),
+      discount_value: String(tier.discount_value),
       color: tier.color,
       popular: tier.popular,
       sort_order: tier.sort_order,
@@ -150,14 +169,19 @@ export function WholesaleTiers() {
       toast.error('Label is required.');
       return;
     }
-    if (!form.min_units.trim()) {
-      toast.error('Minimum units is required.');
+
+    const minValue = Number(form.min_value);
+    if (!Number.isFinite(minValue) || minValue < 0) {
+      toast.error('Minimum order value must be a non-negative number.');
       return;
     }
-    if (!form.discount.trim()) {
-      toast.error('Discount is required.');
+
+    const discountValue = Number(form.discount_value);
+    if (!Number.isFinite(discountValue) || discountValue < 0) {
+      toast.error('Discount value must be a non-negative number.');
       return;
     }
+
     if (!form.color.trim()) {
       toast.error('Color gradient class is required.');
       return;
@@ -167,8 +191,8 @@ export function WholesaleTiers() {
     try {
       const payload = {
         label: form.label.trim(),
-        min_units: form.min_units.trim(),
-        discount: form.discount.trim(),
+        min_value: minValue,
+        discount_value: discountValue,
         color: form.color.trim(),
         popular: form.popular,
         sort_order: Number(form.sort_order) || 0,
@@ -258,7 +282,7 @@ export function WholesaleTiers() {
               <CardTitle>Wholesale tiers</CardTitle>
               <CardDescription>
                 Manage bulk-pricing tiers shown on the public wholesale shop
-                page.
+                page. Discounts apply based on order value.
               </CardDescription>
             </div>
             <Button onClick={openCreate} disabled={loading}>
@@ -274,7 +298,7 @@ export function WholesaleTiers() {
             )}
 
             <Input
-              placeholder="Search label, min units, discount, color..."
+              placeholder="Search label, min value, discount, color..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
@@ -300,7 +324,7 @@ export function WholesaleTiers() {
                         Label
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Min units
+                        Min value
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Discount
@@ -330,10 +354,10 @@ export function WholesaleTiers() {
                           {tier.label}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {tier.min_units}
+                          {formatCurrency(tier.min_value)}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {tier.discount}
+                          {formatPercent(tier.discount_value)}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -383,8 +407,12 @@ export function WholesaleTiers() {
               {editingId !== null ? 'Edit wholesale tier' : 'Add wholesale tier'}
             </DialogTitle>
             <DialogDescription>
-              Color should be Tailwind gradient classes (e.g.{' '}
-              <code>from-amber-900/30 to-amber-800/20</code>).
+              Color should be Tailwind gradient classes using{' '}
+              <code>from-… to-…</code> only (e.g.{' '}
+              <code>from-amber-500/45 to-yellow-500/30</code>). Do not use{' '}
+              <code>via-</code> stops — they will not render. Discount value is
+              a percentage applied when the order subtotal meets the minimum
+              value.
             </DialogDescription>
           </DialogHeader>
 
@@ -401,25 +429,31 @@ export function WholesaleTiers() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="tier-min-units">Min units</Label>
+              <Label htmlFor="tier-min-value">Minimum order value (AUD)</Label>
               <Input
-                id="tier-min-units"
-                value={form.min_units}
+                id="tier-min-value"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.min_value}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, min_units: e.target.value }))
+                  setForm((f) => ({ ...f, min_value: e.target.value }))
                 }
-                placeholder="50–99 units"
+                placeholder="2500.00"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="tier-discount">Discount</Label>
+              <Label htmlFor="tier-discount-value">Discount (%)</Label>
               <Input
-                id="tier-discount"
-                value={form.discount}
+                id="tier-discount-value"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.discount_value}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, discount: e.target.value }))
+                  setForm((f) => ({ ...f, discount_value: e.target.value }))
                 }
-                placeholder="15% off"
+                placeholder="15"
               />
             </div>
             <div className="grid gap-2">
@@ -430,7 +464,7 @@ export function WholesaleTiers() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, color: e.target.value }))
                 }
-                placeholder="from-yellow-700/30 to-yellow-600/20"
+                placeholder="from-amber-500/45 to-yellow-500/30"
               />
             </div>
             <div className="grid gap-2">

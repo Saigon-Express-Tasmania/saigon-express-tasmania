@@ -75,6 +75,9 @@ type ArchivedOrderRow = {
   payment_terms: PaymentTerms;
   po_number: string | null;
   subtotal: string;
+  coupon_code: string | null;
+  coupon_discount: string;
+  wholesale_discount: string;
   tax_total: string;
   shipping_fee: string;
   grand_total: string;
@@ -98,6 +101,9 @@ type ArchivedOrderForm = {
   payment_terms: PaymentTerms;
   po_number: string;
   subtotal: string;
+  coupon_code: string;
+  coupon_discount: string;
+  wholesale_discount: string;
   tax_total: string;
   shipping_fee: string;
   grand_total: string;
@@ -120,6 +126,9 @@ function archivedRowToForm(row: ArchivedOrderRow, items: SalesOrderItemForm[]): 
     payment_terms: row.payment_terms,
     po_number: row.po_number ?? '',
     subtotal: String(row.subtotal),
+    coupon_code: row.coupon_code ?? '',
+    coupon_discount: String(row.coupon_discount),
+    wholesale_discount: String(row.wholesale_discount),
     tax_total: String(row.tax_total),
     shipping_fee: String(row.shipping_fee),
     grand_total: String(row.grand_total),
@@ -232,6 +241,8 @@ export function ArchivedOrders() {
     if (!orderType || !form || editingId === null) return;
 
     const subtotal = Number(form.subtotal);
+    const couponDiscount = Number(form.coupon_discount);
+    const wholesaleDiscount = Number(form.wholesale_discount);
     const taxTotal = Number(form.tax_total);
     const shippingFee = Number(form.shipping_fee);
     const grandTotal = Number(form.grand_total);
@@ -247,6 +258,8 @@ export function ArchivedOrders() {
 
     if (
       !Number.isFinite(subtotal) ||
+      !Number.isFinite(couponDiscount) ||
+      !Number.isFinite(wholesaleDiscount) ||
       !Number.isFinite(taxTotal) ||
       !Number.isFinite(shippingFee) ||
       !Number.isFinite(grandTotal)
@@ -274,6 +287,9 @@ export function ArchivedOrders() {
         payment_terms: form.payment_terms,
         po_number: form.po_number.trim() || null,
         subtotal: subtotal.toFixed(2),
+        coupon_code: form.coupon_code.trim() || null,
+        coupon_discount: couponDiscount.toFixed(2),
+        wholesale_discount: wholesaleDiscount.toFixed(2),
         tax_total: taxTotal.toFixed(2),
         shipping_fee: shippingFee.toFixed(2),
         grand_total: grandTotal.toFixed(2),
@@ -568,6 +584,39 @@ export function ArchivedOrders() {
                       value={form.subtotal}
                       onChange={(e) =>
                         setForm((prev) => prev && { ...prev, subtotal: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Coupon code" htmlFor="arch-coupon-code">
+                    <Input
+                      id="arch-coupon-code"
+                      value={form.coupon_code}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, coupon_code: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Coupon discount" htmlFor="arch-coupon-discount">
+                    <Input
+                      id="arch-coupon-discount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.coupon_discount}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, coupon_discount: e.target.value })
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField label="Wholesale discount" htmlFor="arch-wholesale-discount">
+                    <Input
+                      id="arch-wholesale-discount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.wholesale_discount}
+                      onChange={(e) =>
+                        setForm((prev) => prev && { ...prev, wholesale_discount: e.target.value })
                       }
                     />
                   </SalesOrderFormField>

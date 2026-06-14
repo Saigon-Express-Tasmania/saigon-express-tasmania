@@ -1,6 +1,7 @@
 "use client";
 
 import { DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE } from "@/config";
+import type { WholesalePricingTier } from "@/types";
 import { createContext, useContext, useEffect, useState } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -166,6 +167,8 @@ type WholesaleCartContextValue = {
   cart: WholesaleCartItem[];
   cartCount: number;
   cartTotal: number;
+  pricingTiers: WholesalePricingTier[];
+  setPricingTiers: (tiers: WholesalePricingTier[]) => void;
   minimumOrderValue: number;
   setMinimumOrderValue: (value: number) => void;
   cartOpen: boolean;
@@ -197,6 +200,7 @@ export function WholesaleCartProvider({
   const [minimumOrderValue, setMinimumOrderValue] = useState(
     DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE,
   );
+  const [pricingTiers, setPricingTiers] = useState<WholesalePricingTier[]>([]);
 
   useEffect(() => {
     const { persist } = useWholesaleCartStore;
@@ -239,6 +243,8 @@ export function WholesaleCartProvider({
         cart,
         cartCount,
         cartTotal,
+        pricingTiers,
+        setPricingTiers,
         minimumOrderValue,
         setMinimumOrderValue,
         cartOpen,

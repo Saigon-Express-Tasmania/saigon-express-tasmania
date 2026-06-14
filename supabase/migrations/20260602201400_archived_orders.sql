@@ -18,6 +18,7 @@ create table public.archived_orders (
   requested_fulfillment_method public.order_fulfillment_type not null,
   requested_target_date timestamptz not null,
   requested_pick_up_store_id bigint references public.store_locations (id) on delete set null,
+  coupon_code text,
 
   shipping_dba_name text,
   shipping_special_instructions text,
@@ -39,6 +40,8 @@ create table public.archived_orders (
   payment_terms public.order_payment_terms not null default 'prepaid',
   po_number varchar(100),
   subtotal numeric(10, 2) not null,
+  coupon_discount numeric(10, 2) not null default 0.00,
+  wholesale_discount numeric(10, 2) not null default 0.00,
   tax_total numeric(10, 2) not null default 0.00,
   shipping_fee numeric(10, 2) not null default 0.00,
   grand_total numeric(10, 2) not null,

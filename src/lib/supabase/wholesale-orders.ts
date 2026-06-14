@@ -36,6 +36,9 @@ export type WholesaleOrder = {
   id: number;
   order_type: string;
   subtotal: number;
+  coupon_code: string | null;
+  coupon_discount: number;
+  wholesale_discount: number;
   tax_total: number;
   shipping_fee: number;
   grand_total: number;
@@ -68,7 +71,7 @@ export type FetchWholesaleOrdersResult = {
 };
 
 const ORDER_HEADER_SELECT =
-  "id, order_type, subtotal, tax_total, shipping_fee, grand_total, status, tracking_token, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, customer_name, customer_email, customer_phone, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms, created_at";
+  "id, order_type, subtotal, coupon_code, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total, status, tracking_token, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, customer_name, customer_email, customer_phone, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms, created_at";
 
 function isTestingOrders(): boolean {
   return getClientStripeMode() === "test";
@@ -125,6 +128,9 @@ function mapOrderRow(
     id: orderId,
     order_type: String(row.order_type ?? "wholesale"),
     subtotal: Number(row.subtotal ?? 0),
+    coupon_code: (row.coupon_code as string | null) ?? null,
+    coupon_discount: Number(row.coupon_discount ?? 0),
+    wholesale_discount: Number(row.wholesale_discount ?? 0),
     tax_total: Number(row.tax_total ?? 0),
     shipping_fee: Number(row.shipping_fee ?? 0),
     grand_total: grandTotal,

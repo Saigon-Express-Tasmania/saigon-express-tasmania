@@ -72,6 +72,9 @@ export type SalesOrderRow = {
   payment_terms: PaymentTerms;
   po_number: string | null;
   subtotal: string;
+  coupon_code: string | null;
+  coupon_discount: string;
+  wholesale_discount: string;
   tax_total: string;
   shipping_fee: string;
   grand_total: string;
@@ -298,6 +301,9 @@ export function emptyOrderForm(
     payment_terms: 'prepaid',
     po_number: null,
     subtotal: '0.00',
+    coupon_code: null,
+    coupon_discount: '0.00',
+    wholesale_discount: '0.00',
     tax_total: '0.00',
     shipping_fee: '0.00',
     grand_total: '0.00',
@@ -321,17 +327,19 @@ export function syncTotalsFromItems(form: SalesOrderForm): SalesOrderForm {
     return sum + qty * unitPrice;
   }, 0);
 
+  const couponDiscount = Number(form.coupon_discount) || 0;
+  const wholesaleDiscount = Number(form.wholesale_discount) || 0;
   const taxTotal = Number(form.tax_total) || 0;
   const shippingFee = Number(form.shipping_fee) || 0;
-  const grandTotal = subtotal + taxTotal + shippingFee;
+  const grandTotal = subtotal - couponDiscount - wholesaleDiscount + taxTotal + shippingFee;
 
   return {
     ...form,
     subtotal: subtotal.toFixed(2),
-    grand_total: grandTotal.toFixed(2),
+    grand_total: Math.max(grandTotal, 0).toFixed(2),
     payment: {
       ...form.payment,
-      amount: grandTotal.toFixed(2),
+      amount: Math.max(grandTotal, 0).toFixed(2),
     },
   };
 }
@@ -356,6 +364,9 @@ export function orderToForm(
     payment_terms: order.payment_terms,
     po_number: order.po_number,
     subtotal: order.subtotal,
+    coupon_code: order.coupon_code,
+    coupon_discount: order.coupon_discount,
+    wholesale_discount: order.wholesale_discount,
     tax_total: order.tax_total,
     shipping_fee: order.shipping_fee,
     grand_total: order.grand_total,

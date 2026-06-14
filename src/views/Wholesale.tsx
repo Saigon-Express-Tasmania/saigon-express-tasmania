@@ -6,8 +6,12 @@ import { useTranslations } from "next-intl";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
-import type { WholesaleProduct } from "@/types";
-import { pickWholesaleImageUrl } from "@/types";
+import type { WholesalePricingTier, WholesaleProduct } from "@/types";
+import {
+  formatTierDiscountValue,
+  formatTierMinValue,
+  pickWholesaleImageUrl,
+} from "@/types";
 import { toast } from "sonner";
 import {
   ChevronRight,
@@ -28,8 +32,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 export default function Wholesale({
   products = [],
+  pricingTiers = [],
 }: {
   products: WholesaleProduct[];
+  pricingTiers?: WholesalePricingTier[];
 }) {
   const t = useTranslations("Wholesale");
   useRedirectWholesaleMembersToShop();
@@ -43,12 +49,6 @@ export default function Wholesale({
     icon: string;
     title: string;
     desc: string;
-  }>;
-  const pricingTiers = (t.raw("pricingTiers") || []) as Array<{
-    minQty: string;
-    discountPct: number;
-    badge?: string;
-    highlight: boolean;
   }>;
   const howItWorks = (t.raw("howItWorks") || []) as Array<{
     step: string;
@@ -220,24 +220,24 @@ export default function Wholesale({
             </p>
           </div>
           <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {pricingTiers.map((tier, i) => (
+            {pricingTiers.map((tier) => (
               <div
-                key={i}
-                className={`p-5 text-center relative ${tier.highlight ? "bg-brand-red" : "bg-white/5 border border-white/10"}`}
+                key={tier.id}
+                className={`p-5 text-center relative ${tier.popular ? "bg-brand-red" : "bg-white/5 border border-white/10"}`}
               >
-                {tier.badge && (
+                {tier.popular && (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-brand-amber text-brand-dark text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest whitespace-nowrap">
-                    {tier.badge}
+                    {tier.label}
                   </span>
                 )}
                 <div className="font-serif text-white text-3xl font-bold mb-1">
-                  {tier.discountPct}%
+                  {formatTierDiscountValue(tier.discountValue)}
                 </div>
                 <div className="text-white/50 text-xs uppercase tracking-wider mb-2">
                   {t("pricingHeading.off")}
                 </div>
                 <div className="text-white text-sm font-semibold">
-                  {tier.minQty}
+                  {formatTierMinValue(tier.minValue)}
                 </div>
               </div>
             ))}

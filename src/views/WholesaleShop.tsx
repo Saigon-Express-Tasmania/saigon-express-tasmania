@@ -18,7 +18,7 @@ import {
 } from "@/types";
 import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
-import type { SiteCategory, UserProfile, WholesaleProduct } from "@/types";
+import type { SiteCategory, UserProfile, WholesalePricingTier, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
 import { Plus, Package, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -73,17 +73,19 @@ export default function WholesaleShop({
   inventory,
   categoriesContent,
   minimumWholesaleOrderValue,
+  pricingTiers,
 }: {
   products: WholesaleProduct[];
   inventory: WholesaleProductAvailabilityRow[];
   categoriesContent: SiteCategory[];
   minimumWholesaleOrderValue: number;
+  pricingTiers: WholesalePricingTier[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { profile, authMetadata, isLoading, signOut } = useSupabase();
-  const { addToCart, getCartQty, clearCart, setMinimumOrderValue } =
+  const { addToCart, getCartQty, clearCart, setMinimumOrderValue, setPricingTiers } =
     useWholesaleCart();
   const { setInventory, validateQty, getMaxQty } = useWholesaleInventory();
   const [search, setSearch] = useState("");
@@ -144,6 +146,10 @@ export default function WholesaleShop({
   useEffect(() => {
     setMinimumOrderValue(minimumWholesaleOrderValue);
   }, [minimumWholesaleOrderValue, setMinimumOrderValue]);
+
+  useEffect(() => {
+    setPricingTiers(pricingTiers);
+  }, [pricingTiers, setPricingTiers]);
 
   useEffect(() => {
     if (!profile?.id) return;

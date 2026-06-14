@@ -1,5 +1,3 @@
-import { unstable_cache } from "next/cache";
-import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import {
   mapWholesaleTierRow,
   type WholesalePricingTier,
@@ -7,13 +5,15 @@ import {
 } from "@/types/WholesaleTier";
 import { createServerSupabaseClient } from "./server";
 
-const CACHE_TAG = CACHE_TAGS.wholesaleTiers;
+let tiersPromise: Promise<WholesalePricingTier[]> | null = null;
 
-async function loadWholesaleTiers(): Promise<WholesalePricingTier[]> {
+async function fetchWholesaleTiers(): Promise<WholesalePricingTier[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("wholesale_tiers")
-    .select("id, label, min_units, discount, color, popular, sort_order")
+    .select("id, label, min_value, discount_value, color, popular, sort_order")
+    .gt("min_value", 0)
+    .gt("discount_value", 0)
     .order("sort_order", { ascending: true })
     .order("id", { ascending: true });
 
@@ -25,9 +25,14 @@ async function loadWholesaleTiers(): Promise<WholesalePricingTier[]> {
 
 /**
  * Wholesale bulk-pricing tiers for the public wholesale shop page.
+ * Cached in process memory for the lifetime of the server; refetched after each restart/deploy.
  */
-export const getWholesaleTiers = unstable_cache(
-  loadWholesaleTiers,
-  [CACHE_TAG],
-  { revalidate: SHORT_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
-);
+export function getWholesaleTiers(): Promise<WholesalePricingTier[]> {
+  if (!tiersPromise) {
+    tiersPromise = fetchWholesaleTiers().catch((error) => {
+      tiersPromise = null;
+      throw error;
+    });
+  }
+  return tiersPromise;
+}

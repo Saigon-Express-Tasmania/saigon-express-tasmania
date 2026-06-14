@@ -41,6 +41,7 @@ import {
   hasMeaningfulFlatShippingAddress,
 } from "@/lib/wholesale-b2b-order";
 import { resolveOrderTrackingMapEmbedUrl } from "@/lib/google-maps-embed";
+import { getInvoiceTotalDiscount } from "@/lib/order-invoice";
 import { useTranslations } from "next-intl";
 import {
   Check,
@@ -227,6 +228,7 @@ export default function OrderTrackingDetails({
     : t("welcomeGuest", { name: order.customer_name });
 
   const lastUpdate = order.status_updated_at ?? order.created_at;
+  const totalDiscount = getInvoiceTotalDiscount(order);
 
   const handleLogout = async () => {
     await signOut();
@@ -491,6 +493,40 @@ export default function OrderTrackingDetails({
                     </tbody>
                   </table>
                 </div>
+
+                <div className="mt-6 border-t border-zinc-800 pt-5">
+                  <div className="ml-auto w-full max-w-sm">
+                    <h3 className="mb-3 text-lg font-medium">
+                      {t("items.totalsTitle")}
+                    </h3>
+                    <dl className="space-y-2 text-[13px]">
+                      <FinancialSummaryRow
+                        label={t("invoice.subtotal")}
+                        value={formatTrackedCurrency(order.subtotal)}
+                      />
+                      {totalDiscount > 0 ? (
+                        <FinancialSummaryRow
+                          label={t("invoice.totalDiscount")}
+                          value={`−${formatTrackedCurrency(totalDiscount)}`}
+                          valueClassName="text-emerald-400"
+                        />
+                      ) : null}
+                      <FinancialSummaryRow
+                        label={t("invoice.gst")}
+                        value={formatTrackedCurrency(order.tax_total)}
+                      />
+                      <FinancialSummaryRow
+                        label={t("invoice.shippingFee")}
+                        value={formatTrackedCurrency(order.shipping_fee)}
+                      />
+                      <FinancialSummaryRow
+                        label={t("invoice.grandTotal")}
+                        value={formatTrackedCurrency(order.grand_total)}
+                        emphasize
+                      />
+                    </dl>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-6 grid gap-2.5 md:grid-cols-2">
@@ -532,6 +568,35 @@ function SummaryField({ label, value }: { label: string; value: string }) {
     <div>
       <div className="mb-1 text-xs text-zinc-500">{label}</div>
       <div className="text-base font-medium">{value}</div>
+    </div>
+  );
+}
+
+function FinancialSummaryRow({
+  label,
+  value,
+  valueClassName = "text-zinc-100",
+  emphasize = false,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 ${
+        emphasize ? "border-t border-zinc-700 pt-2" : ""
+      }`}
+    >
+      <dt className={emphasize ? "font-semibold text-lg text-zinc-200" : "text-zinc-500"}>
+        {label}
+      </dt>
+      <dd
+        className={`tabular-nums ${emphasize ? "text-base font-bold text-zinc-200" : `font-medium ${valueClassName}`}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

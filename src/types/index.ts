@@ -60,7 +60,11 @@ export type {
   WholesalePricingTier,
   WholesaleTierRow,
 } from "./WholesaleTier";
-export { mapWholesaleTierRow } from "./WholesaleTier";
+export {
+  formatTierDiscountValue,
+  formatTierMinValue,
+  mapWholesaleTierRow,
+} from "./WholesaleTier";
 export type {
   BusinessType,
   UserAuthMetadata,

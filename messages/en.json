@@ -949,7 +949,8 @@
       "total": "Total",
       "packed": "Packed",
       "packedYes": "Packed",
-      "packedNo": "Pending"
+      "packedNo": "Pending",
+      "totalsTitle": "Order totals"
     },
     "actions": {
       "viewInvoice": "View Invoice",
@@ -976,6 +977,7 @@
       "unitPrice": "Unit Price",
       "total": "Total",
       "subtotal": "Subtotal",
+      "totalDiscount": "Total discount",
       "gst": "GST (10%)",
       "shippingFee": "Shipping Fee",
       "grandTotal": "Grand Total",

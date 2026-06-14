@@ -5,6 +5,7 @@ import { buildOrderInvoiceViewModel } from "@/lib/order-invoice-data";
 import {
   formatInvoiceSku,
   formatInvoiceUnit,
+  getInvoiceTotalDiscount,
 } from "@/lib/order-invoice";
 import { formatTrackedCurrency, type TrackedOrder } from "@/lib/supabase/order-tracking";
 import { LOGO_URL } from "@/lib/site-images";
@@ -87,6 +88,7 @@ export default function OrderInvoicePrintView({
     invoiceCreatorStore,
   });
   const { company } = model;
+  const totalDiscount = getInvoiceTotalDiscount(order);
   const logoSrc = useMemo(
     () =>
       typeof window !== "undefined"
@@ -245,6 +247,29 @@ export default function OrderInvoicePrintView({
                   {formatTrackedCurrency(order.subtotal)}
                 </td>
               </tr>
+              {totalDiscount > 0 ? (
+                <tr>
+                  <td
+                    style={{
+                      padding: "6px 15px 6px 0",
+                      textAlign: "right",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {t("totalDiscount")}
+                  </td>
+                  <td
+                    style={{
+                      padding: "6px 8px",
+                      textAlign: "right",
+                      fontWeight: "bold",
+                      color: "#2d6a4f",
+                    }}
+                  >
+                    −{formatTrackedCurrency(totalDiscount)}
+                  </td>
+                </tr>
+              ) : null}
               <tr>
                 <td style={{ padding: "6px 15px 6px 0", textAlign: "right", fontWeight: "bold" }}>
                   {t("gst")}

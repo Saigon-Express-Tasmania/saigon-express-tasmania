@@ -14,7 +14,11 @@ import type {
   WholesalePricingTier,
   WholesaleProduct,
 } from "@/types";
-import { pickWholesaleImageUrl } from "@/types";
+import {
+  formatTierDiscountValue,
+  formatTierMinValue,
+  pickWholesaleImageUrl,
+} from "@/types";
 // 1. Import Fuse
 import Fuse from "fuse.js";
 
@@ -374,6 +378,11 @@ export default function WholesaleLandingShop({
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-4 max-w-3xl mx-auto">
+            {/* Tailwind safelist: DB-stored tier colors must use from-/to- only (no via-). */}
+            <div
+              aria-hidden
+              className="hidden from-white/5 to-white/10 from-amber-900/30 to-amber-800/20 from-slate-600/30 to-slate-500/20 from-yellow-700/30 to-yellow-600/20 from-primary/30 to-primary/20 from-amber-500/45 to-yellow-500/30 from-amber-500/40 to-yellow-600/25"
+            />
             {pricingTiers.map((tier, i) => (
               <motion.div
                 key={tier.id}
@@ -392,10 +401,10 @@ export default function WholesaleLandingShop({
                   {tier.label}
                 </div>
                 <div className="font-serif text-3xl font-bold text-white mb-1">
-                  {tier.discount}
+                  {formatTierDiscountValue(tier.discountValue)}
                 </div>
                 <div className="mt-2 text-white/55 text-sm font-medium">
-                  {tier.min}
+                  {formatTierMinValue(tier.minValue)}
                 </div>
               </motion.div>
             ))}

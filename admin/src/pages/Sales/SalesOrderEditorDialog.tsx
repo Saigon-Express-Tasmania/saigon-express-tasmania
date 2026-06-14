@@ -480,6 +480,66 @@ export function SalesOrderEditorDialog({
                     />
                   </SalesOrderFormField>
                   <SalesOrderFormField
+                    label="Coupon code"
+                    htmlFor={id('coupon-code')}
+                    readOnly={readOnly}
+                    value={form.coupon_code ?? '—'}
+                  >
+                    <Input
+                      id={id('coupon-code')}
+                      value={form.coupon_code ?? ''}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) => ({
+                          ...prev,
+                          coupon_code: e.target.value.trim() || null,
+                        }))
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Coupon discount"
+                    htmlFor={id('coupon-discount')}
+                    readOnly={readOnly}
+                    value={`$${Number(form.coupon_discount).toFixed(2)}`}
+                    valueClassName="tabular-nums"
+                  >
+                    <Input
+                      id={id('coupon-discount')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.coupon_discount}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) =>
+                          syncTotalsFromItems({ ...prev, coupon_discount: e.target.value }),
+                        )
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
+                    label="Wholesale discount"
+                    htmlFor={id('wholesale-discount')}
+                    readOnly={readOnly}
+                    value={`$${Number(form.wholesale_discount).toFixed(2)}`}
+                    valueClassName="tabular-nums"
+                  >
+                    <Input
+                      id={id('wholesale-discount')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.wholesale_discount}
+                      disabled={saving}
+                      onChange={(e) =>
+                        onFormChange((prev) =>
+                          syncTotalsFromItems({ ...prev, wholesale_discount: e.target.value }),
+                        )
+                      }
+                    />
+                  </SalesOrderFormField>
+                  <SalesOrderFormField
                     label="Tax total"
                     htmlFor={id('tax-total')}
                     readOnly={readOnly}

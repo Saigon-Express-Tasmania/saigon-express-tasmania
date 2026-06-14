@@ -131,6 +131,9 @@ create or replace function public.move_draft_to_paid_order(
   p_requested_fulfillment_method public.order_fulfillment_type,
   p_requested_target_date timestamptz,
   p_subtotal numeric(10, 2),
+  p_coupon_code text,
+  p_coupon_discount numeric(10, 2),
+  p_wholesale_discount numeric(10, 2),
   p_tax_total numeric(10, 2),
   p_shipping_fee numeric(10, 2),
   p_grand_total numeric(10, 2),
@@ -162,6 +165,7 @@ begin
     requested_fulfillment_method,
     requested_target_date,
     requested_pick_up_store_id,
+    coupon_code,
     shipping_dba_name,
     shipping_special_instructions,
     shipping_preferred_window,
@@ -180,6 +184,8 @@ begin
     payment_terms,
     po_number,
     subtotal,
+    coupon_discount,
+    wholesale_discount,
     tax_total,
     shipping_fee,
     grand_total,
@@ -203,6 +209,7 @@ begin
     p_requested_fulfillment_method,
     p_requested_target_date,
     d.requested_pick_up_store_id,
+    coalesce(p_coupon_code, d.coupon_code),
     d.shipping_dba_name,
     d.shipping_special_instructions,
     d.shipping_preferred_window,
@@ -221,6 +228,8 @@ begin
     d.payment_terms,
     d.po_number,
     p_subtotal,
+    coalesce(p_coupon_discount, d.coupon_discount, 0::numeric(10, 2)),
+    coalesce(p_wholesale_discount, d.wholesale_discount, 0::numeric(10, 2)),
     p_tax_total,
     p_shipping_fee,
     p_grand_total,
@@ -244,6 +253,9 @@ comment on function public.move_draft_to_paid_order(
   text,
   public.order_fulfillment_type,
   timestamptz,
+  numeric,
+  text,
+  numeric,
   numeric,
   numeric,
   numeric,
@@ -317,6 +329,9 @@ declare
   v_payment_terms public.order_payment_terms;
   v_po_number varchar(100);
   v_invoice_number text;
+  v_coupon_code text;
+  v_coupon_discount numeric(10, 2);
+  v_wholesale_discount numeric(10, 2);
 begin
   if p_order_payload is null or jsonb_typeof(p_order_payload) <> 'object' then
     raise exception 'order_payload must be a json object';
@@ -360,6 +375,15 @@ begin
   v_po_number := nullif(p_order_payload->>'po_number', '');
   v_invoice_number := nullif(p_order_payload->>'invoice_number', '');
   v_subtotal := nullif(p_order_payload->>'subtotal', '')::numeric(10, 2);
+  v_coupon_code := nullif(p_order_payload->>'coupon_code', '');
+  v_coupon_discount := coalesce(
+    nullif(p_order_payload->>'coupon_discount', '')::numeric(10, 2),
+    0::numeric(10, 2)
+  );
+  v_wholesale_discount := coalesce(
+    nullif(p_order_payload->>'wholesale_discount', '')::numeric(10, 2),
+    0::numeric(10, 2)
+  );
   v_tax_total := coalesce(nullif(p_order_payload->>'tax_total', '')::numeric(10, 2), 0::numeric(10, 2));
   v_shipping_fee := coalesce(nullif(p_order_payload->>'shipping_fee', '')::numeric(10, 2), 0::numeric(10, 2));
   v_grand_total := nullif(p_order_payload->>'grand_total', '')::numeric(10, 2);
@@ -424,7 +448,10 @@ begin
   end if;
 
   if v_subtotal is null then
-    v_subtotal := greatest(v_grand_total - v_tax_total - v_shipping_fee, 0);
+    v_subtotal := greatest(
+      v_grand_total - v_tax_total - v_shipping_fee + v_coupon_discount + v_wholesale_discount,
+      0
+    );
   end if;
 
   -- Header: promote draft (keeps id + existing items) or insert a new orders row.
@@ -440,6 +467,9 @@ begin
       v_requested_fulfillment_method,
       v_requested_target_date,
       v_subtotal,
+      v_coupon_code,
+      v_coupon_discount,
+      v_wholesale_discount,
       v_tax_total,
       v_shipping_fee,
       v_grand_total,
@@ -471,6 +501,7 @@ begin
       requested_fulfillment_method,
       requested_target_date,
       requested_pick_up_store_id,
+      coupon_code,
       shipping_dba_name,
       shipping_special_instructions,
       shipping_preferred_window,
@@ -489,6 +520,8 @@ begin
       payment_terms,
       po_number,
       subtotal,
+      coupon_discount,
+      wholesale_discount,
       tax_total,
       shipping_fee,
       grand_total,
@@ -510,6 +543,7 @@ begin
       v_requested_fulfillment_method,
       v_requested_target_date,
       v_requested_pick_up_store_id,
+      v_coupon_code,
       v_shipping_dba_name,
       v_shipping_special_instructions,
       v_shipping_preferred_window,
@@ -528,6 +562,8 @@ begin
       v_payment_terms,
       v_po_number,
       v_subtotal,
+      v_coupon_discount,
+      v_wholesale_discount,
       v_tax_total,
       v_shipping_fee,
       v_grand_total,
@@ -710,6 +746,7 @@ begin
     requested_fulfillment_method,
     requested_target_date,
     requested_pick_up_store_id,
+    coupon_code,
     shipping_dba_name,
     shipping_special_instructions,
     shipping_preferred_window,
@@ -728,6 +765,8 @@ begin
     payment_terms,
     po_number,
     subtotal,
+    coupon_discount,
+    wholesale_discount,
     tax_total,
     shipping_fee,
     grand_total,
@@ -754,6 +793,7 @@ begin
     v_order.requested_fulfillment_method,
     v_order.requested_target_date,
     v_order.requested_pick_up_store_id,
+    v_order.coupon_code,
     v_order.shipping_dba_name,
     v_order.shipping_special_instructions,
     v_order.shipping_preferred_window,
@@ -772,6 +812,8 @@ begin
     v_order.payment_terms,
     v_order.po_number,
     v_order.subtotal,
+    v_order.coupon_discount,
+    v_order.wholesale_discount,
     v_order.tax_total,
     v_order.shipping_fee,
     v_order.grand_total,
@@ -806,6 +848,9 @@ grant execute on function public.move_draft_to_paid_order(
   text,
   public.order_fulfillment_type,
   timestamptz,
+  numeric,
+  text,
+  numeric,
   numeric,
   numeric,
   numeric,

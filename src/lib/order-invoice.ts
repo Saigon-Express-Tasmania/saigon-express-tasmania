@@ -53,6 +53,18 @@ export function formatInvoiceSku(sku: string, isCatchWeight: boolean): string {
   return isCatchWeight ? `${trimmed}*` : trimmed;
 }
 
+export function getInvoiceTotalDiscount(order: {
+  wholesale_discount?: number | null;
+  coupon_discount?: number | null;
+}): number {
+  const wholesale = Number(order.wholesale_discount ?? 0);
+  const coupon = Number(order.coupon_discount ?? 0);
+  const total =
+    (Number.isFinite(wholesale) ? Math.max(wholesale, 0) : 0) +
+    (Number.isFinite(coupon) ? Math.max(coupon, 0) : 0);
+  return total > 0 ? total : 0;
+}
+
 export type InvoiceAddressBlock = {
   name: string;
   lines: string[];

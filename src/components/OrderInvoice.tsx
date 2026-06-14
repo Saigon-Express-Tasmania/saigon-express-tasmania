@@ -4,6 +4,7 @@ import { buildOrderInvoiceViewModel } from "@/lib/order-invoice-data";
 import {
   formatInvoiceSku,
   formatInvoiceUnit,
+  getInvoiceTotalDiscount,
 } from "@/lib/order-invoice";
 import {
   formatTrackedCurrency,
@@ -62,6 +63,7 @@ export default function OrderInvoice({
     invoiceCreatorStore,
   });
   const { company } = model;
+  const totalDiscount = getInvoiceTotalDiscount(order);
 
   return (
     <div className="font-[Arial,Helvetica,sans-serif] text-black antialiased">
@@ -147,6 +149,16 @@ export default function OrderInvoice({
                   {formatTrackedCurrency(order.subtotal)}
                 </td>
               </tr>
+              {totalDiscount > 0 ? (
+                <tr>
+                  <td className="py-1.5 pr-4 text-right font-bold">
+                    {t("totalDiscount")}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-bold text-[#2d6a4f]">
+                    −{formatTrackedCurrency(totalDiscount)}
+                  </td>
+                </tr>
+              ) : null}
               <tr>
                 <td className="py-1.5 pr-4 text-right font-bold">{t("gst")}</td>
                 <td className="px-2 py-1.5 text-right font-bold">
