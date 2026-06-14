@@ -37,8 +37,8 @@ function parseSendEmailRequest(body: unknown): SendEmailRequest {
   }
 
   const method = data.method != null ? String(data.method).trim() : undefined;
-  if (method && method !== "ses" && method !== "mailtrap") {
-    throw new Error('method must be "ses" or "mailtrap"');
+  if (method && method !== "brevo" && method !== "ses" && method !== "mailtrap") {
+    throw new Error('method must be "brevo", "ses", or "mailtrap"');
   }
 
   const templateVariables = data.templateVariables;

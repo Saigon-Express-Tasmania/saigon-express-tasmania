@@ -37,7 +37,7 @@ create policy "Anyone can read active store locations"
   on public.store_locations
   for select
   to anon, authenticated
-  using (is_active = true);
+  using (is_active = true or is_invoice_creator = true);
 
 grant select on public.store_locations to anon, authenticated;
 

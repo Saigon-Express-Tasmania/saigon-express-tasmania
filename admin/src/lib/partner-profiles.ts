@@ -1,4 +1,6 @@
 import { normalizePartnerPrivileges } from '@/lib/partner-privilege-form';
+import { invokeSendEmail } from '@/lib/send-email-api';
+import { fetchSettingsByKeys } from '@/lib/settings';
 import supabase from '@/lib/supabase/client';
 import {
   hasAnyPortalPartnerPrivilege,
@@ -21,6 +23,21 @@ export const PENDING_PARTNER_PROFILE_SELECT =
 
 export const PARTNER_PROFILE_SELECT =
   'id, email, first_name, last_name, display_name, phone, address_line1, address_line2, city, suburb, state, postal_code, country, business_name, abn, business_category, date_of_birth, created_at, updated_at';
+
+const WHOLESALE_ACCOUNT_CONFIRMATION_TEMPLATE = 'wholesale_account_confirmation';
+const WHOLESALE_PORTAL_URL = 'https://saigonexpress.com.au/wholesale';
+
+type ConfirmPartnerWithPrivilegesInput = Pick<
+  UserProfile,
+  | 'id'
+  | 'user_role'
+  | 'privileges'
+  | 'email'
+  | 'business_name'
+  | 'display_name'
+  | 'first_name'
+  | 'last_name'
+>;
 
 type PartnerProfileRow = Omit<
   UserProfile,
@@ -114,13 +131,46 @@ export function getConfirmMetadataFromPrivileges(
   return { user_role, privileges };
 }
 
+async function sendWholesaleAccountConfirmationEmail(
+  partner: Pick<
+    UserProfile,
+    'email' | 'business_name' | 'display_name' | 'first_name' | 'last_name'
+  >,
+): Promise<void> {
+  const recipientEmail = partner.email?.trim();
+  if (!recipientEmail) {
+    throw new Error(
+      'Partner email is required to send wholesale account confirmation.',
+    );
+  }
+
+  const settings = await fetchSettingsByKeys([
+    'contact_us_email',
+    'contact_us_phone_number',
+  ]);
+
+  await invokeSendEmail({
+    to: recipientEmail,
+    templateId: WHOLESALE_ACCOUNT_CONFIRMATION_TEMPLATE,
+    templateVariables: {
+      business_name: partner.business_name?.trim() ?? '',
+      contact_email: settings.contact_us_email?.trim() ?? '',
+      contact_phone: settings.contact_us_phone_number?.trim() ?? '',
+      customer_name: partnerDisplayName(partner),
+      wholesale_url: WHOLESALE_PORTAL_URL,
+    },
+  });
+}
+
 export async function confirmPartnerWithPrivileges(
-  partner: Pick<UserProfile, 'id' | 'user_role' | 'privileges'>,
+  partner: ConfirmPartnerWithPrivilegesInput,
   selectedPrivileges: BusinessType[],
 ): Promise<void> {
+  const privileges = normalizePartnerPrivileges(selectedPrivileges);
+
   await updateUserMetadata(
     partner.id,
-    getConfirmMetadataFromPrivileges(partner.user_role, selectedPrivileges),
+    getConfirmMetadataFromPrivileges(partner.user_role, privileges),
   );
 
   const { error: syncError } = await supabase.rpc('sync_user_auth_metadata', {
@@ -128,6 +178,10 @@ export async function confirmPartnerWithPrivileges(
   });
 
   if (syncError) throw syncError;
+
+  if (privileges.includes('wholesale')) {
+    await sendWholesaleAccountConfirmationEmail(partner);
+  }
 }
 
 export async function fetchPendingPartners(input: {

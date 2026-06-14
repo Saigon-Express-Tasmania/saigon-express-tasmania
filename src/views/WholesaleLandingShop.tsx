@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
 import Link from "@/components/link";
 import { useSupabase } from "@/hooks/useSupabase";
+import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
 import { hasPrivilege } from "@/lib/privileges";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -29,6 +30,7 @@ export default function WholesaleLandingShop({
   pricingTiers: WholesalePricingTier[];
 }) {
   const t = useTranslations("WholesaleShop");
+  useRedirectWholesaleMembersToShop();
   const { isSignedIn, authMetadata } = useSupabase();
   const canViewPrices =
     isSignedIn && hasPrivilege(authMetadata.privileges, "wholesale");

@@ -2,7 +2,7 @@ import supabase from '@/lib/supabase/client';
 import { parseEmailAddressList } from '@/lib/email-template-preview';
 
 export type SendEmailPayload = {
-  method?: 'ses' | 'mailtrap';
+  method?: 'brevo' | 'ses' | 'mailtrap';
   senderEmail?: string;
   senderName?: string;
   to: string;

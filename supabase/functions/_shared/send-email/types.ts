@@ -1,5 +1,5 @@
 export type SendEmailOptions = {
-  method?: "ses" | "mailtrap";
+  method?: "brevo" | "ses" | "mailtrap";
   senderEmail: string;
   senderName: string;
   recipientEmails: string[];

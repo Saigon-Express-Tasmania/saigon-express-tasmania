@@ -56,6 +56,8 @@ import { CloudUpload, ImageIcon, Loader2, Mail, Pencil, Plus, Sparkles, TestTube
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+const EMAIL_TEMPLATE_PROVIDER = 'Brevo';
+
 function templateToInput(row: EmailTemplate): EmailTemplateInput {
   return {
     name: row.name,
@@ -95,7 +97,7 @@ function validateForm(form: EmailTemplateInput): string | null {
   const name = form.name.trim();
   if (!name) return 'Template name is required.';
   if (!SES_TEMPLATE_NAME_PATTERN.test(name)) {
-    return 'Name may only contain letters, numbers, underscores, and hyphens (AWS SES).';
+    return 'Name may only contain letters, numbers, underscores, and hyphens.';
   }
   if (!form.subject.trim()) return 'Subject is required.';
   if (!form.html_body.trim()) return 'HTML body is required.';
@@ -299,14 +301,14 @@ export function Emails() {
           .eq('id', editingId);
 
         if (updateError) throw updateError;
-        toast.success('Template saved. Use Sync to push changes to AWS SES.');
+        toast.success(`Template saved. Use Sync to push changes to ${EMAIL_TEMPLATE_PROVIDER}.`);
       } else {
         const { error: insertError } = await supabase
           .from('email_templates')
           .insert(payload);
 
         if (insertError) throw insertError;
-        toast.success('Template saved. Use Sync to create it in AWS SES.');
+        toast.success(`Template saved. Use Sync to create it in ${EMAIL_TEMPLATE_PROVIDER}.`);
       }
 
       setDialogBaseline(snapshotDialogState(form, testTemplateData));
@@ -378,7 +380,7 @@ export function Emails() {
     }
     if (!SES_TEMPLATE_NAME_PATTERN.test(name)) {
       toast.error(
-        'Name may only contain letters, numbers, underscores, and hyphens (AWS SES).',
+        'Name may only contain letters, numbers, underscores, and hyphens.',
       );
       return;
     }
@@ -398,10 +400,10 @@ export function Emails() {
         const detail = result.results?.find((r) => !r.ok)?.error;
         throw new Error(detail ?? 'Sync failed');
       }
-      toast.success(`Synced "${name}" to AWS SES.`);
+      toast.success(`Synced "${name}" to ${EMAIL_TEMPLATE_PROVIDER}.`);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to sync template to SES.',
+        err instanceof Error ? err.message : `Failed to sync template to ${EMAIL_TEMPLATE_PROVIDER}.`,
       );
     } finally {
       setDialogSyncing(false);
@@ -416,10 +418,10 @@ export function Emails() {
         const detail = result.results?.find((r) => !r.ok)?.error;
         throw new Error(detail ?? 'Sync failed');
       }
-      toast.success(`Synced "${template.name}" to AWS SES.`);
+      toast.success(`Synced "${template.name}" to ${EMAIL_TEMPLATE_PROVIDER}.`);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to sync template to SES.',
+        err instanceof Error ? err.message : `Failed to sync template to ${EMAIL_TEMPLATE_PROVIDER}.`,
       );
     } finally {
       setSyncingId(null);
@@ -436,7 +438,7 @@ export function Emails() {
 
       if (failed === 0) {
         toast.success(
-          `Synced ${succeeded} template${succeeded === 1 ? '' : 's'} to AWS SES.`,
+          `Synced ${succeeded} template${succeeded === 1 ? '' : 's'} to ${EMAIL_TEMPLATE_PROVIDER}.`,
         );
         setSelectedIds(new Set());
       } else {
@@ -450,7 +452,7 @@ export function Emails() {
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to sync templates to SES.',
+        err instanceof Error ? err.message : `Failed to sync templates to ${EMAIL_TEMPLATE_PROVIDER}.`,
       );
     } finally {
       setBatchSyncing(false);
@@ -469,7 +471,7 @@ export function Emails() {
         .eq('id', deleteTarget.id);
 
       if (deleteError) throw deleteError;
-      toast.success(`Deleted "${deleteTarget.name}" from the database and AWS SES.`);
+      toast.success(`Deleted "${deleteTarget.name}" from the database and ${EMAIL_TEMPLATE_PROVIDER}.`);
       setDeleteTarget(null);
       await loadTemplates();
     } catch (err) {
@@ -514,10 +516,12 @@ export function Emails() {
             <div>
               <CardTitle>Email templates</CardTitle>
               <CardDescription>
-                Store templates in Supabase, then sync to AWS SES individually or
-                in batches (up to {EMAIL_TEMPLATE_BATCH_MAX} at a time). Use{' '}
-                <code className="text-xs">{'{{variable}}'}</code> in subject and
-                body for SES merge fields.
+                Store templates in Supabase, then sync to {EMAIL_TEMPLATE_PROVIDER}{' '}
+                individually or in batches (up to {EMAIL_TEMPLATE_BATCH_MAX} at a
+                time). Use <code className="text-xs">{'{{variable}}'}</code> in
+                subject and body; sync converts these to Brevo{' '}
+                <code className="text-xs">{'{{params.variable}}'}</code>{' '}
+                placeholders.
               </CardDescription>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
@@ -569,7 +573,7 @@ export function Emails() {
               </div>
             ) : filteredTemplates.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No email templates yet. Add one, then sync it to AWS SES.
+                No email templates yet. Add one, then sync it to {EMAIL_TEMPLATE_PROVIDER}.
               </p>
             ) : (
               <div className="overflow-x-auto rounded-md border">
@@ -632,7 +636,7 @@ export function Emails() {
                             <Button
                               variant="outline"
                               size="sm"
-                              title="Sync to AWS SES"
+                              title={`Sync to ${EMAIL_TEMPLATE_PROVIDER}`}
                               disabled={syncBusy || saving}
                               onClick={() => void handleSync(t)}
                             >
@@ -677,15 +681,16 @@ export function Emails() {
               {editingId !== null ? 'Edit template' : 'Add template'}
             </DialogTitle>
             <DialogDescription>
-              The name is the AWS SES template ID. It cannot be changed after
-              creation. Saving only updates the database — use Sync to push to SES.
+              The name is the template ID in {EMAIL_TEMPLATE_PROVIDER} (stored as
+              the tag). It cannot be changed after creation. Saving only updates
+              the database — use Sync to push to {EMAIL_TEMPLATE_PROVIDER}.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
             <div className="grid shrink-0 gap-4 md:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="template-name">Name (SES template ID)</Label>
+                <Label htmlFor="template-name">Name (template ID)</Label>
                 <Input
                   id="template-name"
                   value={form.name}
@@ -834,7 +839,7 @@ export function Emails() {
                 ) : (
                   <CloudUpload className="mr-2 h-4 w-4" />
                 )}
-                Sync to AWS SES
+                Sync to {EMAIL_TEMPLATE_PROVIDER}
               </Button>
             </div>
             <div className="flex gap-2">
@@ -928,8 +933,8 @@ export function Emails() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete template?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes <strong>{deleteTarget?.name}</strong> from AWS SES
-              and the database. This cannot be undone.
+              This removes <strong>{deleteTarget?.name}</strong> from{' '}
+              {EMAIL_TEMPLATE_PROVIDER} and the database. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

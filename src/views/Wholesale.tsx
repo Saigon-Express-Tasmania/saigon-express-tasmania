@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "@/components/link";
 import { trpc } from "@/lib/trpc";
+import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
 import type { WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ export default function Wholesale({
   products: WholesaleProduct[];
 }) {
   const t = useTranslations("Wholesale");
+  useRedirectWholesaleMembersToShop();
 
   // Array Extraction Strategy (t.raw)
   const supplyList = (t.raw("supplyList") || []) as Array<{

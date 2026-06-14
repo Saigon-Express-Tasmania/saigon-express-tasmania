@@ -16,7 +16,7 @@ import type { TrackedOrder } from "@/lib/supabase/order-tracking";
 import type { StoreLocation } from "@/types";
 import { Printer } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { createPortal } from "react-dom";
+import { useRef } from "react";
 
 type OrderInvoiceDialogProps = {
   open: boolean;
@@ -36,25 +36,89 @@ export default function OrderInvoiceDialog({
   statusLabel,
 }: OrderInvoiceDialogProps) {
   const t = useTranslations("OrderTrackingDetails.invoice");
-  const invoiceNumber = formatInvoiceNumber(order.id, order.created_at);
+  const printSourceRef = useRef<HTMLDivElement>(null);
+  const invoiceNumber =
+    order.invoice_number?.trim() ||
+    formatInvoiceNumber(order.id, order.created_at);
 
   const handlePrint = () => {
-    window.print();
-  };
+    const source = printSourceRef.current;
+    if (!source) return;
 
-  const printSurface =
-    open && typeof document !== "undefined"
-      ? createPortal(
-          <div id="order-invoice-print-root" aria-hidden="true">
-            <OrderInvoicePrintView
-              order={order}
-              pickupStore={pickupStore}
-              invoiceCreatorStore={invoiceCreatorStore}
-            />
-          </div>,
-          document.body,
-        )
-      : null;
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute(
+      "style",
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0",
+    );
+    iframe.setAttribute("title", invoiceNumber);
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument;
+    const win = iframe.contentWindow;
+    if (!doc || !win) {
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${invoiceNumber}</title>
+<style>
+@page { margin: 0; size: auto; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #000000;
+  height: auto;
+  overflow: visible;
+}
+body {
+  display: flex;
+  justify-content: center;
+}
+</style>
+</head>
+<body>
+${source.innerHTML}
+</body>
+</html>`);
+    doc.close();
+
+    const printFrame = () => {
+      win.focus();
+      win.print();
+      window.setTimeout(() => {
+        iframe.remove();
+      }, 1000);
+    };
+
+    const images = doc.getElementsByTagName("img");
+    if (images.length === 0) {
+      printFrame();
+      return;
+    }
+
+    let loaded = 0;
+    const onImageReady = () => {
+      loaded += 1;
+      if (loaded >= images.length) {
+        printFrame();
+      }
+    };
+
+    Array.from(images).forEach((img) => {
+      if (img.complete) {
+        onImageReady();
+      } else {
+        img.addEventListener("load", onImageReady);
+        img.addEventListener("error", onImageReady);
+      }
+    });
+  };
 
   return (
     <>
@@ -93,7 +157,19 @@ export default function OrderInvoiceDialog({
         </DialogContent>
       </Dialog>
 
-      {printSurface}
+      {open ? (
+        <div
+          ref={printSourceRef}
+          aria-hidden="true"
+          className="pointer-events-none fixed left-[-9999px] top-0 h-0 w-[850px] overflow-hidden"
+        >
+          <OrderInvoicePrintView
+            order={order}
+            pickupStore={pickupStore}
+            invoiceCreatorStore={invoiceCreatorStore}
+          />
+        </div>
+      ) : null}
     </>
   );
 }

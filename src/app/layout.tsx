@@ -6,7 +6,7 @@ import "./globals.css";
 import { notoSans, notoSerif } from "@/app/fonts";
 import { Providers } from "@/components/providers";
 import { getSiteContentSnapshot } from "@/lib/supabase/site-content";
-import { getStoreLocations } from "@/lib/supabase/store-locations";
+import { getActiveStoreLocations } from "@/lib/supabase/store-locations";
 
 export const metadata: Metadata = {
   title: "Saigon Express Tasmania | Authentic Vietnamese Food",
@@ -24,7 +24,7 @@ export default async function RootLayout({
       getSiteContentSnapshot(),
       getLocale(),
       getMessages(),
-      getStoreLocations(),
+      getActiveStoreLocations(),
       headers(),
     ]);
 

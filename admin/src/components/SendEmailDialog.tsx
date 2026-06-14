@@ -22,7 +22,10 @@ import {
   validateEmailAddressList,
 } from '@/lib/email-template-preview';
 import { invokeSendEmail } from '@/lib/send-email-api';
-import type { EmailTemplate } from '@/types/EmailTemplate';
+import {
+  normalizeTestData,
+  type EmailTemplate,
+} from '@/types/EmailTemplate';
 import { Loader2, Mail } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,7 +34,7 @@ type PreviewTab = 'html' | 'text';
 
 type SendEmailForm = {
   templateId: string;
-  method: 'ses' | 'mailtrap';
+  method: 'brevo' | 'ses' | 'mailtrap';
   to: string;
   cc: string;
   bcc: string;
@@ -42,7 +45,7 @@ type SendEmailForm = {
 
 const emptySendForm = (): SendEmailForm => ({
   templateId: '',
-  method: 'ses',
+  method: 'brevo',
   to: '',
   cc: '',
   bcc: '',
@@ -93,14 +96,15 @@ export function SendEmailDialog({
 
   useEffect(() => {
     if (!selectedTemplate) return;
+    const testData = normalizeTestData(selectedTemplate.test_data);
     setForm((f) => {
       const nextVars: Record<string, string> = {};
       for (const key of variableKeys) {
-        nextVars[key] = f.variables[key] ?? '';
+        nextVars[key] = testData[key] ?? '';
       }
       return { ...f, variables: nextVars };
     });
-  }, [selectedTemplate?.id, variableKeys.join(',')]);
+  }, [selectedTemplate, variableKeys.join(',')]);
 
   const previewSubject = useMemo(() => {
     if (!selectedTemplate) return '';
@@ -186,8 +190,8 @@ export function SendEmailDialog({
         <DialogHeader>
           <DialogTitle>Send email</DialogTitle>
           <DialogDescription>
-            Send a templated email via AWS SES or Mailtrap. Preview uses your
-            template variables; SES uses the synced template on AWS.
+            Send a templated email via Brevo (default), AWS SES, or Mailtrap.
+            Template variables are prefilled from the template test data.
           </DialogDescription>
         </DialogHeader>
 
@@ -220,7 +224,7 @@ export function SendEmailDialog({
               onValueChange={(method) =>
                 setForm((f) => ({
                   ...f,
-                  method: method as 'ses' | 'mailtrap',
+                  method: method as SendEmailForm['method'],
                 }))
               }
             >
@@ -228,6 +232,7 @@ export function SendEmailDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="brevo">Brevo</SelectItem>
                 <SelectItem value="ses">AWS SES</SelectItem>
                 <SelectItem value="mailtrap">Mailtrap</SelectItem>
               </SelectContent>

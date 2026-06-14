@@ -24,6 +24,25 @@ export async function fetchSettings(): Promise<SettingRow[]> {
   }));
 }
 
+export async function fetchSettingsByKeys(
+  keys: string[],
+): Promise<Record<string, string>> {
+  const trimmedKeys = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
+  if (trimmedKeys.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('settings')
+    .select('key, value')
+    .in('key', trimmedKeys);
+
+  if (error) throw error;
+
+  return (data ?? []).reduce<Record<string, string>>((acc, row) => {
+    acc[row.key] = row.value;
+    return acc;
+  }, {});
+}
+
 export async function saveSettings(rows: SettingRow[]): Promise<void> {
   const normalized = normalizeRows(rows);
   const keys = normalized.map((row) => row.key);

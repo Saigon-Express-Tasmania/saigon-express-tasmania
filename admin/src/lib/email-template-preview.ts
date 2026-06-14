@@ -74,6 +74,43 @@ export function embedHighlightInHtml(html: string, backgroundColor: string): str
   );
 }
 
+/** True when `index` sits inside a quoted HTML attribute value (e.g. href="{{url}}"). */
+export function isInsideHtmlAttribute(html: string, index: number): boolean {
+  let inDouble = false;
+  let inSingle = false;
+  let inTag = false;
+
+  for (let i = 0; i < index; i += 1) {
+    if (html.startsWith('<!--', i)) {
+      const close = html.indexOf('-->', i + 4);
+      if (close === -1) break;
+      i = close + 2;
+      continue;
+    }
+
+    if (!inDouble && !inSingle) {
+      if (html[i] === '<') {
+        inTag = true;
+        continue;
+      }
+      if (html[i] === '>') {
+        inTag = false;
+        continue;
+      }
+    }
+
+    if (!inTag) continue;
+
+    if (html[i] === '"' && !inSingle) {
+      inDouble = !inDouble;
+    } else if (html[i] === "'" && !inDouble) {
+      inSingle = !inSingle;
+    }
+  }
+
+  return inDouble || inSingle;
+}
+
 function applyPreviewSubstitution(value: string, safeColor: string | null): string {
   if (!safeColor) return value;
 
@@ -89,12 +126,15 @@ export function renderTemplateString(
   variables: Record<string, string>,
   options?: { highlightColor?: string },
 ): string {
-  return template.replace(TEMPLATE_VAR_PATTERN, (full, key: string) => {
+  return template.replace(TEMPLATE_VAR_PATTERN, (full, key: string, offset: number) => {
     const value = variables[key];
     if (value === undefined || value === '') return full;
 
     if (options?.highlightColor !== undefined) {
       const safeColor = sanitizePreviewHighlightColor(options.highlightColor);
+      if (safeColor && isInsideHtmlAttribute(template, offset)) {
+        return value;
+      }
       return applyPreviewSubstitution(value, safeColor);
     }
 

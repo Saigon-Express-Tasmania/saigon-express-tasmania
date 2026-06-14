@@ -12,6 +12,7 @@ export const ENV = {
   supabasePublishableKey,
   supabaseStorageBucket: import.meta.env.VITE_SUPABASE_STORAGE_BUCKET as string | undefined,
   cacheRevalidateSecret: import.meta.env.VITE_CACHE_REVALIDATE_SECRET as string | undefined,
+  brevoApiKey: import.meta.env.VITE_BREVO_API_KEY as string | undefined,
 };
 
 export const STORAGE_BUCKET = ENV.supabaseStorageBucket || 'saigon-express-tasmania';
