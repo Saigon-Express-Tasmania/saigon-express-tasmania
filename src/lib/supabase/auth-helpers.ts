@@ -1,5 +1,6 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { SITE_ORIGIN } from "@/lib/site-origin";
 import { updateUserProfile } from "@/lib/supabase/user-profiles";
 import type { BusinessType } from "@/types/UserProfile";
 
@@ -157,6 +158,35 @@ export async function signUpWithEmail(
 
 export async function signOut(): Promise<void> {
   const { error } = await supabase.auth.signOut();
+  if (error) {
+    throw error;
+  }
+}
+
+export function getMemberPortalPasswordResetRedirectUrl(): string {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/member`;
+  }
+
+  return `${SITE_ORIGIN}/member`;
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    {
+      redirectTo: getMemberPortalPasswordResetRedirectUrl(),
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+
   if (error) {
     throw error;
   }

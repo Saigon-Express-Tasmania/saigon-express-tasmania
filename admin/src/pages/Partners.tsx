@@ -54,6 +54,7 @@ import {
   PARTNERS_PAGE_PENDING_LIMIT,
   formatPartnerDate,
   partnerDisplayName,
+  type PendingPartnerProfile,
 } from '@/lib/partner-profiles';
 import { updateUserMetadata } from '@/lib/user-metadata';
 import supabase from '@/lib/supabase/client';
@@ -191,7 +192,7 @@ export function Partners() {
   const { profile: adminProfile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = adminProfile?.user_role === 'admin';
 
-  const [pendingPartners, setPendingPartners] = useState<UserProfile[]>([]);
+  const [pendingPartners, setPendingPartners] = useState<PendingPartnerProfile[]>([]);
   const [pendingTotalCount, setPendingTotalCount] = useState(0);
   const [confirmedPartners, setConfirmedPartners] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -334,7 +335,7 @@ export function Partners() {
   };
 
   const handleConfirm = async (
-    partner: UserProfile,
+    partner: PendingPartnerProfile,
     privileges: BusinessType[],
   ) => {
     const normalized = normalizePartnerPrivileges(privileges);

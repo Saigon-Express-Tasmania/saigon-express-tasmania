@@ -9,7 +9,8 @@ import {
   formatPartnerDate,
   partnerDisplayName,
 } from '@/lib/partner-profiles';
-import type { BusinessType, UserProfile } from '@/types/UserProfile';
+import type { PendingPartnerProfile } from '@/lib/partner-profiles';
+import type { BusinessType } from '@/types/UserProfile';
 import { CheckCircle2, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -35,14 +36,14 @@ function getConfirmPopoverPosition(anchor: HTMLElement): ConfirmPopoverPosition 
 }
 
 export type PendingPartnerCardProps = {
-  partner: UserProfile;
+  partner: PendingPartnerProfile;
   confirmingId: string | null;
   confirmPromptId: string | null;
   onConfirmPromptToggle: (partnerId: string) => void;
   onConfirmPromptClose: () => void;
-  onConfirm: (partner: UserProfile, privileges: BusinessType[]) => void;
-  onEdit?: (partner: UserProfile) => void;
-  onDelete?: (partner: UserProfile) => void;
+  onConfirm: (partner: PendingPartnerProfile, privileges: BusinessType[]) => void;
+  onEdit?: (partner: PendingPartnerProfile) => void;
+  onDelete?: (partner: PendingPartnerProfile) => void;
 };
 
 export function PendingPartnerCard({
@@ -188,7 +189,13 @@ export function PendingPartnerCard({
       : null;
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className={`flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${
+        partner.email_verified
+          ? ''
+          : 'border-destructive/50 bg-destructive/10'
+      }`}
+    >
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <p className="truncate text-sm font-medium">
@@ -197,6 +204,14 @@ export function PendingPartnerCard({
           <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
             Pending
           </Badge>
+          {!partner.email_verified ? (
+            <Badge
+              variant="outline"
+              className="border-destructive/50 bg-destructive/15 px-1.5 py-0 text-[10px] text-destructive"
+            >
+              Email unverified
+            </Badge>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center text-xs text-muted-foreground">
           {metadataFields.map((field, index) => (

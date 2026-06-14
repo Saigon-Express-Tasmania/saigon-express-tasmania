@@ -1,0 +1,210 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no" />
+    <title>Confirm your email address</title>
+    <!--[if mso]>
+    <noscript>
+      <xml>
+        <o:OfficeDocumentSettings>
+          <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+      </xml>
+    </noscript>
+    <![endif]-->
+    <style type="text/css">
+      body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+      table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+      img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+      body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+      @media only screen and (max-width: 620px) {
+        .email-container { width: 100% !important; }
+        .stack-column { display: block !important; width: 100% !important; max-width: 100% !important; }
+        .mobile-padding { padding-left: 16px !important; padding-right: 16px !important; }
+      }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#fcf9f3;color:#333333;font-family:Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
+      Confirm your Saigon Express account email to finish signing up.
+    </div>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#fcf9f3;">
+      <tr>
+        <td align="center" style="padding:20px 12px;">
+          <table role="presentation" class="email-container" border="0" cellpadding="0" cellspacing="0" width="600" style="width:600px;max-width:600px;background-color:#fcf9f3;">
+            <!-- Header -->
+            <tr>
+              <td class="mobile-padding">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="left">
+                      <img src="https://gwjwndshezauqvwnbueh.supabase.co/storage/v1/object/public/saigon-express-tasmania/email-templates/wholesale_account_confirmation/64a2a098-b0ab-447e-8a57-6f70c9fad9e5/logo.png" alt="Saigon Express Logo" width="320" height="60" style="display:block;width:320px;max-width:320px;height:auto;border:0;outline:none;text-decoration:none;" />
+                    </td>
+                    <td align="right">
+                      <p style="margin:0 0 0px 0;color:#000000;">
+                        <strong style="font-weight:bold;color:#222222;">
+                          Saigon Express
+                          <br />
+                          TTH Enterprises Pty Ltd
+                        </strong>
+                      </p>
+                      <p style="margin:0;color:#000000;">
+                        Level 2, 86 Collins Street
+                        <br />
+                        Hobart 7000
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- Title -->
+            <tr>
+              <td align="center" class="mobile-padding" style="padding:28px 8px 8px 8px;">
+                <h1 style="margin:0;font-size:24px;line-height:32px;font-weight:800;color:#8a151b;font-family:Helvetica,Arial,sans-serif;">
+                  Confirm your email address
+                </h1>
+              </td>
+            </tr>
+            <!-- Intro -->
+            <tr>
+              <td class="mobile-padding" style="padding:8px 8px 20px 8px;font-size:15px;line-height:23px;color:#444444;font-family:Helvetica,Arial,sans-serif;">
+                <p style="margin:0 0 14px 0;">
+                  Hi,
+                </p>
+                <p style="margin:0 0 14px 0;">
+                  Thanks for signing up with Saigon Express. Please confirm that
+                  <strong style="font-weight:bold;color:#222222;">{{ .Email }}</strong>
+                  is your email address so we can finish creating your account.
+                </p>
+                <p style="margin:0;">
+                  This link expires in one hour. If you did not create an account, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+            <!-- CTA -->
+            <tr>
+              <td align="center" class="mobile-padding" style="padding:0 8px 24px 8px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" bgcolor="#8a151b" style="border-radius:25px;background-color:#8a151b;">
+                      <!--[if mso]>
+                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .ConfirmationURL }}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="50%" stroke="f" fillcolor="#8a151b">
+                        <w:anchorlock />
+                        <center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;">Confirm Email Address</center>
+                      </v:roundrect>
+                      <![endif]-->
+                      <!--[if !mso]><!-->
+                      <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;line-height:20px;font-weight:bold;color:#ffffff;text-decoration:none;font-family:Helvetica,Arial,sans-serif;border-radius:25px;background-color:#8a151b;">
+                        Confirm Email Address
+                      </a>
+                      <!--<![endif]-->
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- Plain link fallback -->
+            <tr>
+              <td class="mobile-padding" style="padding:0 8px 16px 8px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f3edd9;border-radius:12px;">
+                  <tr>
+                    <td style="padding:20px;font-size:14px;line-height:22px;color:#333333;font-family:Helvetica,Arial,sans-serif;">
+                      <p style="margin:0 0 10px 0;font-size:16px;line-height:24px;font-weight:bold;color:#222222;">
+                        Button not working?
+                      </p>
+                      <p style="margin:0 0 10px 0;">
+                        Copy and paste this link into your browser:
+                      </p>
+                      <p style="margin:0;word-break:break-all;">
+                        <a href="{{ .ConfirmationURL }}" style="color:#0066cc;text-decoration:underline;font-weight:500;">{{ .ConfirmationURL }}</a>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- OTP fallback -->
+            <tr>
+              <td class="mobile-padding" style="padding:0 8px 16px 8px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f3edd9;border-radius:12px;">
+                  <tr>
+                    <td style="padding:20px;font-size:14px;line-height:22px;color:#333333;font-family:Helvetica,Arial,sans-serif;">
+                      <p style="margin:0 0 10px 0;font-size:16px;line-height:24px;font-weight:bold;color:#222222;">
+                        Prefer to use a code?
+                      </p>
+                      <p style="margin:0;">
+                        Enter this one-time code on the confirmation page:
+                        <strong style="font-weight:bold;color:#222222;letter-spacing:2px;">{{ .Token }}</strong>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- Help -->
+            <tr>
+              <td class="mobile-padding" style="padding:0 8px 32px 8px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f3edd9;border-radius:12px;">
+                  <tr>
+                    <td style="padding:20px;font-size:14px;line-height:22px;color:#333333;font-family:Helvetica,Arial,sans-serif;">
+                      <p style="margin:0 0 6px 0;font-size:16px;line-height:24px;font-weight:bold;color:#222222;">
+                        Need help?
+                      </p>
+                      <p style="margin:0;">
+                        Call us on
+                        <strong style="font-weight:bold;color:#222222;">0416 036 016</strong>
+                        or email
+                        <a href="mailto:info@saigonexpress.com.au" style="color:#0066cc;text-decoration:underline;font-weight:500;">info@saigonexpress.com.au</a>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- Footer -->
+            <tr>
+              <td style="background-color:#111111;color:#aaaaaa;padding:20px;font-size:12px;line-height:18px;font-family:Helvetica,Arial,sans-serif;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td class="stack-column" width="50%" valign="top" style="padding:0 10px 12px 0;">
+                      <p style="margin:0 0 8px 0;color:#aaaaaa;">
+                        <strong style="color:#ffffff;font-weight:bold;">
+                          Saigon Express
+                          <br />
+                          TTH Enterprises Pty Ltd
+                        </strong>
+                      </p>
+                      <p style="margin:0;color:#aaaaaa;">
+                        <strong style="color:#ffffff;font-weight:bold;">ABN/ACN</strong>
+                        <br />
+                        60 650 289 991
+                      </p>
+                    </td>
+                    <td class="stack-column" width="50%" valign="top" style="padding:0 0 0 10px;">
+                      <p style="margin:0 0 8px 0;color:#aaaaaa;">
+                        <strong style="color:#ffffff;font-weight:bold;">Business Address</strong>
+                        <br />
+                        Level 2, 86 Collins Street,
+                        <br />
+                        Hobart 7000
+                      </p>
+                      <p style="margin:0;color:#aaaaaa;">
+                        <strong style="color:#ffffff;font-weight:bold;">Phone number</strong>
+                        <br />
+                        0416 036 016
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

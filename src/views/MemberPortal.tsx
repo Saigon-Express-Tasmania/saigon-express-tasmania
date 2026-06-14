@@ -11,13 +11,15 @@ import { Label } from "@/components/ui/label";
 import {
   getAuthErrorMessage,
   registerWholesaleMemberApplication,
+  requestPasswordReset,
+  updatePassword,
   useSupabase,
 } from "@/hooks/useSupabase";
+import { supabase } from "@/lib/supabase/client";
 import {
   buildWholesaleRegistrationStatus,
   clearWholesaleRegistrationStatus,
   getWholesaleRegistrationStatus,
-  isWholesaleMemberConfirmed,
   resolveWholesaleRegistrationStatus,
   saveWholesaleRegistrationStatus,
   WHOLESALE_REGISTRATION_MESSAGES,
@@ -42,6 +44,15 @@ import {
 type LoginFieldErrors = {
   email?: string;
   password?: string;
+};
+
+type ForgotPasswordFieldErrors = {
+  email?: string;
+};
+
+type ResetPasswordFieldErrors = {
+  password?: string;
+  confirm?: string;
 };
 
 type RegisterFieldErrors = {
@@ -70,6 +81,30 @@ function validateLoginFields(
   const errors: LoginFieldErrors = {};
   if (!email.trim()) errors.email = "Please enter your email.";
   if (!password) errors.password = "Please enter your password.";
+  return errors;
+}
+
+function validateForgotPasswordFields(email: string): ForgotPasswordFieldErrors {
+  const errors: ForgotPasswordFieldErrors = {};
+  if (!email.trim()) errors.email = "Please enter your email.";
+  return errors;
+}
+
+function validateResetPasswordFields(
+  password: string,
+  confirm: string,
+): ResetPasswordFieldErrors {
+  const errors: ResetPasswordFieldErrors = {};
+  if (!password) {
+    errors.password = "Please enter a new password.";
+  } else if (password.length < 8) {
+    errors.password = "Password must be at least 8 characters.";
+  }
+  if (!confirm) {
+    errors.confirm = "Please confirm your new password.";
+  } else if (password !== confirm) {
+    errors.confirm = "Passwords do not match.";
+  }
   return errors;
 }
 
@@ -103,18 +138,31 @@ function validateRegisterFields(
   return errors;
 }
 
-function modeFromHash(hash: string): "login" | "register" {
+type PortalMode = "login" | "register" | "forgot" | "reset";
+
+function isRecoveryAuthHash(hash: string): boolean {
+  return hash.includes("type=recovery") || hash.includes("access_token");
+}
+
+function modeFromHash(hash: string): PortalMode {
+  if (isRecoveryAuthHash(hash)) return "reset";
   if (hash === "#register") return "register";
+  if (hash === "#forgot-password") return "forgot";
+  if (hash === "#reset-password") return "reset";
   return "login";
 }
 
-function hashFromMode(mode: "login" | "register"): string {
-  return mode === "register" ? "#register" : "#sign-in";
+function hashFromMode(mode: PortalMode): string {
+  if (mode === "register") return "#register";
+  if (mode === "forgot") return "#forgot-password";
+  if (mode === "reset") return "#reset-password";
+  return "#sign-in";
 }
 
-function replaceModeHash(mode: "login" | "register") {
+function replaceModeHash(mode: PortalMode) {
   const nextHash = hashFromMode(mode);
   if (window.location.hash === nextHash) return;
+  if (isRecoveryAuthHash(window.location.hash)) return;
 
   const url = `${window.location.pathname}${window.location.search}${nextHash}`;
   window.history.replaceState(null, "", url);
@@ -122,16 +170,21 @@ function replaceModeHash(mode: "login" | "register") {
 
 function MemberPortalContent() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const setModeWithHash = useCallback((nextMode: "login" | "register") => {
+  const [mode, setMode] = useState<PortalMode>("login");
+  const setModeWithHash = useCallback((nextMode: PortalMode) => {
     setMode(nextMode);
     replaceModeHash(nextMode);
   }, []);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
 
   const [regBusinessName, setRegBusinessName] = useState("");
   const [regContactName, setRegContactName] = useState("");
@@ -156,30 +209,58 @@ function MemberPortalContent() {
     | ""
   >("");
 
-  const { signInWithPassword, profile, authMetadata, isSignedIn } =
+  const { signInWithPassword, profile, authMetadata, isSignedIn, signOut } =
     useSupabase();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [loginErrors, setLoginErrors] = useState<LoginFieldErrors>({});
+  const [forgotErrors, setForgotErrors] = useState<ForgotPasswordFieldErrors>({});
+  const [resetErrors, setResetErrors] = useState<ResetPasswordFieldErrors>({});
   const [registerErrors, setRegisterErrors] = useState<RegisterFieldErrors>({});
   const [registrationStatus, setRegistrationStatus] =
     useState<WholesaleRegistrationStatus | null>(null);
 
   useEffect(() => {
     const syncModeFromHash = () => {
+      if (isPasswordRecovery) return;
       setMode(modeFromHash(window.location.hash));
     };
 
     syncModeFromHash();
     window.addEventListener("hashchange", syncModeFromHash);
     return () => window.removeEventListener("hashchange", syncModeFromHash);
+  }, [isPasswordRecovery]);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        setMode("reset");
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (isSignedIn) {
+    if (mode === "reset" || isRecoveryAuthHash(window.location.hash)) {
+      setIsPasswordRecovery(true);
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (isSignedIn && !isPasswordRecovery) {
+      clearWholesaleRegistrationStatus();
+      setRegistrationStatus(null);
       router.replace("/member/dashboard");
     }
-  }, [isSignedIn, router]);
+  }, [isPasswordRecovery, isSignedIn, router]);
 
   useEffect(() => {
     if (isSignedIn) return;
@@ -207,6 +288,64 @@ function MemberPortalContent() {
     setRegistrationStatus(null);
   };
 
+  const handleForgotPassword = async (e: SubmitEvent) => {
+    e.preventDefault();
+    const errors = validateForgotPasswordFields(forgotEmail);
+    setForgotErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.error("Please enter your email.");
+      return;
+    }
+
+    setIsSendingResetEmail(true);
+    try {
+      await requestPasswordReset(forgotEmail);
+      setForgotPasswordSent(true);
+      toast.success("If an account exists for that email, a reset link has been sent.");
+    } catch (error) {
+      toast.error(
+        getAuthErrorMessage(
+          error,
+          "Unable to send reset email. Please try again.",
+        ),
+      );
+    } finally {
+      setIsSendingResetEmail(false);
+    }
+  };
+
+  const handleResetPassword = async (e: SubmitEvent) => {
+    e.preventDefault();
+    const errors = validateResetPasswordFields(resetPassword, resetConfirm);
+    setResetErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.error("Please check your new password.");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await updatePassword(resetPassword);
+      setIsPasswordRecovery(false);
+      setResetPassword("");
+      setResetConfirm("");
+      setResetErrors({});
+      replaceModeHash("login");
+      setMode("login");
+      toast.success("Password updated. Redirecting to your account...");
+      router.replace("/member/dashboard");
+    } catch (error) {
+      toast.error(
+        getAuthErrorMessage(
+          error,
+          "Unable to update password. Please request a new reset link.",
+        ),
+      );
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const handleLogin = async (e: SubmitEvent) => {
     e.preventDefault();
     const errors = validateLoginFields(loginEmail, loginPassword);
@@ -218,24 +357,8 @@ function MemberPortalContent() {
 
     setIsSigningIn(true);
     try {
-      const { profile: signedInProfile, authMetadata: signedInAuth } =
-        await signInWithPassword(loginEmail, loginPassword);
-
-      const resolved = resolveWholesaleRegistrationStatus(
-        getWholesaleRegistrationStatus(),
-        signedInProfile,
-        signedInAuth,
-      );
-      if (resolved) {
-        setRegistrationStatus(resolved);
-      }
-
-      if (isWholesaleMemberConfirmed(signedInProfile, signedInAuth)) {
-        clearWholesaleRegistrationStatus();
-      }
-
+      await signInWithPassword(loginEmail, loginPassword);
       toast.success("Welcome back! Redirecting to your account...");
-      router.push("/member/dashboard");
     } catch (error) {
       restoreRegistrationStatus();
       toast.error(
@@ -325,13 +448,6 @@ function MemberPortalContent() {
         Back to site
       </button> */}
 
-      <Link
-        href="/wholesale/landing-shop"
-        className="absolute top-6 right-6 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors z-10"
-      >
-        Browse Products <ChevronRight className="w-4 h-4" />
-      </Link>
-
       <div className="relative z-10 w-full max-w-xl bg-white rounded-2xl shadow-xl border border-gray-100 px-8 py-10">
         <div className="flex justify-center mb-6 px-2">
           <AppImage
@@ -348,7 +464,13 @@ function MemberPortalContent() {
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
             Business Portal
           </h1>
-          <p className="text-sm text-gray-500">Wholesale & Warehouse Members</p>
+          <p className="text-sm text-gray-500">
+            {mode === "forgot"
+              ? "Reset your password"
+              : mode === "reset"
+                ? "Choose a new password"
+                : "Wholesale & Warehouse Members"}
+          </p>
         </div>
 
         {registrationStatus && (
@@ -375,26 +497,232 @@ function MemberPortalContent() {
           </div>
         )}
 
-        <div className="flex rounded-xl bg-gray-100 p-1 mb-7">
-          {(["login", "register"] as const).map((tab) => (
+        {(mode === "login" || mode === "register") && (
+          <div className="flex rounded-xl bg-gray-100 p-1 mb-7">
+            {(["login", "register"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => {
+                  setModeWithHash(tab);
+                  setLoginErrors({});
+                  setRegisterErrors({});
+                }}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                  mode === tab
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab === "login" ? "Sign In" : "Register"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {mode === "forgot" && (
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Enter the email address for your business account and we&apos;ll
+              send you a link to reset your password.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="forgot-email"
+                className="text-xs font-semibold text-gray-600 uppercase tracking-wide"
+              >
+                Email
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => {
+                    setForgotEmail(e.target.value);
+                    if (forgotErrors.email) {
+                      setForgotErrors((prev) => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  placeholder="business@example.com"
+                  className={withFieldError(`pl-9 ${inputClass}`, !!forgotErrors.email)}
+                  autoComplete="email"
+                  aria-invalid={!!forgotErrors.email}
+                />
+              </div>
+              <FieldError message={forgotErrors.email} />
+            </div>
+
+            {forgotPasswordSent && (
+              <div
+                role="status"
+                className="rounded-xl border-2 border-red-600 bg-gradient-to-br from-red-50 via-[#f3edd9] to-amber-50 px-4 py-4 shadow-md ring-1 ring-red-200/80"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-600 text-white shadow-sm">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-red-800">
+                      Reset link sent
+                    </p>
+                    <p className="mt-1.5 text-sm font-medium text-red-950/90 leading-relaxed">
+                      Check your inbox for a password reset link. It expires in
+                      one hour. If you don&apos;t see it, check your spam folder.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isSendingResetEmail}
+              className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl mt-2 flex items-center justify-center gap-2"
+            >
+              {isSendingResetEmail ? "Sending..." : "Send Reset Link"}
+            </Button>
+
             <button
-              key={tab}
               type="button"
               onClick={() => {
-                setModeWithHash(tab);
-                setLoginErrors({});
-                setRegisterErrors({});
+                setForgotPasswordSent(false);
+                setForgotErrors({});
+                setModeWithHash("login");
               }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                mode === tab
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              className="w-full flex items-center justify-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
             >
-              {tab === "login" ? "Sign In" : "Register"}
+              <ChevronLeft className="w-4 h-4" />
+              Back to sign in
             </button>
-          ))}
-        </div>
+          </form>
+        )}
+
+        {mode === "reset" && (
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Enter a new password for your account.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="reset-password"
+                className="text-xs font-semibold text-gray-600 uppercase tracking-wide"
+              >
+                New Password
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="reset-password"
+                  type={showResetPassword ? "text" : "password"}
+                  value={resetPassword}
+                  onChange={(e) => {
+                    setResetPassword(e.target.value);
+                    if (resetErrors.password) {
+                      setResetErrors((prev) => ({
+                        ...prev,
+                        password: undefined,
+                      }));
+                    }
+                  }}
+                  placeholder="Min 8 characters"
+                  className={withFieldError(
+                    `pl-9 pr-10 ${inputClass}`,
+                    !!resetErrors.password,
+                  )}
+                  autoComplete="new-password"
+                  aria-invalid={!!resetErrors.password}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(!showResetPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showResetPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <FieldError message={resetErrors.password} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="reset-confirm"
+                className="text-xs font-semibold text-gray-600 uppercase tracking-wide"
+              >
+                Confirm Password
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="reset-confirm"
+                  type={showResetConfirm ? "text" : "password"}
+                  value={resetConfirm}
+                  onChange={(e) => {
+                    setResetConfirm(e.target.value);
+                    if (resetErrors.confirm) {
+                      setResetErrors((prev) => ({
+                        ...prev,
+                        confirm: undefined,
+                      }));
+                    }
+                  }}
+                  placeholder="Repeat password"
+                  className={withFieldError(
+                    `pl-9 pr-10 ${inputClass}`,
+                    !!resetErrors.confirm,
+                  )}
+                  autoComplete="new-password"
+                  aria-invalid={!!resetErrors.confirm}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(!showResetConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showResetConfirm ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <FieldError message={resetErrors.confirm} />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isUpdatingPassword}
+              className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl mt-2 flex items-center justify-center gap-2"
+            >
+              {isUpdatingPassword ? "Updating..." : "Update Password"}
+            </Button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                if (isPasswordRecovery) {
+                  await signOut();
+                }
+                setIsPasswordRecovery(false);
+                setResetPassword("");
+                setResetConfirm("");
+                setResetErrors({});
+                setModeWithHash("login");
+              }}
+              className="w-full flex items-center justify-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back to sign in
+            </button>
+          </form>
+        )}
 
         {mode === "login" && (
           <form onSubmit={handleLogin} className="space-y-4">
@@ -469,6 +797,21 @@ function MemberPortalContent() {
                 </button>
               </div>
               <FieldError message={loginErrors.password} />
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotEmail(loginEmail);
+                  setForgotPasswordSent(false);
+                  setForgotErrors({});
+                  setModeWithHash("forgot");
+                }}
+                className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+              >
+                Forgot password?
+              </button>
             </div>
 
             <Button
@@ -821,7 +1164,7 @@ function MemberPortalContent() {
           </form>
         )}
 
-        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+        {/* <div className="mt-6 pt-6 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
             Looking for the customer portal?{" "}
             <Link
@@ -831,17 +1174,17 @@ function MemberPortalContent() {
               Sign in here
             </Link>
           </p>
-        </div>
+        </div> */}
       </div>
 
-      <div className="relative z-10 text-center mt-6">
+      {/* <div className="relative z-10 text-center mt-6">
         <Link
           href="/wholesale/landing-shop"
           className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
         >
           ← Back to Wholesale Shop
         </Link>
-      </div>
+      </div> */}
 
       <p className="relative z-10 mt-6 text-xs text-gray-400 text-center">
         Saigon Express Tasmania · Business Portal

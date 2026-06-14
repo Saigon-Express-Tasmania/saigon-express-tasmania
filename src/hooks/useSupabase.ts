@@ -12,6 +12,8 @@ export {
   signInWithEmail,
   signOut,
   signUpWithEmail,
+  requestPasswordReset,
+  updatePassword,
   splitContactName,
 } from "@/lib/supabase/auth-helpers";
 export {

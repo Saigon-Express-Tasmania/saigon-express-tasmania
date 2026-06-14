@@ -3,10 +3,11 @@ import {
   PendingPartnerCardSkeleton,
 } from '@/components/partners/PendingPartnerCard';
 import { pendingPartnersRemainingMessage } from '@/lib/partner-profiles';
-import type { BusinessType, UserProfile } from '@/types/UserProfile';
+import type { PendingPartnerProfile } from '@/lib/partner-profiles';
+import type { BusinessType } from '@/types/UserProfile';
 
 export type PendingPartnersListProps = {
-  partners: UserProfile[];
+  partners: PendingPartnerProfile[];
   totalCount: number;
   limit: number;
   loading: boolean;
@@ -14,9 +15,9 @@ export type PendingPartnersListProps = {
   confirmPromptId: string | null;
   onConfirmPromptToggle: (partnerId: string) => void;
   onConfirmPromptClose: () => void;
-  onConfirm: (partner: UserProfile, privileges: BusinessType[]) => void;
-  onEdit?: (partner: UserProfile) => void;
-  onDelete?: (partner: UserProfile) => void;
+  onConfirm: (partner: PendingPartnerProfile, privileges: BusinessType[]) => void;
+  onEdit?: (partner: PendingPartnerProfile) => void;
+  onDelete?: (partner: PendingPartnerProfile) => void;
   skeletonCount?: number;
   showHeader?: boolean;
   emptyMessage?: string;
@@ -77,6 +78,11 @@ export function PendingPartnersList({
       ) : null}
       {summaryMessage ? (
         <p className="text-xs text-muted-foreground">{summaryMessage}</p>
+      ) : null}
+      {partners.some((partner) => !partner.email_verified) ? (
+        <p className="text-xs text-muted-foreground">
+          Rows with a red background have not confirmed their email address yet.
+        </p>
       ) : null}
 
       <div className="space-y-2">

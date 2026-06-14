@@ -9,11 +9,16 @@ import {
 } from '@/lib/privileges';
 import {
   fetchUserMetadataByIds,
+  fetchUsersEmailVerified,
   fetchUsersWithAnyPortalPartnerPrivilege,
   fetchUsersWithoutPortalPartnerPrivilege,
   updateUserMetadata,
 } from '@/lib/user-metadata';
 import type { BusinessType, PartnerBusinessType, UserProfile, UserRole } from '@/types/UserProfile';
+
+export type PendingPartnerProfile = UserProfile & {
+  email_verified: boolean;
+};
 
 export const DASHBOARD_PENDING_PARTNERS_LIMIT = 10;
 export const PARTNERS_PAGE_PENDING_LIMIT = 25;
@@ -186,7 +191,7 @@ export async function confirmPartnerWithPrivileges(
 
 export async function fetchPendingPartners(input: {
   limit: number;
-}): Promise<{ items: UserProfile[]; totalCount: number }> {
+}): Promise<{ items: PendingPartnerProfile[]; totalCount: number }> {
   const missingPortalIds = await fetchUsersWithoutPortalPartnerPrivilege();
   if (missingPortalIds.length === 0) {
     return { items: [], totalCount: 0 };
@@ -204,12 +209,17 @@ export async function fetchPendingPartners(input: {
   if (error) throw error;
 
   const profiles = (data as PartnerProfileRow[] | null) ?? [];
-  const metadataById = await fetchUserMetadataByIds(profiles.map((profile) => profile.id));
+  const profileIds = profiles.map((profile) => profile.id);
+  const [metadataById, emailVerifiedById] = await Promise.all([
+    fetchUserMetadataByIds(profileIds),
+    fetchUsersEmailVerified(profileIds),
+  ]);
 
   return {
-    items: profiles.map((profile) =>
-      mergePartnerProfile(profile, metadataById.get(profile.id)),
-    ),
+    items: profiles.map((profile) => ({
+      ...mergePartnerProfile(profile, metadataById.get(profile.id)),
+      email_verified: emailVerifiedById.get(profile.id) ?? false,
+    })),
     totalCount: count ?? 0,
   };
 }

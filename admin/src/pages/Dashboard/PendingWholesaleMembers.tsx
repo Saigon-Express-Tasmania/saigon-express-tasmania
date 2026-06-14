@@ -17,8 +17,9 @@ import {
   DASHBOARD_PENDING_PARTNERS_LIMIT,
   fetchPendingPartners,
   partnerDisplayName,
+  type PendingPartnerProfile,
 } from '@/lib/partner-profiles';
-import type { BusinessType, UserProfile } from '@/types/UserProfile';
+import type { BusinessType } from '@/types/UserProfile';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -27,7 +28,7 @@ export function PendingWholesaleMembers() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = profile?.user_role === 'admin';
 
-  const [partners, setPartners] = useState<UserProfile[]>([]);
+  const [partners, setPartners] = useState<PendingPartnerProfile[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export function PendingWholesaleMembers() {
   };
 
   const handleConfirm = async (
-    partner: UserProfile,
+    partner: PendingPartnerProfile,
     privileges: BusinessType[],
   ) => {
     const normalized = normalizePartnerPrivileges(privileges);

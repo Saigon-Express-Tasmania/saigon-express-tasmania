@@ -334,3 +334,32 @@ grant execute on function public.sync_auth_user_metadata(uuid)
   to service_role;
 grant execute on function public.sync_user_auth_metadata(uuid)
   to authenticated, service_role;
+
+
+-- Admin lookup for auth.users email confirmation state (pending partner review).
+
+create or replace function public.get_users_email_verified(target_user_ids uuid[])
+returns table (
+  user_id uuid,
+  email_confirmed_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can look up email verification status';
+  end if;
+
+  return query
+  select u.id, u.email_confirmed_at
+  from auth.users as u
+  where u.id = any(coalesce(target_user_ids, '{}'::uuid[]));
+end;
+$$;
+
+comment on function public.get_users_email_verified(uuid[]) is
+  'Returns email_confirmed_at for the given user ids. Admin only.';
+
+grant execute on function public.get_users_email_verified(uuid[]) to authenticated;

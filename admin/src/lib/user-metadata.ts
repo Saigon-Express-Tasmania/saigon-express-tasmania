@@ -12,6 +12,11 @@ export type UserMetadataRow = {
   membership_level: number;
 };
 
+export type UserEmailVerificationRow = {
+  user_id: string;
+  email_confirmed_at: string | null;
+};
+
 export const USER_METADATA_SELECT = 'id, user_role, privileges, membership_level';
 
 export function parseUserRole(value: unknown): UserRole {
@@ -46,6 +51,25 @@ export async function fetchUserMetadataByIds(
         ...row,
         privileges: parsePrivileges(row.privileges),
       },
+    ]),
+  );
+}
+
+export async function fetchUsersEmailVerified(
+  ids: string[],
+): Promise<Map<string, boolean>> {
+  if (ids.length === 0) return new Map();
+
+  const { data, error } = await supabase.rpc('get_users_email_verified', {
+    target_user_ids: ids,
+  });
+
+  if (error) throw error;
+
+  return new Map(
+    ((data as UserEmailVerificationRow[] | null) ?? []).map((row) => [
+      row.user_id,
+      Boolean(row.email_confirmed_at),
     ]),
   );
 }
