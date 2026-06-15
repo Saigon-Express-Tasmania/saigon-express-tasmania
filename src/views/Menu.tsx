@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "@/components/link";
 import {
   ShoppingCart,
@@ -64,20 +65,44 @@ export default function Menu({
   const t = useTranslations("Menu");
   const locale = useLocale();
 
+  // Initialize Next.js navigation hooks
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const allLabel = t("allCategory");
+  const urlCategory = searchParams.get("category");
+
   const menuItemPath = useCallback(
     (item: MenuItem) => menuItemDetailPath(item, locale),
     [locale],
   );
 
-  const [activeCategory, setActiveCategory] = useState(t("allCategory"));
+  // Set initial state from URL, fallback to allLabel
+  const [activeCategory, setActiveCategory] = useState(urlCategory || allLabel);
   const [search, setSearch] = useState("");
-  const [addonTrigger, setAddonTrigger] = useState<{
-    item: SuggestedItem;
-    suggestions: SuggestedItem[];
-  } | null>(null);
+  const [addonTrigger, setAddonTrigger] = useState<{ item: SuggestedItem;suggestions: SuggestedItem[] } | null>(null);
   const [customiseItem, setCustomiseItem] = useState<MenuItem | null>(null);
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
+
+  // Handle category clicks by updating state AND the URL
+  const handleCategoryClick = useCallback(
+    (cat: string) => {
+      setActiveCategory(cat);
+
+      // Update the URL search parameters seamlessly
+      const params = new URLSearchParams(searchParams.toString());
+      if (cat === allLabel) {
+        params.delete("category");
+      } else {
+        params.set("category", cat);
+      }
+
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router, allLabel],
+  );
 
   // ─── Shared cart ─────────────────────────────────────────────────────────
   const {
@@ -121,7 +146,6 @@ export default function Menu({
       (catOrderMap.get(a) ?? 99) - (catOrderMap.get(b) ?? 99),
   );
 
-  const allLabel = t("allCategory");
   const categories = [allLabel, ...sortedCats];
 
   // 2. Initialize Fuse instance with configuration keys and thresholds
@@ -261,7 +285,7 @@ export default function Menu({
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => handleCategoryClick(cat)}
               className={`px-4 py-2 text-sm font-semibold transition-colors border ${
                 activeCategory === cat
                   ? "bg-brand-red text-white border-brand-red"
@@ -385,24 +409,9 @@ export default function Menu({
                         <span className="w-7 text-center text-sm font-bold text-brand-dark">
                           {totalQtyInCart}
                         </span>
-                        {/* <button
-                          type="button"
-                          onClick={() => handleOpenCustomise(item)}
-                          className="w-8 h-8 flex items-center justify-center bg-brand-red text-white hover:bg-brand-red/90 transition-colors"
-                        >
-                          <Plus size={13} />
-                        </button> */}
                       </div>
                     ) : (
-                      <>
-                      {/* <button
-                        type="button"
-                        onClick={() => handleOpenCustomise(item)}
-                        className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center bg-brand-red text-white opacity-0 shadow-lg transition-all hover:bg-brand-red/90 group-hover:opacity-100"
-                      >
-                        <Plus size={16} />
-                      </button> */}
-                      </>
+                      <></>
                     )}
                   </div>
                   <Link
@@ -447,30 +456,17 @@ export default function Menu({
                         </div>
                       ) : (
                         <>
-                        {/*
-                        <button
-                          onClick={() => handleOpenCustomise(item)}
-                          disabled={!item.isAvailable}
-                          className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-bold py-2 rounded-full transition-all duration-300 ${
-                            item.isAvailable
-                              ? "bg-brand-dark text-white hover:bg-brand-red"
-                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          }`}
-                        >
-                          <Plus size={13} /> {t("card.addButton")}
-                        </button>
-                        */}
-                        <button
-                          onClick={() => handleOrderNow(item)}
-                          disabled={!item.isAvailable}
-                          className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-bold py-2 rounded-full transition-all duration-300 ${
-                            item.isAvailable
-                              ? "bg-brand-amber text-white hover:bg-brand-amber/90"
-                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          }`}
-                        >
-                          Order Now
-                        </button>
+                          <button
+                            onClick={() => handleOrderNow(item)}
+                            disabled={!item.isAvailable}
+                            className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-bold py-2 rounded-full transition-all duration-300 ${
+                              item.isAvailable
+                                ? "bg-brand-amber text-white hover:bg-brand-amber/90"
+                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            }`}
+                          >
+                            Order Now
+                          </button>
                         </>
                       )}
                     </div>

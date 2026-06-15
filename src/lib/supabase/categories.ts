@@ -25,7 +25,9 @@ function mapCategoryRow(row: CategoryRow): SiteCategory {
     name: row.name,
     description: row.description ?? null,
     imageUrl: row.imageUrl ?? null,
-    addon: Array.isArray(row.addon) ? row.addon.map((value) => String(value)) : [],
+    addon: Array.isArray(row.addon)
+      ? row.addon.map((value) => String(value))
+      : [],
     style: row.style ?? null,
     icon: row.icon ?? null,
   };
@@ -35,7 +37,9 @@ async function loadCategories(): Promise<SiteCategory[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("categories")
-    .select('id, kind, alias, name, description, "imageUrl", addon, style, icon')
+    .select(
+      'id, kind, alias, name, description, "imageUrl", addon, style, icon',
+    )
     .order("id", { ascending: true });
 
   if (error) throw error;
@@ -50,7 +54,22 @@ export const getCategories = unstable_cache(loadCategories, [CACHE_TAG], {
   tags: [CACHE_TAG],
 });
 
-export async function getCategoriesByKind(kind: string): Promise<SiteCategory[]> {
+export async function getCategoriesByKind(
+  kind: string,
+): Promise<SiteCategory[]> {
   const categories = await getCategories();
+
   return categories.filter((category) => category.kind === kind);
+}
+
+export async function getRandomCategoriesByKind(
+  kind: string,
+  limit: number,
+): Promise<SiteCategory[]> {
+  const categories = await getCategories();
+
+  return categories
+    .filter((category) => category.kind === kind)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, limit);
 }

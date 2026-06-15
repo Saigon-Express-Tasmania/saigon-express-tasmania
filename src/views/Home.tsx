@@ -5,7 +5,7 @@ import Link from "@/components/link";
 
 import dynamic from "next/dynamic";
 import type { MenuItem } from "@/contexts/CartContext";
-import type { FeaturedReview } from "@/types";
+import type { FeaturedReview, SiteCategory } from "@/types";
 import { getTranslations } from "next-intl/server";
 import { ChevronRight, MapPin, ShoppingCart } from "lucide-react";
 
@@ -49,13 +49,19 @@ const NEWS_IMAGES = [IMGS.news1, IMGS.news2, IMGS.news3] as const;
 type HomeProps = {
   menuItems: MenuItem[];
   featuredReviews: FeaturedReview[];
+  categoryContents: SiteCategory[];
+  cateringContents: SiteCategory[];
 };
 
-export default async function Home({ menuItems, featuredReviews }: HomeProps) {
+export default async function Home({
+  menuItems,
+  featuredReviews,
+  categoryContents,
+  cateringContents,
+}: HomeProps) {
   const t = await getTranslations("Home");
 
   const marqueeItems = t.raw("marquee.items") as string[];
-  const ourFoodTags = t.raw("ourFood.tags") as string[];
   const cateringTags = t.raw("catering.tags") as string[];
   const wholesaleTags = t.raw("wholesale.tags") as string[];
   const categoryItems = t.raw("categories.items") as Array<{
@@ -193,13 +199,14 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
               {t("ourFood.description")}
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
-              {ourFoodTags.map((tag) => (
-                <span
-                  key={tag}
+              {categoryContents.map((category) => (
+                <Link
+                  key={`ourfood-category-${category.id}`}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase text-white border border-white/20 bg-white/10"
+                  href={`/menu?category=${encodeURIComponent(category.name)}`}
                 >
-                  {tag}
-                </span>
+                  {category.name}
+                </Link>
               ))}
             </div>
             <Link href="/menu" className="btn-red">
@@ -271,10 +278,14 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
               {t("catering.description")}
             </p>
             <div className="flex flex-wrap gap-2 mb-8">
-              {cateringTags.map((tag) => (
-                <span key={tag} className="pill-tag">
-                  {tag}
-                </span>
+              {cateringContents.map((category) => (
+                <Link
+                  key={`catering-category-${category.id}`}
+                  className="pill-tag"
+                  href={`/catering#${category.alias}`}
+                >
+                  {category.name}
+                </Link>
               ))}
             </div>
             <Link href="/catering" className="btn-red">
@@ -485,7 +496,10 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
                 {t("news.title")}
               </h2>
             </div>
-            <Link href="/news" className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1">
+            <Link
+              href="/news"
+              className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1"
+            >
               {t("news.viewAll")} <ChevronRight size={14} />
             </Link>
           </div>
