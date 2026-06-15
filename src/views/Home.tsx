@@ -51,6 +51,7 @@ type HomeProps = {
   featuredReviews: FeaturedReview[];
   categoryContents: SiteCategory[];
   cateringContents: SiteCategory[];
+  wholesaleContents: SiteCategory[];
 };
 
 export default async function Home({
@@ -58,6 +59,7 @@ export default async function Home({
   featuredReviews,
   categoryContents,
   cateringContents,
+  wholesaleContents,
 }: HomeProps) {
   const t = await getTranslations("Home");
 
@@ -336,7 +338,7 @@ export default async function Home({
               <Link
                 key={i}
                 href="/menu"
-                className="group block overflow-hidden rounded-sm card-lift reveal"
+                className="group block bg-neutral-50! overflow-hidden rounded-sm card-lift-active reveal"
                 style={{ animationDelay: `${i * 0.1}s` }}
               >
                 <div className="overflow-hidden aspect-[4/3]">
@@ -347,7 +349,7 @@ export default async function Home({
                     className="group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
-                <div className="pt-4 pb-2">
+                <div className="p-4">
                   <h3 className="font-serif text-xl text-brand-dark mb-1">
                     {cat.title}
                   </h3>
@@ -452,13 +454,14 @@ export default async function Home({
               {t("wholesale.description")}
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
-              {wholesaleTags.map((tag) => (
-                <span
-                  key={tag}
+              {wholesaleContents.map((content) => (
+                <Link
+                  key={`wholesale-category-${content.id}`}
                   className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/20 text-white/70 text-xs font-medium"
+                  href={`/wholesale/landing-shop?category=${encodeURIComponent(content.name)}`}
                 >
-                  {tag}
-                </span>
+                  {content.name}
+                </Link>
               ))}
             </div>
             <Link href="/wholesale/landing-shop" className="btn-red">
@@ -507,7 +510,7 @@ export default async function Home({
             {newsItems.map((n, i) => (
               <article
                 key={i}
-                className="group block overflow-hidden rounded-sm card-lift reveal"
+                className="group block bg-brand-cream overflow-hidden rounded-sm card-lift reveal cursor-pointer"
                 style={{ animationDelay: `${i * 0.08}s` }}
               >
                 <div className="overflow-hidden aspect-[4/3]">
@@ -518,7 +521,7 @@ export default async function Home({
                     className="group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
-                <div className="pt-4 pb-2">
+                <div className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="news-badge">{n.tag}</span>
                     <span className="text-xs text-brand-dark/40">{n.date}</span>

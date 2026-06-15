@@ -168,8 +168,14 @@ export default function FranchisePage() {
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
-      <section className="relative h-[520px] overflow-hidden">
-        <div className="absolute inset-0 bg-black" />
+      <section className="relative aspect-3/1 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('/manus-storage/franchise__hero.jpg')`,
+          }}
+        />
+        <div className="absolute inset-0 bg-black/55" />
         <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-4">
             {t("hero.badge")}

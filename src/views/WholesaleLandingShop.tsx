@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import { motion } from "framer-motion";
 import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
@@ -7,7 +8,7 @@ import Link from "@/components/link";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
 import { hasPrivilege } from "@/lib/privileges";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type {
   SiteCategory,
@@ -34,6 +35,13 @@ export default function WholesaleLandingShop({
   pricingTiers: WholesalePricingTier[];
 }) {
   const t = useTranslations("WholesaleShop");
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const urlCategory = searchParams.get("category");
+
   useRedirectWholesaleMembersToShop();
   const { isSignedIn, authMetadata } = useSupabase();
   const canViewPrices =
@@ -60,7 +68,27 @@ export default function WholesaleLandingShop({
   );
 
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
+  const [selectedCategory, setSelectedCategory] = useState(
+    urlCategory || ALL_CATEGORY,
+  );
+
+  // Handle category clicks by updating state AND the URL
+  const handleCategoryClick = useCallback(
+    (cat: string) => {
+      setSelectedCategory(cat);
+
+      // Update the URL search parameters seamlessly
+      const params = new URLSearchParams(searchParams.toString());
+      if (cat === ALL_CATEGORY) {
+        params.delete("category");
+      } else {
+        params.set("category", cat);
+      }
+
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router],
+  );
 
   // 2. Initialize Fuse instance with targeted keys and fine-tuned thresholds
   const fuse = useMemo(() => {
@@ -207,7 +235,7 @@ export default function WholesaleLandingShop({
           <div className="flex flex-wrap gap-2 mb-6">
             <button
               type="button"
-              onClick={() => setSelectedCategory(ALL_CATEGORY)}
+              onClick={() => handleCategoryClick(ALL_CATEGORY)}
               className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
                 selectedCategory === ALL_CATEGORY
                   ? "bg-foreground text-background border-foreground"
@@ -220,7 +248,7 @@ export default function WholesaleLandingShop({
               <button
                 key={category.id}
                 type="button"
-                onClick={() => setSelectedCategory(category.name)}
+                onClick={() => handleCategoryClick(category.name)}
                 className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
                   selectedCategory === category.name
                     ? "bg-foreground text-background border-foreground"
@@ -333,10 +361,7 @@ export default function WholesaleLandingShop({
                               {t("productCard.ctaPin")}
                             </button>
                           </Link>
-                          <Link
-                            href="/member#register"
-                            className="flex-1"
-                          >
+                          <Link href="/member#register" className="flex-1">
                             <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
                               {t("productCard.ctaRegister")}
                             </button>

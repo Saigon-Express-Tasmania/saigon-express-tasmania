@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "@/components/link";
 import {
@@ -81,7 +81,10 @@ export default function Menu({
   // Set initial state from URL, fallback to allLabel
   const [activeCategory, setActiveCategory] = useState(urlCategory || allLabel);
   const [search, setSearch] = useState("");
-  const [addonTrigger, setAddonTrigger] = useState<{ item: SuggestedItem;suggestions: SuggestedItem[] } | null>(null);
+  const [addonTrigger, setAddonTrigger] = useState<{
+    item: SuggestedItem;
+    suggestions: SuggestedItem[];
+  } | null>(null);
   const [customiseItem, setCustomiseItem] = useState<MenuItem | null>(null);
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
@@ -229,9 +232,16 @@ export default function Menu({
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
-      <section className="bg-brand-dark">
-        <div className="max-w-[1280px] mx-auto px-6 md:px-16 py-12 md:py-16 grid md:grid-cols-2 gap-10 items-center">
-          <div>
+      <section className="relative aspect-4/1 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('/manus-storage/menu__hero.jpg')`,
+          }}
+        />
+        <div className="absolute inset-0 bg-black/55" />
+        <div className="max-w-[1280px] h-full mx-auto px-6 md:px-16 py-12 md:py-16 grid md:grid-cols-2 gap-10 items-center">
+          <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-3">
               {t("hero.eyebrow")}
             </p>
@@ -279,7 +289,7 @@ export default function Menu({
       {/* Category strip */}
       <div
         id="categories"
-        className="bg-white border-b border-gray-100 sticky top-16 z-40"
+        className="bg-white border-b border-gray-100 sticky top-24 z-40"
       >
         <div className="max-w-[1280px] mx-auto px-6 py-3 flex flex-wrap gap-2">
           {categories.map((cat) => (
