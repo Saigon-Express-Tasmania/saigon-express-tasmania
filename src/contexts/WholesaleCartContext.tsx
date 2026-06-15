@@ -1,6 +1,5 @@
 "use client";
 
-import { DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE } from "@/config";
 import type { WholesalePricingTier } from "@/types";
 import { createContext, useContext, useEffect, useState } from "react";
 import { create } from "zustand";
@@ -168,9 +167,7 @@ type WholesaleCartContextValue = {
   cartCount: number;
   cartTotal: number;
   pricingTiers: WholesalePricingTier[];
-  setPricingTiers: (tiers: WholesalePricingTier[]) => void;
   minimumOrderValue: number;
-  setMinimumOrderValue: (value: number) => void;
   cartOpen: boolean;
   highlightProductId: number | null;
   setCartOpen: (open: boolean) => void;
@@ -193,14 +190,14 @@ const WholesaleCartContext = createContext<WholesaleCartContextValue | null>(
 
 export function WholesaleCartProvider({
   children,
+  pricingTiers,
+  minimumOrderValue,
 }: {
   children: React.ReactNode;
+  pricingTiers: WholesalePricingTier[];
+  minimumOrderValue: number;
 }) {
   const [isHydrated, setIsHydrated] = useState(false);
-  const [minimumOrderValue, setMinimumOrderValue] = useState(
-    DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE,
-  );
-  const [pricingTiers, setPricingTiers] = useState<WholesalePricingTier[]>([]);
 
   useEffect(() => {
     const { persist } = useWholesaleCartStore;
@@ -244,9 +241,7 @@ export function WholesaleCartProvider({
         cartCount,
         cartTotal,
         pricingTiers,
-        setPricingTiers,
         minimumOrderValue,
-        setMinimumOrderValue,
         cartOpen,
         highlightProductId,
         setCartOpen,

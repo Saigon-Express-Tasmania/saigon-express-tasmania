@@ -1,12 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { WholesaleCartItem } from "@/contexts/WholesaleCartContext";
-import { useStoreLocations } from "@/lib/supabase/use-store-locations";
 import { formatStoreHours } from "@/lib/store-hours";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -19,15 +18,23 @@ import {
 import {
   AUSTRALIAN_STATES,
   billingFromShippingForm,
+  buildWholesaleOrderTotals,
   isBillingSameAsShippingForm,
   WHOLESALE_DEFAULT_COUNTRY,
   WHOLESALE_FULFILLMENT_OPTIONS,
   WHOLESALE_PAYMENT_TERMS_OPTIONS,
   hasWholesalePickupStoreSelected,
 } from "@/lib/wholesale-b2b-order";
+import {
+  fetchWholesaleFreightQuote,
+  formatShippingQuoteError,
+  prepareWholesaleFreightQuoteContext,
+  readWholesaleFreightQuoteTotal,
+} from "@/lib/wholesale-freight";
+import { filterActiveStoreLocations } from "@/lib/supabase/store-locations-client";
 import { cn } from "@/lib/utils";
 import type { AustralianStateCode, WholesaleOrderReviewForm } from "@/types/WholesaleB2BOrder";
-import type { StoreLocation } from "@/types";
+import type { StoreLocation, WholesalePricingTier } from "@/types";
 import { ArrowLeft, CalendarIcon, Check, CreditCard, Loader2, MapPin, Phone } from "lucide-react";
 import "react-day-picker/style.css";
 
@@ -214,34 +221,13 @@ function fulfillmentSectionDescription(
 
 function PickupStorePicker({
   stores,
-  loading,
-  error,
   selectedId,
   onSelect,
 }: {
   stores: StoreLocation[];
-  loading: boolean;
-  error: string | null;
   selectedId: number | null;
   onSelect: (storeId: number) => void;
 }) {
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/45">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading pickup locations…
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-        {error}
-      </div>
-    );
-  }
-
   if (stores.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/45">
@@ -305,8 +291,34 @@ function PickupStorePicker({
   );
 }
 
+function withDeliveryFee(
+  review: WholesaleOrderReviewForm,
+  lines: { qty: number; unitPriceExGst: number }[],
+  tiers: WholesalePricingTier[],
+  deliveryFee: number,
+): WholesaleOrderReviewForm {
+  return {
+    ...review,
+    ...buildWholesaleOrderTotals(lines, tiers, deliveryFee),
+  };
+}
+
+type DeliveryQuoteStatus =
+  | "pickup"
+  | "incomplete_address"
+  | "no_shipping_origin"
+  | "no_shippable_items"
+  | "pending"
+  | "cached"
+  | "ready"
+  | "loading"
+  | "error";
+
 export default function WholesaleOrderReviewPanel({
   items,
+  cartSubtotalExGst,
+  pricingTiers,
+  storeLocations,
   review,
   onReviewChange,
   onBack,
@@ -314,25 +326,210 @@ export default function WholesaleOrderReviewPanel({
   isCheckingOut,
 }: {
   items: WholesaleCartItem[];
+  cartSubtotalExGst: number;
+  pricingTiers: WholesalePricingTier[];
+  storeLocations: StoreLocation[];
   review: WholesaleOrderReviewForm;
   onReviewChange: (next: WholesaleOrderReviewForm) => void;
   onBack: () => void;
   onConfirm: () => void;
   isCheckingOut: boolean;
 }) {
-  const { stores, loading: storesLoading, error: storesError } = useStoreLocations();
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(() =>
     isBillingSameAsShippingForm(review),
   );
+  const [deliveryQuoteStatus, setDeliveryQuoteStatus] =
+    useState<DeliveryQuoteStatus>("pickup");
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const quoteContextRequestIdRef = useRef(0);
+  const quoteCalculateRequestIdRef = useRef(0);
   const isPickup = review.requested_fulfillment_method === "pick_up";
+  const cartItemsSignature = useMemo(
+    () => items.map((item) => `${item.productId}:${item.qty}`).join(","),
+    [items],
+  );
+  const pricingLines = useMemo(
+    () =>
+      items.map((item) => ({
+        qty: item.qty,
+        unitPriceExGst: Number(item.unitPrice),
+      })),
+    [items],
+  );
+  const pickupStores = useMemo(
+    () => filterActiveStoreLocations(storeLocations),
+    [storeLocations],
+  );
   const selectedPickupStore = useMemo(
     () =>
       review.requested_pick_up_store_id != null
-        ? stores.find((store) => store.id === review.requested_pick_up_store_id) ?? null
+        ? pickupStores.find((store) => store.id === review.requested_pick_up_store_id) ?? null
         : null,
-    [review.requested_pick_up_store_id, stores],
+    [review.requested_pick_up_store_id, pickupStores],
   );
   const selectedPickupHours = formatStoreHours(selectedPickupStore?.hours ?? null);
+  const couponDiscount = review.coupon_discount ?? 0;
+  const totalDiscount = review.wholesale_discount + couponDiscount;
+
+  useEffect(() => {
+    if (isPickup) {
+      setDeliveryQuoteStatus("pickup");
+      setDeliveryError(null);
+      onReviewChange(
+        withDeliveryFee(review, pricingLines, pricingTiers, 0),
+      );
+      return;
+    }
+
+    const requestId = ++quoteContextRequestIdRef.current;
+    setDeliveryError(null);
+
+    void (async () => {
+      try {
+        const context = await prepareWholesaleFreightQuoteContext(
+          items,
+          storeLocations,
+          review,
+          cartSubtotalExGst,
+        );
+        if (requestId !== quoteContextRequestIdRef.current) return;
+
+        if (context.status === "incomplete_address") {
+          setDeliveryQuoteStatus("incomplete_address");
+          onReviewChange(
+            withDeliveryFee(review, pricingLines, pricingTiers, 0),
+          );
+          return;
+        }
+
+        if (context.status === "no_shipping_origin") {
+          setDeliveryQuoteStatus("no_shipping_origin");
+          onReviewChange(
+            withDeliveryFee(review, pricingLines, pricingTiers, 0),
+          );
+          return;
+        }
+
+        if (context.status === "no_shippable_items") {
+          setDeliveryQuoteStatus("no_shippable_items");
+          onReviewChange(
+            withDeliveryFee(review, pricingLines, pricingTiers, 0),
+          );
+          return;
+        }
+
+        const cachedTotal = readWholesaleFreightQuoteTotal(context.payloadHash);
+        if (cachedTotal != null) {
+          setDeliveryQuoteStatus("cached");
+          onReviewChange(
+            withDeliveryFee(
+              review,
+              pricingLines,
+              pricingTiers,
+              Number(cachedTotal.toFixed(2)),
+            ),
+          );
+          return;
+        }
+
+        setDeliveryQuoteStatus("pending");
+        onReviewChange(
+          withDeliveryFee(review, pricingLines, pricingTiers, 0),
+        );
+      } catch (err) {
+        if (requestId !== quoteContextRequestIdRef.current) return;
+        setDeliveryQuoteStatus("error");
+        setDeliveryError(
+          formatShippingQuoteError(
+            err instanceof Error
+              ? err.message
+              : "Unable to prepare shipping quote",
+          ),
+        );
+        onReviewChange(
+          withDeliveryFee(review, pricingLines, pricingTiers, 0),
+        );
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh cache lookup when shipping inputs change
+  }, [
+    isPickup,
+    cartItemsSignature,
+    cartSubtotalExGst,
+    pricingTiers,
+    review.shipping_postal_code,
+    review.shipping_city,
+    review.shipping_dba_name,
+    review.requested_fulfillment_method,
+    storeLocations,
+  ]);
+
+  const handleCalculateShippingQuote = async () => {
+    const requestId = ++quoteCalculateRequestIdRef.current;
+    setDeliveryQuoteStatus("loading");
+    setDeliveryError(null);
+
+    try {
+      const context = await prepareWholesaleFreightQuoteContext(
+        items,
+        storeLocations,
+        review,
+        cartSubtotalExGst,
+      );
+      if (requestId !== quoteCalculateRequestIdRef.current) return;
+
+      if (context.status !== "quotable") {
+        setDeliveryQuoteStatus(context.status);
+        onReviewChange(
+          withDeliveryFee(review, pricingLines, pricingTiers, 0),
+        );
+        return;
+      }
+
+      const { total } = await fetchWholesaleFreightQuote(
+        context.payload,
+        context.payloadHash,
+      );
+      if (requestId !== quoteCalculateRequestIdRef.current) return;
+
+      setDeliveryQuoteStatus("ready");
+      onReviewChange(
+        withDeliveryFee(
+          review,
+          pricingLines,
+          pricingTiers,
+          Number(total.toFixed(2)),
+        ),
+      );
+    } catch (err) {
+      if (requestId !== quoteCalculateRequestIdRef.current) return;
+      setDeliveryQuoteStatus("error");
+      setDeliveryError(
+        formatShippingQuoteError(
+          err instanceof Error
+            ? err.message
+            : "Failed to calculate shipping quote",
+        ),
+      );
+      onReviewChange(
+        withDeliveryFee(review, pricingLines, pricingTiers, 0),
+      );
+    }
+  };
+
+  const handlePrimaryAction = () => {
+    if (isPickup) {
+      onConfirm();
+      return;
+    }
+
+    if (deliveryQuoteStatus === "cached" || deliveryQuoteStatus === "ready") {
+      onConfirm();
+      return;
+    }
+
+    void handleCalculateShippingQuote();
+  };
 
   useEffect(() => {
     if (isPickup && billingSameAsShipping) {
@@ -346,11 +543,67 @@ export default function WholesaleOrderReviewPanel({
   const pickupStoreInvalid =
     isPickup &&
     hasWholesalePickupStoreSelected(review) &&
-    !storesLoading &&
-    stores.length > 0 &&
-    !stores.some((store) => store.id === review.requested_pick_up_store_id);
-  const canConfirmCheckout =
-    !pickupStoreMissing && !pickupStoreInvalid && !storesLoading;
+    pickupStores.length > 0 &&
+    !pickupStores.some((store) => store.id === review.requested_pick_up_store_id);
+  const needsDeliveryQuote = !isPickup;
+  const shippingQuoteReady =
+    deliveryQuoteStatus === "cached" || deliveryQuoteStatus === "ready";
+  const canCalculateShippingQuote =
+    needsDeliveryQuote &&
+    (deliveryQuoteStatus === "pending" || deliveryQuoteStatus === "error");
+  const canConfirmCheckout = isPickup
+    ? !pickupStoreMissing && !pickupStoreInvalid
+    : shippingQuoteReady;
+  const primaryButtonDisabled =
+    isCheckingOut ||
+    deliveryQuoteStatus === "loading" ||
+    (isPickup ? pickupStoreMissing || pickupStoreInvalid : !canConfirmCheckout && !canCalculateShippingQuote);
+
+  const deliveryLineMessage = (() => {
+    if (isPickup) return null;
+    switch (deliveryQuoteStatus) {
+      case "incomplete_address":
+        return "Complete shipping address";
+      case "no_shipping_origin":
+        return "Shipping origin unavailable";
+      case "no_shippable_items":
+        return "No shippable items in cart";
+      case "pending":
+        return "To be calculated";
+      case "loading":
+        return null;
+      case "error":
+        return "Unavailable";
+      case "cached":
+      case "ready":
+        return null;
+      default:
+        return null;
+    }
+  })();
+
+  const footerHelperMessage = (() => {
+    if (pickupStoreMissing) {
+      return "A pickup location is required before you can pay.";
+    }
+    if (isPickup) return null;
+    if (deliveryQuoteStatus === "incomplete_address") {
+      return "Complete your shipping address to request a shipping quote.";
+    }
+    if (deliveryQuoteStatus === "no_shipping_origin") {
+      return "A shipping origin is not configured. Please contact us to complete this order.";
+    }
+    if (deliveryQuoteStatus === "no_shippable_items") {
+      return "This order has no shippable items. Delivery cannot be quoted.";
+    }
+    if (deliveryQuoteStatus === "loading") {
+      return "Calculating shipping quote…";
+    }
+    if (deliveryQuoteStatus === "error") {
+      return deliveryError ?? "Shipping quote could not be calculated. Please review your shipping address and try again.";
+    }
+    return null;
+  })();
 
   const withAustralia = (
     next: Partial<WholesaleOrderReviewForm>,
@@ -429,9 +682,7 @@ export default function WholesaleOrderReviewPanel({
             <div className="space-y-2 pt-1">
               <Field label="Pickup store (required)">
                 <PickupStorePicker
-                  stores={stores}
-                  loading={storesLoading}
-                  error={storesError}
+                  stores={pickupStores}
                   selectedId={review.requested_pick_up_store_id}
                   onSelect={(storeId) =>
                     patch({ requested_pick_up_store_id: storeId })
@@ -621,11 +872,19 @@ export default function WholesaleOrderReviewPanel({
                 ${review.subtotal.toFixed(2)}
               </span>
             </div>
-            {review.wholesale_discount > 0 ? (
+            {totalDiscount > 0 ? (
               <div className="flex justify-between text-white/60">
-                <span>Wholesale tier discount</span>
+                <span>
+                  {review.wholesale_discount > 0 && couponDiscount > 0
+                    ? "Total discount"
+                    : couponDiscount > 0
+                      ? review.coupon_code?.trim()
+                        ? `Coupon (${review.coupon_code.trim()})`
+                        : "Coupon discount"
+                      : "Wholesale tier discount"}
+                </span>
                 <span className="tabular-nums text-green-300">
-                  -${review.wholesale_discount.toFixed(2)}
+                  -${totalDiscount.toFixed(2)}
                 </span>
               </div>
             ) : null}
@@ -635,12 +894,39 @@ export default function WholesaleOrderReviewPanel({
                 ${review.tax_total.toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between text-white/60">
-              <span>Shipping fee</span>
-              <span className="tabular-nums text-white">
-                ${review.shipping_fee.toFixed(2)}
-              </span>
-            </div>
+            {!isPickup ? (
+              <div className="flex justify-between text-white/60">
+                <span>Delivery</span>
+                {deliveryQuoteStatus === "loading" ? (
+                  <span className="inline-flex items-center gap-2 tabular-nums text-white/70">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Calculating…
+                  </span>
+                ) : shippingQuoteReady ? (
+                  <span className="tabular-nums text-white">
+                    ${review.shipping_fee.toFixed(2)}
+                  </span>
+                ) : deliveryLineMessage ? (
+                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
+                    {deliveryLineMessage}
+                  </span>
+                ) : (
+                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
+                    To be calculated
+                  </span>
+                )}
+              </div>
+            ) : null}
+            {!isPickup && deliveryQuoteStatus === "pending" ? (
+              <p className="text-xs text-white/40">
+                Shipping will be recalculated when you request a quote.
+              </p>
+            ) : null}
+            {!isPickup && deliveryQuoteStatus === "error" && deliveryError ? (
+              <p className="whitespace-pre-line text-xs text-amber-200/90">
+                {deliveryError}
+              </p>
+            ) : null}
             <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
               <span>Grand total (inc GST)</span>
               <span className="tabular-nums text-primary">
@@ -798,10 +1084,15 @@ export default function WholesaleOrderReviewPanel({
       </div>
 
       <div className="border-t border-white/10 px-6 py-5">
+        {needsDeliveryQuote && !shippingQuoteReady && canCalculateShippingQuote ? (
+          <p className="mb-3 text-center text-xs text-white/45">
+            A shipping quote is required before you can proceed to checkout.
+          </p>
+        ) : null}
         <button
           type="button"
-          onClick={onConfirm}
-          disabled={isCheckingOut || !canConfirmCheckout}
+          onClick={handlePrimaryAction}
+          disabled={primaryButtonDisabled}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
           {isCheckingOut ? (
@@ -809,16 +1100,28 @@ export default function WholesaleOrderReviewPanel({
               <Loader2 className="h-4 w-4 animate-spin" />
               Processing…
             </>
-          ) : (
+          ) : isPickup ? (
             <>
               <CreditCard className="h-4 w-4" />
               Pay ${review.grand_total.toFixed(2)} with Card
             </>
+          ) : shippingQuoteReady ? (
+            <>
+              <CreditCard className="h-4 w-4" />
+              Proceed to Checkout · Pay ${review.grand_total.toFixed(2)}
+            </>
+          ) : deliveryQuoteStatus === "loading" ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Calculating Shipping Quote…
+            </>
+          ) : (
+            <>Calculate Shipping Quote</>
           )}
         </button>
-        {pickupStoreMissing ? (
-          <p className="mt-2 text-center text-xs text-amber-400/80">
-            A pickup location is required before you can pay.
+        {footerHelperMessage ? (
+          <p className="mt-2 whitespace-pre-line text-center text-xs text-amber-400/80">
+            {footerHelperMessage}
           </p>
         ) : null}
         <p className="mt-2 text-center text-xs text-white/30">

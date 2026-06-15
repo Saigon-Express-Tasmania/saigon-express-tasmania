@@ -39,6 +39,13 @@ create table public.products (
   uom public.product_uom not null default 'EACH', -- Unit of Measure (e.g. CASE, EACH, LBS, KG).
   is_catch_weight boolean not null default false, -- TRUE if price adjusts based on final weight.
 
+  -- Shipping (freight quoting per sellable unit)
+  is_shippable boolean not null default false,
+  ship_weight_kg numeric(10, 3),
+  ship_length_cm numeric(10, 2),
+  ship_width_cm numeric(10, 2),
+  ship_height_cm numeric(10, 2),
+
   -- Catering
   serves text,
   includes jsonb not null default '[]'::jsonb,
@@ -46,6 +53,15 @@ create table public.products (
   tag_bg text not null default '',
   note text,
   image_url text,
+
+  constraint products_shippable_dims_check check (
+    not is_shippable or (
+      ship_weight_kg > 0
+      and ship_length_cm > 0
+      and ship_width_cm > 0
+      and ship_height_cm > 0
+    )
+  ),
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -69,6 +85,16 @@ comment on column public.products.daily_customer_limit is
   'Wholesale only: max units one customer may buy per Hobart calendar day. Null = no cap.';
 comment on column public.products.sku is
   'Stock-keeping unit. Seeds use AL-{id}, WH-{id}, or CT-{id} by product_type when not supplied.';
+comment on column public.products.is_shippable is
+  'When true, this SKU can be included in freight quotes. Requires ship_weight_kg and ship_*_cm.';
+comment on column public.products.ship_weight_kg is
+  'Dead weight per sellable unit (kg), e.g. one CASE or EACH.';
+comment on column public.products.ship_length_cm is
+  'Parcel length per sellable unit (cm).';
+comment on column public.products.ship_width_cm is
+  'Parcel width per sellable unit (cm).';
+comment on column public.products.ship_height_cm is
+  'Parcel height per sellable unit (cm).';
 
 create index products_type_available_sort_idx
   on public.products (product_type, is_available, sort_order, id);
@@ -79,6 +105,11 @@ create index products_type_available_category_idx
 create index products_alacarte_slug_idx
   on public.products (slug)
   where product_type = 'alacarte'::public.product_type;
+
+create index products_wholesale_shippable_idx
+  on public.products (id)
+  where product_type = 'wholesale'::public.product_type
+    and is_shippable = true;
 
 alter table public.products enable row level security;
 

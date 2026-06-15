@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_LOCALE } from "@/config/localize";
+import { DEFAULT_LOCALE, DEFAULT_TIME_ZONE } from "@/config/localize";
 import { APP_MESSAGES, type AppLocale } from "@/lib/i18n-messages";
 import { NextIntlClientProvider } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -27,7 +27,11 @@ export default function IntlRoot({ children }: IntlRootProps) {
   }, [locale]);
 
   return (
-    <NextIntlClientProvider locale={locale} messages={APP_MESSAGES[locale]}>
+    <NextIntlClientProvider
+      locale={locale}
+      messages={APP_MESSAGES[locale]}
+      timeZone={DEFAULT_TIME_ZONE}
+    >
       {children}
     </NextIntlClientProvider>
   );

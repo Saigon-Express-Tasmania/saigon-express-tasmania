@@ -1,6 +1,7 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
+import { ProductShippingFields } from '@/components/ProductShippingFields';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,15 @@ import {
 } from '@/lib/menu-image-urls';
 import { slugFromName } from '@/lib/slug';
 import { nextProductId } from '@/lib/products';
+import {
+  emptyProductShippingInput,
+  PRODUCT_SHIPPING_SELECT,
+  productShippingFromRow,
+  productShippingToPayload,
+  validateProductShippingInput,
+  type ProductShippingInput,
+  type ProductShippingRow,
+} from '@/lib/product-shipping';
 import supabase from '@/lib/supabase/client';
 import {
   ArrowDown,
@@ -126,7 +136,7 @@ type CateringPackRow = {
   prices: CateringTierPrice[];
   sort_order: number;
   is_available: boolean;
-};
+} & ProductShippingRow;
 
 type CateringPackInput = {
   id: number;
@@ -144,7 +154,7 @@ type CateringPackInput = {
   prices: CateringTierPrice[];
   sort_order: number;
   is_available: boolean;
-};
+} & ProductShippingInput;
 
 const emptyTierPrice = (): CateringTierPrice => ({
   size: '',
@@ -168,6 +178,7 @@ const emptyCateringPackInput = (): CateringPackInput => ({
   prices: [],
   sort_order: 0,
   is_available: true,
+  ...emptyProductShippingInput(),
 });
 
 function parseTierPrices(value: unknown): CateringTierPrice[] {
@@ -229,7 +240,7 @@ export function CateringPacks() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          'id, name, serves, price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available',
+          `id, name, serves, price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'catering')
         .order('sort_order', { ascending: true })
@@ -354,6 +365,7 @@ export function CateringPacks() {
       prices: pack.prices.length > 0 ? pack.prices : [],
       sort_order: pack.sort_order,
       is_available: pack.is_available,
+      ...productShippingFromRow(pack),
     });
     setImagePreviewUrl(
       previewFromParsedMenuImages(
@@ -508,6 +520,12 @@ export function CateringPacks() {
       }
     }
 
+    const shippingError = validateProductShippingInput(form);
+    if (shippingError) {
+      toast.error(shippingError);
+      return;
+    }
+
     const image_urls = serializeMenuImageUrls(
       form.image_sizes,
       form.additional_images,
@@ -537,6 +555,7 @@ export function CateringPacks() {
         prices: tierPrices,
         sort_order: Number(form.sort_order) || 0,
         is_available: form.is_available,
+        ...productShippingToPayload(form),
       };
 
       if (editingId !== null) {
@@ -1065,6 +1084,13 @@ export function CateringPacks() {
                 </div>
               )}
             </div>
+
+            <ProductShippingFields
+              idPrefix="pack"
+              value={form}
+              onChange={(shipping) => setForm((f) => ({ ...f, ...shipping }))}
+              disabled={saving || imageUploadBusy}
+            />
 
             <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="pack-available">Available</Label>

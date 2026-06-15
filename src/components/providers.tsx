@@ -12,6 +12,8 @@ import WholesaleCartInventorySync from "@/components/WholesaleCartInventorySync"
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import { SupabaseStorageProvider } from "@/contexts/SupabaseStorageContext";
+import { setClientStoreLocations } from "@/lib/supabase/store-locations-client";
+import type { WholesaleCartConfig } from "@/lib/wholesale-page";
 import type { SiteContentSnapshot, StoreLocation } from "@/types";
 
 const WholesaleShoppingCart = dynamic(
@@ -23,13 +25,17 @@ interface ProvidersProps {
   children: React.ReactNode;
   siteContent: SiteContentSnapshot;
   storeLocations: StoreLocation[];
+  wholesaleCartConfig: WholesaleCartConfig;
 }
 
 export function Providers({
   children,
   siteContent,
   storeLocations,
+  wholesaleCartConfig,
 }: ProvidersProps) {
+  setClientStoreLocations(storeLocations);
+
   return (
     <SiteContentProvider initialData={siteContent}>
       <SupabaseProvider>
@@ -37,13 +43,18 @@ export function Providers({
           <ThemeProvider defaultTheme="light">
             <CartProvider>
               <WholesaleInventoryProvider>
-                <WholesaleCartProvider>
+                <WholesaleCartProvider
+                  pricingTiers={wholesaleCartConfig.pricingTiers}
+                  minimumOrderValue={
+                    wholesaleCartConfig.minimumWholesaleOrderValue
+                  }
+                >
                   <WholesaleCartInventorySync />
                   <TooltipProvider>
                     <AppChrome storeLocations={storeLocations}>
                       {children}
                     </AppChrome>
-                    <WholesaleShoppingCart />
+                    <WholesaleShoppingCart storeLocations={storeLocations} />
                     <Toaster />
                   </TooltipProvider>
                 </WholesaleCartProvider>

@@ -101,6 +101,8 @@ export type WholesaleOrderReviewForm = {
   notes: string | null;
   subtotal: number;
   wholesale_discount: number;
+  coupon_code?: string | null;
+  coupon_discount?: number;
   tax_total: number;
   shipping_fee: number;
   grand_total: number;

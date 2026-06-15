@@ -159,13 +159,18 @@ export function requestedTargetDateLocalToIso(value: string): string {
 }
 
 export function buildWholesaleOrderTotals(
-  cartTotalExGst: number,
+  lines: { qty: number; unitPriceExGst: number }[],
   pricingTiers: WholesalePricingTier[] = [],
+  shippingFee = 0,
 ): Pick<
   WholesaleOrderReviewForm,
   "subtotal" | "wholesale_discount" | "tax_total" | "shipping_fee" | "grand_total"
 > {
-  const totals = computeWholesaleTierDiscount(cartTotalExGst, pricingTiers);
+  const totals = computeWholesaleTierDiscount(
+    lines,
+    pricingTiers,
+    shippingFee,
+  );
   return {
     subtotal: totals.subtotalExGst,
     wholesale_discount: totals.wholesaleDiscount,
@@ -213,7 +218,10 @@ export function buildWholesaleOrderReviewFromProfile(
     payment_terms: "prepaid",
     po_number: null,
     notes: null,
-    ...buildWholesaleOrderTotals(cartTotalExGst, pricingTiers),
+    ...buildWholesaleOrderTotals(
+      [{ qty: 1, unitPriceExGst: cartTotalExGst }],
+      pricingTiers,
+    ),
   };
 }
 
@@ -325,6 +333,7 @@ export function serializeWholesaleOrderReviewForCheckout(
     subtotal_ex_gst: form.subtotal,
     gst_total: form.tax_total,
     grand_total_inc_gst: form.grand_total,
+    shipping_fee: form.shipping_fee,
     currency: "AUD",
   };
 

@@ -4,7 +4,9 @@ import dynamic from "next/dynamic";
 import MainFooter from "@/components/MainFooter";
 import MainHeader from "@/components/MainHeader";
 import { shouldHideMainHeader } from "@/lib/site-chrome";
+import { filterActiveStoreLocations } from "@/lib/supabase/store-locations-client";
 import type { StoreLocation } from "@/types";
+import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 
 const CartDrawer = dynamic(() => import("@/components/CartDrawer"), {
@@ -30,11 +32,15 @@ export default function AppChrome({
 }: AppChromeProps) {
   const pathname = usePathname();
   const hideDashboardChrome = shouldHideMainHeader(pathname ?? "/");
+  const activeStoreLocations = useMemo(
+    () => filterActiveStoreLocations(storeLocations),
+    [storeLocations],
+  );
 
   return (
     <>
       {!hideDashboardChrome ? (
-        <MainHeader storeLocations={storeLocations} />
+        <MainHeader storeLocations={activeStoreLocations} />
       ) : null}
       {children}
       <MainFooter />

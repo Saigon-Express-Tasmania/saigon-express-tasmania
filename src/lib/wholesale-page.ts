@@ -22,21 +22,36 @@ export type WholesalePageData = {
   minimumWholesaleOrderValue: number;
 };
 
+export type WholesaleCartConfig = Pick<
+  WholesalePageData,
+  "pricingTiers" | "minimumWholesaleOrderValue"
+>;
+
+export async function loadWholesaleCartConfig(): Promise<WholesaleCartConfig> {
+  const [pricingTiers, settings] = await Promise.all([
+    getWholesaleTiers(),
+    getSettings(),
+  ]);
+
+  return {
+    pricingTiers,
+    minimumWholesaleOrderValue: getMinimumWholesaleOrderValue(settings),
+  };
+}
+
 export async function loadWholesalePageData(): Promise<WholesalePageData> {
-  const [productRows, inventory, categoriesContent, pricingTiers, settings] =
+  const [productRows, inventory, categoriesContent, cartConfig] =
     await Promise.all([
       fetchWholesaleProductRows(),
       getWholesaleInventorySnapshot(),
       getCategoriesByKind("wholesale"),
-      getWholesaleTiers(),
-      getSettings(),
+      loadWholesaleCartConfig(),
     ]);
 
   return {
     products: mergeWholesaleProductsWithAvailability(productRows, inventory),
     inventory,
     categoriesContent,
-    pricingTiers,
-    minimumWholesaleOrderValue: getMinimumWholesaleOrderValue(settings),
+    ...cartConfig,
   };
 }

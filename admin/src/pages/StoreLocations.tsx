@@ -58,6 +58,7 @@ type StoreLocationRow = {
   hours: string | null;
   is_active: boolean;
   is_invoice_creator: boolean;
+  is_shipping: boolean;
   delivery_url: string | null;
   google_map_url: string | null;
   is_franchise: boolean;
@@ -69,7 +70,7 @@ type StoreLocationRow = {
 };
 
 const SELECT_COLUMNS =
-  'id, name, address, suburb, lat, lng, phone, email, hours, is_active, is_invoice_creator, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
+  'id, name, address, suburb, lat, lng, phone, email, hours, is_active, is_invoice_creator, is_shipping, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
 
 const emptyStoreLocationInput = (): StoreLocationRow => ({
   id: 0,
@@ -83,6 +84,7 @@ const emptyStoreLocationInput = (): StoreLocationRow => ({
   hours: '',
   is_active: true,
   is_invoice_creator: false,
+  is_shipping: false,
   delivery_url: '',
   google_map_url: '',
   is_franchise: false,
@@ -127,6 +129,7 @@ function rowToForm(row: StoreLocationRow): StoreLocationRow {
     hours: formatHoursForEdit(row.hours),
     is_active: row.is_active,
     is_invoice_creator: row.is_invoice_creator,
+    is_shipping: row.is_shipping,
     delivery_url: row.delivery_url ?? '',
     google_map_url: row.google_map_url ?? '',
     is_franchise: row.is_franchise,
@@ -160,6 +163,7 @@ function formToPayload(form: StoreLocationRow): StoreLocationRow {
     hours: hoursValue,
     is_active: form.is_active,
     is_invoice_creator: form.is_invoice_creator,
+    is_shipping: form.is_shipping,
     delivery_url: form.delivery_url?.trim() || null,
     google_map_url: form.google_map_url?.trim() || null,
     is_franchise: form.is_franchise,
@@ -293,6 +297,7 @@ export function StoreLocations() {
             hours: payload.hours,
             is_active: payload.is_active,
             is_invoice_creator: payload.is_invoice_creator,
+            is_shipping: payload.is_shipping,
             delivery_url: payload.delivery_url,
             google_map_url: payload.google_map_url,
             is_franchise: payload.is_franchise,
@@ -321,6 +326,7 @@ export function StoreLocations() {
             hours: payload.hours,
             is_active: payload.is_active,
             is_invoice_creator: payload.is_invoice_creator,
+            is_shipping: payload.is_shipping,
             delivery_url: payload.delivery_url,
             google_map_url: payload.google_map_url,
             is_franchise: payload.is_franchise,
@@ -453,9 +459,6 @@ export function StoreLocations() {
                         Active
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Invoice
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
                         Franchise
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
@@ -476,7 +479,15 @@ export function StoreLocations() {
                           {loc.id}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          {loc.name}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span>{loc.name}</span>
+                            {loc.is_invoice_creator ? (
+                              <Badge variant="default">Invoice</Badge>
+                            ) : null}
+                            {loc.is_shipping ? (
+                              <Badge variant="outline">Shipping</Badge>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {loc.suburb ?? '—'}
@@ -489,15 +500,6 @@ export function StoreLocations() {
                             variant={loc.is_active ? 'default' : 'secondary'}
                           >
                             {loc.is_active ? 'Yes' : 'No'}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            variant={
-                              loc.is_invoice_creator ? 'default' : 'secondary'
-                            }
-                          >
-                            {loc.is_invoice_creator ? 'Yes' : 'No'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -617,6 +619,31 @@ export function StoreLocations() {
                     <SelectContent>
                       <SelectItem value="yes">
                         Yes — use this location on order invoices
+                      </SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SalesOrderFormField>
+                <SalesOrderFormField
+                  label="Shipping origin"
+                  htmlFor="loc-shipping"
+                  className="md:col-span-2"
+                >
+                  <Select
+                    value={form.is_shipping ? 'yes' : 'no'}
+                    onValueChange={(value) =>
+                      setForm((f) => ({
+                        ...f,
+                        is_shipping: value === 'yes',
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="loc-shipping">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">
+                        Yes — use as wholesale freight dispatch point
                       </SelectItem>
                       <SelectItem value="no">No</SelectItem>
                     </SelectContent>

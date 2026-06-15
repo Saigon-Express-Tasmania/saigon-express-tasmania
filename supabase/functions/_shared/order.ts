@@ -3,8 +3,8 @@ import { createServiceClient } from "./supabase.ts";
 import {
   computeWholesaleTierDiscountTotals,
   type WholesaleTierRow,
-  wholesaleItemsSubtotalExGst,
 } from "./wholesale-tier-discount.ts";
+import { resolveWholesaleShippingFee } from "./wholesale-freight.ts";
 import {
   createStripeClient,
   type StripePaymentMode,
@@ -1268,15 +1268,31 @@ export async function createOrderCheckoutSession(
 ): Promise<OrderCheckoutResult> {
   const supabase = createServiceClient();
   let totals = computeCheckoutTotals(input);
-  let stripeUnitPriceMultiplier = 1;
+  let wholesaleStripeUnitAmountCents: number[] | null = null;
 
   if (input.orderType === "wholesale") {
     const tiers = await fetchWholesaleTiers(supabase);
-    const subtotalExGst = wholesaleItemsSubtotalExGst(input.items);
+    const pricingLines = input.items.map((item) => ({
+      qty: item.qty,
+      unitPriceExGst: item.unitPrice,
+    }));
+    const shippingFee = await resolveWholesaleShippingFee(supabase, input);
+
+    const clientShippingFee = input.financialDetails?.shipping_fee;
+    if (
+      input.fulfillmentType !== "pick_up" &&
+      clientShippingFee != null &&
+      Math.abs(clientShippingFee - shippingFee) > 0.01
+    ) {
+      throw new Error(
+        "The shipping quote has changed. Please recalculate shipping and try again.",
+      );
+    }
+
     const wholesaleTotals = computeWholesaleTierDiscountTotals(
-      subtotalExGst,
+      pricingLines,
       tiers,
-      input.financialDetails?.shipping_fee ?? 0,
+      shippingFee,
     );
 
     totals = {
@@ -1288,10 +1304,7 @@ export async function createOrderCheckoutSession(
       shipping_fee: wholesaleTotals.shipping_fee,
       grand_total: wholesaleTotals.grand_total,
     };
-
-    if (wholesaleTotals.tier_discount_percent > 0) {
-      stripeUnitPriceMultiplier = 1 - wholesaleTotals.tier_discount_percent / 100;
-    }
+    wholesaleStripeUnitAmountCents = wholesaleTotals.stripe_unit_amount_cents;
   }
 
   if (totals.grand_total <= 0) {
@@ -1398,14 +1411,35 @@ export async function createOrderCheckoutSession(
       : 0;
 
   const stripe = createStripeClient(input.mode);
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = input.items.map((item) => ({
-    price_data: {
-      currency: "aud",
-      product_data: { name: item.itemName },
-      unit_amount: Math.round(item.unitPrice * stripeUnitPriceMultiplier * 100),
-    },
-    quantity: item.qty,
-  }));
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
+    input.orderType === "wholesale" && wholesaleStripeUnitAmountCents
+      ? input.items.map((item, index) => ({
+        price_data: {
+          currency: "aud",
+          product_data: { name: item.itemName },
+          unit_amount: wholesaleStripeUnitAmountCents[index],
+        },
+        quantity: item.qty,
+      }))
+      : input.items.map((item) => ({
+        price_data: {
+          currency: "aud",
+          product_data: { name: item.itemName },
+          unit_amount: Math.round(item.unitPrice * 100),
+        },
+        quantity: item.qty,
+      }));
+
+  if (input.orderType === "wholesale" && totals.shipping_fee > 0) {
+    lineItems.push({
+      price_data: {
+        currency: "aud",
+        product_data: { name: "Delivery" },
+        unit_amount: Math.round(totals.shipping_fee * 100),
+      },
+      quantity: 1,
+    });
+  }
 
   const stripeMetadata: Record<string, string> = {
     draftOrderId: String(draftOrderId),

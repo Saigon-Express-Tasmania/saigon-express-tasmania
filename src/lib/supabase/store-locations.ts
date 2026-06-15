@@ -31,3 +31,9 @@ export const getActiveStoreLocations = () => {
 export const getInvoiceCreatorStore = () => {
   return getStoreLocations().then(locations => locations.find(location => location.isInvoiceCreator));
 }
+
+export const getShippingOriginStoreLocation = () => {
+  return getStoreLocations().then(
+    (locations) => locations.find((location) => location.isShipping) ?? null,
+  );
+}

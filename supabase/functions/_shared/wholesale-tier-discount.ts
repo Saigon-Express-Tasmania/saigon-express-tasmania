@@ -4,6 +4,11 @@ export type WholesaleTierRow = {
   discount_value: number;
 };
 
+export type WholesalePricingLine = {
+  qty: number;
+  unitPriceExGst: number;
+};
+
 export type WholesaleTierDiscountTotals = {
   subtotal: number;
   wholesale_discount: number;
@@ -12,6 +17,7 @@ export type WholesaleTierDiscountTotals = {
   grand_total: number;
   tier_discount_percent: number;
   tier_label: string | null;
+  stripe_unit_amount_cents: number[];
 };
 
 export function resolveApplicableWholesaleTier(
@@ -30,19 +36,44 @@ export function resolveApplicableWholesaleTier(
   return qualifying[0] ?? null;
 }
 
+function roundIncGstUnitAmountCents(
+  unitPriceExGst: number,
+  tierMultiplier: number,
+): number {
+  const unitIncGst = Number((unitPriceExGst * 1.1).toFixed(2));
+  return Math.round(unitIncGst * tierMultiplier * 100);
+}
+
 export function computeWholesaleTierDiscountTotals(
-  subtotalExGst: number,
+  lines: WholesalePricingLine[],
   tiers: WholesaleTierRow[],
   shippingFee = 0,
 ): WholesaleTierDiscountTotals {
-  const subtotal = Number(subtotalExGst.toFixed(2));
+  const subtotal = Number(
+    lines
+      .reduce((sum, line) => sum + line.qty * line.unitPriceExGst, 0)
+      .toFixed(2),
+  );
   const tier = resolveApplicableWholesaleTier(tiers, subtotal);
+  const tierMultiplier = tier ? 1 - tier.discount_value / 100 : 1;
   const wholesale_discount = tier
     ? Number((subtotal * (tier.discount_value / 100)).toFixed(2))
     : 0;
   const netExGst = subtotal - wholesale_discount;
-  const tax_total = Number((netExGst * 0.1).toFixed(2));
-  const grand_total = Number((netExGst + tax_total + shippingFee).toFixed(2));
+
+  const stripe_unit_amount_cents = lines.map((line) =>
+    roundIncGstUnitAmountCents(line.unitPriceExGst, tierMultiplier),
+  );
+
+  let productsTotalCents = 0;
+  for (let index = 0; index < lines.length; index++) {
+    productsTotalCents += stripe_unit_amount_cents[index] * lines[index].qty;
+  }
+
+  const grand_total =
+    (productsTotalCents + Math.round(shippingFee * 100)) / 100;
+  const productsIncGstTotal = Number((grand_total - shippingFee).toFixed(2));
+  const tax_total = Number((productsIncGstTotal - netExGst).toFixed(2));
 
   return {
     subtotal,
@@ -52,16 +83,15 @@ export function computeWholesaleTierDiscountTotals(
     grand_total,
     tier_discount_percent: tier?.discount_value ?? 0,
     tier_label: tier?.label ?? null,
+    stripe_unit_amount_cents,
   };
 }
 
-/** Wholesale checkout line items use inc-GST unit prices. */
+/** Sum ex-GST line totals (checkout items use ex-GST unit prices). */
 export function wholesaleItemsSubtotalExGst(
   items: { qty: number; unitPrice: number }[],
 ): number {
-  const incGst = items.reduce(
-    (sum, item) => sum + item.qty * item.unitPrice,
-    0,
+  return Number(
+    items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0).toFixed(2),
   );
-  return Number((incGst / 1.1).toFixed(2));
 }

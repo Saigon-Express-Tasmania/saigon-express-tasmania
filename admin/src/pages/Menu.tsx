@@ -2,6 +2,7 @@ import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import { MenuIngredientsEditor } from '@/components/MenuIngredientsEditor';
+import { ProductShippingFields } from '@/components/ProductShippingFields';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +50,15 @@ import {
 } from '@/lib/menu-image-urls';
 import { resolveMenuSlug, slugFromName } from '@/lib/slug';
 import { nextProductId } from '@/lib/products';
+import {
+  emptyProductShippingInput,
+  PRODUCT_SHIPPING_SELECT,
+  productShippingFromRow,
+  productShippingToPayload,
+  validateProductShippingInput,
+  type ProductShippingInput,
+  type ProductShippingRow,
+} from '@/lib/product-shipping';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
@@ -81,13 +91,13 @@ type MenuItemRow = {
   is_popular: boolean;
   sort_order: number;
   ingredients: unknown;
-};
+} & ProductShippingRow;
 
-type MenuItemInput = Omit<MenuItemRow, 'ingredients' | 'image_urls'> & {
+type MenuItemInput = Omit<MenuItemRow, 'ingredients' | 'image_urls' | keyof ProductShippingRow> & {
   image_sizes: ImageUrlsMap;
   additional_images: MenuImageMoreEntry[];
   ingredients: MenuItemIngredient;
-};
+} & ProductShippingInput;
 
 const emptyMenuItemInput = (): MenuItemInput => ({
   id: 0,
@@ -104,6 +114,7 @@ const emptyMenuItemInput = (): MenuItemInput => ({
   is_popular: false,
   sort_order: 0,
   ingredients: emptyMenuItemIngredient(),
+  ...emptyProductShippingInput(),
 });
 
 async function nextMenuId(): Promise<number> {
@@ -139,7 +150,7 @@ export function Menu() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          'id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients',
+          `id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'alacarte')
         .order('sort_order', { ascending: true })
@@ -231,6 +242,7 @@ export function Menu() {
       is_popular: item.is_popular,
       sort_order: item.sort_order,
       ingredients: parseMenuItemIngredient(item.ingredients),
+      ...productShippingFromRow(item),
     });
     setImagePreviewUrl(
       previewFromParsedMenuImages(parsedImages, [256, 512, 1024, 1920]),
@@ -350,6 +362,12 @@ export function Menu() {
       return;
     }
 
+    const shippingError = validateProductShippingInput(form);
+    if (shippingError) {
+      toast.error(shippingError);
+      return;
+    }
+
     const ingredientsValue = isMenuItemIngredientEmpty(form.ingredients)
       ? {}
       : serializeMenuItemIngredient(form.ingredients);
@@ -379,6 +397,7 @@ export function Menu() {
         is_popular: form.is_popular,
         sort_order: Number(form.sort_order) || 0,
         ingredients: ingredientsValue,
+        ...productShippingToPayload(form),
       };
 
       if (editingId !== null) {
@@ -396,6 +415,11 @@ export function Menu() {
             is_popular: payload.is_popular,
             sort_order: payload.sort_order,
             ingredients: payload.ingredients,
+            is_shippable: payload.is_shippable,
+            ship_weight_kg: payload.ship_weight_kg,
+            ship_length_cm: payload.ship_length_cm,
+            ship_width_cm: payload.ship_width_cm,
+            ship_height_cm: payload.ship_height_cm,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingId)
@@ -840,6 +864,12 @@ export function Menu() {
                 }
               />
             </div>
+            <ProductShippingFields
+              idPrefix="menu"
+              value={form}
+              onChange={(shipping) => setForm((f) => ({ ...f, ...shipping }))}
+              disabled={saving || imageUploadBusy}
+            />
             <div className="md:col-span-2">
               <MenuIngredientsEditor
                 value={form.ingredients}

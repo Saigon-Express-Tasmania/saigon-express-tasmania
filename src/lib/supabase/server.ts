@@ -52,13 +52,12 @@ export async function fetchFeaturedReviewRows(): Promise<FeaturedReviewRow[]> {
 
 export async function fetchStoreLocationRows(): Promise<StoreLocationRow[]> {
   const supabase = createServerSupabaseClient();
-  // Anon key + RLS: active stores and invoice-creator rows are readable (see store_locations policies).
+  // Anon key + RLS: UI-visible, invoice-creator, and shipping-origin rows are readable.
   const { data, error } = await supabase
     .from("store_locations")
     .select(
-      "id, name, address, suburb, lat, lng, phone, email, hours, is_active, is_invoice_creator, delivery_url, google_map_url",
-    )
-    .order("id", { ascending: true });
+      "id, name, address, suburb, lat, lng, phone, email, hours, is_active, is_invoice_creator, is_shipping, delivery_url, google_map_url",
+    );
 
   if (error) {
     throw new Error(`store_locations: ${error.message}`);

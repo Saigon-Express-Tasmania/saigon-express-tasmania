@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { ProductShippingFields } from '@/components/ProductShippingFields';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { nextProductId } from '@/lib/products';
+import {
+  emptyProductShippingInput,
+  PRODUCT_SHIPPING_SELECT,
+  productShippingFromRow,
+  productShippingToPayload,
+  validateProductShippingInput,
+  type ProductShippingInput,
+  type ProductShippingRow,
+} from '@/lib/product-shipping';
 import supabase from '@/lib/supabase/client';
 import {
   ITEM_UOM_OPTIONS,
@@ -126,7 +136,7 @@ type WholesaleProductRow = {
   image_urls: WholesaleImageUrls;
   created_at: string;
   updated_at: string;
-};
+} & ProductShippingRow;
 
 function normalizeImageUrls(value: unknown): WholesaleImageUrls {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -156,11 +166,11 @@ function previewFromImageUrls(
 
 type WholesaleProductInput = Omit<
   WholesaleProductRow,
-  'created_at' | 'updated_at'
->;
+  'created_at' | 'updated_at' | keyof ProductShippingRow
+> & ProductShippingInput;
 
 const SELECT_COLUMNS =
-  'id, name, sku, category, description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at';
+  `id, name, sku, category, description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
@@ -176,6 +186,7 @@ const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   is_available: true,
   min_order_qty: 1,
   image_urls: {},
+  ...emptyProductShippingInput(),
 });
 
 async function nextWholesaleProductId(): Promise<number> {
@@ -379,6 +390,7 @@ export function WholesaleProducts() {
       is_available: product.is_available,
       min_order_qty: product.min_order_qty,
       image_urls: normalizeImageUrls(product.image_urls),
+      ...productShippingFromRow(product),
     });
     setImagePreviewUrl(previewFromImageUrls(normalizeImageUrls(product.image_urls)));
     setDialogOpen(true);
@@ -454,6 +466,12 @@ export function WholesaleProducts() {
       return;
     }
 
+    const shippingError = validateProductShippingInput(form);
+    if (shippingError) {
+      toast.error(shippingError);
+      return;
+    }
+
     setSaving(true);
     try {
       const nowIso = new Date().toISOString();
@@ -475,6 +493,7 @@ export function WholesaleProducts() {
         is_available: form.is_available,
         min_order_qty: Number(form.min_order_qty) || 1,
         image_urls: form.image_urls,
+        ...productShippingToPayload(form),
       };
 
       if (editingId !== null) {
@@ -982,6 +1001,13 @@ export function WholesaleProducts() {
                 shape="square"
               />
             </div>
+
+            <ProductShippingFields
+              idPrefix="wp"
+              value={form}
+              onChange={(shipping) => setForm((f) => ({ ...f, ...shipping }))}
+              disabled={saving || isUploadingImages}
+            />
 
             <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="wp-description">Description</Label>

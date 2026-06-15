@@ -14,6 +14,7 @@ create table public.store_locations (
   hours text,
   is_active boolean not null default true,
   is_invoice_creator boolean not null default false,
+  is_shipping boolean not null default false,
   delivery_url text,
   is_franchise boolean not null default false,
   franchise_owner_name text,
@@ -27,17 +28,23 @@ create table public.store_locations (
 comment on table public.store_locations is
   'Store locations shown on the public site (stores + pickup selection).';
 
+comment on column public.store_locations.is_active is
+  'When true, the store is shown in public UI (store finder, pickup selection). Does not affect shipping origin or invoice roles.';
+
+comment on column public.store_locations.is_shipping is
+  'When true, this location is used as the courier sender for wholesale shipping quotes (may be hidden from public UI).';
+
 create index store_locations_is_active_idx
   on public.store_locations (is_active);
 
 alter table public.store_locations enable row level security;
 
--- Public can view active store locations
+-- Public can view UI-visible stores, invoice-creator rows, and shipping-origin rows
 create policy "Anyone can read active store locations"
   on public.store_locations
   for select
   to anon, authenticated
-  using (is_active = true or is_invoice_creator = true);
+  using (is_active = true or is_invoice_creator = true or is_shipping = true);
 
 grant select on public.store_locations to anon, authenticated;
 

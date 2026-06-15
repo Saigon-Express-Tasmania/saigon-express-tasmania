@@ -20,7 +20,14 @@ Deno.serve(async (req) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create checkout";
     const status =
-      message.includes("empty") || message.includes("Please") || message.includes("Invalid")
+      message.includes("empty") ||
+        message.includes("Please") ||
+        message.includes("Invalid") ||
+        message.includes("Shipping") ||
+        message.includes("shipping") ||
+        message.includes("changed") ||
+        message.includes("required") ||
+        message.includes("At least one")
         ? 400
         : 500;
     console.error("[checkout]", err);

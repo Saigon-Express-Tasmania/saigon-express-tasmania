@@ -19,7 +19,7 @@ import {
 } from "@/lib/wholesale-b2b-order";
 import { computeWholesaleTierDiscount } from "@/lib/wholesale-tier-discount";
 import { formatTierDiscountValue } from "@/types";
-import type { WholesaleOrderReviewForm } from "@/types";
+import type { StoreLocation, WholesaleOrderReviewForm } from "@/types";
 import {
   ChevronRight,
   CreditCard,
@@ -32,6 +32,15 @@ import {
 import { toast } from "sonner";
 
 type CartSidebarView = "cart" | "review";
+
+function toPricingLines(
+  cart: { qty: number; unitPrice: number }[],
+): { qty: number; unitPriceExGst: number }[] {
+  return cart.map((item) => ({
+    qty: item.qty,
+    unitPriceExGst: Number(item.unitPrice),
+  }));
+}
 
 const CART_ANIMATION_DURATION = 0.24;
 const QTY_FIELD_CLASS =
@@ -303,7 +312,11 @@ function WholesaleCartItemQtyControl({
   );
 }
 
-export default function WholesaleShoppingCart() {
+export default function WholesaleShoppingCart({
+  storeLocations,
+}: {
+  storeLocations: StoreLocation[];
+}) {
   const {
     cart,
     cartTotal,
@@ -346,14 +359,10 @@ export default function WholesaleShoppingCart() {
     [cart],
   );
 
+  const pricingLines = useMemo(() => toPricingLines(cart), [cart]);
   const tierTotals = useMemo(
-    () => computeWholesaleTierDiscount(cartTotal, pricingTiers),
-    [cartTotal, pricingTiers],
-  );
-
-  const orderTotals = useMemo(
-    () => buildWholesaleOrderTotals(cartTotal, pricingTiers),
-    [cartTotal, pricingTiers],
+    () => computeWholesaleTierDiscount(pricingLines, pricingTiers),
+    [pricingLines, pricingTiers],
   );
 
   const hasMetMinimum = cartTotal >= minimumOrderValue;
@@ -508,7 +517,15 @@ export default function WholesaleShoppingCart() {
       return;
     }
 
-    setOrderReview(buildWholesaleOrderReviewFromProfile(profile, customerEmail, cartTotal, pricingTiers));
+    setOrderReview({
+      ...buildWholesaleOrderReviewFromProfile(
+        profile,
+        customerEmail,
+        cartTotal,
+        pricingTiers,
+      ),
+      ...buildWholesaleOrderTotals(pricingLines, pricingTiers),
+    });
     setCartView("review");
   };
 
@@ -518,19 +535,13 @@ export default function WholesaleShoppingCart() {
       return;
     }
 
-    const validationError = validateWholesaleOrderReview({
-      ...orderReview,
-      ...orderTotals,
-    });
+    const validationError = validateWholesaleOrderReview(orderReview);
     if (validationError) {
       toast.error(validationError);
       return;
     }
 
-    const checkoutFields = serializeWholesaleOrderReviewForCheckout({
-      ...orderReview,
-      ...orderTotals,
-    });
+    const checkoutFields = serializeWholesaleOrderReviewForCheckout(orderReview);
 
     setIsCheckingOut(true);
     try {
@@ -547,7 +558,7 @@ export default function WholesaleShoppingCart() {
           items: cart.map((item) => ({
             productId: item.productId,
             qty: item.qty,
-            unitPrice: Number((Number(item.unitPrice) * 1.1).toFixed(2)),
+            unitPrice: Number(item.unitPrice),
             itemName: item.productName,
           })),
         },
@@ -618,16 +629,11 @@ export default function WholesaleShoppingCart() {
         {cartView === "review" && orderReview ? (
           <WholesaleOrderReviewPanel
             items={sortedCart}
-            review={{
-              ...orderReview,
-              ...orderTotals,
-            }}
-            onReviewChange={(next) =>
-              setOrderReview({
-                ...next,
-                ...orderTotals,
-              })
-            }
+            cartSubtotalExGst={cartTotal}
+            pricingTiers={pricingTiers}
+            storeLocations={storeLocations}
+            review={orderReview}
+            onReviewChange={setOrderReview}
             onBack={() => setCartView("cart")}
             onConfirm={() => void handleConfirmPayment()}
             isCheckingOut={isCheckingOut}
