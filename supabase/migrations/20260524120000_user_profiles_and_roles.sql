@@ -26,6 +26,23 @@ create table public.user_profiles (
   abn text,
   business_category text,
   avatar_url text,
+
+  shipping_dba_name text,
+  shipping_preferred_window text,
+  shipping_address text,
+  shipping_city text,
+  shipping_state text,
+  shipping_postal_code text,
+  shipping_country text,
+
+  billing_legal_name text,
+  billing_tax_id text,
+  billing_address text,
+  billing_city text,
+  billing_state text,
+  billing_postal_code text,
+  billing_country text,
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint user_profiles_email_lowercase check (

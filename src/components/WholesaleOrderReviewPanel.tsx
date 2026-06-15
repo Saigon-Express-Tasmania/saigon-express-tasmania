@@ -31,8 +31,15 @@ import {
   prepareWholesaleFreightQuoteContext,
   readWholesaleFreightQuoteTotal,
 } from "@/lib/wholesale-freight";
+import {
+  buildWholesaleCartItemsSignature,
+  extractPersistableReviewFields,
+  readWholesaleOrderReviewBillingSameAsShipping,
+  writeWholesaleOrderReviewDraft,
+} from "@/lib/wholesale-order-review-storage";
 import { filterActiveStoreLocations } from "@/lib/supabase/store-locations-client";
 import { cn } from "@/lib/utils";
+import type { UserProfile } from "@/types/UserProfile";
 import type { AustralianStateCode, WholesaleOrderReviewForm } from "@/types/WholesaleB2BOrder";
 import type { StoreLocation, WholesalePricingTier } from "@/types";
 import { ArrowLeft, CalendarIcon, Check, CreditCard, Loader2, MapPin, Phone } from "lucide-react";
@@ -314,11 +321,17 @@ type DeliveryQuoteStatus =
   | "loading"
   | "error";
 
+function trimmedOrNull(value: string | null | undefined): string | null {
+  const next = String(value ?? "").trim();
+  return next ? next : null;
+}
+
 export default function WholesaleOrderReviewPanel({
   items,
   cartSubtotalExGst,
   pricingTiers,
   storeLocations,
+  profile,
   review,
   onReviewChange,
   onBack,
@@ -329,20 +342,26 @@ export default function WholesaleOrderReviewPanel({
   cartSubtotalExGst: number;
   pricingTiers: WholesalePricingTier[];
   storeLocations: StoreLocation[];
+  profile: UserProfile | null;
   review: WholesaleOrderReviewForm;
   onReviewChange: (next: WholesaleOrderReviewForm) => void;
   onBack: () => void;
   onConfirm: () => void;
   isCheckingOut: boolean;
 }) {
-  const [billingSameAsShipping, setBillingSameAsShipping] = useState(() =>
-    isBillingSameAsShippingForm(review),
-  );
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(() => {
+    const persisted = readWholesaleOrderReviewBillingSameAsShipping(
+      buildWholesaleCartItemsSignature(items),
+    );
+    if (persisted != null) return persisted;
+    return isBillingSameAsShippingForm(review);
+  });
   const [deliveryQuoteStatus, setDeliveryQuoteStatus] =
     useState<DeliveryQuoteStatus>("pickup");
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const quoteContextRequestIdRef = useRef(0);
   const quoteCalculateRequestIdRef = useRef(0);
+  const totalsSectionRef = useRef<HTMLElement>(null);
   const isPickup = review.requested_fulfillment_method === "pick_up";
   const cartItemsSignature = useMemo(
     () => items.map((item) => `${item.productId}:${item.qty}`).join(","),
@@ -370,6 +389,71 @@ export default function WholesaleOrderReviewPanel({
   const selectedPickupHours = formatStoreHours(selectedPickupStore?.hours ?? null);
   const couponDiscount = review.coupon_discount ?? 0;
   const totalDiscount = review.wholesale_discount + couponDiscount;
+
+  useEffect(() => {
+    writeWholesaleOrderReviewDraft({
+      version: 1,
+      cartItemsSignature: buildWholesaleCartItemsSignature(items),
+      billingSameAsShipping,
+      form: extractPersistableReviewFields(review),
+    });
+  }, [items, review, billingSameAsShipping]);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    const maybeFill = (current: string, fromProfile: string | null | undefined) => {
+      return current.trim() ? current : (trimmedOrNull(fromProfile) ?? current);
+    };
+
+    const next: WholesaleOrderReviewForm = {
+      ...review,
+      customer_phone: maybeFill(review.customer_phone, profile.phone),
+      shipping_dba_name: maybeFill(review.shipping_dba_name, profile.shipping_dba_name),
+      shipping_address: maybeFill(review.shipping_address, profile.shipping_address),
+      shipping_city: maybeFill(review.shipping_city, profile.shipping_city),
+      shipping_postal_code: maybeFill(
+        review.shipping_postal_code,
+        profile.shipping_postal_code,
+      ),
+      shipping_preferred_window:
+        review.shipping_preferred_window?.trim()
+          ? review.shipping_preferred_window
+          : (trimmedOrNull(profile.shipping_preferred_window) ??
+            review.shipping_preferred_window),
+      billing_legal_name: maybeFill(review.billing_legal_name, profile.billing_legal_name),
+      billing_address: maybeFill(review.billing_address, profile.billing_address),
+      billing_city: maybeFill(review.billing_city, profile.billing_city),
+      billing_postal_code: maybeFill(review.billing_postal_code, profile.billing_postal_code),
+      billing_tax_id:
+        review.billing_tax_id?.trim()
+          ? review.billing_tax_id
+          : (trimmedOrNull(profile.billing_tax_id) ?? review.billing_tax_id),
+      shipping_state:
+        review.shipping_state || (profile.shipping_state as AustralianStateCode | null) || review.shipping_state,
+      billing_state:
+        review.billing_state || (profile.billing_state as AustralianStateCode | null) || review.billing_state,
+    };
+
+    const changed =
+      next.customer_phone !== review.customer_phone ||
+      next.shipping_dba_name !== review.shipping_dba_name ||
+      next.shipping_address !== review.shipping_address ||
+      next.shipping_city !== review.shipping_city ||
+      next.shipping_postal_code !== review.shipping_postal_code ||
+      next.shipping_preferred_window !== review.shipping_preferred_window ||
+      next.shipping_state !== review.shipping_state ||
+      next.billing_legal_name !== review.billing_legal_name ||
+      next.billing_address !== review.billing_address ||
+      next.billing_city !== review.billing_city ||
+      next.billing_postal_code !== review.billing_postal_code ||
+      next.billing_tax_id !== review.billing_tax_id ||
+      next.billing_state !== review.billing_state;
+
+    if (changed) {
+      onReviewChange(withDeliveryFee(next, pricingLines, pricingTiers, review.shipping_fee));
+    }
+  }, [profile, pricingLines, pricingTiers, review, onReviewChange]);
 
   useEffect(() => {
     if (isPickup) {
@@ -465,6 +549,11 @@ export default function WholesaleOrderReviewPanel({
   ]);
 
   const handleCalculateShippingQuote = async () => {
+    totalsSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+
     const requestId = ++quoteCalculateRequestIdRef.current;
     setDeliveryQuoteStatus("loading");
     setDeliveryError(null);
@@ -632,7 +721,7 @@ export default function WholesaleOrderReviewPanel({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-white/10 px-6 py-5">
         <button
           type="button"
@@ -653,7 +742,7 @@ export default function WholesaleOrderReviewPanel({
         </div>
       </div>
 
-      <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
         <section className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <ReviewSelect
@@ -832,141 +921,7 @@ export default function WholesaleOrderReviewPanel({
               />
             </Field>
           </div>
-        </section>
 
-        <section className="space-y-3">
-          <SectionTitle title="Order items" />
-          <div className="space-y-2">
-            {items.map((item) => (
-              <div
-                key={item.productId}
-                className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
-              >
-                <WholesaleCartItemThumbnail
-                  imageUrl={item.imageUrl}
-                  alt={item.productName}
-                  size="sm"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">
-                    {item.productName}
-                  </p>
-                  <p className="text-xs text-white/40 mt-0.5">
-                    {item.qty} × ${Number(item.unitPrice).toFixed(2)} ex GST
-                  </p>
-                </div>
-                <p className="shrink-0 text-sm font-semibold tabular-nums text-white">
-                  ${(Number(item.unitPrice) * item.qty).toFixed(2)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2 text-sm">
-          <SectionTitle title="Totals" />
-          <div className="mt-3 space-y-2">
-            <div className="flex justify-between text-white/60">
-              <span>Subtotal (ex GST)</span>
-              <span className="tabular-nums text-white">
-                ${review.subtotal.toFixed(2)}
-              </span>
-            </div>
-            {totalDiscount > 0 ? (
-              <div className="flex justify-between text-white/60">
-                <span>
-                  {review.wholesale_discount > 0 && couponDiscount > 0
-                    ? "Total discount"
-                    : couponDiscount > 0
-                      ? review.coupon_code?.trim()
-                        ? `Coupon (${review.coupon_code.trim()})`
-                        : "Coupon discount"
-                      : "Wholesale tier discount"}
-                </span>
-                <span className="tabular-nums text-green-300">
-                  -${totalDiscount.toFixed(2)}
-                </span>
-              </div>
-            ) : null}
-            <div className="flex justify-between text-white/60">
-              <span>Tax total (GST)</span>
-              <span className="tabular-nums text-white">
-                ${review.tax_total.toFixed(2)}
-              </span>
-            </div>
-            {!isPickup ? (
-              <div className="flex justify-between text-white/60">
-                <span>Delivery</span>
-                {deliveryQuoteStatus === "loading" ? (
-                  <span className="inline-flex items-center gap-2 tabular-nums text-white/70">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Calculating…
-                  </span>
-                ) : shippingQuoteReady ? (
-                  <span className="tabular-nums text-white">
-                    ${review.shipping_fee.toFixed(2)}
-                  </span>
-                ) : deliveryLineMessage ? (
-                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
-                    {deliveryLineMessage}
-                  </span>
-                ) : (
-                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
-                    To be calculated
-                  </span>
-                )}
-              </div>
-            ) : null}
-            {!isPickup && deliveryQuoteStatus === "pending" ? (
-              <p className="text-xs text-white/40">
-                Shipping will be recalculated when you request a quote.
-              </p>
-            ) : null}
-            {!isPickup && deliveryQuoteStatus === "error" && deliveryError ? (
-              <p className="whitespace-pre-line text-xs text-amber-200/90">
-                {deliveryError}
-              </p>
-            ) : null}
-            <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
-              <span>Grand total (inc GST)</span>
-              <span className="tabular-nums text-primary">
-                ${review.grand_total.toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </section>        
-
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <SectionTitle
-              title="Billing address"
-              description={
-                isPickup
-                  ? "Required for your invoice and tax records"
-                  : undefined
-              }
-            />
-            {!isPickup ? (
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
-                <input
-                  type="checkbox"
-                  checked={billingSameAsShipping}
-                  onChange={(e) =>
-                    handleBillingSameAsShippingChange(e.target.checked)
-                  }
-                  disabled={isCheckingOut}
-                  className="h-4 w-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary/40"
-                />
-                Same as shipping address
-              </label>
-            ) : null}
-          </div>
-          {!isPickup && billingSameAsShipping ? (
-            <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/45">
-              Billing address matches shipping. Tax ID and payment terms still
-              apply below.
-            </p>
-          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             {showFullBillingFields ? (
               <>
@@ -1068,19 +1023,161 @@ export default function WholesaleOrderReviewPanel({
                 value: option.value,
                 label: option.label,
               }))}
-            />             */}
-            <div className="sm:col-span-2">
-              <Field label="Order notes">
-                <textarea
-                  className={`${fieldClass} min-h-[72px] resize-y`}
-                  value={review.notes ?? ""}
-                  onChange={(e) => patch({ notes: e.target.value || null })}
-                  placeholder="Additional instructions for this order"
-                />
-              </Field>
-            </div>
+            />             */}            
           </div>
         </section>
+
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SectionTitle
+              title="Billing address"
+              description={
+                isPickup
+                  ? "Required for your invoice and tax records"
+                  : undefined
+              }
+            />
+            {!isPickup ? (
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
+                <input
+                  type="checkbox"
+                  checked={billingSameAsShipping}
+                  onChange={(e) =>
+                    handleBillingSameAsShippingChange(e.target.checked)
+                  }
+                  disabled={isCheckingOut}
+                  className="h-4 w-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary/40"
+                />
+                Same as shipping address
+              </label>
+            ) : null}
+          </div>
+          {!isPickup && billingSameAsShipping ? (
+            <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/45">
+              Billing address matches shipping. Tax ID and payment terms still
+              apply below.
+            </p>
+          ) : null}
+          
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle title="Order items" />
+          <div className="space-y-2">
+            {items.map((item) => (
+              <div
+                key={item.productId}
+                className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+              >
+                <WholesaleCartItemThumbnail
+                  imageUrl={item.imageUrl}
+                  alt={item.productName}
+                  size="sm"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white">
+                    {item.productName}
+                  </p>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    {item.qty} × ${Number(item.unitPrice).toFixed(2)} ex GST
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-semibold tabular-nums text-white">
+                  ${(Number(item.unitPrice) * item.qty).toFixed(2)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          ref={totalsSectionRef}
+          className="scroll-mt-4 rounded-xl border border-white/10 bg-white/5 p-4 space-y-2 text-sm"
+        >
+          <SectionTitle title="Totals" />
+          <div className="mt-3 space-y-2">
+            <div className="flex justify-between text-white/60">
+              <span>Subtotal (ex GST)</span>
+              <span className="tabular-nums text-white">
+                ${review.subtotal.toFixed(2)}
+              </span>
+            </div>
+            {totalDiscount > 0 ? (
+              <div className="flex justify-between text-white/60">
+                <span>
+                  {review.wholesale_discount > 0 && couponDiscount > 0
+                    ? "Total discount"
+                    : couponDiscount > 0
+                      ? review.coupon_code?.trim()
+                        ? `Coupon (${review.coupon_code.trim()})`
+                        : "Coupon discount"
+                      : "Wholesale tier discount"}
+                </span>
+                <span className="tabular-nums text-green-300">
+                  -${totalDiscount.toFixed(2)}
+                </span>
+              </div>
+            ) : null}
+            <div className="flex justify-between text-white/60">
+              <span>Tax total (GST)</span>
+              <span className="tabular-nums text-white">
+                ${review.tax_total.toFixed(2)}
+              </span>
+            </div>
+            {!isPickup ? (
+              <div className="flex justify-between text-white/60">
+                <span>Delivery</span>
+                {deliveryQuoteStatus === "loading" ? (
+                  <span className="inline-flex items-center gap-2 tabular-nums text-white/70">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Calculating…
+                  </span>
+                ) : shippingQuoteReady ? (
+                  <span className="tabular-nums text-white">
+                    ${review.shipping_fee.toFixed(2)}
+                  </span>
+                ) : deliveryLineMessage ? (
+                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
+                    {deliveryLineMessage}
+                  </span>
+                ) : (
+                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
+                    To be calculated
+                  </span>
+                )}
+              </div>
+            ) : null}
+            {!isPickup && deliveryQuoteStatus === "pending" ? (
+              <p className="text-xs text-white/40">
+                Shipping will be recalculated when you request a quote.
+              </p>
+            ) : null}
+            {!isPickup && deliveryQuoteStatus === "error" && deliveryError ? (
+              <p className="text-xs text-amber-200/90">
+                {deliveryError}
+              </p>
+            ) : null}
+            <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
+              <span>Grand total (inc GST)</span>
+              <span className="tabular-nums text-primary">
+                ${review.grand_total.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </section>     
+
+        <section>
+          <div className="sm:col-span-2">
+            <Field label="Order notes">
+              <textarea
+                className={`${fieldClass} min-h-[72px] resize-y`}
+                value={review.notes ?? ""}
+                onChange={(e) => patch({ notes: e.target.value || null })}
+                placeholder="Additional instructions for this order"
+              />
+            </Field>
+          </div>
+        </section>           
       </div>
 
       <div className="border-t border-white/10 px-6 py-5">
@@ -1120,7 +1217,7 @@ export default function WholesaleOrderReviewPanel({
           )}
         </button>
         {footerHelperMessage ? (
-          <p className="mt-2 whitespace-pre-line text-center text-xs text-amber-400/80">
+          <p className="mt-2 text-center text-xs text-amber-400/80">
             {footerHelperMessage}
           </p>
         ) : null}
