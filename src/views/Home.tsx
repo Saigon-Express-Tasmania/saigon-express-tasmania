@@ -1,4 +1,5 @@
 import AppImage from "@/components/AppImage";
+import HomeMediaPreload from "@/components/HomeMediaPreload";
 import LazyImage from "@/components/LazyImage";
 import Link from "@/components/link";
 
@@ -74,6 +75,7 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
 
   return (
     <div className="min-h-screen bg-brand-cream text-brand-dark">
+      <HomeMediaPreload />
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
 
       {/* ── HERO ────────────────────────────────────────────────────────── */}

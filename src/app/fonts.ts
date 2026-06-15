@@ -1,5 +1,14 @@
-import { Noto_Sans, Noto_Serif } from "next/font/google";
+import { DM_Sans, Noto_Sans, Noto_Serif } from "next/font/google";
 import localFont from "next/font/local";
+
+/** Primary UI sans — self-hosted via next/font (avoids render-blocking CSS @import). */
+export const dmSans = DM_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
 
 /** Serif headings — full Vietnamese coverage (Playfair/DM Serif lack vi glyphs). */
 export const notoSerif = Noto_Serif({

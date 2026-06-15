@@ -3,9 +3,6 @@ import { getCategoriesByKind } from "@/lib/supabase/categories";
 import { getMenuItems } from "@/lib/supabase/menu";
 import { getActiveStoreLocations } from "@/lib/supabase/store-locations";
 
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
-
 export default async function LocaleMenuPage() {
   const [menuItems, storeLocations, categoriesContent] = await Promise.all([
     getMenuItems(),

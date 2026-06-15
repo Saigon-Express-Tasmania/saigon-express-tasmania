@@ -1,27 +1,35 @@
 "use client";
 
-import CartDrawer from "@/components/CartDrawer";
-import { FloatingWidgets } from "@/components/FloatingWidgets";
+import dynamic from "next/dynamic";
 import MainFooter from "@/components/MainFooter";
 import MainHeader from "@/components/MainHeader";
 import { shouldHideMainHeader } from "@/lib/site-chrome";
 import type { StoreLocation } from "@/types";
 import { usePathname } from "next/navigation";
 
+const CartDrawer = dynamic(() => import("@/components/CartDrawer"), {
+  ssr: false,
+});
+
+const FloatingWidgets = dynamic(
+  () =>
+    import("@/components/FloatingWidgets").then((module) => ({
+      default: module.FloatingWidgets,
+    })),
+  { ssr: false },
+);
+
 type AppChromeProps = {
   children: React.ReactNode;
   storeLocations: StoreLocation[];
-  /** Pathname from middleware — used during SSR before client navigation hooks hydrate. */
-  initialPathname: string;
 };
 
 export default function AppChrome({
   children,
   storeLocations,
-  initialPathname,
 }: AppChromeProps) {
   const pathname = usePathname();
-  const hideDashboardChrome = shouldHideMainHeader(pathname || initialPathname);
+  const hideDashboardChrome = shouldHideMainHeader(pathname ?? "/");
 
   return (
     <>
