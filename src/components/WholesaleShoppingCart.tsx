@@ -13,10 +13,14 @@ import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail"
 import WholesaleOrderReviewPanel from "@/components/WholesaleOrderReviewPanel";
 import {
   buildWholesaleOrderReviewFromProfile,
-  buildWholesaleOrderTotals,
   serializeWholesaleOrderReviewForCheckout,
   validateWholesaleOrderReview,
 } from "@/lib/wholesale-b2b-order";
+import {
+  buildWholesaleCartItemsSignature,
+  clearWholesaleOrderReviewDraft,
+  hydrateWholesaleOrderReview,
+} from "@/lib/wholesale-order-review-storage";
 import { computeWholesaleTierDiscount } from "@/lib/wholesale-tier-discount";
 import { formatTierDiscountValue } from "@/types";
 import type { StoreLocation, WholesaleOrderReviewForm } from "@/types";
@@ -30,6 +34,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { UserProfileSelfUpdate } from "@/types/UserProfile";
 
 type CartSidebarView = "cart" | "review";
 
@@ -331,7 +336,7 @@ export default function WholesaleShoppingCart({
     clearCart,
   } = useWholesaleCart();
   const { getMaxQty, validateQty, getAvailability } = useWholesaleInventory();
-  const { profile, user } = useSupabase();
+  const { profile, user, updateOwnProfile } = useSupabase();
   const locale = useLocale();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [minimumWarning, setMinimumWarning] = useState<string | null>(null);
@@ -517,15 +522,20 @@ export default function WholesaleShoppingCart({
       return;
     }
 
-    setOrderReview({
-      ...buildWholesaleOrderReviewFromProfile(
-        profile,
-        customerEmail,
-        cartTotal,
+    const baseReview = buildWholesaleOrderReviewFromProfile(
+      profile,
+      customerEmail,
+      cartTotal,
+      pricingTiers,
+    );
+    setOrderReview(
+      hydrateWholesaleOrderReview(
+        baseReview,
+        buildWholesaleCartItemsSignature(sortedCart),
+        pricingLines,
         pricingTiers,
       ),
-      ...buildWholesaleOrderTotals(pricingLines, pricingTiers),
-    });
+    );
     setCartView("review");
   };
 
@@ -543,8 +553,58 @@ export default function WholesaleShoppingCart({
 
     const checkoutFields = serializeWholesaleOrderReviewForCheckout(orderReview);
 
+    const trimOrNull = (value: string | null | undefined): string | null => {
+      const next = String(value ?? "").trim();
+      return next ? next : null;
+    };
+
+    const profileBackfill: UserProfileSelfUpdate = {};
+    const applyIfBlank = <K extends keyof UserProfileSelfUpdate>(
+      key: K,
+      profileValue: string | null | undefined,
+      reviewValue: string | null | undefined,
+    ) => {
+      if (trimOrNull(profileValue)) return;
+      const candidate = trimOrNull(reviewValue);
+      if (candidate) {
+        profileBackfill[key] = candidate as UserProfileSelfUpdate[K];
+      }
+    };
+
+    applyIfBlank("phone", profile.phone, orderReview.customer_phone);
+    applyIfBlank("shipping_dba_name", profile.shipping_dba_name, orderReview.shipping_dba_name);
+    applyIfBlank(
+      "shipping_preferred_window",
+      profile.shipping_preferred_window,
+      orderReview.shipping_preferred_window,
+    );
+    applyIfBlank("shipping_address", profile.shipping_address, orderReview.shipping_address);
+    applyIfBlank("shipping_city", profile.shipping_city, orderReview.shipping_city);
+    applyIfBlank("shipping_state", profile.shipping_state, orderReview.shipping_state);
+    applyIfBlank(
+      "shipping_postal_code",
+      profile.shipping_postal_code,
+      orderReview.shipping_postal_code,
+    );
+    applyIfBlank("shipping_country", profile.shipping_country, orderReview.shipping_country);
+    applyIfBlank("billing_legal_name", profile.billing_legal_name, orderReview.billing_legal_name);
+    applyIfBlank("billing_tax_id", profile.billing_tax_id, orderReview.billing_tax_id);
+    applyIfBlank("billing_address", profile.billing_address, orderReview.billing_address);
+    applyIfBlank("billing_city", profile.billing_city, orderReview.billing_city);
+    applyIfBlank("billing_state", profile.billing_state, orderReview.billing_state);
+    applyIfBlank(
+      "billing_postal_code",
+      profile.billing_postal_code,
+      orderReview.billing_postal_code,
+    );
+    applyIfBlank("billing_country", profile.billing_country, orderReview.billing_country);
+
     setIsCheckingOut(true);
     try {
+      if (Object.keys(profileBackfill).length > 0) {
+        await updateOwnProfile(profileBackfill);
+      }
+
       const result = await invokeEdgeFunction<{ url?: string | null }>("checkout", {
         method: "POST",
         body: {
@@ -573,6 +633,7 @@ export default function WholesaleShoppingCart({
         throw new Error("No checkout URL returned");
       }
 
+      clearWholesaleOrderReviewDraft();
       setCartOpen(false);
       toast.success("Redirecting to secure payment…");
       window.location.href = checkoutUrl;
@@ -619,7 +680,7 @@ export default function WholesaleShoppingCart({
           />
           <motion.div
             key="wholesale-cart-panel"
-            className={`fixed inset-y-0 right-0 z-[51] flex w-full flex-col border-l border-white/10 bg-black shadow-2xl ${
+            className={`fixed inset-y-0 right-0 z-[51] flex min-h-0 w-full flex-col border-l border-white/10 bg-black shadow-2xl ${
               cartView === "review"
                 ? "sm:max-w-2xl lg:max-w-3xl"
                 : "sm:max-w-md"
@@ -632,6 +693,7 @@ export default function WholesaleShoppingCart({
             cartSubtotalExGst={cartTotal}
             pricingTiers={pricingTiers}
             storeLocations={storeLocations}
+            profile={profile}
             review={orderReview}
             onReviewChange={setOrderReview}
             onBack={() => setCartView("cart")}
@@ -648,7 +710,10 @@ export default function WholesaleShoppingCart({
             {cart.length > 0 ? (
               <button
                 type="button"
-                onClick={clearCart}
+                onClick={() => {
+                  clearWholesaleOrderReviewDraft();
+                  clearCart();
+                }}
                 disabled={isCheckingOut}
                 className="text-xs text-white/30 hover:text-red-400 transition-colors disabled:pointer-events-none disabled:opacity-40"
               >

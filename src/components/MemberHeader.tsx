@@ -136,7 +136,7 @@ function CartButton({
       )}
       <span className="text-sm font-semibold">Cart</span>
       {!showCartSpinner && cartCount > 0 ? (
-        <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
+        <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
           {cartCount}
         </span>
       ) : null}

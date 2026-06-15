@@ -321,6 +321,14 @@ function collectValidationMessages(
   return lines;
 }
 
+function toSingleLineQuoteError(message: string): string {
+  return message
+    .split(/\r?\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" • ");
+}
+
 function formatNestedApiErrors(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const record = data as Record<string, unknown>;
@@ -328,7 +336,7 @@ function formatNestedApiErrors(data: unknown): string | null {
   const errorsNode = record.errors;
   if (errorsNode && typeof errorsNode === "object") {
     const lines = collectValidationMessages(errorsNode as Record<string, unknown>);
-    if (lines.length > 0) return lines.join("\n");
+    if (lines.length > 0) return lines.join(" • ");
   }
 
   if (typeof record.message === "string" && record.message.trim()) {
@@ -353,12 +361,12 @@ export function formatShippingQuoteError(message: string): string {
   try {
     const parsed = JSON.parse(payload) as unknown;
     const formatted = formatNestedApiErrors(parsed);
-    if (formatted) return formatted;
+    if (formatted) return toSingleLineQuoteError(formatted);
   } catch {
     // Not JSON — fall through to the original message.
   }
 
-  return trimmed;
+  return toSingleLineQuoteError(trimmed);
 }
 
 export async function fetchWholesaleFreightQuote(

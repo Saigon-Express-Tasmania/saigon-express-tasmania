@@ -53,6 +53,20 @@ type ProfileFormState = {
   business_name: string;
   abn: string;
   business_category: string;
+  shipping_dba_name: string;
+  shipping_preferred_window: string;
+  shipping_address: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postal_code: string;
+  shipping_country: string;
+  billing_legal_name: string;
+  billing_tax_id: string;
+  billing_address: string;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: string;
 };
 
 const INPUT_CLASS =
@@ -96,6 +110,38 @@ function businessTypeLabel(privileges: BusinessType[]): string {
   return "Personal";
 }
 
+function buildStateSelectOptions(
+  selected: string,
+): WholesaleFormSelectOption[] {
+  const options: WholesaleFormSelectOption[] = AUSTRALIAN_STATES.map((state) => ({
+    value: state.value,
+    label: state.label,
+  }));
+  if (
+    selected &&
+    !AUSTRALIAN_STATES.some((state) => state.value === selected)
+  ) {
+    options.push({ value: selected, label: selected });
+  }
+  return options;
+}
+
+function buildCountrySelectOptions(
+  selected: string,
+): WholesaleFormSelectOption[] {
+  const options: WholesaleFormSelectOption[] = COUNTRY_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.label,
+  }));
+  if (
+    selected &&
+    !COUNTRY_OPTIONS.some((option) => option.value === selected)
+  ) {
+    options.push({ value: selected, label: selected });
+  }
+  return options;
+}
+
 function profileToForm(profile: UserProfile): ProfileFormState {
   return {
     first_name: profile.first_name ?? "",
@@ -112,6 +158,20 @@ function profileToForm(profile: UserProfile): ProfileFormState {
     business_name: profile.business_name ?? "",
     abn: profile.abn ?? "",
     business_category: profile.business_category ?? "",
+    shipping_dba_name: profile.shipping_dba_name ?? "",
+    shipping_preferred_window: profile.shipping_preferred_window ?? "",
+    shipping_address: profile.shipping_address ?? "",
+    shipping_city: profile.shipping_city ?? "",
+    shipping_state: profile.shipping_state ?? "",
+    shipping_postal_code: profile.shipping_postal_code ?? "",
+    shipping_country: profile.shipping_country ?? "AU",
+    billing_legal_name: profile.billing_legal_name ?? "",
+    billing_tax_id: profile.billing_tax_id ?? "",
+    billing_address: profile.billing_address ?? "",
+    billing_city: profile.billing_city ?? "",
+    billing_state: profile.billing_state ?? "",
+    billing_postal_code: profile.billing_postal_code ?? "",
+    billing_country: profile.billing_country ?? "AU",
   };
 }
 
@@ -149,6 +209,20 @@ function formToUpdate(form: ProfileFormState): UserProfileSelfUpdate {
     business_name: trim(form.business_name),
     abn: trim(form.abn),
     business_category: trim(form.business_category),
+    shipping_dba_name: trim(form.shipping_dba_name),
+    shipping_preferred_window: trim(form.shipping_preferred_window),
+    shipping_address: trim(form.shipping_address),
+    shipping_city: trim(form.shipping_city),
+    shipping_state: trim(form.shipping_state),
+    shipping_postal_code: trim(form.shipping_postal_code),
+    shipping_country: trim(form.shipping_country) ?? "AU",
+    billing_legal_name: trim(form.billing_legal_name),
+    billing_tax_id: trim(form.billing_tax_id),
+    billing_address: trim(form.billing_address),
+    billing_city: trim(form.billing_city),
+    billing_state: trim(form.billing_state),
+    billing_postal_code: trim(form.billing_postal_code),
+    billing_country: trim(form.billing_country) ?? "AU",
   };
 }
 
@@ -270,37 +344,30 @@ export default function MemberProfile() {
     }
   };
 
-  const stateOptions = useMemo((): WholesaleFormSelectOption[] => {
-    if (!form) return [];
-    const options: WholesaleFormSelectOption[] = AUSTRALIAN_STATES.map((state) => ({
-      value: state.value,
-      label: state.label,
-    }));
-    if (
-      form.state &&
-      !AUSTRALIAN_STATES.some((state) => state.value === form.state)
-    ) {
-      options.push({ value: form.state, label: form.state });
-    }
-    return options;
-  }, [form]);
-
-  const countryOptions = useMemo((): WholesaleFormSelectOption[] => {
-    if (!form) return [];
-    const options: WholesaleFormSelectOption[] = COUNTRY_OPTIONS.map(
-      (option) => ({
-        value: option.value,
-        label: option.label,
-      }),
-    );
-    if (
-      form.country &&
-      !COUNTRY_OPTIONS.some((option) => option.value === form.country)
-    ) {
-      options.push({ value: form.country, label: form.country });
-    }
-    return options;
-  }, [form]);
+  const personalStateOptions = useMemo(
+    () => (form ? buildStateSelectOptions(form.state) : []),
+    [form],
+  );
+  const shippingStateOptions = useMemo(
+    () => (form ? buildStateSelectOptions(form.shipping_state) : []),
+    [form],
+  );
+  const billingStateOptions = useMemo(
+    () => (form ? buildStateSelectOptions(form.billing_state) : []),
+    [form],
+  );
+  const personalCountryOptions = useMemo(
+    () => (form ? buildCountrySelectOptions(form.country) : []),
+    [form],
+  );
+  const shippingCountryOptions = useMemo(
+    () => (form ? buildCountrySelectOptions(form.shipping_country) : []),
+    [form],
+  );
+  const billingCountryOptions = useMemo(
+    () => (form ? buildCountrySelectOptions(form.billing_country) : []),
+    [form],
+  );
 
   const businessCategoryOptions = useMemo((): WholesaleFormSelectOption[] => {
     if (!form) return [];
@@ -505,9 +572,13 @@ export default function MemberProfile() {
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
               <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
-                <h2 className="mb-5 text-base font-semibold text-white">
-                  Shipping Address
+                <h2 className="mb-1 text-base font-semibold text-white">
+                  Personal Address
                 </h2>
+                <p className="mb-5 text-xs text-white/45">
+                  Your home or contact address, separate from business shipping
+                  and billing.
+                </p>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label htmlFor="address_line1" className={LABEL_CLASS}>
@@ -557,6 +628,23 @@ export default function MemberProfile() {
                       />
                     </div>
                     <div className="space-y-1.5">
+                      <label htmlFor="suburb" className={LABEL_CLASS}>
+                        Suburb
+                      </label>
+                      <input
+                        id="suburb"
+                        type="text"
+                        value={form.suburb}
+                        onChange={(event) =>
+                          handleFieldChange("suburb", event.target.value)
+                        }
+                        className={INPUT_CLASS}
+                        autoComplete="address-level3"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
                       <label htmlFor="state" className={LABEL_CLASS}>
                         State
                       </label>
@@ -566,14 +654,12 @@ export default function MemberProfile() {
                         onValueChange={(value) =>
                           handleFieldChange("state", value)
                         }
-                        options={stateOptions}
+                        options={personalStateOptions}
                         placeholder="Select state"
                         allowEmpty
                         emptyLabel="Select state"
                       />
                     </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label htmlFor="postal_code" className={LABEL_CLASS}>
                         Postal Code
@@ -589,20 +675,152 @@ export default function MemberProfile() {
                         autoComplete="postal-code"
                       />
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="country" className={LABEL_CLASS}>
+                      Country
+                    </label>
+                    <WholesaleFormSelect
+                      id="country"
+                      value={form.country}
+                      onValueChange={(value) =>
+                        handleFieldChange("country", value)
+                      }
+                      options={personalCountryOptions}
+                      placeholder="Select country"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
+                <h2 className="mb-1 text-base font-semibold text-white">
+                  Shipping Address
+                </h2>
+                <p className="mb-5 text-xs text-white/45">
+                  Default delivery details for wholesale orders.
+                </p>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label htmlFor="shipping_dba_name" className={LABEL_CLASS}>
+                      Business / DBA Name
+                    </label>
+                    <input
+                      id="shipping_dba_name"
+                      type="text"
+                      value={form.shipping_dba_name}
+                      onChange={(event) =>
+                        handleFieldChange("shipping_dba_name", event.target.value)
+                      }
+                      className={INPUT_CLASS}
+                      autoComplete="organization"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="shipping_address" className={LABEL_CLASS}>
+                      Street Address
+                    </label>
+                    <input
+                      id="shipping_address"
+                      type="text"
+                      value={form.shipping_address}
+                      onChange={(event) =>
+                        handleFieldChange("shipping_address", event.target.value)
+                      }
+                      className={INPUT_CLASS}
+                      autoComplete="shipping address-line1"
+                    />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label htmlFor="country" className={LABEL_CLASS}>
+                      <label htmlFor="shipping_city" className={LABEL_CLASS}>
+                        City
+                      </label>
+                      <input
+                        id="shipping_city"
+                        type="text"
+                        value={form.shipping_city}
+                        onChange={(event) =>
+                          handleFieldChange("shipping_city", event.target.value)
+                        }
+                        className={INPUT_CLASS}
+                        autoComplete="shipping address-level2"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="shipping_state" className={LABEL_CLASS}>
+                        State
+                      </label>
+                      <WholesaleFormSelect
+                        id="shipping_state"
+                        value={form.shipping_state}
+                        onValueChange={(value) =>
+                          handleFieldChange("shipping_state", value)
+                        }
+                        options={shippingStateOptions}
+                        placeholder="Select state"
+                        allowEmpty
+                        emptyLabel="Select state"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="shipping_postal_code"
+                        className={LABEL_CLASS}
+                      >
+                        Postal Code
+                      </label>
+                      <input
+                        id="shipping_postal_code"
+                        type="text"
+                        value={form.shipping_postal_code}
+                        onChange={(event) =>
+                          handleFieldChange(
+                            "shipping_postal_code",
+                            event.target.value,
+                          )
+                        }
+                        className={INPUT_CLASS}
+                        autoComplete="shipping postal-code"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="shipping_country" className={LABEL_CLASS}>
                         Country
                       </label>
                       <WholesaleFormSelect
-                        id="country"
-                        value={form.country}
+                        id="shipping_country"
+                        value={form.shipping_country}
                         onValueChange={(value) =>
-                          handleFieldChange("country", value)
+                          handleFieldChange("shipping_country", value)
                         }
-                        options={countryOptions}
+                        options={shippingCountryOptions}
                         placeholder="Select country"
                       />
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="shipping_preferred_window"
+                      className={LABEL_CLASS}
+                    >
+                      Preferred Delivery Window
+                    </label>
+                    <input
+                      id="shipping_preferred_window"
+                      type="text"
+                      value={form.shipping_preferred_window}
+                      onChange={(event) =>
+                        handleFieldChange(
+                          "shipping_preferred_window",
+                          event.target.value,
+                        )
+                      }
+                      className={INPUT_CLASS}
+                      placeholder="e.g. Weekday mornings"
+                    />
                   </div>
                 </div>
               </section>
@@ -631,7 +849,7 @@ export default function MemberProfile() {
                   </div>
                   <div className="space-y-1.5">
                     <label htmlFor="abn" className={LABEL_CLASS}>
-                      Tax ID / ABN                    
+                      ABN
                     </label>
                     <input
                       id="abn"
@@ -659,6 +877,131 @@ export default function MemberProfile() {
                       allowEmpty
                       emptyLabel="Select business category"
                     />
+                  </div>
+                </div>
+              </section>
+
+              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
+                <h2 className="mb-1 text-base font-semibold text-white">
+                  Billing Address
+                </h2>
+                <p className="mb-5 text-xs text-white/45">
+                  Invoicing and tax details for wholesale orders.
+                </p>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label htmlFor="billing_legal_name" className={LABEL_CLASS}>
+                      Legal Name
+                    </label>
+                    <input
+                      id="billing_legal_name"
+                      type="text"
+                      value={form.billing_legal_name}
+                      onChange={(event) =>
+                        handleFieldChange("billing_legal_name", event.target.value)
+                      }
+                      className={INPUT_CLASS}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="billing_tax_id" className={LABEL_CLASS}>
+                      Tax ID / ABN
+                    </label>
+                    <input
+                      id="billing_tax_id"
+                      type="text"
+                      value={form.billing_tax_id}
+                      onChange={(event) =>
+                        handleFieldChange("billing_tax_id", event.target.value)
+                      }
+                      className={INPUT_CLASS}
+                      placeholder="12 345 678 901"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="billing_address" className={LABEL_CLASS}>
+                      Street Address
+                    </label>
+                    <input
+                      id="billing_address"
+                      type="text"
+                      value={form.billing_address}
+                      onChange={(event) =>
+                        handleFieldChange("billing_address", event.target.value)
+                      }
+                      className={INPUT_CLASS}
+                      autoComplete="billing address-line1"
+                    />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label htmlFor="billing_city" className={LABEL_CLASS}>
+                        City
+                      </label>
+                      <input
+                        id="billing_city"
+                        type="text"
+                        value={form.billing_city}
+                        onChange={(event) =>
+                          handleFieldChange("billing_city", event.target.value)
+                        }
+                        className={INPUT_CLASS}
+                        autoComplete="billing address-level2"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="billing_state" className={LABEL_CLASS}>
+                        State
+                      </label>
+                      <WholesaleFormSelect
+                        id="billing_state"
+                        value={form.billing_state}
+                        onValueChange={(value) =>
+                          handleFieldChange("billing_state", value)
+                        }
+                        options={billingStateOptions}
+                        placeholder="Select state"
+                        allowEmpty
+                        emptyLabel="Select state"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="billing_postal_code"
+                        className={LABEL_CLASS}
+                      >
+                        Postal Code
+                      </label>
+                      <input
+                        id="billing_postal_code"
+                        type="text"
+                        value={form.billing_postal_code}
+                        onChange={(event) =>
+                          handleFieldChange(
+                            "billing_postal_code",
+                            event.target.value,
+                          )
+                        }
+                        className={INPUT_CLASS}
+                        autoComplete="billing postal-code"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="billing_country" className={LABEL_CLASS}>
+                        Country
+                      </label>
+                      <WholesaleFormSelect
+                        id="billing_country"
+                        value={form.billing_country}
+                        onValueChange={(value) =>
+                          handleFieldChange("billing_country", value)
+                        }
+                        options={billingCountryOptions}
+                        placeholder="Select country"
+                      />
+                    </div>
                   </div>
                 </div>
               </section>
