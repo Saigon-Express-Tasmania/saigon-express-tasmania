@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { dmSans, notoSans, notoSerif } from "@/app/fonts";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 import IntlRoot from "@/components/IntlRoot";
 import NavigationProgress from "@/components/NavigationProgress";
 import SiteChromeProviders from "@/components/SiteChromeProviders";
@@ -32,6 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-background text-foreground">
+        <GoogleAnalytics />
         <Suspense fallback={null}>
           <NavigationProgress />
         </Suspense>
