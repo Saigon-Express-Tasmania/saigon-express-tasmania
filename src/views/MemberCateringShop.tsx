@@ -152,8 +152,8 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
       <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
         <div className="container">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
-              <UtensilsCrossed className="h-6 w-6 text-primary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-400/30 bg-green-400/20">
+              <UtensilsCrossed className="h-6 w-6 text-green-400" />
             </div>
             <div>
               <h1 className="font-serif text-2xl font-bold text-white">

@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "@/components/link";
 import MemberHeader from "@/components/MemberHeader";
@@ -29,6 +24,7 @@ import { resolvePortalType } from "@/lib/privileges";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import {
+  cancelMemberCateringOrder,
   fetchCateringOrders,
   formatOrderDate,
   formatOrderDateShort,
@@ -45,7 +41,11 @@ import {
   formatFlatShippingLines,
 } from "@/lib/wholesale-b2b-order";
 import type { UserProfile } from "@/types";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ChevronDown,
   ChevronLeft,
@@ -60,6 +60,7 @@ import {
   Package,
   CreditCard,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -147,7 +148,10 @@ function Pagination({
       </button>
       {pages.map((item, index) =>
         item === "ellipsis" ? (
-          <span key={`ellipsis-${index}`} className="px-1 text-sm text-white/35">
+          <span
+            key={`ellipsis-${index}`}
+            className="px-1 text-sm text-white/35"
+          >
             …
           </span>
         ) : (
@@ -178,17 +182,29 @@ function Pagination({
   );
 }
 
+function orderShowsTracking(status: WholesaleOrderStatus): boolean {
+  return status !== "pending" && status !== "awaiting_payment";
+}
+
+function memberCateringOrderCanBeCancelled(
+  status: WholesaleOrderStatus,
+): boolean {
+  return status === "pending" || status === "awaiting_payment";
+}
+
 function OrderRow({
   order,
   expanded,
   onToggle,
   onPayNow,
+  onCancel,
   paying,
 }: {
   order: WholesaleOrder;
   expanded: boolean;
   onToggle: () => void;
   onPayNow: (order: WholesaleOrder) => void;
+  onCancel: (order: WholesaleOrder) => void;
   paying: boolean;
 }) {
   const itemCount = getOrderItemCount(order.items);
@@ -204,9 +220,12 @@ function OrderRow({
         : needsAttention
           ? "ring-1 ring-amber-400/35"
           : "";
-  const trackingUrl = order.tracking_token
-    ? `/order-tracking/${order.tracking_token}`
-    : null;
+  const trackingUrl =
+    order.tracking_token && orderShowsTracking(order.status)
+      ? `/order-tracking/${order.tracking_token}`
+      : null;
+  const isAlwaysExpanded = order.status === "awaiting_payment";
+  const isExpanded = expanded || isAlwaysExpanded;
 
   const shippingLines = formatFlatShippingLines(order.address);
   const billingLines = formatFlatBillingLines(order.address);
@@ -230,7 +249,7 @@ function OrderRow({
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <ChevronDown
-                className={`h-5 w-5 shrink-0 text-white transition-transform ${expanded ? "rotate-180" : ""}`}
+                className={`h-5 w-5 shrink-0 text-white transition-transform ${isExpanded ? "rotate-180" : ""} ${isAlwaysExpanded ? "opacity-50" : ""}`}
               />
               <span className="truncate text-sm font-semibold text-white">
                 {formatWholesaleOrderId(order.id)}
@@ -261,8 +280,11 @@ function OrderRow({
           </div>
         </div>
 
-        <div className="hidden text-sm font-semibold text-white lg:block">
-          {formatWholesaleOrderId(order.id)}
+        <div className="hidden text-sm font-semibold text-white lg:flex gap-2">
+          <ChevronDown
+            className={`h-5 w-5 shrink-0 text-white transition-transform ${isExpanded ? "rotate-180" : ""} ${isAlwaysExpanded ? "opacity-50" : ""}`}
+          />
+          <span>{formatWholesaleOrderId(order.id)}</span>
         </div>
         <div className="hidden text-sm text-white/55 lg:block">
           {formatOrderDateShort(order.created_at)}
@@ -295,12 +317,16 @@ function OrderRow({
         </div>
       </button>
 
-      {expanded ? (
+      {isExpanded ? (
         <div className="border-t border-white/10 px-4 py-4 lg:px-5">
           <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <p className="text-xs uppercase tracking-wide text-white/40">Placed</p>
-              <p className="text-white/80">{formatOrderDate(order.created_at)}</p>
+              <p className="text-xs uppercase tracking-wide text-white/40">
+                Placed
+              </p>
+              <p className="text-white/80">
+                {formatOrderDate(order.created_at)}
+              </p>
             </div>
             {order.requested_target_date ? (
               <div>
@@ -345,7 +371,8 @@ function OrderRow({
           ) : order.status === "awaiting_payment" ? (
             <div className="mt-4 space-y-3 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-3">
               <p className="text-sm text-emerald-100/90">
-                Your quotation is ready. Review the totals below and proceed to payment.
+                Your quotation is ready. Review the totals below and proceed to
+                payment.
               </p>
               <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-between text-white/80">
@@ -354,21 +381,19 @@ function OrderRow({
                     ${paymentTotals.subtotal_ex_gst.toFixed(2)}
                   </span>
                 </div>
-                {(paymentTotals.coupon_discount > 0 ||
-                  paymentTotals.wholesale_discount > 0) ? (
-                    <div className="flex items-center justify-between text-emerald-100/90">
-                      <span>
-                        Discount
-                      </span>
-                      <span className="tabular-nums">
-                        -$
-                        {(
-                          paymentTotals.coupon_discount +
-                          paymentTotals.wholesale_discount
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  ) : null}
+                {paymentTotals.coupon_discount > 0 ||
+                paymentTotals.wholesale_discount > 0 ? (
+                  <div className="flex items-center justify-between text-emerald-100/90">
+                    <span>Discount</span>
+                    <span className="tabular-nums">
+                      -$
+                      {(
+                        paymentTotals.coupon_discount +
+                        paymentTotals.wholesale_discount
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between text-white/80">
                   <span>GST</span>
                   <span className="tabular-nums">
@@ -395,16 +420,16 @@ function OrderRow({
             onClick={(event) => event.stopPropagation()}
           >
             {trackingUrl ? (
-            <div className="lg:hidden">
-              <Link
-                href={trackingUrl}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-primary transition-colors hover:border-primary/50"
-              >
-                Track order <ExternalLink className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          ) : null}
-          <div className="flex-1" />
+              <div className="lg:hidden">
+                <Link
+                  href={trackingUrl}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-primary transition-colors hover:border-primary/50"
+                >
+                  Track order <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            ) : null}
+            <div className="flex-1" />
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -460,13 +485,17 @@ function OrderRow({
                   <div className="space-y-1">
                     <div className="font-semibold">Financial details</div>
                     <div>
-                      Subtotal (ex GST): ${paymentTotals.subtotal_ex_gst.toFixed(2)}
+                      Subtotal (ex GST): $
+                      {paymentTotals.subtotal_ex_gst.toFixed(2)}
                     </div>
                     <div>Discount: -${totalDiscount.toFixed(2)}</div>
                     <div>GST: ${paymentTotals.gst_total.toFixed(2)}</div>
-                    <div>Delivery: ${paymentTotals.shipping_fee.toFixed(2)}</div>
+                    <div>
+                      Delivery: ${paymentTotals.shipping_fee.toFixed(2)}
+                    </div>
                     <div className="font-semibold">
-                      Grand total: ${paymentTotals.grand_total_inc_gst.toFixed(2)}
+                      Grand total: $
+                      {paymentTotals.grand_total_inc_gst.toFixed(2)}
                     </div>
                   </div>
                 </TooltipContent>
@@ -493,6 +522,17 @@ function OrderRow({
               </Tooltip>
             ) : null}
 
+            {memberCateringOrderCanBeCancelled(order.status) ? (
+              <button
+                type="button"
+                onClick={() => onCancel(order)}
+                disabled={paying}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 transition-colors hover:border-red-400/50 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Cancel order
+              </button>
+            ) : null}
             {order.status === "awaiting_payment" ? (
               <button
                 type="button"
@@ -513,7 +553,7 @@ function OrderRow({
                 )}
               </button>
             ) : null}
-          </div>          
+          </div>
         </div>
       ) : null}
     </article>
@@ -524,8 +564,15 @@ export default function MemberCateringOrders() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { profile, authMetadata, isLoading, isSignedIn, signOut, user, session } =
-    useSupabase();
+  const {
+    profile,
+    authMetadata,
+    isLoading,
+    isSignedIn,
+    signOut,
+    user,
+    session,
+  } = useSupabase();
   const { clearCart } = useCateringCart();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] =
@@ -540,6 +587,7 @@ export default function MemberCateringOrders() {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
+  const cancelingOrderIdsRef = useRef(new Set<number>());
 
   const me = useMemo(() => {
     if (!profile) return null;
@@ -567,7 +615,9 @@ export default function MemberCateringOrders() {
       ? orders
       : orders.filter((order) => {
           if (
-            formatWholesaleOrderId(order.id).toLowerCase().includes(normalizedSearch)
+            formatWholesaleOrderId(order.id)
+              .toLowerCase()
+              .includes(normalizedSearch)
           ) {
             return true;
           }
@@ -580,7 +630,9 @@ export default function MemberCateringOrders() {
       const priorityDiff =
         memberOrderListPriority(a.status) - memberOrderListPriority(b.status);
       if (priorityDiff !== 0) return priorityDiff;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     });
   }, [orders, search]);
 
@@ -602,32 +654,55 @@ export default function MemberCateringOrders() {
     }
   }, [isLoading, isSignedIn, router]);
 
-  const loadOrders = useCallback(async () => {
-    if (!user?.id) return;
+  useEffect(() => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const order of orders) {
+        if (order.status === "awaiting_payment" && !next.has(order.id)) {
+          next.add(order.id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [orders]);
 
-    setLoadingOrders(true);
-    setLoadError(null);
+  const loadOrders = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!user?.id) return;
 
-    try {
-      const result = await fetchCateringOrders({
-        userId: user.id,
-        page,
-        status: statusFilter,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-      });
-      setOrders(result.orders);
-      setTotalCount(result.totalCount);
-    } catch (error) {
-      setLoadError(
-        error instanceof Error ? error.message : "Failed to load orders.",
-      );
-      setOrders([]);
-      setTotalCount(0);
-    } finally {
-      setLoadingOrders(false);
-    }
-  }, [user?.id, page, statusFilter, dateFrom, dateTo]);
+      if (!options?.silent) {
+        setLoadingOrders(true);
+        setLoadError(null);
+      }
+
+      try {
+        const result = await fetchCateringOrders({
+          userId: user.id,
+          page,
+          status: statusFilter,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+        });
+        setOrders(result.orders);
+        setTotalCount(result.totalCount);
+      } catch (error) {
+        if (!options?.silent) {
+          setLoadError(
+            error instanceof Error ? error.message : "Failed to load orders.",
+          );
+          setOrders([]);
+          setTotalCount(0);
+        }
+      } finally {
+        if (!options?.silent) {
+          setLoadingOrders(false);
+        }
+      }
+    },
+    [user?.id, page, statusFilter, dateFrom, dateTo],
+  );
 
   useEffect(() => {
     if (!user?.id || !isSignedIn) return;
@@ -687,30 +762,36 @@ export default function MemberCateringOrders() {
       }
       const customerEmail = (profile?.email ?? user.email ?? "").trim();
       if (!customerEmail) {
-        toast.error("Please add an email address to your profile before paying.");
+        toast.error(
+          "Please add an email address to your profile before paying.",
+        );
         return;
       }
 
       setPayingOrderId(order.id);
       try {
-        const result = await invokeEdgeFunction<{ url?: string | null }>("checkout", {
-          method: "POST",
-          accessToken: session.access_token,
-          body: {
-            mode: getClientStripeMode(),
-            orderType: "catering",
-            orderId: order.id,
-            customerAccount: user.id,
-            customerName: order.b2b.buyer?.name ?? me?.contactName ?? "Member",
-            customerEmail,
-            customerPhone: profile?.phone ?? "N/A",
-            fulfillmentType: order.requested_fulfillment_method ?? "delivery",
-            origin: window.location.origin,
-            returnTo: "/member/catering-orders",
-            successReturnTo: "/member/catering-orders",
-            financialDetails: buildCateringPaymentFinancialDetails(order),
+        const result = await invokeEdgeFunction<{ url?: string | null }>(
+          "checkout",
+          {
+            method: "POST",
+            accessToken: session.access_token,
+            body: {
+              mode: getClientStripeMode(),
+              orderType: "catering",
+              orderId: order.id,
+              customerAccount: user.id,
+              customerName:
+                order.b2b.buyer?.name ?? me?.contactName ?? "Member",
+              customerEmail,
+              customerPhone: profile?.phone ?? "N/A",
+              fulfillmentType: order.requested_fulfillment_method ?? "delivery",
+              origin: window.location.origin,
+              returnTo: "/member/catering-orders",
+              successReturnTo: "/member/catering-orders",
+              financialDetails: buildCateringPaymentFinancialDetails(order),
+            },
           },
-        });
+        );
 
         if (!result.ok) {
           throw new Error(result.error || "Failed to start payment");
@@ -728,7 +809,45 @@ export default function MemberCateringOrders() {
         setPayingOrderId(null);
       }
     },
-    [session?.access_token, user?.id, user?.email, me?.contactName, profile?.email, profile?.phone],
+    [
+      session?.access_token,
+      user?.id,
+      user?.email,
+      me?.contactName,
+      profile?.email,
+      profile?.phone,
+    ],
+  );
+
+  const handleCancelOrder = useCallback(
+    async (order: WholesaleOrder) => {
+      if (!memberCateringOrderCanBeCancelled(order.status)) {
+        toast.error("This order cannot be cancelled.");
+        return;
+      }
+      if (cancelingOrderIdsRef.current.has(order.id)) return;
+
+      cancelingOrderIdsRef.current.add(order.id);
+      try {
+        await cancelMemberCateringOrder(order.id);
+        setExpandedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(order.id);
+          return next;
+        });
+        setOrders((prev) => prev.filter((item) => item.id !== order.id));
+        setTotalCount((prev) => Math.max(0, prev - 1));
+        void loadOrders({ silent: true });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to cancel order.";
+        toast.error(message);
+        void loadOrders({ silent: true });
+      } finally {
+        cancelingOrderIdsRef.current.delete(order.id);
+      }
+    },
+    [loadOrders],
   );
 
   if (isLoading || !isSignedIn || !me) {
@@ -785,17 +904,17 @@ export default function MemberCateringOrders() {
             onClick={() => setMobileFiltersOpen((open) => !open)}
             aria-expanded={mobileFiltersOpen}
           >
+            <ChevronDown
+              className={`ml-auto h-5 w-5 shrink-0 text-white/50 transition-transform lg:hidden ${
+                mobileFiltersOpen ? "rotate-180" : ""
+              }`}
+            />
             <h2 className="text-lg font-medium text-white">Filter orders</h2>
             {activeFilterCount > 0 ? (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold tabular-nums text-white">
                 {activeFilterCount}
               </span>
             ) : null}
-            <ChevronDown
-              className={`ml-auto h-5 w-5 shrink-0 text-white/50 transition-transform lg:hidden ${
-                mobileFiltersOpen ? "rotate-180" : ""
-              }`}
-            />
           </button>
         </div>
 
@@ -833,12 +952,18 @@ export default function MemberCateringOrders() {
             <select
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(event.target.value as WholesaleOrderStatusFilter)
+                setStatusFilter(
+                  event.target.value as WholesaleOrderStatusFilter,
+                )
               }
               className="w-full cursor-pointer appearance-none rounded-xl border border-white/15 bg-white/8 py-3 pl-4 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               {ORDER_STATUS_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-neutral-900">
+                <option
+                  key={option.value}
+                  value={option.value}
+                  className="bg-neutral-900"
+                >
                   {option.label}
                 </option>
               ))}
@@ -893,15 +1018,17 @@ export default function MemberCateringOrders() {
                 order={order}
                 expanded={expandedIds.has(order.id)}
                 onPayNow={handlePayNow}
+                onCancel={handleCancelOrder}
                 paying={payingOrderId === order.id}
-                onToggle={() =>
+                onToggle={() => {
+                  if (order.status === "awaiting_payment") return;
                   setExpandedIds((prev) => {
                     const next = new Set(prev);
                     if (next.has(order.id)) next.delete(order.id);
                     else next.add(order.id);
                     return next;
-                  })
-                }
+                  });
+                }}
               />
             ))}
           </div>

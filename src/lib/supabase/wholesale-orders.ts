@@ -382,3 +382,14 @@ export function formatWholesalePickupStoreSummary(
   }
   return null;
 }
+
+export async function cancelMemberCateringOrder(orderId: number): Promise<void> {
+  const { error } = await supabase.rpc("archive_and_delete_order", {
+    p_order_id: orderId,
+    p_archived_reason: "cancelled_by_member",
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
