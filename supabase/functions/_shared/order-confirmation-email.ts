@@ -16,6 +16,8 @@ type OrderConfirmationRow = {
   customer_name: string | null;
   customer_email: string | null;
   subtotal: number | string | null;
+  coupon_discount: number | string | null;
+  wholesale_discount: number | string | null;
   tax_total: number | string | null;
   shipping_fee: number | string | null;
   grand_total: number | string | null;
@@ -82,6 +84,22 @@ function formatCurrency(amount: number | string | null | undefined): string {
     style: "currency",
     currency: "AUD",
   }).format(value);
+}
+
+function getTotalDiscount(
+  order: Pick<OrderConfirmationRow, "coupon_discount" | "wholesale_discount">,
+): number {
+  const wholesale = Number(order.wholesale_discount ?? 0);
+  const coupon = Number(order.coupon_discount ?? 0);
+  const total =
+    (Number.isFinite(wholesale) ? Math.max(wholesale, 0) : 0) +
+    (Number.isFinite(coupon) ? Math.max(coupon, 0) : 0);
+  return total > 0 ? total : 0;
+}
+
+function formatTotalDiscount(amount: number): string {
+  if (amount <= 0) return formatCurrency(0);
+  return `-${formatCurrency(amount)}`;
 }
 
 function formatOrderDate(value: string | null | undefined): string {
@@ -219,7 +237,7 @@ async function fetchOrderForConfirmation(
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, status, created_at, customer_name, customer_email, subtotal, tax_total, shipping_fee, grand_total, tracking_token, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, store_id, shipping_dba_name, billing_legal_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
+      "id, status, created_at, customer_name, customer_email, subtotal, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total, tracking_token, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, store_id, shipping_dba_name, billing_legal_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -345,6 +363,7 @@ export async function sendOrderConfirmationEmail(orderId: number): Promise<void>
     orderStatus: formatOrderStatusLabel(order.status),
     deliveryBy: formatOrderDate(order.requested_target_date),
     subtotal: formatCurrency(order.subtotal),
+    totalDiscount: formatTotalDiscount(getTotalDiscount(order)),
     taxTotal: formatCurrency(order.tax_total),
     shippingFee: formatCurrency(order.shipping_fee),
     grandTotal: formatCurrency(order.grand_total),

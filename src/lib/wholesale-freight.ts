@@ -355,7 +355,7 @@ export function formatShippingQuoteError(message: string): string {
   const trimmed = message.trim();
   if (!trimmed) return "Failed to fetch shipping quote";
 
-  const apiMatch = trimmed.match(/^Transdirect API \d+:\s*(.+)$/is);
+  const apiMatch = trimmed.match(/^Transdirect API \d+:\s*([\s\S]+)$/i);
   const payload = apiMatch?.[1]?.trim() ?? trimmed;
 
   try {

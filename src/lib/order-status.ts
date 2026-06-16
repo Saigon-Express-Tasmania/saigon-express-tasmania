@@ -110,3 +110,28 @@ export function orderStatusIsPositive(status: string): boolean {
   const normalized = normalizeOrderStatus(status);
   return normalized === "completed" || normalized === "ready_to_pickup" || normalized === "packed";
 }
+
+export function cateringOrderNeedsAttention(status: string): boolean {
+  const normalized = normalizeOrderStatus(status);
+  return normalized === "pending" || normalized === "awaiting_payment";
+}
+
+/** Lower values sort first in member catering order lists. */
+export function memberOrderListPriority(status: string): number {
+  const normalized = normalizeOrderStatus(status);
+  if (normalized === "awaiting_payment") return 0;
+  if (normalized === "pending") return 1;
+  return 2;
+}
+
+export function getCateringOrderStatusLabel(status: string): string {
+  const normalized = normalizeOrderStatus(status);
+  switch (normalized) {
+    case "pending":
+      return "Awaiting quotation";
+    case "awaiting_payment":
+      return "Ready to pay";
+    default:
+      return getOrderStatusLabel(status);
+  }
+}

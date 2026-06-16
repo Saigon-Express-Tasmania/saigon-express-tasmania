@@ -39,6 +39,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { previewFromImageUrls, type ImageUrlsMap } from '@/lib/image-urls';
@@ -65,6 +70,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  FilePenLine,
   Loader2,
   Pencil,
   Plus,
@@ -125,6 +131,7 @@ type CateringPackRow = {
   name: string;
   serves: string;
   price: string;
+  unit_price: string;
   description: string;
   includes: string[];
   tag: string;
@@ -143,6 +150,7 @@ type CateringPackInput = {
   name: string;
   serves: string;
   price: string;
+  unit_price: string;
   description: string;
   includesText: string;
   tag: string;
@@ -167,6 +175,7 @@ const emptyCateringPackInput = (): CateringPackInput => ({
   name: '',
   serves: '',
   price: '',
+  unit_price: '',
   description: '',
   includesText: '',
   tag: '',
@@ -205,6 +214,39 @@ function serializeTierPrices(rows: CateringTierPrice[]): CateringTierPrice[] {
     .filter((row) => row.size && row.price && row.serves);
 }
 
+function formatCateringPriceLabel(unitPrice: number): string {
+  if (Number.isInteger(unitPrice)) {
+    return `$${unitPrice}`;
+  }
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+  }).format(unitPrice);
+}
+
+function resolveCateringPriceLabel(
+  priceLabel: string,
+  unitPriceRaw: string,
+): string {
+  const trimmedPriceLabel = priceLabel.trim();
+  if (trimmedPriceLabel) return trimmedPriceLabel;
+
+  const trimmedUnitPrice = unitPriceRaw.trim();
+  if (!trimmedUnitPrice) return '';
+
+  const value = Number(trimmedUnitPrice);
+  if (!Number.isFinite(value)) return '';
+
+  return formatCateringPriceLabel(value);
+}
+
+function cateringNeedsQuote(unitPriceRaw: string | null | undefined): boolean {
+  const trimmed = unitPriceRaw?.trim() ?? '';
+  if (!trimmed) return true;
+  const value = Number(trimmed);
+  return !Number.isFinite(value);
+}
+
 async function nextCateringPackId(): Promise<number> {
   return nextProductId('catering');
 }
@@ -240,7 +282,7 @@ export function CateringPacks() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, serves, price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'catering')
         .order('sort_order', { ascending: true })
@@ -354,6 +396,7 @@ export function CateringPacks() {
       name: pack.name,
       serves: pack.serves ?? '',
       price: pack.price ?? '',
+      unit_price: pack.unit_price ?? '',
       description: pack.description ?? '',
       includesText: pack.includes.join('\n'),
       tag: pack.tag ?? '',
@@ -493,13 +536,23 @@ export function CateringPacks() {
       .map((line) => line.trim())
       .filter(Boolean);
 
+    const unitPrice = form.unit_price.trim();
+    if (unitPrice && Number.isNaN(Number(unitPrice))) {
+      toast.error('Unit price must be a valid number.');
+      return;
+    }
+
+    const priceLabel = resolveCateringPriceLabel(form.price, unitPrice);
+
     if (tierPrices.length === 0) {
       if (!form.serves.trim()) {
         toast.error('Serves is required when no tier prices are set.');
         return;
       }
-      if (!form.price.trim()) {
-        toast.error('Price is required when no tier prices are set.');
+      if (!priceLabel) {
+        toast.error(
+          'Unit price or price label is required when no tier prices are set.',
+        );
         return;
       }
       if (!form.description.trim()) {
@@ -543,7 +596,8 @@ export function CateringPacks() {
         id: form.id,
         name: form.name.trim(),
         serves: form.serves.trim(),
-        price: form.price.trim(),
+        price: priceLabel,
+        unit_price: unitPrice,
         description: form.description.trim(),
         includes: includesValues,
         tag: form.tag.trim(),
@@ -785,7 +839,29 @@ export function CateringPacks() {
                           {pack.serves || '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {pack.price || '—'}
+                          <div className="flex items-center gap-1.5">
+                            {pack.price ? (
+                              <span>{pack.price}</span>
+                            ) : cateringNeedsQuote(pack.unit_price) ? null : (
+                              '—'
+                            )}
+                            {cateringNeedsQuote(pack.unit_price) ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex text-amber-600"
+                                    aria-label="Quoting will be required"
+                                  >
+                                    <FilePenLine className="h-4 w-4" aria-hidden />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Quoting will be required
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {pack.prices.length > 0 ? pack.prices.length : '—'}
@@ -829,7 +905,7 @@ export function CateringPacks() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>
               {editingId !== null ? 'Edit catering item' : 'Add catering item'}
@@ -934,7 +1010,7 @@ export function CateringPacks() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="pack-price">Price</Label>
+              <Label htmlFor="pack-price">Price label</Label>
               <Input
                 id="pack-price"
                 value={form.price}
@@ -942,6 +1018,20 @@ export function CateringPacks() {
                   setForm((f) => ({ ...f, price: e.target.value }))
                 }
                 placeholder="$160"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pack-unit-price">Unit price</Label>
+              <Input
+                id="pack-unit-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.unit_price}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, unit_price: e.target.value }))
+                }
+                placeholder="160.00"
               />
             </div>
 

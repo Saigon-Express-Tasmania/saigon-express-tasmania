@@ -4,6 +4,7 @@ import {
   type OrderFlatAddress,
 } from "@/lib/wholesale-b2b-order";
 import type { OrderStatus, OrderStatusFilter } from "@/lib/order-status";
+import { memberOrderListPriority } from "@/lib/order-status";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { supabase } from "@/lib/supabase/client";
 import type { WholesaleOrderB2B } from "@/types/WholesaleB2BOrder";
@@ -206,6 +207,27 @@ async function fetchPaymentStatusByOrderId(
 export async function fetchWholesaleOrders(
   params: FetchWholesaleOrdersParams,
 ): Promise<FetchWholesaleOrdersResult> {
+  return fetchMemberOrdersByType({ ...params, orderType: "wholesale" });
+}
+
+export async function fetchCateringOrders(
+  params: FetchWholesaleOrdersParams,
+): Promise<FetchWholesaleOrdersResult> {
+  return fetchMemberOrdersByType({ ...params, orderType: "catering" });
+}
+
+function sortCateringOrdersForMember(orders: WholesaleOrder[]): WholesaleOrder[] {
+  return [...orders].sort((a, b) => {
+    const priorityDiff =
+      memberOrderListPriority(a.status) - memberOrderListPriority(b.status);
+    if (priorityDiff !== 0) return priorityDiff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
+async function fetchMemberOrdersByType(
+  params: FetchWholesaleOrdersParams & { orderType: "wholesale" | "catering" },
+): Promise<FetchWholesaleOrdersResult> {
   const from = (params.page - 1) * WHOLESALE_ORDERS_PAGE_SIZE;
   const to = from + WHOLESALE_ORDERS_PAGE_SIZE - 1;
 
@@ -213,7 +235,7 @@ export async function fetchWholesaleOrders(
     .from("orders")
     .select(ORDER_HEADER_SELECT, { count: "exact" })
     .eq("customer_account", params.userId)
-    .eq("order_type", "wholesale")
+    .eq("order_type", params.orderType)
     .eq("is_testing", isTestingOrders())
     .order("created_at", { ascending: false });
 
@@ -261,18 +283,28 @@ export async function fetchWholesaleOrders(
       itemsByOrderId.set(orderId, bucket);
     }
 
+    const mappedOrders = orderRows.map((row) =>
+      mapOrderRow(row, itemsByOrderId, paymentStatusByOrderId, storesById),
+    );
+
     return {
-      orders: orderRows.map((row) =>
-        mapOrderRow(row, itemsByOrderId, paymentStatusByOrderId, storesById),
-      ),
+      orders:
+        params.orderType === "catering"
+          ? sortCateringOrdersForMember(mappedOrders)
+          : mappedOrders,
       totalCount: count ?? 0,
     };
   }
 
+  const mappedOrders = orderRows.map((row) =>
+    mapOrderRow(row, itemsByOrderId, new Map(), storesById),
+  );
+
   return {
-    orders: orderRows.map((row) =>
-      mapOrderRow(row, itemsByOrderId, new Map(), storesById),
-    ),
+    orders:
+      params.orderType === "catering"
+        ? sortCateringOrdersForMember(mappedOrders)
+        : mappedOrders,
     totalCount: count ?? 0,
   };
 }

@@ -36,14 +36,80 @@ export function resolveApplicableWholesaleTier(
   return qualifying[0] ?? null;
 }
 
-function roundIncGstUnitAmountCents(
+/** Apply tier discount to ex-GST unit price, then add GST and round to cents. */
+function discountedIncGstUnitAmountCents(
   unitPriceExGst: number,
   tierMultiplier: number,
 ): number {
-  const unitIncGst = Number((unitPriceExGst * 1.1).toFixed(2));
-  return Math.round(unitIncGst * tierMultiplier * 100);
+  const discountedExGst = Number(
+    (unitPriceExGst * tierMultiplier).toFixed(2),
+  );
+  const unitIncGst = Number((discountedExGst * 1.1).toFixed(2));
+  return Math.round(unitIncGst * 100);
 }
 
+function sumStripeProductsCents(
+  lines: WholesalePricingLine[],
+  unitAmountCents: number[],
+): number {
+  let total = 0;
+  for (let index = 0; index < lines.length; index++) {
+    total += unitAmountCents[index] * lines[index].qty;
+  }
+  return total;
+}
+
+/** Nudge per-line Stripe cents so product lines sum to the aggregate inc-GST total. */
+function reconcileStripeLineCents(
+  lines: WholesalePricingLine[],
+  unitAmountCents: number[],
+  targetProductsCents: number,
+): number[] {
+  const result = [...unitAmountCents];
+  let drift =
+    targetProductsCents - sumStripeProductsCents(lines, result);
+  if (drift === 0) return result;
+
+  const indices = lines
+    .map((line, index) => ({ index, qty: line.qty }))
+    .filter(({ qty }) => qty > 0)
+    .sort((a, b) => b.qty - a.qty);
+
+  for (const { index, qty } of indices) {
+    if (drift === 0) break;
+    const step = Math.sign(drift);
+    while (Math.abs(drift) >= qty) {
+      result[index] += step;
+      drift -= step * qty;
+    }
+  }
+
+  if (drift !== 0) {
+    for (let index = lines.length - 1; index >= 0; index--) {
+      const qty = lines[index].qty;
+      if (qty > 0 && drift % qty === 0) {
+        result[index] += drift / qty;
+        drift = 0;
+        break;
+      }
+    }
+  }
+
+  if (drift !== 0) {
+    const singleLineIndex = lines.findIndex((line) => line.qty === 1);
+    if (singleLineIndex >= 0) {
+      result[singleLineIndex] += drift;
+      drift = 0;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Wholesale totals: tier discount applies to the product subtotal (ex GST) only.
+ * GST is calculated on the discounted product value; shipping is not discounted.
+ */
 export function computeWholesaleTierDiscountTotals(
   lines: WholesalePricingLine[],
   tiers: WholesaleTierRow[],
@@ -59,26 +125,35 @@ export function computeWholesaleTierDiscountTotals(
   const wholesale_discount = tier
     ? Number((subtotal * (tier.discount_value / 100)).toFixed(2))
     : 0;
-  const netExGst = subtotal - wholesale_discount;
+  const netExGst = Number((subtotal - wholesale_discount).toFixed(2));
+  const tax_total = Number((netExGst * 0.1).toFixed(2));
+  const productsIncGstTotal = Number((netExGst + tax_total).toFixed(2));
 
-  const stripe_unit_amount_cents = lines.map((line) =>
-    roundIncGstUnitAmountCents(line.unitPriceExGst, tierMultiplier),
+  let stripe_unit_amount_cents = lines.map((line) =>
+    discountedIncGstUnitAmountCents(line.unitPriceExGst, tierMultiplier),
+  );
+  stripe_unit_amount_cents = reconcileStripeLineCents(
+    lines,
+    stripe_unit_amount_cents,
+    Math.round(productsIncGstTotal * 100),
   );
 
-  let productsTotalCents = 0;
-  for (let index = 0; index < lines.length; index++) {
-    productsTotalCents += stripe_unit_amount_cents[index] * lines[index].qty;
-  }
-
-  const grand_total =
-    (productsTotalCents + Math.round(shippingFee * 100)) / 100;
-  const productsIncGstTotal = Number((grand_total - shippingFee).toFixed(2));
-  const tax_total = Number((productsIncGstTotal - netExGst).toFixed(2));
+  const productsTotalCents = sumStripeProductsCents(
+    lines,
+    stripe_unit_amount_cents,
+  );
+  const reconciledProductsIncGst = productsTotalCents / 100;
+  const reconciled_tax_total = Number(
+    (reconciledProductsIncGst - netExGst).toFixed(2),
+  );
+  const grand_total = Number(
+    (reconciledProductsIncGst + shippingFee).toFixed(2),
+  );
 
   return {
     subtotal,
     wholesale_discount,
-    tax_total,
+    tax_total: reconciled_tax_total,
     shipping_fee: shippingFee,
     grand_total,
     tier_discount_percent: tier?.discount_value ?? 0,

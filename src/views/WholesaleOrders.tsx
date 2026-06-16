@@ -594,6 +594,13 @@ export default function WholesaleOrders({
   );
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (me) {
+      window.localStorage.setItem("lastOrdersPage", "/wholesale/orders");
+    }
+  }, [me]);
+
+  useEffect(() => {
     if (!isLoading && !me) {
       router.push("/member");
     }

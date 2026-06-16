@@ -703,8 +703,8 @@ export default function WholesaleShoppingCart({
         ) : (
         <>
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-          <h2 className="font-serif text-xl font-bold text-white flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-primary" /> Your Cart
+          <h2 className="font-serif text-xl font-bold text-white flex items-center gap-2 text-yellow-400">
+            <ShoppingCart className="w-5 h-5" /> Wholesale Cart
           </h2>
           <div className="flex items-center gap-3">
             {cart.length > 0 ? (

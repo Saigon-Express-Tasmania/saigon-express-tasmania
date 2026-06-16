@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import OrderInvoiceDialog from "@/components/OrderInvoiceDialog";
 import Link from "@/components/link";
 import AppImage from "@/components/AppImage";
@@ -123,8 +123,9 @@ export default function OrderTrackingDetails({
 }: OrderTrackingDetailsProps) {
   const t = useTranslations("OrderTrackingDetails");
   const router = useRouter();
-  const { profile, authMetadata, signOut } = useSupabase();
+  const { profile, authMetadata, isSignedIn, signOut } = useSupabase();
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [lastOrdersPage, setLastOrdersPage] = useState<string | null>(null);
 
   const member = useMemo<MemberHeaderMember | null>(() => {
     if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
@@ -230,18 +231,41 @@ export default function OrderTrackingDetails({
   const lastUpdate = order.status_updated_at ?? order.created_at;
   const totalDiscount = getInvoiceTotalDiscount(order);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("lastOrdersPage");
+    setLastOrdersPage(stored || null);
+  }, []);
+
   const handleLogout = async () => {
     await signOut();
     toast.success(t("signedOut"));
     router.push("/member");
   };
 
+  const canViewWholesaleOrders = Boolean(member);
+  const canViewCateringOrders = Boolean(isSignedIn);
+
+  const backHref = useMemo(() => {
+    // Respect the last visited orders page first, if user can access it.
+    if (lastOrdersPage === "/wholesale/orders" && canViewWholesaleOrders) {
+      return "/wholesale/orders";
+    }
+    if (lastOrdersPage === "/member/catering-orders" && canViewCateringOrders) {
+      return "/member/catering-orders";
+    }
+
+    // Fallback priority when there is no valid stored location.
+    if (canViewWholesaleOrders) return "/wholesale/orders";
+    if (canViewCateringOrders) return "/member/catering-orders";
+    return "/order-tracking";
+  }, [lastOrdersPage, canViewWholesaleOrders, canViewCateringOrders]);
+
   return (
     <MemberPortalBackground className="pb-8">
       <MemberHeader
         member={member}
         onLogout={() => void handleLogout()}
-        showCart={Boolean(member)}
       />
 
       <div className="container max-w-[1400px] py-5">
@@ -552,10 +576,12 @@ export default function OrderTrackingDetails({
 
         <div className="mt-8 flex justify-flex-start">
           <Link
-            href={member ? "/wholesale/orders" : "/order-tracking"}
+            href={backHref}
             className={`inline-flex items-center justify-center rounded-lg border border-white/20 px-5 py-2.5 text-sm font-medium text-zinc-100 shadow-sm transition-colors hover:border-white/35 hover:bg-white/10 bg-white/10 backdrop-blur-sm`}
           >
-            {member ? t("backToOrders") : t("backToTracking")}
+            {canViewWholesaleOrders || canViewCateringOrders
+              ? t("backToOrders")
+              : t("backToTracking")}
           </Link>
         </div>
       </div>

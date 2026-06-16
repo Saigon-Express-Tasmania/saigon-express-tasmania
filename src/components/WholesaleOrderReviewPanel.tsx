@@ -7,7 +7,11 @@ import { DayPicker } from "react-day-picker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { WholesaleCartItem } from "@/contexts/WholesaleCartContext";
 import { formatStoreHours } from "@/lib/store-hours";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -40,9 +44,20 @@ import {
 import { filterActiveStoreLocations } from "@/lib/supabase/store-locations-client";
 import { cn } from "@/lib/utils";
 import type { UserProfile } from "@/types/UserProfile";
-import type { AustralianStateCode, WholesaleOrderReviewForm } from "@/types/WholesaleB2BOrder";
+import type {
+  AustralianStateCode,
+  WholesaleOrderReviewForm,
+} from "@/types/WholesaleB2BOrder";
 import type { StoreLocation, WholesalePricingTier } from "@/types";
-import { ArrowLeft, CalendarIcon, Check, CreditCard, Loader2, MapPin, Phone } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarIcon,
+  Check,
+  CreditCard,
+  Loader2,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import "react-day-picker/style.css";
 
 const fieldClass =
@@ -59,13 +74,7 @@ const selectContentClass =
 const selectItemClass =
   "text-white focus:bg-white/10 data-[highlighted]:bg-white/10";
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1.5">
       <span className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
@@ -109,7 +118,10 @@ function ReviewSelect({
   return (
     <Field label={label}>
       <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className={selectTriggerClass} iconClassName={selectIconClass}>
+        <SelectTrigger
+          className={selectTriggerClass}
+          iconClassName={selectIconClass}
+        >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent className={selectContentClass}>
@@ -199,7 +211,8 @@ function ReviewDatePicker({
                 "[&>button]:bg-primary [&>button]:text-white [&>button]:hover:bg-primary/90",
               today: "[&>button]:border [&>button]:border-primary/50",
               outside: "[&>button]:text-white/25",
-              disabled: "[&>button]:text-white/20 [&>button]:hover:bg-transparent",
+              disabled:
+                "[&>button]:text-white/20 [&>button]:hover:bg-transparent",
             }}
           />
         </PopoverContent>
@@ -208,9 +221,12 @@ function ReviewDatePicker({
   );
 }
 
-function fulfillmentDateLabel(method: WholesaleOrderReviewForm["requested_fulfillment_method"]) {
+function fulfillmentDateLabel(
+  method: WholesaleOrderReviewForm["requested_fulfillment_method"],
+) {
   if (method === "pick_up") return "When would you like to pick up your order?";
-  if (method === "shipping") return "When would you like your order to be shipped?";
+  if (method === "shipping")
+    return "When would you like your order to be shipped?";
   return "When would you like your order to be delivered?";
 }
 
@@ -272,7 +288,9 @@ function PickupStorePicker({
                   <MapPin className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">{store.name}</p>
+                  <p className="text-sm font-semibold text-white">
+                    {store.name}
+                  </p>
                   <p className="mt-1 text-xs leading-relaxed text-white/45">
                     {store.address}
                     {store.suburb ? `, ${store.suburb}` : ""}
@@ -382,11 +400,15 @@ export default function WholesaleOrderReviewPanel({
   const selectedPickupStore = useMemo(
     () =>
       review.requested_pick_up_store_id != null
-        ? pickupStores.find((store) => store.id === review.requested_pick_up_store_id) ?? null
+        ? (pickupStores.find(
+            (store) => store.id === review.requested_pick_up_store_id,
+          ) ?? null)
         : null,
     [review.requested_pick_up_store_id, pickupStores],
   );
-  const selectedPickupHours = formatStoreHours(selectedPickupStore?.hours ?? null);
+  const selectedPickupHours = formatStoreHours(
+    selectedPickupStore?.hours ?? null,
+  );
   const couponDiscount = review.coupon_discount ?? 0;
   const totalDiscount = review.wholesale_discount + couponDiscount;
 
@@ -402,37 +424,57 @@ export default function WholesaleOrderReviewPanel({
   useEffect(() => {
     if (!profile) return;
 
-    const maybeFill = (current: string, fromProfile: string | null | undefined) => {
+    const maybeFill = (
+      current: string,
+      fromProfile: string | null | undefined,
+    ) => {
       return current.trim() ? current : (trimmedOrNull(fromProfile) ?? current);
     };
 
     const next: WholesaleOrderReviewForm = {
       ...review,
       customer_phone: maybeFill(review.customer_phone, profile.phone),
-      shipping_dba_name: maybeFill(review.shipping_dba_name, profile.shipping_dba_name),
-      shipping_address: maybeFill(review.shipping_address, profile.shipping_address),
+      shipping_dba_name: maybeFill(
+        review.shipping_dba_name,
+        profile.shipping_dba_name,
+      ),
+      shipping_address: maybeFill(
+        review.shipping_address,
+        profile.shipping_address,
+      ),
       shipping_city: maybeFill(review.shipping_city, profile.shipping_city),
       shipping_postal_code: maybeFill(
         review.shipping_postal_code,
         profile.shipping_postal_code,
       ),
-      shipping_preferred_window:
-        review.shipping_preferred_window?.trim()
-          ? review.shipping_preferred_window
-          : (trimmedOrNull(profile.shipping_preferred_window) ??
-            review.shipping_preferred_window),
-      billing_legal_name: maybeFill(review.billing_legal_name, profile.billing_legal_name),
-      billing_address: maybeFill(review.billing_address, profile.billing_address),
+      shipping_preferred_window: review.shipping_preferred_window?.trim()
+        ? review.shipping_preferred_window
+        : (trimmedOrNull(profile.shipping_preferred_window) ??
+          review.shipping_preferred_window),
+      billing_legal_name: maybeFill(
+        review.billing_legal_name,
+        profile.billing_legal_name,
+      ),
+      billing_address: maybeFill(
+        review.billing_address,
+        profile.billing_address,
+      ),
       billing_city: maybeFill(review.billing_city, profile.billing_city),
-      billing_postal_code: maybeFill(review.billing_postal_code, profile.billing_postal_code),
-      billing_tax_id:
-        review.billing_tax_id?.trim()
-          ? review.billing_tax_id
-          : (trimmedOrNull(profile.billing_tax_id) ?? review.billing_tax_id),
+      billing_postal_code: maybeFill(
+        review.billing_postal_code,
+        profile.billing_postal_code,
+      ),
+      billing_tax_id: review.billing_tax_id?.trim()
+        ? review.billing_tax_id
+        : (trimmedOrNull(profile.billing_tax_id) ?? review.billing_tax_id),
       shipping_state:
-        review.shipping_state || (profile.shipping_state as AustralianStateCode | null) || review.shipping_state,
+        review.shipping_state ||
+        (profile.shipping_state as AustralianStateCode | null) ||
+        review.shipping_state,
       billing_state:
-        review.billing_state || (profile.billing_state as AustralianStateCode | null) || review.billing_state,
+        review.billing_state ||
+        (profile.billing_state as AustralianStateCode | null) ||
+        review.billing_state,
     };
 
     const changed =
@@ -451,7 +493,9 @@ export default function WholesaleOrderReviewPanel({
       next.billing_state !== review.billing_state;
 
     if (changed) {
-      onReviewChange(withDeliveryFee(next, pricingLines, pricingTiers, review.shipping_fee));
+      onReviewChange(
+        withDeliveryFee(next, pricingLines, pricingTiers, review.shipping_fee),
+      );
     }
   }, [profile, pricingLines, pricingTiers, review, onReviewChange]);
 
@@ -459,9 +503,7 @@ export default function WholesaleOrderReviewPanel({
     if (isPickup) {
       setDeliveryQuoteStatus("pickup");
       setDeliveryError(null);
-      onReviewChange(
-        withDeliveryFee(review, pricingLines, pricingTiers, 0),
-      );
+      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
       return;
     }
 
@@ -517,9 +559,7 @@ export default function WholesaleOrderReviewPanel({
         }
 
         setDeliveryQuoteStatus("pending");
-        onReviewChange(
-          withDeliveryFee(review, pricingLines, pricingTiers, 0),
-        );
+        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
       } catch (err) {
         if (requestId !== quoteContextRequestIdRef.current) return;
         setDeliveryQuoteStatus("error");
@@ -530,9 +570,7 @@ export default function WholesaleOrderReviewPanel({
               : "Unable to prepare shipping quote",
           ),
         );
-        onReviewChange(
-          withDeliveryFee(review, pricingLines, pricingTiers, 0),
-        );
+        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh cache lookup when shipping inputs change
@@ -569,9 +607,7 @@ export default function WholesaleOrderReviewPanel({
 
       if (context.status !== "quotable") {
         setDeliveryQuoteStatus(context.status);
-        onReviewChange(
-          withDeliveryFee(review, pricingLines, pricingTiers, 0),
-        );
+        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
         return;
       }
 
@@ -600,9 +636,7 @@ export default function WholesaleOrderReviewPanel({
             : "Failed to calculate shipping quote",
         ),
       );
-      onReviewChange(
-        withDeliveryFee(review, pricingLines, pricingTiers, 0),
-      );
+      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
     }
   };
 
@@ -633,7 +667,9 @@ export default function WholesaleOrderReviewPanel({
     isPickup &&
     hasWholesalePickupStoreSelected(review) &&
     pickupStores.length > 0 &&
-    !pickupStores.some((store) => store.id === review.requested_pick_up_store_id);
+    !pickupStores.some(
+      (store) => store.id === review.requested_pick_up_store_id,
+    );
   const needsDeliveryQuote = !isPickup;
   const shippingQuoteReady =
     deliveryQuoteStatus === "cached" || deliveryQuoteStatus === "ready";
@@ -646,7 +682,9 @@ export default function WholesaleOrderReviewPanel({
   const primaryButtonDisabled =
     isCheckingOut ||
     deliveryQuoteStatus === "loading" ||
-    (isPickup ? pickupStoreMissing || pickupStoreInvalid : !canConfirmCheckout && !canCalculateShippingQuote);
+    (isPickup
+      ? pickupStoreMissing || pickupStoreInvalid
+      : !canConfirmCheckout && !canCalculateShippingQuote);
 
   const deliveryLineMessage = (() => {
     if (isPickup) return null;
@@ -689,7 +727,10 @@ export default function WholesaleOrderReviewPanel({
       return "Calculating shipping quote…";
     }
     if (deliveryQuoteStatus === "error") {
-      return deliveryError ?? "Shipping quote could not be calculated. Please review your shipping address and try again.";
+      return (
+        deliveryError ??
+        "Shipping quote could not be calculated. Please review your shipping address and try again."
+      );
     }
     return null;
   })();
@@ -733,8 +774,8 @@ export default function WholesaleOrderReviewPanel({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <h2 className="font-serif text-xl font-bold text-white">
-            Review order
+          <h2 className="font-serif text-xl font-bold text-yellow-400">
+            Review wholesale order
           </h2>
           <p className="text-xs text-white/45">
             Confirm details before secure payment
@@ -743,20 +784,41 @@ export default function WholesaleOrderReviewPanel({
       </div>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
-        <section className="space-y-3">
+        <section className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Your name">
+              <input
+                className={fieldClass}
+                value={review.customer_name}
+                onChange={(e) => patch({ customer_name: e.target.value })}
+              />
+            </Field>
+            <Field label="Email">
+              <input
+                type="email"
+                className={fieldClass}
+                value={review.customer_email}
+                onChange={(e) => patch({ customer_email: e.target.value })}
+              />
+            </Field>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <ReviewSelect
               label="How do you want to receive your order?"
               value={review.requested_fulfillment_method}
               onValueChange={(value) => {
-                const method = value as WholesaleOrderReviewForm["requested_fulfillment_method"];
+                const method =
+                  value as WholesaleOrderReviewForm["requested_fulfillment_method"];
                 if (method === "pick_up") {
                   setBillingSameAsShipping(false);
                 }
                 patch({
                   requested_fulfillment_method: method,
                   requested_pick_up_store_id:
-                    method === "pick_up" ? review.requested_pick_up_store_id : null,
+                    method === "pick_up"
+                      ? review.requested_pick_up_store_id
+                      : null,
                 });
               }}
               options={WHOLESALE_FULFILLMENT_OPTIONS}
@@ -784,143 +846,172 @@ export default function WholesaleOrderReviewPanel({
                 </p>
               ) : pickupStoreInvalid ? (
                 <p className="text-xs font-medium text-destructive">
-                  The selected pickup store is no longer available. Please choose
-                  another location.
+                  The selected pickup store is no longer available. Please
+                  choose another location.
                 </p>
               ) : selectedPickupStore ? (
                 <p className="text-xs text-white/40">
                   You will collect your order from{" "}
-                  <span className="text-white/70">{selectedPickupStore.name}</span>
+                  <span className="text-white/70">
+                    {selectedPickupStore.name}
+                  </span>
                   {selectedPickupHours ? ` · ${selectedPickupHours}` : ""}
                 </p>
               ) : (
                 <p className="text-xs text-white/40">
-                  Select the store where you would like to pick up your wholesale order.
+                  Select the store where you would like to pick up your
+                  wholesale order.
                 </p>
               )}
             </div>
           ) : null}
+
+          {!isPickup ? (
+            <div className="space-y-2 pt-1">
+              <Field label="Shipping address (required)">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="DBA / business name">
+                      <input
+                        className={fieldClass}
+                        value={review.shipping_dba_name}
+                        onChange={(e) =>
+                          patchShipping({ shipping_dba_name: e.target.value })
+                        }
+                      />
+                    </Field>
+                    <Field label="Phone">
+                      <input
+                        className={fieldClass}
+                        value={review.customer_phone}
+                        onChange={(e) =>
+                          patch({ customer_phone: e.target.value })
+                        }
+                      />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field label="Street address">
+                        <input
+                          className={fieldClass}
+                          value={review.shipping_address}
+                          onChange={(e) =>
+                            patchShipping({ shipping_address: e.target.value })
+                          }
+                        />
+                      </Field>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Field label="Street line 2">
+                        <input
+                          className={fieldClass}
+                          value={review.shipping_street_2 ?? ""}
+                          onChange={(e) =>
+                            patchShipping({
+                              shipping_street_2: e.target.value || null,
+                            })
+                          }
+                        />
+                      </Field>
+                    </div>
+                    <Field label="City">
+                      <input
+                        className={fieldClass}
+                        value={review.shipping_city}
+                        onChange={(e) =>
+                          patchShipping({ shipping_city: e.target.value })
+                        }
+                      />
+                    </Field>
+                    <ReviewSelect
+                      label="State"
+                      value={review.shipping_state}
+                      onValueChange={(value) =>
+                        patchShipping({
+                          shipping_state: value as AustralianStateCode,
+                        })
+                      }
+                      options={AUSTRALIAN_STATES.map((state) => ({
+                        value: state.value,
+                        label: state.label,
+                      }))}
+                    />
+                    <Field label="Postal code">
+                      <input
+                        className={fieldClass}
+                        value={review.shipping_postal_code}
+                        onChange={(e) =>
+                          patchShipping({ shipping_postal_code: e.target.value })
+                        }
+                      />
+                    </Field>
+                    <Field label="Preferred delivery window">
+                      <input
+                        className={fieldClass}
+                        value={review.shipping_preferred_window ?? ""}
+                        onChange={(e) =>
+                          patchShipping({
+                            shipping_preferred_window: e.target.value || null,
+                          })
+                        }
+                        placeholder="e.g. 06:00 - 09:30"
+                      />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field label="Delivery instructions">
+                        <textarea
+                          className={`${fieldClass} min-h-[72px] resize-y`}
+                          value={review.shipping_special_instructions ?? ""}
+                          onChange={(e) =>
+                            patchShipping({
+                              shipping_special_instructions:
+                                e.target.value || null,
+                            })
+                          }
+                          placeholder="Loading dock, access codes, etc."
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+              </Field>
+              <p className="text-xs text-white/40">
+                Enter the address where this order should be delivered.
+              </p>
+            </div>
+          ) : null}
         </section>
 
-        {!isPickup ? (
-          <section className="space-y-3">
-            <SectionTitle title="Shipping address" />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="DBA / business name">
+        <section className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SectionTitle
+              title="Billing address"
+              description={
+                isPickup
+                  ? "Required for your invoice and tax records"
+                  : undefined
+              }
+            />
+            {!isPickup ? (
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
                 <input
-                  className={fieldClass}
-                  value={review.shipping_dba_name}
+                  type="checkbox"
+                  checked={billingSameAsShipping}
                   onChange={(e) =>
-                    patchShipping({ shipping_dba_name: e.target.value })
+                    handleBillingSameAsShippingChange(e.target.checked)
                   }
+                  disabled={isCheckingOut}
+                  className="h-4 w-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary/40"
                 />
-              </Field>
-              <Field label="Phone">
-                <input
-                  className={fieldClass}
-                  value={review.customer_phone}
-                  onChange={(e) => patch({ customer_phone: e.target.value })}
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Street address">
-                  <input
-                    className={fieldClass}
-                    value={review.shipping_address}
-                    onChange={(e) =>
-                      patchShipping({ shipping_address: e.target.value })
-                    }
-                  />
-                </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <Field label="Street line 2">
-                  <input
-                    className={fieldClass}
-                    value={review.shipping_street_2 ?? ""}
-                    onChange={(e) =>
-                      patchShipping({
-                        shipping_street_2: e.target.value || null,
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-              <Field label="City">
-                <input
-                  className={fieldClass}
-                  value={review.shipping_city}
-                  onChange={(e) => patchShipping({ shipping_city: e.target.value })}
-                />
-              </Field>
-              <ReviewSelect
-                label="State"
-                value={review.shipping_state}
-                onValueChange={(value) =>
-                  patchShipping({ shipping_state: value as AustralianStateCode })
-                }
-                options={AUSTRALIAN_STATES.map((state) => ({
-                  value: state.value,
-                  label: state.label,
-                }))}
-              />
-              <Field label="Postal code">
-                <input
-                  className={fieldClass}
-                  value={review.shipping_postal_code}
-                  onChange={(e) =>
-                    patchShipping({ shipping_postal_code: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Preferred delivery window">
-                <input
-                  className={fieldClass}
-                  value={review.shipping_preferred_window ?? ""}
-                  onChange={(e) =>
-                    patchShipping({
-                      shipping_preferred_window: e.target.value || null,
-                    })
-                  }
-                  placeholder="e.g. 06:00 - 09:30"
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Delivery instructions">
-                  <textarea
-                    className={`${fieldClass} min-h-[72px] resize-y`}
-                    value={review.shipping_special_instructions ?? ""}
-                    onChange={(e) =>
-                      patchShipping({
-                        shipping_special_instructions: e.target.value || null,
-                      })
-                    }
-                    placeholder="Loading dock, access codes, etc."
-                  />
-                </Field>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        <section className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Your name">
-              <input
-                className={fieldClass}
-                value={review.customer_name}
-                onChange={(e) => patch({ customer_name: e.target.value })}
-              />
-            </Field>            
-            <Field label="Email">
-              <input
-                type="email"
-                className={fieldClass}
-                value={review.customer_email}
-                onChange={(e) => patch({ customer_email: e.target.value })}
-              />
-            </Field>
+                Same as shipping address
+              </label>
+            ) : null}
           </div>
+          {!isPickup && billingSameAsShipping ? (
+            <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/45">
+              Billing address matches shipping. Tax ID and payment terms still
+              apply below.
+            </p>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             {showFullBillingFields ? (
@@ -1001,7 +1092,9 @@ export default function WholesaleOrderReviewPanel({
                   <input
                     className={fieldClass}
                     value={review.billing_legal_name}
-                    onChange={(e) => patch({ billing_legal_name: e.target.value })}
+                    onChange={(e) =>
+                      patch({ billing_legal_name: e.target.value })
+                    }
                   />
                 </Field>
                 <Field label="Tax ID / ABN">
@@ -1014,7 +1107,7 @@ export default function WholesaleOrderReviewPanel({
                   />
                 </Field>
               </>
-            )}            
+            )}
             {/* <ReviewSelect
               label="Payment terms"
               value={review.payment_terms}
@@ -1023,42 +1116,8 @@ export default function WholesaleOrderReviewPanel({
                 value: option.value,
                 label: option.label,
               }))}
-            />             */}            
+            />             */}
           </div>
-        </section>
-
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <SectionTitle
-              title="Billing address"
-              description={
-                isPickup
-                  ? "Required for your invoice and tax records"
-                  : undefined
-              }
-            />
-            {!isPickup ? (
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
-                <input
-                  type="checkbox"
-                  checked={billingSameAsShipping}
-                  onChange={(e) =>
-                    handleBillingSameAsShippingChange(e.target.checked)
-                  }
-                  disabled={isCheckingOut}
-                  className="h-4 w-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary/40"
-                />
-                Same as shipping address
-              </label>
-            ) : null}
-          </div>
-          {!isPickup && billingSameAsShipping ? (
-            <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/45">
-              Billing address matches shipping. Tax ID and payment terms still
-              apply below.
-            </p>
-          ) : null}
-          
         </section>
 
         <section className="space-y-3">
@@ -1153,9 +1212,7 @@ export default function WholesaleOrderReviewPanel({
               </p>
             ) : null}
             {!isPickup && deliveryQuoteStatus === "error" && deliveryError ? (
-              <p className="text-xs text-amber-200/90">
-                {deliveryError}
-              </p>
+              <p className="text-xs text-amber-200/90">{deliveryError}</p>
             ) : null}
             <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
               <span>Grand total (inc GST)</span>
@@ -1164,7 +1221,7 @@ export default function WholesaleOrderReviewPanel({
               </span>
             </div>
           </div>
-        </section>     
+        </section>
 
         <section>
           <div className="sm:col-span-2">
@@ -1177,11 +1234,13 @@ export default function WholesaleOrderReviewPanel({
               />
             </Field>
           </div>
-        </section>           
+        </section>
       </div>
 
       <div className="border-t border-white/10 px-6 py-5">
-        {needsDeliveryQuote && !shippingQuoteReady && canCalculateShippingQuote ? (
+        {needsDeliveryQuote &&
+        !shippingQuoteReady &&
+        canCalculateShippingQuote ? (
           <p className="mb-3 text-center text-xs text-white/45">
             A shipping quote is required before you can proceed to checkout.
           </p>

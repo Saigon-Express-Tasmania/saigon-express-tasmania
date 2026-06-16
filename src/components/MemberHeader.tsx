@@ -11,6 +11,7 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 import { hasPrivilege } from "@/lib/privileges";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
+import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import MemberPrivilegeBadges from "@/components/MemberPrivilegeBadges";
 import { ChevronDown, Loader2, LogOut, Menu, ShoppingCart, X } from "lucide-react";
@@ -43,6 +44,11 @@ const WHOLESALE_NAV_LINKS = [
   { label: "Orders", href: "/wholesale/orders" },
 ] as const;
 
+const CATERING_NAV_LINKS = [
+  { label: "Shop", href: "/member/catering-shop" },
+  { label: "Orders", href: "/member/catering-orders" },
+] as const;
+
 export type MemberHeaderMember = {
   businessName: string;
   privileges: BusinessType[];
@@ -52,8 +58,9 @@ export type MemberHeaderMember = {
 type MemberHeaderProps = {
   member?: MemberHeaderMember | null;
   onLogout: () => void;
-  showCart?: boolean;
 };
+
+type CartContext = "wholesale" | "catering";
 
 function stripLocalePrefix(pathname: string): string {
   for (const locale of SUPPORTED_LOCALES) {
@@ -75,6 +82,42 @@ function isActiveNav(pathname: string, href: string): boolean {
 function isWholesaleNavActive(pathname: string): boolean {
   return WHOLESALE_NAV_LINKS.some((link) => isActiveNav(pathname, link.href));
 }
+
+function isCateringNavActive(pathname: string): boolean {
+  return CATERING_NAV_LINKS.some((link) => isActiveNav(pathname, link.href));
+}
+
+function isWholesaleCartRoute(pathname: string): boolean {
+  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
+  return path === "/wholesale/shop" || path === "/wholesale/orders";
+}
+
+function isCateringCartRoute(pathname: string): boolean {
+  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
+  return path === "/member/catering-shop" || path === "/member/catering-orders";
+}
+
+function getCartContext(pathname: string): CartContext | null {
+  if (isCateringCartRoute(pathname)) return "catering";
+  if (isWholesaleCartRoute(pathname)) return "wholesale";
+  return null;
+}
+
+const CART_BUTTON_STYLES: Record<
+  CartContext,
+  { button: string; badge: string }
+> = {
+  wholesale: {
+    button:
+      "bg-brand-amber/15 border-brand-amber/40 text-brand-amber hover:bg-brand-amber/25",
+    badge: "bg-brand-amber text-black",
+  },
+  catering: {
+    button:
+      "bg-emerald-500/15 border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/25",
+    badge: "bg-emerald-500 text-white",
+  },
+};
 
 function navLinkClass(active: boolean): string {
   return `px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
@@ -112,31 +155,37 @@ function MemberInfo({ member }: { member: MemberHeaderMember }) {
 }
 
 function CartButton({
+  variant,
   showCartSpinner,
   cartCount,
   onOpenCart,
   className = "",
 }: {
+  variant: CartContext;
   showCartSpinner: boolean;
   cartCount: number;
   onOpenCart: () => void;
   className?: string;
 }) {
+  const styles = CART_BUTTON_STYLES[variant];
+
   return (
     <button
       type="button"
       onClick={onOpenCart}
       disabled={showCartSpinner}
-      className={`relative flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 transition-colors disabled:opacity-70 disabled:pointer-events-none ${className}`}
+      className={`relative flex items-center gap-2 rounded-xl border px-4 py-2 transition-colors disabled:pointer-events-none disabled:opacity-70 ${styles.button} ${className}`}
     >
       {showCartSpinner ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
-        <ShoppingCart className="w-4 h-4" />
+        <ShoppingCart className="h-4 w-4" />
       )}
       <span className="text-sm font-semibold">Cart</span>
       {!showCartSpinner && cartCount > 0 ? (
-        <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
+        <span
+          className={`absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${styles.badge}`}
+        >
           {cartCount}
         </span>
       ) : null}
@@ -147,16 +196,32 @@ function CartButton({
 export default function MemberHeader({
   member,
   onLogout,
-  showCart = true,
 }: MemberHeaderProps) {
   const pathname = usePathname();
   const { isLoading: isAccountLoading, isSignedIn } = useSupabase();
   const { cartCount, setCartOpen, isHydrated } = useWholesaleCart();
+  const {
+    cartCount: cateringCartCount,
+    setCartOpen: setCateringCartOpen,
+    isHydrated: isCateringCartHydrated,
+  } = useCateringCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wholesaleMenuOpen, setWholesaleMenuOpen] = useState(false);
+  const [cateringMenuOpen, setCateringMenuOpen] = useState(false);
 
-  const isCartLoading = !isHydrated;
+  const cartContext = getCartContext(pathname);
+  const isCartLoading =
+    cartContext === "catering" ? !isCateringCartHydrated : !isHydrated;
   const showCartSpinner = isAccountLoading || isCartLoading;
+  const activeCartCount =
+    cartContext === "catering" ? cateringCartCount : cartCount;
+  const openActiveCart = () => {
+    if (cartContext === "catering") {
+      setCateringCartOpen(true);
+    } else {
+      setCartOpen(true);
+    }
+  };
   const hasWholesalePrivilege = member
     ? hasPrivilege(member.privileges, "wholesale")
     : false;
@@ -165,6 +230,7 @@ export default function MemberHeader({
   const dashboardActive = isActiveNav(pathname, DASHBOARD_LINK.href);
   const profileActive = isActiveNav(pathname, PROFILE_LINK.href);
   const wholesaleNavActive = isWholesaleNavActive(pathname);
+  const cateringNavActive = isCateringNavActive(pathname);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -243,6 +309,44 @@ export default function MemberHeader({
                       </PopoverContent>
                     </Popover>
                   ) : null}
+                  <Popover
+                    open={cateringMenuOpen}
+                    onOpenChange={setCateringMenuOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-1 ${navLinkClass(cateringNavActive)}`}
+                      >
+                        Catering
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${cateringMenuOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-44 border-white/10 bg-black/95 p-1 text-white shadow-xl backdrop-blur-md"
+                    >
+                      {CATERING_NAV_LINKS.map((link) => {
+                        const active = isActiveNav(pathname, link.href);
+                        return (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={() => setCateringMenuOpen(false)}
+                            className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                              active
+                                ? "bg-primary/20 text-primary"
+                                : "text-white/70 hover:bg-white/8 hover:text-white"
+                            }`}
+                          >
+                            {link.label}
+                          </Link>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
                   <Link
                     href={PROFILE_LINK.href}
                     className={navLinkClass(profileActive)}
@@ -275,11 +379,12 @@ export default function MemberHeader({
                 <MemberInfo member={member} />
               </div>
             ) : null}
-            {showCart ? (
+            {cartContext ? (
               <CartButton
+                variant={cartContext}
                 showCartSpinner={showCartSpinner}
-                cartCount={cartCount}
-                onOpenCart={() => setCartOpen(true)}
+                cartCount={activeCartCount}
+                onOpenCart={openActiveCart}
               />
             ) : null}
             {isSignedIn ? (
@@ -375,6 +480,28 @@ export default function MemberHeader({
                         })}
                       </div>
                     ) : null}
+                    <div className="space-y-1">
+                      <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+                        Catering
+                      </div>
+                      {CATERING_NAV_LINKS.map((link) => {
+                        const active = isActiveNav(pathname, link.href);
+                        return (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={closeMobileMenu}
+                            className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                              active
+                                ? "bg-primary/20 text-primary"
+                                : "text-white/70 hover:bg-white/8 hover:text-white"
+                            }`}
+                          >
+                            {link.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
                     <Link
                       href={PROFILE_LINK.href}
                       onClick={closeMobileMenu}

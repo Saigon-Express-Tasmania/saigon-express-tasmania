@@ -13,7 +13,7 @@ import {
 
 export type { StripePaymentMode };
 
-export type OrderType = "pickup" | "wholesale";
+export type OrderType = "pickup" | "wholesale" | "catering";
 
 export type OrderFulfillmentType = "pick_up" | "delivery" | "shipping";
 
@@ -69,6 +69,7 @@ export type WholesaleFinancialDetails = {
 export type OrderCheckoutInput = {
   mode: StripePaymentMode;
   orderType: OrderType;
+  existingOrderId?: number | null;
   fulfillmentType: OrderFulfillmentType;
   customerAccount?: string | null;
   customerName: string;
@@ -91,7 +92,7 @@ export type OrderCheckoutInput = {
 
 export type OrderCheckoutResult = {
   url: string | null;
-  draftOrderId: number;
+  draftOrderId: number | null;
   mode: StripePaymentMode;
 };
 
@@ -617,6 +618,7 @@ function parseOptionalCustomerAccount(value: unknown): string | null {
 function parseOrderType(value: unknown): OrderType {
   const raw = String(value ?? "pickup").trim().toLowerCase();
   if (raw === "wholesale") return "wholesale";
+  if (raw === "catering") return "catering";
   if (raw === "pickup") return "pickup";
   throw new Error("Invalid order type");
 }
@@ -635,6 +637,7 @@ function resolveFulfillmentType(
 ): OrderFulfillmentType {
   if (explicit) return explicit;
   if (orderType === "wholesale") return "delivery";
+  if (orderType === "catering") return "delivery";
   return "pick_up";
 }
 
@@ -776,6 +779,15 @@ function parseOptionalStoreId(value: unknown): number | null {
   return storeId;
 }
 
+function parseOptionalOrderId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const orderId = Number(value);
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    throw new Error("Invalid order");
+  }
+  return orderId;
+}
+
 function resolveRequestedPickUpStoreId(input: OrderCheckoutInput): number | null {
   if (input.requestedPickUpStoreId != null) {
     return input.requestedPickUpStoreId;
@@ -805,6 +817,16 @@ function wholesaleOrdersPathFromReturnTo(returnTo?: string): string {
   return "/wholesale/orders";
 }
 
+function cateringOrdersPathFromReturnTo(returnTo?: string): string {
+  if (returnTo) {
+    const path = normalizeReturnPath(returnTo);
+    if (path.endsWith("/catering-shop")) {
+      return path.replace(/\/catering-shop$/, "/catering-orders");
+    }
+  }
+  return "/member/catering-orders";
+}
+
 function checkoutReturnUrls(
   origin: string,
   orderType: OrderType,
@@ -818,6 +840,19 @@ function checkoutReturnUrls(
     const successPath = successReturnTo
       ? normalizeReturnPath(successReturnTo)
       : wholesaleOrdersPathFromReturnTo(returnTo);
+    return {
+      successUrl: `${origin}${successPath}?checkout=success&sessionId={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${origin}${cancelPath}?checkout=cancelled`,
+    };
+  }
+
+  if (orderType === "catering") {
+    const cancelPath = returnTo
+      ? normalizeReturnPath(returnTo)
+      : "/member/catering-shop";
+    const successPath = successReturnTo
+      ? normalizeReturnPath(successReturnTo)
+      : cateringOrdersPathFromReturnTo(returnTo);
     return {
       successUrl: `${origin}${successPath}?checkout=success&sessionId={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${origin}${cancelPath}?checkout=cancelled`,
@@ -1065,6 +1100,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   const customerPhone = String(data.customerPhone ?? "").trim();
   const storeId = parseOptionalStoreId(data.storeId);
   const requestedPickUpStoreId = parseOptionalStoreId(data.requestedPickUpStoreId);
+  const existingOrderId = parseOptionalOrderId(data.orderId);
   const pickupTimeRaw = data.pickupTime != null ? String(data.pickupTime).trim() : "";
   const origin = String(data.origin ?? "").trim();
   const notes = data.notes != null ? String(data.notes).trim() : undefined;
@@ -1098,6 +1134,13 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   if (orderType === "wholesale" && !customerAccount) {
     throw new Error("Please sign in to place a wholesale order");
   }
+  if (orderType === "catering" && !customerAccount) {
+    throw new Error("Please sign in to place a catering order");
+  }
+  // Paying an existing catering order doesn't require re-supplying event date.
+  if (orderType === "catering" && existingOrderId == null && !pickupTimeRaw) {
+    throw new Error("Please select an event date");
+  }
 
   const buyer = parseWholesaleBuyer(data.buyer);
   const shippingAddress = parseWholesaleShippingAddress(data.shippingAddress);
@@ -1114,28 +1157,32 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   }
 
   const rawItems = data.items;
-  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+  const items: OrderCheckoutItem[] =
+    Array.isArray(rawItems) && rawItems.length > 0
+      ? rawItems.map((raw) => {
+        const row = raw as Record<string, unknown>;
+        const menuItemId = Number(row.menuItemId ?? row.productId);
+        const qty = Number(row.qty);
+        const unitPrice = Number(row.unitPrice);
+        const itemName = String(row.itemName ?? "").trim();
+
+        if (!Number.isFinite(menuItemId) || menuItemId <= 0) throw new Error("Invalid product");
+        if (!Number.isFinite(qty) || qty < 1) throw new Error("Invalid quantity");
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error("Invalid price");
+        if (!itemName) throw new Error("Invalid item name");
+
+        return { productId: menuItemId, qty, unitPrice, itemName };
+      })
+      : [];
+
+  if (!existingOrderId && items.length === 0) {
     throw new Error("Your cart is empty");
   }
-
-  const items: OrderCheckoutItem[] = rawItems.map((raw) => {
-    const row = raw as Record<string, unknown>;
-    const menuItemId = Number(row.menuItemId ?? row.productId);
-    const qty = Number(row.qty);
-    const unitPrice = Number(row.unitPrice);
-    const itemName = String(row.itemName ?? "").trim();
-
-    if (!Number.isFinite(menuItemId) || menuItemId <= 0) throw new Error("Invalid product");
-    if (!Number.isFinite(qty) || qty < 1) throw new Error("Invalid quantity");
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error("Invalid price");
-    if (!itemName) throw new Error("Invalid item name");
-
-    return { productId: menuItemId, qty, unitPrice, itemName };
-  });
 
   return {
     mode,
     orderType,
+    existingOrderId,
     fulfillmentType,
     customerAccount,
     customerName,
@@ -1164,6 +1211,106 @@ type WholesaleAvailabilityRow = {
   customer_remaining: number | null;
   daily_customer_limit: number | null;
 };
+
+type ExistingCateringOrderRow = {
+  id: number;
+  customer_account: string | null;
+  customer_name: string;
+  customer_email: string;
+  status: string;
+  order_type: string;
+  is_testing: boolean;
+  subtotal: number | string;
+  coupon_discount: number | string;
+  wholesale_discount: number | string;
+  tax_total: number | string;
+  shipping_fee: number | string;
+  grand_total: number | string;
+};
+
+async function fetchExistingCateringAwaitingPaymentOrder(
+  supabase: ReturnType<typeof createServiceClient>,
+  orderId: number,
+  customerAccount: string | null | undefined,
+): Promise<ExistingCateringOrderRow> {
+  if (!customerAccount) {
+    throw new Error("Please sign in to pay for this catering order");
+  }
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select(
+      "id, customer_account, customer_name, customer_email, status, order_type, is_testing, subtotal, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error("Order not found");
+  }
+
+  const order = data as ExistingCateringOrderRow;
+  if (order.order_type !== "catering") {
+    throw new Error("Only catering orders can be paid from this page");
+  }
+  if (order.customer_account !== customerAccount) {
+    throw new Error("You can only pay your own order");
+  }
+  if (order.status !== "awaiting_payment") {
+    throw new Error("This order is not ready for payment");
+  }
+  if (Number(order.grand_total ?? 0) <= 0) {
+    throw new Error("Order total must be greater than zero");
+  }
+
+  return order;
+}
+
+function resolveExistingCateringCheckoutTotals(
+  order: ExistingCateringOrderRow,
+  financialDetails?: WholesaleFinancialDetails,
+): {
+  subtotal: number;
+  couponDiscount: number;
+  wholesaleDiscount: number;
+  taxTotal: number;
+  shippingFee: number;
+  grandTotal: number;
+} {
+  const subtotal = Number(financialDetails?.subtotal_ex_gst ?? order.subtotal ?? 0);
+  const couponDiscount = Number(financialDetails?.coupon_discount ?? order.coupon_discount ?? 0);
+  const wholesaleDiscount = Number(
+    financialDetails?.wholesale_discount ?? order.wholesale_discount ?? 0,
+  );
+  const taxTotal = Number(financialDetails?.gst_total ?? order.tax_total ?? 0);
+  const shippingFee = Number(financialDetails?.shipping_fee ?? order.shipping_fee ?? 0);
+  const grandFromFormula =
+    subtotal - (couponDiscount + wholesaleDiscount) + taxTotal + shippingFee;
+  const grandTotal = Number(
+    (
+      financialDetails?.grand_total_inc_gst ??
+      (Number.isFinite(grandFromFormula) && grandFromFormula > 0
+        ? grandFromFormula
+        : Number(order.grand_total ?? 0))
+    ).toFixed(2),
+  );
+
+  if (!Number.isFinite(grandTotal) || grandTotal <= 0) {
+    throw new Error("Order total must be greater than zero");
+  }
+
+  return {
+    subtotal: Number(subtotal.toFixed(2)),
+    couponDiscount: Number(couponDiscount.toFixed(2)),
+    wholesaleDiscount: Number(wholesaleDiscount.toFixed(2)),
+    taxTotal: Number(taxTotal.toFixed(2)),
+    shippingFee: Number(shippingFee.toFixed(2)),
+    grandTotal,
+  };
+}
 
 function wholesaleInventoryLimitMessage(
   itemName: string,
@@ -1267,6 +1414,75 @@ export async function createOrderCheckoutSession(
   input: OrderCheckoutInput,
 ): Promise<OrderCheckoutResult> {
   const supabase = createServiceClient();
+
+  if (input.existingOrderId != null) {
+    if (input.orderType !== "catering") {
+      throw new Error("Existing-order checkout is only supported for catering");
+    }
+
+    const existingOrder = await fetchExistingCateringAwaitingPaymentOrder(
+      supabase,
+      input.existingOrderId,
+      input.customerAccount,
+    );
+    const totals = resolveExistingCateringCheckoutTotals(
+      existingOrder,
+      input.financialDetails,
+    );
+
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        price_data: {
+          currency: "aud",
+          product_data: {
+            name: `Catering order ${formatOrderInvoiceNumber(existingOrder.id)}`,
+          },
+          unit_amount: Math.round(totals.grandTotal * 100),
+        },
+        quantity: 1,
+      },
+    ];
+
+    const stripe = createStripeClient(input.mode);
+    const { successUrl, cancelUrl } = checkoutReturnUrls(
+      input.origin,
+      input.orderType,
+      input.returnTo,
+      input.successReturnTo,
+    );
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      customer_email: existingOrder.customer_email || input.customerEmail,
+      client_reference_id: String(existingOrder.id),
+      metadata: {
+        mode: input.mode,
+        orderType: "catering",
+        existingOrderId: String(existingOrder.id),
+        customerAccount: input.customerAccount ?? "",
+        subtotalExGst: formatMoney(totals.subtotal),
+        couponDiscount: formatMoney(totals.couponDiscount),
+        wholesaleDiscount: formatMoney(totals.wholesaleDiscount),
+        taxTotal: formatMoney(totals.taxTotal),
+        shippingFee: formatMoney(totals.shippingFee),
+        grandTotal: formatMoney(totals.grandTotal),
+      },
+      allow_promotion_codes: false,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      payment_intent_data: {
+        metadata: {
+          mode: input.mode,
+          existingOrderId: String(existingOrder.id),
+        },
+      },
+    });
+
+    return { url: session.url, draftOrderId: null, mode: input.mode };
+  }
+
   let totals = computeCheckoutTotals(input);
   let wholesaleStripeUnitAmountCents: number[] | null = null;
 
@@ -1495,15 +1711,63 @@ export async function markOrderPaidFromStripeSession(
   paymentMode: StripePaymentMode,
 ): Promise<void> {
   const supabase = createServiceClient();
-  const draftOrderId = getDraftOrderIdFromSession(session);
-  const existingOrderId = await findExistingOrderIdBySession(session.id, paymentMode, supabase);
+  const existingOrderId = getExistingOrderIdFromSession(session);
   if (existingOrderId) {
-    await ensureWholesaleInventoryForOrder(supabase, existingOrderId);
+    const paymentAmount =
+      session.amount_total != null && session.amount_total > 0
+        ? session.amount_total / 100
+        : 0;
+    if (paymentAmount <= 0) {
+      throw new Error(`Invalid paid amount for order #${existingOrderId}`);
+    }
+
+    const { error: paymentError } = await supabase.from("order_payments").insert({
+      order_id: existingOrderId,
+      amount: formatMoney(paymentAmount),
+      status: "paid",
+      mode: paymentMode,
+      method: "credit_card",
+      gateway: "stripe",
+      gateway_transaction_id: session.id,
+      gateway_data: buildStripeCheckoutGatewayData(session),
+    });
+
+    if (paymentError && !paymentError.message.toLowerCase().includes("duplicate")) {
+      throw new Error(paymentError.message);
+    }
+
+    const { error: orderError } = await supabase
+      .from("orders")
+      .update({
+        status: "confirmed",
+        status_updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingOrderId)
+      .eq("order_type", "catering");
+
+    if (orderError) {
+      throw new Error(orderError.message);
+    }
+
+    console.log(
+      `[stripe-webhook] Existing catering order #${existingOrderId} marked paid (${paymentMode})`,
+    );
+    return;
+  }
+
+  const draftOrderId = getDraftOrderIdFromSession(session);
+  const existingPaidOrderId = await findExistingOrderIdBySession(
+    session.id,
+    paymentMode,
+    supabase,
+  );
+  if (existingPaidOrderId) {
+    await ensureWholesaleInventoryForOrder(supabase, existingPaidOrderId);
     if (draftOrderId) {
       await supabase.from("draft_orders").delete().eq("id", draftOrderId);
     }
     console.log(
-      `[stripe-webhook] Session ${session.id} already mapped to ${paymentMode} order #${existingOrderId}`,
+      `[stripe-webhook] Session ${session.id} already mapped to ${paymentMode} order #${existingPaidOrderId}`,
     );
     return;
   }
@@ -1620,6 +1884,13 @@ function getDraftOrderIdFromSession(session: Stripe.Checkout.Session): number | 
   const fromMetadata = session.metadata?.draftOrderId;
   const fromReference = session.client_reference_id;
   const raw = fromMetadata ?? fromReference ?? "";
+  const parsed = parseInt(raw, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function getExistingOrderIdFromSession(session: Stripe.Checkout.Session): number | null {
+  const raw = session.metadata?.existingOrderId ?? "";
   const parsed = parseInt(raw, 10);
   if (Number.isNaN(parsed) || parsed <= 0) return null;
   return parsed;

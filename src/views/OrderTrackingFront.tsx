@@ -132,7 +132,6 @@ export default function OrderTrackingFront() {
       <MemberHeader
         member={member}
         onLogout={() => void handleLogout()}
-        showCart={Boolean(member)}
       />
 
       <main className="flex min-h-[calc(100vh-16rem)] items-start justify-center px-4 pb-12 pt-16 sm:px-6 sm:pt-20">

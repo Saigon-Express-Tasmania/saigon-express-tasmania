@@ -24,6 +24,7 @@ export async function invokeEdgeFunction<T>(
     method?: "GET" | "POST";
     body?: unknown;
     searchParams?: Record<string, string>;
+    accessToken?: string | null;
   } = {},
 ): Promise<{ data: T; ok: true } | { error: string; ok: false; status: number }> {
   const method = options.method ?? (options.body != null ? "POST" : "GET");
@@ -33,9 +34,17 @@ export async function invokeEdgeFunction<T>(
     url += `?${new URLSearchParams(options.searchParams).toString()}`;
   }
 
+  const bearer = options.accessToken?.trim() || SUPABASE_ANON_KEY;
+  if (!bearer) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
+  }
+
   const res = await fetch(url, {
     method,
-    headers: authHeaders(),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${bearer}`,
+    },
     body: options.body != null ? JSON.stringify(options.body) : undefined,
   });
 

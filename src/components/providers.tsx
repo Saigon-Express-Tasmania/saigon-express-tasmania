@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
+import { CateringCartProvider } from "@/contexts/CateringCartContext";
 import { WholesaleInventoryProvider } from "@/contexts/WholesaleInventoryContext";
 import WholesaleCartInventorySync from "@/components/WholesaleCartInventorySync";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
@@ -18,6 +19,11 @@ import type { SiteContentSnapshot, StoreLocation } from "@/types";
 
 const WholesaleShoppingCart = dynamic(
   () => import("@/components/WholesaleShoppingCart"),
+  { ssr: false },
+);
+
+const CateringShoppingCart = dynamic(
+  () => import("@/components/CateringShoppingCart"),
   { ssr: false },
 );
 
@@ -49,14 +55,17 @@ export function Providers({
                     wholesaleCartConfig.minimumWholesaleOrderValue
                   }
                 >
-                  <WholesaleCartInventorySync />
-                  <TooltipProvider>
-                    <AppChrome storeLocations={storeLocations}>
-                      {children}
-                    </AppChrome>
-                    <WholesaleShoppingCart storeLocations={storeLocations} />
-                    <Toaster />
-                  </TooltipProvider>
+                  <CateringCartProvider>
+                    <WholesaleCartInventorySync />
+                    <TooltipProvider>
+                      <AppChrome storeLocations={storeLocations}>
+                        {children}
+                      </AppChrome>
+                      <WholesaleShoppingCart storeLocations={storeLocations} />
+                      <CateringShoppingCart />
+                      <Toaster />
+                    </TooltipProvider>
+                  </CateringCartProvider>
                 </WholesaleCartProvider>
               </WholesaleInventoryProvider>
             </CartProvider>

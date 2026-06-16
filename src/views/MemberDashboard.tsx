@@ -227,8 +227,6 @@ export default function MemberDashboard({
   const [loadingData, setLoadingData] = useState(true);
 
   const hasWholesale = hasPrivilege(authMetadata.privileges, "wholesale");
-  const showCart = hasPortalPrivilege(authMetadata.privileges);
-
   const me = useMemo(() => {
     if (!profile) return null;
     return {
@@ -462,7 +460,6 @@ export default function MemberDashboard({
       <MemberHeader
         member={me}
         onLogout={() => void handleLogout()}
-        showCart={showCart}
       />
 
       <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
