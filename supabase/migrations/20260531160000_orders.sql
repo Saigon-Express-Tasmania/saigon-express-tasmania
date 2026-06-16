@@ -301,6 +301,107 @@ create policy "Partners read own wholesale order fulfillments"
     )
   );
 
+create policy "Members read own catering orders"
+  on public.orders
+  for select
+  to authenticated
+  using (
+    customer_account = auth.uid()
+    and order_type = 'catering'::public.order_type
+  );
+
+create policy "Members read own catering order items"
+  on public.order_items
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.orders as o
+      where o.id = order_items.order_id
+        and o.customer_account = auth.uid()
+        and o.order_type = 'catering'::public.order_type
+    )
+  );
+
+create policy "Members read own catering order payments"
+  on public.order_payments
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.orders as o
+      where o.id = order_payments.order_id
+        and o.customer_account = auth.uid()
+        and o.order_type = 'catering'::public.order_type
+    )
+  );
+
+create policy "Members delete own cancellable catering orders"
+  on public.orders
+  for delete
+  to authenticated
+  using (
+    customer_account = auth.uid()
+    and order_type = 'catering'::public.order_type
+    and status in (
+      'pending'::public.order_status,
+      'awaiting_payment'::public.order_status
+    )
+  );
+
+drop policy if exists "Only admins delete orders" on public.orders;
+
+create policy "Only admins delete orders"
+  on public.orders
+  as restrictive
+  for delete
+  to authenticated
+  using (
+    public.is_admin()
+    or (
+      customer_account = auth.uid()
+      and order_type = 'catering'::public.order_type
+      and status in (
+        'pending'::public.order_status,
+        'awaiting_payment'::public.order_status
+      )
+    )
+  );
+
+create policy "Members archive own cancellable catering orders"
+  on public.archived_orders
+  for insert
+  to authenticated
+  with check (
+    customer_account = auth.uid()
+    and order_type = 'catering'::public.order_type
+    and status in (
+      'pending'::public.order_status,
+      'awaiting_payment'::public.order_status
+    )
+  );
+
+drop policy if exists "Only admins insert archived_orders" on public.archived_orders;
+
+create policy "Only admins insert archived_orders"
+  on public.archived_orders
+  as restrictive
+  for insert
+  to authenticated
+  with check (
+    public.is_admin()
+    or (
+      customer_account = auth.uid()
+      and order_type = 'catering'::public.order_type
+      and status in (
+        'pending'::public.order_status,
+        'awaiting_payment'::public.order_status
+      )
+    )
+  );
+
 create or replace function public.request_tracking_token()
 returns text
 language plpgsql

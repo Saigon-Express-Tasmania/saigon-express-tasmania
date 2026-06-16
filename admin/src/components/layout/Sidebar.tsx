@@ -4,6 +4,7 @@ import { useSalesOrderMode } from "@/contexts/SalesOrderModeContext";
 import { cn } from "@/lib/utils";
 import {
   Archive,
+  Building2,
   ChevronLeft,
   ChevronRight,
   FilePen,
@@ -16,12 +17,13 @@ import {
   MessageSquare,
   Newspaper,
   Percent,
+  PhoneCall,
   Settings,
   ShoppingCart,
   Star,
   Tags,
   Truck,
-  UserSquare2Icon,
+  UserRoundSearch,
   Utensils,
   type LucideIcon,
 } from "lucide-react";
@@ -52,7 +54,7 @@ const navItems: NavItem[] = [
   {
     title: "Partners",
     href: "/partners",
-    icon: UserSquare2Icon,
+    icon: UserRoundSearch,
   },
   {
     title: "Orders",
@@ -95,6 +97,18 @@ const navItems: NavItem[] = [
     icon: Archive,
     group: "Wholesale",
     isOrderPage: true,
+  },
+  {
+    title: "Franchise Interests",
+    href: "/interests/franchise",
+    icon: Building2,
+    group: "Franchise",
+  },
+  {
+    title: "Consultations",
+    href: "/interests/consultation",
+    icon: PhoneCall,
+    group: "Franchise",
   },
   {
     title: "Categories",

@@ -81,12 +81,12 @@
     "typescript": "^5",
     "vaul": "^1.1.2",
     "vite": "^8.0.14",
-    "zustand": "^5.0.13"
+    "zustand": "^5.0.13",
+    "aos": "^2.3.4"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.11",
-    "@types/aos": "^3.0.8",
-    "aos": "^2.3.4",
+    "@types/aos": "^3.0.8",    
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "vitest": "^4.1.7"

@@ -26,7 +26,7 @@ function getDefaultSender(): { email: string; name: string } {
     email: Deno.env.get("BREVO_SENDER_EMAIL")?.trim() ||
       "info@saigonexpress.com.au",
     name: Deno.env.get("BREVO_SENDER_NAME")?.trim() ||
-      "Saigon Express Tasmania",
+      "Saigon Express",
   };
 }
 

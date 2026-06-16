@@ -27,6 +27,7 @@ import { Feedbacks } from './pages/Feedbacks';
 import { LocalizationPage } from './pages/LocalizationPage';
 import { UserProfile } from './pages/UserProfile';
 import { Partners } from './pages/Partners';
+import { FranchiseInterests } from './pages/FranchiseInterests';
 
 export function App() {
   const { user, isLoading } = useSupabaseAuth();
@@ -62,6 +63,9 @@ export function App() {
             <Route path="/feedbacks" element={<Feedbacks />} />
             <Route path="/emails" element={<Emails />} />
             <Route path="/partners" element={<Partners />} />
+            <Route path="/interests/franchise" element={<FranchiseInterests type="franchise" />} />
+            <Route path="/interests/consultation" element={<FranchiseInterests type="consultation" />} />
+            <Route path="/interests/consultations" element={<Navigate to="/interests/consultation" replace />} />
             <Route path="/sales/orders" element={<Navigate to="/sales/orders/pickup" replace />} />
             <Route path="/sales/orders/:orderType" element={<SalesOrdersPage />} />
             <Route

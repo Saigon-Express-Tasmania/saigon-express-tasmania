@@ -1,9 +1,9 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
   CheckCircle,
@@ -59,9 +59,18 @@ interface StepItem {
   desc: string;
 }
 
+const FRANCHISE_SUBMIT_COOLDOWN_MS = 2 * 60 * 1000;
+const FRANCHISE_LAST_SUBMIT_KEY = "franchise_interest_last_submit_at";
+const CONSULT_SUBMIT_COOLDOWN_MS = 2 * 60 * 1000;
+const CONSULT_LAST_SUBMIT_KEY = "franchise_consult_last_submit_at";
+
 export default function FranchisePage() {
   const t = useTranslations("Franchise");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
+  const [interestCooldownSeconds, setInterestCooldownSeconds] = useState(0);
+  const [isSubmittingConsult, setIsSubmittingConsult] = useState(false);
+  const [consultCooldownSeconds, setConsultCooldownSeconds] = useState(0);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -116,52 +125,143 @@ export default function FranchisePage() {
 
   const interestCheckpoints: string[] = t.raw("interestForm.checkpoints");
 
-  const submitApplication = trpc.public.submitFranchiseApplication.useMutation({
-    onSuccess: () => setSubmitted(true),
-    onError: () => toast.error(t("toasts.error")),
-  });
+  useEffect(() => {
+    const updateCooldown = () => {
+      const lastSubmitAt = Number(
+        window.localStorage.getItem(FRANCHISE_LAST_SUBMIT_KEY) ?? "0",
+      );
+      const remainingMs =
+        lastSubmitAt + FRANCHISE_SUBMIT_COOLDOWN_MS - Date.now();
+      setInterestCooldownSeconds(
+        remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0,
+      );
+    };
 
-  const bookConsultation = trpc.franchise.bookConsultation.useMutation({
-    onSuccess: () => setConsultSubmitted(true),
-    onError: () => toast.error(t("toasts.error")),
-  });
+    updateCooldown();
+    const timerId = window.setInterval(updateCooldown, 1000);
+    return () => window.clearInterval(timerId);
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const updateCooldown = () => {
+      const lastSubmitAt = Number(
+        window.localStorage.getItem(CONSULT_LAST_SUBMIT_KEY) ?? "0",
+      );
+      const remainingMs = lastSubmitAt + CONSULT_SUBMIT_COOLDOWN_MS - Date.now();
+      setConsultCooldownSeconds(
+        remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0,
+      );
+    };
+
+    updateCooldown();
+    const timerId = window.setInterval(updateCooldown, 1000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fullName || !form.email) {
       toast.error(t("toasts.requiredMain"));
       return;
     }
-    submitApplication.mutate({
-      fullName: form.fullName,
-      email: form.email,
-      phone: form.phone || undefined,
-      city: form.city || undefined,
-      state: "Tasmania",
-      investmentBudget: form.investmentBudget || undefined,
-      businessExperience:
-        form.hasExperience === "yes"
-          ? t("interestForm.experiencePayloadYes")
-          : t("interestForm.experiencePayloadNo"),
-      message: form.message || undefined,
-    });
+
+    if (interestCooldownSeconds > 0) {
+      const minutes = Math.floor(interestCooldownSeconds / 60);
+      const seconds = interestCooldownSeconds % 60;
+      const prettyRemaining = `${minutes}:${String(seconds).padStart(2, "0")}`;
+      toast.error(`Please wait ${prettyRemaining} before submitting again.`);
+      return;
+    }
+
+    setIsSubmittingInterest(true);
+    try {
+      const { error } = await supabase.rpc("submit_franchise_interest", {
+        p_interest_type: "franchise",
+        p_full_name: form.fullName,
+        p_email: form.email,
+        p_phone: form.phone || null,
+        p_city: form.city || null,
+        p_state: "Tasmania",
+        p_investment_budget: form.investmentBudget || null,
+        p_business_experience:
+          form.hasExperience === "yes"
+            ? t("interestForm.experiencePayloadYes")
+            : t("interestForm.experiencePayloadNo"),
+        p_preferred_date: null,
+        p_preferred_time: null,
+        p_message: form.message || null,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      window.localStorage.setItem(FRANCHISE_LAST_SUBMIT_KEY, String(Date.now()));
+      setInterestCooldownSeconds(Math.ceil(FRANCHISE_SUBMIT_COOLDOWN_MS / 1000));
+      setSubmitted(true);
+    } catch {
+      toast.error(t("toasts.error"));
+    } finally {
+      setIsSubmittingInterest(false);
+    }
   };
 
-  const handleConsultSubmit = (e: React.FormEvent) => {
+  const handleConsultSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!consultForm.name || !consultForm.email || !consultForm.phone) {
+    if (
+      !consultForm.name ||
+      !consultForm.email ||
+      !consultForm.phone ||
+      !consultForm.preferredDate
+    ) {
       toast.error(t("toasts.requiredConsult"));
       return;
     }
-    bookConsultation.mutate({
-      name: consultForm.name,
-      email: consultForm.email,
-      phone: consultForm.phone,
-      preferredDate: consultForm.preferredDate || undefined,
-      preferredTime: consultForm.preferredTime || undefined,
-      message: consultForm.message || undefined,
-    });
+
+    if (consultCooldownSeconds > 0) {
+      const minutes = Math.floor(consultCooldownSeconds / 60);
+      const seconds = consultCooldownSeconds % 60;
+      const prettyRemaining = `${minutes}:${String(seconds).padStart(2, "0")}`;
+      toast.error(`Please wait ${prettyRemaining} before submitting again.`);
+      return;
+    }
+
+    setIsSubmittingConsult(true);
+    try {
+      const { error } = await supabase.rpc("submit_franchise_interest", {
+        p_interest_type: "consultation",
+        p_full_name: consultForm.name,
+        p_email: consultForm.email,
+        p_phone: consultForm.phone || null,
+        p_city: null,
+        p_state: "Tasmania",
+        p_investment_budget: null,
+        p_business_experience: null,
+        p_preferred_date: consultForm.preferredDate || null,
+        p_preferred_time: consultForm.preferredTime || null,
+        p_message: consultForm.message || null,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      window.localStorage.setItem(CONSULT_LAST_SUBMIT_KEY, String(Date.now()));
+      setConsultCooldownSeconds(Math.ceil(CONSULT_SUBMIT_COOLDOWN_MS / 1000));
+      setConsultSubmitted(true);
+    } catch {
+      toast.error(t("toasts.error"));
+    } finally {
+      setIsSubmittingConsult(false);
+    }
   };
+
+  const interestCooldownLabel = `${Math.floor(interestCooldownSeconds / 60)}:${String(
+    interestCooldownSeconds % 60,
+  ).padStart(2, "0")}`;
+  const consultCooldownLabel = `${Math.floor(consultCooldownSeconds / 60)}:${String(
+    consultCooldownSeconds % 60,
+  ).padStart(2, "0")}`;
 
   return (
     <>
@@ -836,13 +936,19 @@ export default function FranchisePage() {
 
                     <button
                       type="submit"
-                      disabled={submitApplication.isPending}
+                      disabled={isSubmittingInterest || interestCooldownSeconds > 0}
                       className="w-full bg-brand-red text-white py-4 mt-4 rounded-xl font-bold text-sm hover:bg-brand-red/90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0"
                     >
-                      {submitApplication.isPending
+                      {isSubmittingInterest
                         ? t("interestForm.btnSubmitting")
                         : t("interestForm.btnSubmit")}
                     </button>
+                    {interestCooldownSeconds > 0 && (
+                      <p className="text-xs font-semibold text-brand-red text-center">
+                        Please wait {interestCooldownLabel} before
+                        submitting again.
+                      </p>
+                    )}
                     <p className="text-[11px] text-brand-dark/40 text-center uppercase tracking-widest mt-4">
                       {t("interestForm.confidentialNote")}
                     </p>
@@ -980,6 +1086,7 @@ export default function FranchisePage() {
                       </label>
                       <input
                         type="date"
+                        required
                         value={consultForm.preferredDate}
                         onChange={(e) =>
                           setConsultForm((f) => ({
@@ -1039,10 +1146,10 @@ export default function FranchisePage() {
                   </div>
                   <button
                     type="submit"
-                    disabled={bookConsultation.isPending}
+                    disabled={isSubmittingConsult || consultCooldownSeconds > 0}
                     className="w-full bg-brand-red text-white py-4 mt-2 rounded-xl font-bold text-sm hover:bg-brand-red/90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
                   >
-                    {bookConsultation.isPending ? (
+                    {isSubmittingConsult ? (
                       t("consultModal.btnSubmitting")
                     ) : (
                       <>
@@ -1051,6 +1158,11 @@ export default function FranchisePage() {
                       </>
                     )}
                   </button>
+                  {consultCooldownSeconds > 0 && (
+                    <p className="text-xs font-semibold text-brand-red text-center">
+                      Please wait {consultCooldownLabel} before submitting again.
+                    </p>
+                  )}
                   <p className="text-[10px] text-brand-dark/30 text-center uppercase tracking-widest">
                     {t("interestForm.confidentialNote")}
                   </p>
