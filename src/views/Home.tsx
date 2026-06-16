@@ -5,7 +5,7 @@ import Link from "@/components/link";
 
 import dynamic from "next/dynamic";
 import type { MenuItem } from "@/contexts/CartContext";
-import type { FeaturedReview } from "@/types";
+import type { FeaturedReview, SiteCategory } from "@/types";
 import { getTranslations } from "next-intl/server";
 import { ChevronRight, MapPin, ShoppingCart } from "lucide-react";
 
@@ -49,13 +49,21 @@ const NEWS_IMAGES = [IMGS.news1, IMGS.news2, IMGS.news3] as const;
 type HomeProps = {
   menuItems: MenuItem[];
   featuredReviews: FeaturedReview[];
+  categoryContents: SiteCategory[];
+  cateringContents: SiteCategory[];
+  wholesaleContents: SiteCategory[];
 };
 
-export default async function Home({ menuItems, featuredReviews }: HomeProps) {
+export default async function Home({
+  menuItems,
+  featuredReviews,
+  categoryContents,
+  cateringContents,
+  wholesaleContents,
+}: HomeProps) {
   const t = await getTranslations("Home");
 
   const marqueeItems = t.raw("marquee.items") as string[];
-  const ourFoodTags = t.raw("ourFood.tags") as string[];
   const cateringTags = t.raw("catering.tags") as string[];
   const wholesaleTags = t.raw("wholesale.tags") as string[];
   const categoryItems = t.raw("categories.items") as Array<{
@@ -193,13 +201,14 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
               {t("ourFood.description")}
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
-              {ourFoodTags.map((tag) => (
-                <span
-                  key={tag}
+              {categoryContents.map((category) => (
+                <Link
+                  key={`ourfood-category-${category.id}`}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase text-white border border-white/20 bg-white/10"
+                  href={`/menu?category=${encodeURIComponent(category.name)}`}
                 >
-                  {tag}
-                </span>
+                  {category.name}
+                </Link>
               ))}
             </div>
             <Link href="/menu" className="btn-red">
@@ -271,10 +280,14 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
               {t("catering.description")}
             </p>
             <div className="flex flex-wrap gap-2 mb-8">
-              {cateringTags.map((tag) => (
-                <span key={tag} className="pill-tag">
-                  {tag}
-                </span>
+              {cateringContents.map((category) => (
+                <Link
+                  key={`catering-category-${category.id}`}
+                  className="pill-tag"
+                  href={`/catering#${category.alias}`}
+                >
+                  {category.name}
+                </Link>
               ))}
             </div>
             <Link href="/catering" className="btn-red">
@@ -325,7 +338,7 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
               <Link
                 key={i}
                 href="/menu"
-                className="group block overflow-hidden rounded-sm card-lift reveal"
+                className="group block bg-neutral-50! overflow-hidden rounded-sm card-lift-active reveal"
                 style={{ animationDelay: `${i * 0.1}s` }}
               >
                 <div className="overflow-hidden aspect-[4/3]">
@@ -336,7 +349,7 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
                     className="group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
-                <div className="pt-4 pb-2">
+                <div className="p-4">
                   <h3 className="font-serif text-xl text-brand-dark mb-1">
                     {cat.title}
                   </h3>
@@ -441,13 +454,14 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
               {t("wholesale.description")}
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
-              {wholesaleTags.map((tag) => (
-                <span
-                  key={tag}
+              {wholesaleContents.map((content) => (
+                <Link
+                  key={`wholesale-category-${content.id}`}
                   className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/20 text-white/70 text-xs font-medium"
+                  href={`/wholesale/landing-shop?category=${encodeURIComponent(content.name)}`}
                 >
-                  {tag}
-                </span>
+                  {content.name}
+                </Link>
               ))}
             </div>
             <Link href="/wholesale/landing-shop" className="btn-red">
@@ -485,7 +499,10 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
                 {t("news.title")}
               </h2>
             </div>
-            <Link href="/news" className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1">
+            <Link
+              href="/news"
+              className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1"
+            >
               {t("news.viewAll")} <ChevronRight size={14} />
             </Link>
           </div>
@@ -493,7 +510,7 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
             {newsItems.map((n, i) => (
               <article
                 key={i}
-                className="group block overflow-hidden rounded-sm card-lift reveal"
+                className="group block bg-brand-cream overflow-hidden rounded-sm card-lift reveal cursor-pointer"
                 style={{ animationDelay: `${i * 0.08}s` }}
               >
                 <div className="overflow-hidden aspect-[4/3]">
@@ -504,7 +521,7 @@ export default async function Home({ menuItems, featuredReviews }: HomeProps) {
                     className="group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
-                <div className="pt-4 pb-2">
+                <div className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="news-badge">{n.tag}</span>
                     <span className="text-xs text-brand-dark/40">{n.date}</span>

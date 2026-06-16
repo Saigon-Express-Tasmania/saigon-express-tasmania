@@ -18,6 +18,7 @@ import {
   FEATURED_CATERING_PACK_CATEGORY,
   type CateringPack,
 } from "@/lib/supabase/catering-packs";
+import { stringToSlug } from "@/lib/utils";
 
 type CateringProps = {
   packs: CateringPack[];
@@ -189,7 +190,7 @@ export default function Catering({ packs }: CateringProps) {
       </section>
 
       {/* Catering packs */}
-      <section id="packs" className="py-16 bg-brand-cream">
+      <section id="catering-packs" className="py-16 bg-brand-cream">
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
@@ -301,7 +302,7 @@ export default function Catering({ packs }: CateringProps) {
             </div>
           ) : (
             menuGroups.map((group, groupIndex) => (
-              <div key={group.category}>
+              <div key={group.category} id={stringToSlug(group.category)}>
                 <div className="mb-4">
                   <h3 className="font-serif text-brand-dark text-2xl mb-6 pb-2 border-b border-brand-cream">
                     {group.category}

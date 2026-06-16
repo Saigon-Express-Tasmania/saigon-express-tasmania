@@ -364,7 +364,7 @@ export default function OurStory() {
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url('/manus-storage/saigo_express__hero_Native_5d9afb69.webp')`,
+            backgroundImage: `url('/manus-storage/saigo_express__hero_Native_5d9afb69.jpg')`,
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
@@ -471,9 +471,10 @@ export default function OurStory() {
 
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-14">
             {dishes.map((dish, i) => (
-              <div
+              <Link
                 key={dish.name}
                 className="group rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                href="/menu"
               >
                 <div className="relative aspect-video overflow-hidden">
                   <AppImage
@@ -491,7 +492,7 @@ export default function OurStory() {
                     {dish.description}
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 

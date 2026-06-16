@@ -65,7 +65,6 @@ export default function Wholesale({
     .map((p) => pickWholesaleImageUrl(p.imageUrls, [1448, 1024, 512, 256]))
     .filter((url): url is string => Boolean(url));
 
-  const heroImage = imageUrls[0] ?? null;
   const splitImage = imageUrls[1] ?? imageUrls[0] ?? null;
 
   const [submitted, setSubmitted] = useState(false);
@@ -104,21 +103,14 @@ export default function Wholesale({
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero Section */}
-      <section className="relative h-[480px] overflow-hidden">
-        {heroImage ? (
-          <>
-            <AppImage
-              src={heroImage}
-              alt={t("hero.alt")}
-              fill
-              priority
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-black/55" />
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-black" />
-        )}
+      <section className="relative w-full aspect-3/1 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('/manus-storage/wholesale__hero.jpg')`,
+          }}
+        />
+        <div className="absolute inset-0 bg-black/55" />
         <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-4">
             {t("hero.tag")}
@@ -250,7 +242,7 @@ export default function Wholesale({
 
       {/* Process Flow */}
       <section className="bg-white">
-        <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2">
+        <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 items-center">
           <div className="relative h-72 lg:min-h-[420px] overflow-hidden">
             {splitImage ? (
               <AppImage

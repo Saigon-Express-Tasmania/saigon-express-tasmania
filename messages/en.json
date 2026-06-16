@@ -1610,9 +1610,9 @@
       "eyebrow": "Fresh Daily · Tasmania",
       "heading": "Our Food",
       "subheading": "From our signature Bánh Mì to hearty Phở and refreshing Rice Paper Rolls, every item is made fresh daily with authentic Vietnamese flavours.",
-      "ctaMenu": "🛒 View Menu",
-      "ctaStore": "📍 Find Your Nearest Store",
-      "ctaDelivery": "🚗 Order Delivery"
+      "ctaMenu": "View Menu",
+      "ctaStore": "Find Your Nearest Store",
+      "ctaDelivery": "Order Delivery"
     },
     "search": {
       "placeholder": "Search our menu…",
