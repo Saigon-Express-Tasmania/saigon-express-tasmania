@@ -690,7 +690,12 @@
       "description": "Tất cả các gói tiệc đều được chuẩn bị tươi mới trong ngày, sử dụng bao bì thân thiện với môi trường và giao tận nơi sự kiện.",
       "empty": "Hiện tại không có gói tiệc nào sẵn sàng.",
       "serves": "Phục vụ {serves} khách",
-      "enquire": "Yêu Cầu Tư Vấn"
+      "enquire": "Yêu Cầu Tư Vấn",
+      "addToOrder": "Thêm vào đơn",
+      "quoteRequired": "Vui lòng liên hệ để nhận báo giá cho món này."
+    },
+    "guestOrder": {
+      "resolveFirst": "Bạn đã có một đơn tiệc đang mở. Vui lòng xử lý đơn trước đó trước khi thêm món mới. Dùng Last order trên thanh điều hướng để theo dõi hoặc thanh toán khi sẵn sàng."
     },
     "menu": {
       "label": "THỰC ĐƠN TIỆC ĐẦY ĐỦ",
@@ -701,6 +706,7 @@
       "empty": "Hiện chưa có món ăn thực đơn tiệc nào sẵn sàng.",
       "caters": "Phục vụ {serves} khách",
       "enquire": "Yêu Cầu Ngay",
+      "addToOrder": "Thêm vào đơn",
       "customPrice": "Giá tùy chỉnh",
       "proteinLabel": "TÙY CHỌN PHẦN THỊT/NHÂN",
       "proteinList": "Heo Quay Giòn · Xá Xíu · Gà Sốt Satay · Gà Rán Giòn · Gà Xào Sả · Bò Xào Sả · Chay & Đậu Hũ · Tôm Nướng · Vịt Quay",
@@ -892,11 +898,21 @@
     "signedOut": "Đã đăng xuất.",
     "backToTracking": "Theo dõi đơn khác",
     "backToOrders": "Xem tất cả đơn hàng",
+    "placedSuccess": "Đã đặt đơn. Mã theo dõi của bạn là {trackingNumber}. Hãy lưu lại để kiểm tra trạng thái và thanh toán sau.",
+    "paymentSuccess": "Thanh toán thành công. Đơn tiệc của bạn đã được xác nhận.",
+    "paymentCancelled": "Thanh toán đã bị hủy. Bạn có thể thử lại khi sẵn sàng.",
+    "paymentNotReady": "Đơn hàng này chưa sẵn sàng để thanh toán.",
+    "paymentEmailRequired": "Cần có email trên đơn hàng trước khi bắt đầu thanh toán.",
+    "paymentFailed": "Không thể bắt đầu thanh toán.",
+    "preparingPayment": "Đang chuẩn bị thanh toán an toàn…",
+    "payNow": "Thanh toán ngay",
+    "payNowLoading": "Đang mở trang thanh toán…",
     "summary": {
       "order": "Đơn hàng",
       "orderDate": "Ngày đặt",
       "orderType": "Loại đơn",
-      "totalAmount": "Tổng tiền"
+      "totalAmount": "Tổng tiền",
+      "trackingNumber": "Mã theo dõi"
     },
     "status": {
       "pending": "Chờ xử lý",
@@ -908,6 +924,10 @@
       "ready": "Sẵn sàng",
       "completed": "Hoàn tất",
       "cancelled": "Đã hủy"
+    },
+    "catering": {
+      "pendingNotice": "Đội ngũ của chúng tôi đang chuẩn bị báo giá. Bạn có thể quay lại trang này bất cứ lúc nào bằng mã theo dõi để kiểm tra trạng thái và thanh toán khi sẵn sàng.",
+      "awaitingPaymentNotice": "Báo giá của bạn đã sẵn sàng. Xem tổng bên dưới và tiến hành thanh toán."
     },
     "timeline": {
       "title": "Tiến Trình",

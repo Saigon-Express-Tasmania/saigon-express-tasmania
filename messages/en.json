@@ -697,7 +697,12 @@
       "description": "All packs include fresh preparation on the day, eco-friendly packaging, and delivery to your venue.",
       "empty": "No catering packs available right now.",
       "serves": "Serves {serves}",
-      "enquire": "Enquire Now"
+      "enquire": "Enquire Now",
+      "addToOrder": "Add to order",
+      "quoteRequired": "Contact us for pricing on this item."
+    },
+    "guestOrder": {
+      "resolveFirst": "You already have an open catering order. Please resolve your last order before adding new items. Use Last order in the header to track status or pay when ready."
     },
     "menu": {
       "label": "FULL CATERING MENU",
@@ -708,6 +713,7 @@
       "empty": "No catering menu items available right now.",
       "caters": "Caters {serves}",
       "enquire": "Enquire Now",
+      "addToOrder": "Add to order",
       "customPrice": "Custom price",
       "proteinLabel": "CHOOSE YOUR PROTEIN",
       "proteinList": "Crispy Roast Pork · BBQ Pork · Satay Chicken · Fried Chicken · Lemongrass Chicken · Lemongrass Beef · Veggie & Tofu · Grilled Prawns · BBQ Duck",
@@ -891,11 +897,21 @@
     "signedOut": "Signed out.",
     "backToTracking": "Track another order",
     "backToOrders": "View all orders",
+    "placedSuccess": "Order placed. Your tracking number is {trackingNumber}. Save it to check status and pay later.",
+    "paymentSuccess": "Payment successful. Your catering order is confirmed.",
+    "paymentCancelled": "Payment was cancelled. You can try again when ready.",
+    "paymentNotReady": "This order is not ready for payment yet.",
+    "paymentEmailRequired": "We need an email address on this order before payment can start.",
+    "paymentFailed": "Failed to start payment.",
+    "preparingPayment": "Preparing secure payment…",
+    "payNow": "Pay now",
+    "payNowLoading": "Opening payment…",
     "summary": {
       "order": "Order",
       "orderDate": "Order Date",
       "orderType": "Order Type",
-      "totalAmount": "Total Amount"
+      "totalAmount": "Total Amount",
+      "trackingNumber": "Tracking number"
     },
     "status": {
       "pending": "Pending",
@@ -907,6 +923,10 @@
       "ready": "Ready",
       "completed": "Completed",
       "cancelled": "Cancelled"
+    },
+    "catering": {
+      "pendingNotice": "Our team is preparing your quotation. You can return to this page anytime with your tracking number to check status and pay when ready.",
+      "awaitingPaymentNotice": "Your quotation is ready. Review the totals below and proceed to payment."
     },
     "timeline": {
       "title": "Progress",

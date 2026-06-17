@@ -45,7 +45,7 @@ export type CateringShippingAddress = {
 
 export type CateringOrderInput = {
   mode: StripePaymentMode;
-  customerAccount: string;
+  customerAccount?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -223,7 +223,11 @@ export function validateCateringOrderInput(body: unknown): CateringOrderInput {
 
   const data = body as Record<string, unknown>;
   const mode = parsePaymentMode(data.mode);
-  const customerAccount = String(data.customerAccount ?? "").trim();
+  const customerAccountRaw = data.customerAccount;
+  const customerAccount =
+    customerAccountRaw == null || String(customerAccountRaw).trim() === ""
+      ? null
+      : String(customerAccountRaw).trim();
   const customerName = String(data.customerName ?? "").trim();
   const customerEmail = String(data.customerEmail ?? "").trim();
   const customerPhone = String(data.customerPhone ?? "").trim();
@@ -231,8 +235,8 @@ export function validateCateringOrderInput(body: unknown): CateringOrderInput {
   const eventDate = String(data.pickupTime ?? data.eventDate ?? "").trim();
   const notes = data.notes != null ? String(data.notes).trim() : undefined;
 
-  if (!customerAccount || !isValidUuid(customerAccount)) {
-    throw new Error("Please sign in to place a catering order");
+  if (customerAccount && !isValidUuid(customerAccount)) {
+    throw new Error("Invalid customer account");
   }
   if (!customerName) throw new Error("Please enter your name");
   if (!customerEmail || !isValidEmail(customerEmail)) {
@@ -342,7 +346,7 @@ export async function createPendingCateringOrder(
   const orderPayload = {
     order_type: "catering",
     is_testing: input.mode === "test",
-    customer_account: input.customerAccount,
+    customer_account: input.customerAccount ?? null,
     customer_name: input.customerName,
     customer_email: input.customerEmail,
     customer_phone: input.customerPhone,
@@ -409,4 +413,70 @@ export async function createPendingCateringOrder(
       result?.invoice_number ?? formatOrderInvoiceNumber(orderId, requestedTargetDate),
     ),
   };
+}
+
+export type CancelCateringOrderInput = {
+  orderId: number;
+  cancelToken: string;
+  customerAccount?: string | null;
+};
+
+export type CancelCateringOrderResult = {
+  orderId: number;
+};
+
+export function validateCancelCateringOrderInput(body: unknown): CancelCateringOrderInput {
+  if (!body || typeof body !== "object") {
+    throw new Error("Invalid request body");
+  }
+
+  const data = body as Record<string, unknown>;
+  const orderId = Number(data.orderId);
+  const cancelToken = String(data.cancelToken ?? "").trim();
+  const customerAccountRaw = data.customerAccount;
+  const customerAccount =
+    customerAccountRaw == null || String(customerAccountRaw).trim() === ""
+      ? null
+      : String(customerAccountRaw).trim();
+
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    throw new Error("Invalid order id");
+  }
+
+  if (!cancelToken) {
+    throw new Error("cancel_token is required");
+  }
+
+  if (customerAccount && !isValidUuid(customerAccount)) {
+    throw new Error("Invalid customer account");
+  }
+
+  return { orderId, cancelToken, customerAccount };
+}
+
+export async function cancelCateringOrder(
+  input: CancelCateringOrderInput,
+): Promise<CancelCateringOrderResult> {
+  const supabase = createServiceClient();
+  const archivedReason = input.customerAccount
+    ? "cancelled_by_member"
+    : "cancelled_by_guest";
+
+  const { data, error } = await supabase.rpc("cancel_catering_order", {
+    p_order_id: input.orderId,
+    p_cancel_token: input.cancelToken,
+    p_customer_account: input.customerAccount ?? null,
+    p_archived_reason: archivedReason,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const orderId = Number(data);
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    throw new Error("Failed to cancel catering order");
+  }
+
+  return { orderId };
 }

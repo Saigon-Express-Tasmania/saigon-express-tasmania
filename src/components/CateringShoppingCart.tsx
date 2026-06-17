@@ -5,8 +5,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import CateringOrderReviewPanel from "@/components/CateringOrderReviewPanel";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import { useCateringCart } from "@/contexts/CateringCartContext";
+import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import {
+  buildCateringOrderReviewForGuest,
   buildCateringOrderReviewFromProfile,
   serializeCateringOrderReviewForPlacement,
   validateCateringOrderReview,
@@ -50,6 +52,7 @@ const panelMotion = {
 export default function CateringShoppingCart() {
   const router = useRouter();
   const { profile, user, session, updateOwnProfile } = useSupabase();
+  const { saveGuestOrder } = useGuestCateringOrder();
   const {
     cart,
     cartOpen,
@@ -94,37 +97,39 @@ export default function CateringShoppingCart() {
       return;
     }
 
-    if (!user || !profile) {
-      toast.error("Please sign in to place an order.");
-      return;
+    if (user && profile) {
+      const customerEmail = profile.email?.trim() ?? user.email?.trim() ?? "";
+      const customerPhone = profile.phone?.trim() ?? "";
+
+      if (!customerEmail) {
+        toast.error("Please add an email to your profile before placing an order.");
+        return;
+      }
+      if (!customerPhone) {
+        toast.error("Please add a phone number to your profile before placing an order.");
+        return;
+      }
+
+      setOrderReview(
+        buildCateringOrderReviewFromProfile(profile, customerEmail, sortedCart),
+      );
+    } else {
+      setOrderReview(buildCateringOrderReviewForGuest(sortedCart));
     }
 
-    const customerEmail = profile.email?.trim() ?? user.email?.trim() ?? "";
-    const customerPhone = profile.phone?.trim() ?? "";
-
-    if (!customerEmail) {
-      toast.error("Please add an email to your profile before placing an order.");
-      return;
-    }
-    if (!customerPhone) {
-      toast.error("Please add a phone number to your profile before placing an order.");
-      return;
-    }
-
-    setOrderReview(
-      buildCateringOrderReviewFromProfile(profile, customerEmail, sortedCart),
-    );
     setCartView("review");
   };
 
   const handlePlaceOrder = async () => {
-    if (!user || !profile || !orderReview) {
-      toast.error("Please sign in to place an order.");
+    if (!orderReview) {
+      toast.error("Please review your order details.");
       return;
     }
 
-    const accessToken = session?.access_token;
-    if (!accessToken) {
+    const isMemberOrder = Boolean(user && profile);
+    const accessToken = session?.access_token ?? null;
+
+    if (isMemberOrder && !accessToken) {
       toast.error("Please sign in to place an order.");
       return;
     }
@@ -143,52 +148,73 @@ export default function CateringShoppingCart() {
       return next ? next : null;
     };
 
-    const profileBackfill: UserProfileSelfUpdate = {};
-    const applyIfBlank = <K extends keyof UserProfileSelfUpdate>(
-      key: K,
-      profileValue: string | null | undefined,
-      reviewValue: string | null | undefined,
-    ) => {
-      if (trimOrNull(profileValue)) return;
-      const candidate = trimOrNull(reviewValue);
-      if (candidate) {
-        profileBackfill[key] = candidate as UserProfileSelfUpdate[K];
-      }
-    };
-
-    applyIfBlank("phone", profile.phone, reviewForPlacement.customer_phone);
-    applyIfBlank("shipping_dba_name", profile.shipping_dba_name, reviewForPlacement.shipping_dba_name);
-    applyIfBlank(
-      "shipping_preferred_window",
-      profile.shipping_preferred_window,
-      reviewForPlacement.shipping_preferred_window,
-    );
-    applyIfBlank("shipping_address", profile.shipping_address, reviewForPlacement.shipping_address);
-    applyIfBlank("shipping_city", profile.shipping_city, reviewForPlacement.shipping_city);
-    applyIfBlank("shipping_state", profile.shipping_state, reviewForPlacement.shipping_state);
-    applyIfBlank(
-      "shipping_postal_code",
-      profile.shipping_postal_code,
-      reviewForPlacement.shipping_postal_code,
-    );
-    applyIfBlank("shipping_country", profile.shipping_country, reviewForPlacement.shipping_country);
-
     setIsPlacingOrder(true);
     try {
-      if (Object.keys(profileBackfill).length > 0) {
-        await updateOwnProfile(profileBackfill);
+      if (isMemberOrder && profile) {
+        const profileBackfill: UserProfileSelfUpdate = {};
+        const applyIfBlank = <K extends keyof UserProfileSelfUpdate>(
+          key: K,
+          profileValue: string | null | undefined,
+          reviewValue: string | null | undefined,
+        ) => {
+          if (trimOrNull(profileValue)) return;
+          const candidate = trimOrNull(reviewValue);
+          if (candidate) {
+            profileBackfill[key] = candidate as UserProfileSelfUpdate[K];
+          }
+        };
+
+        applyIfBlank("phone", profile.phone, reviewForPlacement.customer_phone);
+        applyIfBlank(
+          "shipping_dba_name",
+          profile.shipping_dba_name,
+          reviewForPlacement.shipping_dba_name,
+        );
+        applyIfBlank(
+          "shipping_preferred_window",
+          profile.shipping_preferred_window,
+          reviewForPlacement.shipping_preferred_window,
+        );
+        applyIfBlank(
+          "shipping_address",
+          profile.shipping_address,
+          reviewForPlacement.shipping_address,
+        );
+        applyIfBlank("shipping_city", profile.shipping_city, reviewForPlacement.shipping_city);
+        applyIfBlank(
+          "shipping_state",
+          profile.shipping_state,
+          reviewForPlacement.shipping_state,
+        );
+        applyIfBlank(
+          "shipping_postal_code",
+          profile.shipping_postal_code,
+          reviewForPlacement.shipping_postal_code,
+        );
+        applyIfBlank(
+          "shipping_country",
+          profile.shipping_country,
+          reviewForPlacement.shipping_country,
+        );
+
+        if (Object.keys(profileBackfill).length > 0) {
+          await updateOwnProfile(profileBackfill);
+        }
       }
 
       const result = await invokeEdgeFunction<{
         orderId: number;
         trackingToken: string;
+        cancelToken: string;
         invoiceNumber: string;
       }>("catering-order", {
         method: "POST",
         accessToken,
         body: {
           mode: getClientStripeMode(),
-          customerAccount: profile.id,
+          ...(isMemberOrder && profile
+            ? { customerAccount: profile.id }
+            : {}),
           ...placementFields,
           items: cart.map((item) => ({
             productId: item.productId,
@@ -205,12 +231,28 @@ export default function CateringShoppingCart() {
         throw new Error(result.error || "Failed to place catering order");
       }
 
+      const trackingToken = result.data.trackingToken;
       clearCart();
       setCartView("cart");
       setOrderReview(null);
       setCartOpen(false);
       setIsPlacingOrder(false);
-      router.push("/member/catering-orders?placed=success");
+
+      if (isMemberOrder) {
+        router.push("/member/catering-orders?placed=success");
+        return;
+      }
+
+      saveGuestOrder({
+        orderId: result.data.orderId,
+        trackingToken,
+        cancelToken: result.data.cancelToken,
+        invoiceNumber: result.data.invoiceNumber,
+        placedAt: Date.now(),
+      });
+      toast.success(
+        "Order placed! Use Last order in the header to track status and pay when ready.",
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to place catering order";

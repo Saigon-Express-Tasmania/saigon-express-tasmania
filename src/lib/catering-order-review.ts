@@ -102,6 +102,78 @@ export function buildCateringOrderReviewFromProfile(
   };
 }
 
+export function buildCateringOrderReviewForGuest(
+  items: CateringCartItem[],
+): CateringOrderReviewForm {
+  const totals = buildCateringOrderTotals(toPricingLines(items));
+
+  return {
+    customer_name: "",
+    customer_email: "",
+    customer_phone: "",
+    event_date: "",
+    guest_count: "",
+    shipping_dba_name: "",
+    shipping_address: "",
+    shipping_city: "",
+    shipping_state: "",
+    shipping_postal_code: "",
+    shipping_country: WHOLESALE_DEFAULT_COUNTRY,
+    shipping_preferred_window: "",
+    notes: null,
+    coupon_code: null,
+    ...totals,
+  };
+}
+
+export type CateringPaymentFinancialDetails = {
+  subtotal_ex_gst: number;
+  gst_total: number;
+  grand_total_inc_gst: number;
+  shipping_fee: number;
+  coupon_discount: number;
+  wholesale_discount: number;
+  coupon_code: string | null;
+  currency: string;
+};
+
+export function buildCateringPaymentFinancialDetails(input: {
+  subtotal: number;
+  coupon_code?: string | null;
+  coupon_discount?: number;
+  wholesale_discount?: number;
+  tax_total?: number;
+  shipping_fee?: number;
+  grand_total?: number;
+  items?: Array<{ qty: number; unit_price: number }>;
+}): CateringPaymentFinancialDetails {
+  const subtotalExGst =
+    input.items && input.items.length > 0
+      ? input.items.reduce((sum, item) => sum + item.qty * item.unit_price, 0)
+      : input.subtotal;
+  const couponDiscount = input.coupon_discount ?? 0;
+  const wholesaleDiscount = input.wholesale_discount ?? 0;
+  const totalDiscount = couponDiscount + wholesaleDiscount;
+  const gstTotal = input.tax_total ?? 0;
+  const shippingFee = input.shipping_fee ?? 0;
+  const grandTotal = Math.max(
+    input.grand_total ??
+      subtotalExGst - totalDiscount + gstTotal + shippingFee,
+    0,
+  );
+
+  return {
+    subtotal_ex_gst: Number(subtotalExGst.toFixed(2)),
+    gst_total: Number(gstTotal.toFixed(2)),
+    grand_total_inc_gst: Number(grandTotal.toFixed(2)),
+    shipping_fee: Number(shippingFee.toFixed(2)),
+    coupon_discount: Number(couponDiscount.toFixed(2)),
+    wholesale_discount: Number(wholesaleDiscount.toFixed(2)),
+    coupon_code: input.coupon_code ?? null,
+    currency: "AUD",
+  };
+}
+
 export function validateCateringOrderReview(
   form: CateringOrderReviewForm,
 ): string | null {

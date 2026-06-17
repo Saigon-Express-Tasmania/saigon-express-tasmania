@@ -1,7 +1,7 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -13,12 +13,19 @@ import {
   ChevronRight,
   MapPin,
   Phone,
+  Plus,
 } from "lucide-react";
 import {
   FEATURED_CATERING_PACK_CATEGORY,
   type CateringPack,
+  type CateringTierPrice,
 } from "@/lib/supabase/catering-packs";
 import { stringToSlug } from "@/lib/utils";
+import { useCateringCart } from "@/contexts/CateringCartContext";
+import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
+import { shouldBlockGuestCateringCart } from "@/lib/guest-catering-order-session";
+import { useSupabase } from "@/hooks/useSupabase";
+import { parseCateringPrice } from "@/lib/catering-price";
 
 type CateringProps = {
   packs: CateringPack[];
@@ -35,8 +42,53 @@ interface StatItem {
   label: string;
 }
 
+function PackOrderButton({
+  pack,
+  selectedTier,
+  onAdd,
+  orderLabel,
+  quoteLabel,
+}: {
+  pack: CateringPack;
+  selectedTier: CateringTierPrice | null;
+  onAdd: () => void;
+  orderLabel: string;
+  quoteLabel: string;
+}) {
+  const unitPrice =
+    selectedTier != null
+      ? parseCateringPrice(selectedTier.price)
+      : parseCateringPrice(pack.price);
+
+  if (unitPrice == null) {
+    return (
+      <p className="text-xs text-brand-dark/45">{quoteLabel}</p>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className="inline-flex w-full items-center justify-center gap-2 bg-brand-red px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-red/90 sm:w-auto"
+    >
+      <Plus size={14} />
+      {orderLabel}
+    </button>
+  );
+}
+
 export default function Catering({ packs }: CateringProps) {
   const t = useTranslations("Catering");
+  const { isSignedIn } = useSupabase();
+  const { addToCart } = useCateringCart();
+  const { session, trackedOrder, setLastOrderOpen, isHydrated } =
+    useGuestCateringOrder();
+  const guestOrderBlocksCart =
+    isHydrated &&
+    shouldBlockGuestCateringCart(session, trackedOrder, isSignedIn);
+  const [resolveOrderWarning, setResolveOrderWarning] = useState(false);
+  const [tierSelection, setTierSelection] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     contactName: "",
@@ -52,6 +104,27 @@ export default function Catering({ packs }: CateringProps) {
   const whyUsList: WhyUsItem[] = t.raw("whyUs.items");
   const statsList: StatItem[] = t.raw("stats");
 
+  useEffect(() => {
+    if (!guestOrderBlocksCart) {
+      setResolveOrderWarning(false);
+    }
+  }, [guestOrderBlocksCart]);
+
+  const handleBlockedAddToOrder = () => {
+    const message = t("guestOrder.resolveFirst");
+    toast.warning(message, {
+      id: "catering-resolve-order",
+      duration: 7000,
+    });
+    setResolveOrderWarning(true);
+    setLastOrderOpen(true);
+    requestAnimationFrame(() => {
+      document
+        .getElementById("catering-resolve-order-warning")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  };
+
   const handleEnquireItem = (itemName: string, price: string) => {
     setForm((prev) => ({
       ...prev,
@@ -61,6 +134,34 @@ export default function Catering({ packs }: CateringProps) {
     }));
     const el = document.getElementById("catering-enquiry-form");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleAddPack = (
+    pack: CateringPack,
+    tier: CateringTierPrice | null,
+  ) => {
+    if (guestOrderBlocksCart) {
+      handleBlockedAddToOrder();
+      return;
+    }
+
+    const unitPrice =
+      tier != null
+        ? parseCateringPrice(tier.price)
+        : parseCateringPrice(pack.price);
+
+    if (unitPrice == null) {
+      toast.error("This item requires a custom quote. Please contact catering.");
+      return;
+    }
+
+    addToCart({
+      productId: pack.id,
+      productName: pack.name,
+      variantLabel: tier?.size ?? null,
+      unitPrice,
+      imageUrl: pack.img,
+    });
   };
 
   const submitInquiry = trpc.public.submitPartnerInquiry.useMutation({
@@ -123,7 +224,7 @@ export default function Catering({ packs }: CateringProps) {
           </p>
           <div className="flex flex-wrap gap-3">
             <a
-              href="#packs"
+              href="#catering-packs"
               className="bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors inline-flex items-center gap-2"
             >
               {t("hero.ctaPacks")} <ChevronRight size={15} />
@@ -192,6 +293,15 @@ export default function Catering({ packs }: CateringProps) {
       {/* Catering packs */}
       <section id="catering-packs" className="py-16 bg-brand-cream">
         <div className="max-w-[1280px] mx-auto px-6">
+          {guestOrderBlocksCart && resolveOrderWarning ? (
+            <div
+              id="catering-resolve-order-warning"
+              role="alert"
+              className="mb-8 rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950"
+            >
+              {t("guestOrder.resolveFirst")}
+            </div>
+          ) : null}
           <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
               {t("packs.label")}
@@ -260,12 +370,13 @@ export default function Catering({ packs }: CateringProps) {
                         </li>
                       ))}
                     </ul>
-                    <a
-                      href="#catering-enquiry-form"
-                      className="inline-flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 text-sm font-semibold hover:bg-brand-red transition-colors"
-                    >
-                      {t("packs.enquire")} <ChevronRight size={14} />
-                    </a>
+                    <PackOrderButton
+                      pack={pack}
+                      selectedTier={null}
+                      onAdd={() => handleAddPack(pack, null)}
+                      orderLabel={t("packs.addToOrder")}
+                      quoteLabel={t("packs.quoteRequired")}
+                    />
                   </div>
                 </div>
               ))
@@ -311,7 +422,15 @@ export default function Catering({ packs }: CateringProps) {
                 <div
                   className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${groupIndex === menuGroups.length - 1 ? "mb-10" : "mb-12"}`}
                 >
-                  {group.items.map((item) => (
+                  {group.items.map((item) => {
+                    const selectedTierIndex = tierSelection[item.id] ?? 0;
+                    const selectedTier = item.prices[selectedTierIndex] ?? null;
+                    const hasOrderPrice =
+                      parseCateringPrice(
+                        selectedTier?.price ?? item.price ?? item.prices[0]?.price,
+                      ) != null;
+
+                    return (
                     <div
                       key={item.id}
                       className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full"
@@ -357,42 +476,56 @@ export default function Catering({ packs }: CateringProps) {
                             ))}
                           </ul>
                         )}
-                        {item.prices.length > 0 && (
-                          <div className="space-y-1 mt-2 mb-4">
-                            {item.prices.map((p, j) => (
-                              <div
-                                key={j}
-                                className="flex items-center justify-between text-sm"
-                              >
-                                <span className="text-brand-dark/60">
-                                  {p.size}{" "}
-                                  <span className="text-xs text-brand-dark/40">
-                                    ({p.serves})
-                                  </span>
-                                </span>
-                                <span className="font-bold text-brand-red">
-                                  {p.price}
-                                </span>
-                              </div>
-                            ))}
+                        {item.prices.length > 0 ? (
+                          <div className="space-y-2 mt-2 mb-4">
+                            <label className="text-[11px] font-semibold uppercase tracking-wide text-brand-dark/45">
+                              Size
+                            </label>
+                            <select
+                              value={selectedTierIndex}
+                              onChange={(event) =>
+                                setTierSelection((prev) => ({
+                                  ...prev,
+                                  [item.id]: Number(event.target.value),
+                                }))
+                              }
+                              className="w-full cursor-pointer rounded-lg border border-brand-dark/15 bg-white px-3 py-2 text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-red/30"
+                            >
+                              {item.prices.map((tier, index) => (
+                                <option key={index} value={index}>
+                                  {tier.size} · {tier.price} ({tier.serves})
+                                </option>
+                              ))}
+                            </select>
                           </div>
+                        ) : null}
+                        {hasOrderPrice ? (
+                          <PackOrderButton
+                            pack={item}
+                            selectedTier={selectedTier}
+                            onAdd={() => handleAddPack(item, selectedTier)}
+                            orderLabel={t("menu.addToOrder")}
+                            quoteLabel={t("menu.customPrice")}
+                          />
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleEnquireItem(
+                                item.name,
+                                item.price ??
+                                  item.prices[0]?.price ??
+                                  t("menu.customPrice"),
+                              )
+                            }
+                            className="w-full bg-brand-red text-white text-xs font-bold py-2.5 px-4 hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-1.5 mt-auto"
+                          >
+                            {t("menu.enquire")} <ChevronRight size={13} />
+                          </button>
                         )}
-                        <button
-                          onClick={() =>
-                            handleEnquireItem(
-                              item.name,
-                              item.price ??
-                                item.prices[0]?.price ??
-                                t("menu.customPrice"),
-                            )
-                          }
-                          className="w-full bg-brand-red text-white text-xs font-bold py-2.5 px-4 hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-1.5 mt-auto"
-                        >
-                          {t("menu.enquire")} <ChevronRight size={13} />
-                        </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))

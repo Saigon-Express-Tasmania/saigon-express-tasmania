@@ -52,6 +52,7 @@ export default async function LocaleOrderTrackingDetailsPage({
   return (
     <OrderTrackingDetails
       order={order}
+      trackingToken={trackingToken}
       pickupStore={pickupStore}
       invoiceCreatorStore={invoiceCreatorStore}
     />

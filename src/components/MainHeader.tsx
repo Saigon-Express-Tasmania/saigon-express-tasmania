@@ -4,9 +4,13 @@ import AppImage from "@/components/AppImage";
 import { useCallback, useMemo, useState } from "react";
 import Link from "@/components/link";
 import { useCart } from "@/contexts/CartContext";
+import { useCateringCart } from "@/contexts/CateringCartContext";
+import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { useSupabase } from "@/hooks/useSupabase";
-import { MapPin, Menu, ShoppingCart, X } from "lucide-react";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
+import { MapPin, Menu, ClipboardList, ShoppingCart, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
@@ -18,14 +22,57 @@ type MainHeaderProps = {
   storeLocations: StoreLocation[];
 };
 
+function stripLocalePrefix(pathname: string): string {
+  for (const locale of SUPPORTED_LOCALES) {
+    if (locale === DEFAULT_LOCALE) continue;
+    const prefix = `/${locale}`;
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return pathname.slice(prefix.length) || "/";
+    }
+  }
+  return pathname;
+}
+
+function isCateringShopRoute(pathname: string): boolean {
+  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
+  return path === "/catering";
+}
+
 export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const tLinks = useTranslations("NavLinks");
   const t = useTranslations("Home");
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
+  const pathname = usePathname() ?? "/";
   const { cartCount, setCartOpen } = useCart();
+  const {
+    cartCount: cateringCartCount,
+    setCartOpen: setCateringCartOpen,
+    isHydrated: isCateringCartHydrated,
+  } = useCateringCart();
+  const {
+    hasActiveGuestOrder,
+    setLastOrderOpen,
+    isHydrated: isGuestOrderHydrated,
+  } = useGuestCateringOrder();
   const { isSignedIn, profile, authMetadata } = useSupabase();
+  const isCateringPage = isCateringShopRoute(pathname);
+  const showGuestLastOrder =
+    isCateringPage && !isSignedIn && isGuestOrderHydrated && hasActiveGuestOrder;
+  const showCateringCart = isCateringPage && !showGuestLastOrder;
+  const activeCartCount = showCateringCart ? cateringCartCount : cartCount;
+  const openActiveCart = () => {
+    if (showGuestLastOrder) {
+      setLastOrderOpen(true);
+      return;
+    }
+    if (showCateringCart) {
+      setCateringCartOpen(true);
+    } else {
+      setCartOpen(true);
+    }
+  };
 
   const myAccountHref = useMemo(() => {
     if (!isSignedIn) return "/member";
@@ -120,15 +167,37 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
             >
               👤 {tLinks("my_account")}
             </Link>
-            {cartCount > 0 ? (
+            {showGuestLastOrder ? (
               <button
-                onClick={() => setCartOpen(true)}
-                className="btn-red text-sm py-2 px-4 flex items-center gap-1.5"
+                type="button"
+                onClick={() => setLastOrderOpen(true)}
+                className="flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/20"
+              >
+                <ClipboardList size={15} />
+                Last order
+              </button>
+            ) : activeCartCount > 0 ? (
+              <button
+                onClick={openActiveCart}
+                className={`text-sm py-2 px-4 flex items-center gap-1.5 ${
+                  showCateringCart
+                    ? "rounded-md border border-emerald-500/40 bg-emerald-500/10 font-semibold text-emerald-700 hover:bg-emerald-500/20"
+                    : "btn-red"
+                }`}
               >
                 <ShoppingCart size={15} />
-                {tLinks("order", {
-                  count: cartCount,
-                })}
+                {showCateringCart
+                  ? `Catering (${activeCartCount})`
+                  : tLinks("order", { count: activeCartCount })}
+              </button>
+            ) : showCateringCart && isCateringCartHydrated ? (
+              <button
+                type="button"
+                onClick={openActiveCart}
+                className="flex items-center gap-1.5 rounded-md border border-brand-dark/15 px-4 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:border-emerald-500/40 hover:text-emerald-700"
+              >
+                <ShoppingCart size={15} />
+                Catering cart
               </button>
             ) : (
               <button

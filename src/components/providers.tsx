@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
 import { CateringCartProvider } from "@/contexts/CateringCartContext";
+import { GuestCateringOrderProvider } from "@/contexts/GuestCateringOrderContext";
 import { WholesaleInventoryProvider } from "@/contexts/WholesaleInventoryContext";
 import WholesaleCartInventorySync from "@/components/WholesaleCartInventorySync";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
@@ -24,6 +25,11 @@ const WholesaleShoppingCart = dynamic(
 
 const CateringShoppingCart = dynamic(
   () => import("@/components/CateringShoppingCart"),
+  { ssr: false },
+);
+
+const CateringGuestLastOrderPanel = dynamic(
+  () => import("@/components/CateringGuestLastOrderPanel"),
   { ssr: false },
 );
 
@@ -56,15 +62,18 @@ export function Providers({
                   }
                 >
                   <CateringCartProvider>
-                    <WholesaleCartInventorySync />
-                    <TooltipProvider>
-                      <AppChrome storeLocations={storeLocations}>
-                        {children}
-                      </AppChrome>
-                      <WholesaleShoppingCart storeLocations={storeLocations} />
-                      <CateringShoppingCart />
-                      <Toaster />
-                    </TooltipProvider>
+                    <GuestCateringOrderProvider>
+                      <WholesaleCartInventorySync />
+                      <TooltipProvider>
+                        <AppChrome storeLocations={storeLocations}>
+                          {children}
+                        </AppChrome>
+                        <WholesaleShoppingCart storeLocations={storeLocations} />
+                        <CateringShoppingCart />
+                        <CateringGuestLastOrderPanel />
+                        <Toaster />
+                      </TooltipProvider>
+                    </GuestCateringOrderProvider>
                   </CateringCartProvider>
                 </WholesaleCartProvider>
               </WholesaleInventoryProvider>

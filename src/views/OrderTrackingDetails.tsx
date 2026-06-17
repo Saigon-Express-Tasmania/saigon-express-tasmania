@@ -13,12 +13,16 @@ import {
   MEMBER_PORTAL_ROUNDED_PANEL_CLASS,
 } from "@/lib/member-portal-surfaces";
 import { useSupabase } from "@/hooks/useSupabase";
+import { buildCateringPaymentFinancialDetails } from "@/lib/catering-order-review";
+import { getClientStripeMode } from "@/lib/stripe-mode";
+import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import {
   buildOrderTimeline,
   formatTrackedCurrency,
   formatTrackedDate,
   formatTrackedOrderId,
+  formatTrackingTokenInput,
   getActiveTimelineStep,
   getCurrentTimelineNotice,
   getExpectedDeliveryLabel,
@@ -46,17 +50,20 @@ import { useTranslations } from "next-intl";
 import {
   Check,
   ClipboardList,
+  CreditCard,
+  Loader2,
   MapPin,
   Package,
   ShieldCheck,
   Truck,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type { StoreLocation } from "@/types";
 
 type OrderTrackingDetailsProps = {
   order: TrackedOrder;
+  trackingToken: string;
   pickupStore?: StoreLocation | null;
   invoiceCreatorStore?: StoreLocation | null;
 };
@@ -118,14 +125,17 @@ function getMemberId(userId: string): string {
 
 export default function OrderTrackingDetails({
   order,
+  trackingToken,
   pickupStore = null,
   invoiceCreatorStore = null,
 }: OrderTrackingDetailsProps) {
   const t = useTranslations("OrderTrackingDetails");
   const router = useRouter();
-  const { profile, authMetadata, isSignedIn, signOut } = useSupabase();
+  const searchParams = useSearchParams();
+  const { profile, authMetadata, isSignedIn, signOut, session, user } = useSupabase();
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [lastOrdersPage, setLastOrdersPage] = useState<string | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
 
   const member = useMemo<MemberHeaderMember | null>(() => {
     if (!profile || !isWholesaleMemberConfirmed(profile, authMetadata)) {
@@ -230,6 +240,102 @@ export default function OrderTrackingDetails({
 
   const lastUpdate = order.status_updated_at ?? order.created_at;
   const totalDiscount = getInvoiceTotalDiscount(order);
+  const isCateringOrder = order.order_type === "catering";
+  const paymentTotals = useMemo(
+    () =>
+      buildCateringPaymentFinancialDetails({
+        subtotal: order.subtotal,
+        coupon_code: order.coupon_code,
+        coupon_discount: order.coupon_discount,
+        wholesale_discount: order.wholesale_discount,
+        tax_total: order.tax_total,
+        shipping_fee: order.shipping_fee,
+        grand_total: order.grand_total,
+        items: order.items,
+      }),
+    [order],
+  );
+  const trackingNumberLabel = formatTrackingTokenInput(trackingToken);
+  const trackingPath = `/order-tracking/${encodeURIComponent(trackingToken)}`;
+
+  useEffect(() => {
+    if (searchParams.get("placed") === "success") {
+      toast.success(t("placedSuccess", { trackingNumber: trackingNumberLabel }), {
+        id: "catering-order-placed",
+        duration: 8000,
+      });
+      router.replace(trackingPath, { scroll: false });
+    }
+  }, [searchParams, router, trackingPath, trackingNumberLabel, t]);
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (!checkout) return;
+
+    if (checkout === "success") {
+      toast.success(t("paymentSuccess"));
+    } else if (checkout === "cancelled") {
+      toast.error(t("paymentCancelled"));
+    }
+
+    router.replace(trackingPath, { scroll: false });
+  }, [searchParams, router, trackingPath, t]);
+
+  const handlePayNow = async () => {
+    if (order.status !== "awaiting_payment") {
+      toast.error(t("paymentNotReady"));
+      return;
+    }
+
+    const customerEmail =
+      order.b2b.buyer?.contact_email?.trim() ||
+      profile?.email?.trim() ||
+      user?.email?.trim() ||
+      "";
+    const customerPhone = order.b2b.buyer?.contact_phone?.trim() || "N/A";
+
+    if (!customerEmail) {
+      toast.error(t("paymentEmailRequired"));
+      return;
+    }
+
+    setIsPaying(true);
+    try {
+      const result = await invokeEdgeFunction<{ url?: string | null }>("checkout", {
+        method: "POST",
+        accessToken: session?.access_token ?? null,
+        body: {
+          mode: getClientStripeMode(),
+          orderType: "catering",
+          orderId: order.id,
+          ...(user?.id ? { customerAccount: user.id } : { trackingToken }),
+          customerName: order.b2b.buyer?.name ?? order.customer_name,
+          customerEmail,
+          customerPhone,
+          fulfillmentType: order.requested_fulfillment_method ?? "delivery",
+          origin: window.location.origin,
+          returnTo: trackingPath,
+          successReturnTo: trackingPath,
+          financialDetails: paymentTotals,
+        },
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error || t("paymentFailed"));
+      }
+
+      if (!result.data.url) {
+        throw new Error(t("paymentFailed"));
+      }
+
+      window.location.href = result.data.url;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t("paymentFailed");
+      toast.error(message);
+      setIsPaying(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -263,6 +369,20 @@ export default function OrderTrackingDetails({
 
   return (
     <MemberPortalBackground className="pb-8">
+      {isPaying ? (
+        <div
+          className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-black/55 backdrop-blur-[2px]"
+          aria-busy="true"
+          aria-live="polite"
+          role="alertdialog"
+          aria-label={t("preparingPayment")}
+        >
+          <div className="mx-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/90 px-6 py-4 shadow-2xl">
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-400" />
+            <p className="text-sm font-semibold text-white">{t("preparingPayment")}</p>
+          </div>
+        </div>
+      ) : null}
       <MemberHeader
         member={member}
         onLogout={() => void handleLogout()}
@@ -286,6 +406,10 @@ export default function OrderTrackingDetails({
             <SummaryField
               label={t("summary.totalAmount")}
               value={formatTrackedCurrency(order.grand_total)}
+            />
+            <SummaryField
+              label={t("summary.trackingNumber")}
+              value={trackingNumberLabel}
             />
             <div className="col-span-2 lg:col-span-1 lg:text-right">
               <span
@@ -320,6 +444,62 @@ export default function OrderTrackingDetails({
               role="status"
             >
               {currentStatusNotice}
+            </div>
+          ) : null}
+
+          {isCateringOrder && order.status === "pending" ? (
+            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100">
+              {t("catering.pendingNotice")}
+            </div>
+          ) : null}
+
+          {isCateringOrder && order.status === "awaiting_payment" ? (
+            <div className="mb-4 space-y-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
+              <p>{t("catering.awaitingPaymentNotice")}</p>
+              <dl className="space-y-1 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <dt>{t("invoice.subtotal")}</dt>
+                  <dd className="tabular-nums">
+                    {formatTrackedCurrency(paymentTotals.subtotal_ex_gst)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <dt>{t("invoice.gst")}</dt>
+                  <dd className="tabular-nums">
+                    {formatTrackedCurrency(paymentTotals.gst_total)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <dt>{t("invoice.shippingFee")}</dt>
+                  <dd className="tabular-nums">
+                    {formatTrackedCurrency(paymentTotals.shipping_fee)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 border-t border-white/15 pt-2 font-semibold text-white">
+                  <dt>{t("invoice.grandTotal")}</dt>
+                  <dd className="tabular-nums">
+                    {formatTrackedCurrency(paymentTotals.grand_total_inc_gst)}
+                  </dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                onClick={() => void handlePayNow()}
+                disabled={isPaying}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPaying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("payNowLoading")}
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4" />
+                    {t("payNow")}
+                  </>
+                )}
+              </button>
             </div>
           ) : null}
 
@@ -554,11 +734,13 @@ export default function OrderTrackingDetails({
               </div>
 
               <div className="mt-6 grid gap-2.5 md:grid-cols-2">
-                <ActionButton
-                  label={t("actions.viewInvoice")}
-                  onClick={() => setInvoiceOpen(true)}
-                  variant="primary"
-                />
+                {order.status !== "pending" ? (
+                  <ActionButton
+                    label={t("actions.viewInvoice")}
+                    onClick={() => setInvoiceOpen(true)}
+                    variant="primary"
+                  />
+                ) : null}
                 <ActionButton label={t("actions.reportIssue")} href="/contact" variant="default" />
               </div>
             </div>

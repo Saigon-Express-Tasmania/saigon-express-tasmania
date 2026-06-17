@@ -314,6 +314,23 @@
     color: #166534 !important;
   }
 
+  [data-sonner-toast].toast-warning,
+  [data-sonner-toast][data-type="warning"] {
+    background: #fffbeb !important;
+    border: 1px solid #fcd34d !important;
+    color: #92400e !important;
+  }
+
+  [data-sonner-toast].toast-warning [data-description],
+  [data-sonner-toast][data-type="warning"] [data-description] {
+    color: #b45309 !important;
+  }
+
+  [data-sonner-toast].toast-warning [data-icon],
+  [data-sonner-toast][data-type="warning"] [data-icon] {
+    color: #d97706 !important;
+  }
+
   @keyframes slide-up {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }

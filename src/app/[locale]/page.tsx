@@ -18,8 +18,6 @@ export default async function LocaleHomePage() {
     getRandomCategoriesByKind("wholesale", 6),
   ]);
 
-  console.log(wholesaleContents);
-
   return (
     <Home
       featuredReviews={featuredReviews}

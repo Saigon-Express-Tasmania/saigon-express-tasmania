@@ -94,7 +94,11 @@ function isWholesaleCartRoute(pathname: string): boolean {
 
 function isCateringCartRoute(pathname: string): boolean {
   const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
-  return path === "/member/catering-shop" || path === "/member/catering-orders";
+  return (
+    path === "/catering" ||
+    path === "/member/catering-shop" ||
+    path === "/member/catering-orders"
+  );
 }
 
 function getCartContext(pathname: string): CartContext | null {

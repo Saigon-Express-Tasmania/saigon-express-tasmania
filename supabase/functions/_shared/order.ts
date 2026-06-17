@@ -83,6 +83,7 @@ export type OrderCheckoutInput = {
   origin: string;
   returnTo?: string;
   successReturnTo?: string;
+  trackingToken?: string;
   buyer?: WholesaleOrderBuyer;
   shippingAddress?: WholesaleShippingAddress;
   billingAddress?: WholesaleBillingAddress;
@@ -1109,6 +1110,8 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   const returnTo = data.returnTo != null ? String(data.returnTo).trim() : undefined;
   const successReturnTo =
     data.successReturnTo != null ? String(data.successReturnTo).trim() : undefined;
+  const trackingToken =
+    data.trackingToken != null ? String(data.trackingToken).trim() : undefined;
 
   if (!customerName) throw new Error("Please enter your name");
   if (!customerEmail || !isValidEmail(customerEmail)) {
@@ -1135,7 +1138,12 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     throw new Error("Please sign in to place a wholesale order");
   }
   if (orderType === "catering" && !customerAccount) {
-    throw new Error("Please sign in to place a catering order");
+    if (existingOrderId == null) {
+      throw new Error("Please sign in to place a catering order");
+    }
+    if (!trackingToken) {
+      throw new Error("Tracking token is required to pay for this order");
+    }
   }
   // Paying an existing catering order doesn't require re-supplying event date.
   if (orderType === "catering" && existingOrderId == null && !pickupTimeRaw) {
@@ -1196,6 +1204,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     origin,
     returnTo: returnTo || undefined,
     successReturnTo: successReturnTo || undefined,
+    trackingToken: trackingToken || undefined,
     buyer,
     shippingAddress,
     billingAddress,
@@ -1220,6 +1229,7 @@ type ExistingCateringOrderRow = {
   status: string;
   order_type: string;
   is_testing: boolean;
+  tracking_token: string | null;
   subtotal: number | string;
   coupon_discount: number | string;
   wholesale_discount: number | string;
@@ -1231,16 +1241,15 @@ type ExistingCateringOrderRow = {
 async function fetchExistingCateringAwaitingPaymentOrder(
   supabase: ReturnType<typeof createServiceClient>,
   orderId: number,
-  customerAccount: string | null | undefined,
+  options: {
+    customerAccount?: string | null;
+    trackingToken?: string | null;
+  },
 ): Promise<ExistingCateringOrderRow> {
-  if (!customerAccount) {
-    throw new Error("Please sign in to pay for this catering order");
-  }
-
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, customer_account, customer_name, customer_email, status, order_type, is_testing, subtotal, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total",
+      "id, customer_account, customer_name, customer_email, status, order_type, is_testing, tracking_token, subtotal, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -1256,9 +1265,21 @@ async function fetchExistingCateringAwaitingPaymentOrder(
   if (order.order_type !== "catering") {
     throw new Error("Only catering orders can be paid from this page");
   }
-  if (order.customer_account !== customerAccount) {
-    throw new Error("You can only pay your own order");
+
+  const customerAccount = options.customerAccount?.trim() || null;
+  const trackingToken = options.trackingToken?.trim() || null;
+
+  if (order.customer_account) {
+    if (!customerAccount) {
+      throw new Error("Please sign in to pay for this catering order");
+    }
+    if (order.customer_account !== customerAccount) {
+      throw new Error("You can only pay your own order");
+    }
+  } else if (!trackingToken || order.tracking_token !== trackingToken) {
+    throw new Error("Invalid tracking token for this order");
   }
+
   if (order.status !== "awaiting_payment") {
     throw new Error("This order is not ready for payment");
   }
@@ -1423,7 +1444,10 @@ export async function createOrderCheckoutSession(
     const existingOrder = await fetchExistingCateringAwaitingPaymentOrder(
       supabase,
       input.existingOrderId,
-      input.customerAccount,
+      {
+        customerAccount: input.customerAccount,
+        trackingToken: input.trackingToken,
+      },
     );
     const totals = resolveExistingCateringCheckoutTotals(
       existingOrder,
