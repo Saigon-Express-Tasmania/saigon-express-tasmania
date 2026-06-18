@@ -3,6 +3,8 @@
 import AppImage from "@/components/AppImage";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
@@ -66,6 +68,8 @@ const CONSULT_LAST_SUBMIT_KEY = "franchise_consult_last_submit_at";
 
 export default function FranchisePage() {
   const t = useTranslations("Franchise");
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
+  const contactPhone = useFormattedContactPhone();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
   const [interestCooldownSeconds, setInterestCooldownSeconds] = useState(0);
@@ -754,32 +758,36 @@ export default function FranchisePage() {
                       {t("interestForm.asideTitle")}
                     </p>
                     <div className="space-y-3">
-                      <a
-                        href="tel:0416036016"
-                        className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                          <Phone size={14} className="text-brand-amber" />
-                        </div>
-                        0416 036 016
-                      </a>
+                      {contactPhone ? (
+                        <a
+                          href={contactPhone.telHref}
+                          className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                            <Phone size={14} className="text-brand-amber" />
+                          </div>
+                          {contactPhone.display}
+                        </a>
+                      ) : null}
                       <div className="flex items-center gap-3 text-sm text-white/80">
                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
                           <MapPin size={14} className="text-brand-amber" />
                         </div>
                         <span>Level 2, 86 Collins St, Hobart TAS 7000</span>
                       </div>
-                      <a
-                        href="mailto:info@saigonexpress.com.au"
-                        className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-brand-red/20 flex items-center justify-center">
-                          <MessageCircle size={14} className="text-brand-red" />
-                        </div>
-                        <span className="font-medium text-brand-red">
-                          info@saigonexpress.com.au
-                        </span>
-                      </a>
+                      {contactEmail ? (
+                        <a
+                          href={`mailto:${contactEmail}`}
+                          className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-brand-red/20 flex items-center justify-center">
+                            <MessageCircle size={14} className="text-brand-red" />
+                          </div>
+                          <span className="font-medium text-brand-red">
+                            {contactEmail}
+                          </span>
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                 </div>

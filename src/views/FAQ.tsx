@@ -20,8 +20,9 @@ import {
   getFeedbackCooldownEnd,
   recordFeedbackSubmit,
 } from "@/lib/feedback-rate-limit";
-import { withContactEmail } from "@/lib/site-setting-text";
+import { interpolateContactText } from "@/lib/site-setting-text";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 
 interface QuestionItem {
   q: string;
@@ -61,6 +62,8 @@ function AccordionItem({ q, a }: { q: string; a: string }) {
 export default function FAQ() {
   const t = useTranslations("FAQ");
   const contactEmail = useSiteSetting("contact_us_email")?.trim();
+  const contactPhone = useFormattedContactPhone();
+  const contactPhoneRaw = useSiteSetting("contact_us_phone_number");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   // Directly call the fully typed raw configuration arrays from active dictionary files
@@ -135,7 +138,10 @@ export default function FAQ() {
                 <AccordionItem
                   key={item.q}
                   q={item.q}
-                  a={withContactEmail(item.a, contactEmail)}
+                  a={interpolateContactText(item.a, {
+                    email: contactEmail,
+                    phone: contactPhoneRaw,
+                  })}
                 />
               ))}
             </div>
@@ -156,20 +162,24 @@ export default function FAQ() {
             {t("stillHelp.description")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="tel:0416036016"
-              className="flex items-center gap-2 bg-red-700 hover:bg-red-800 text-white font-semibold px-6 py-3 rounded-full transition-colors"
-            >
-              <Phone size={16} />
-              0416 036 016
-            </a>
-            <a
-              href="mailto:info@saigonexpress.com.au"
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-full transition-colors"
-            >
-              <Mail size={16} />
-              info@saigonexpress.com.au
-            </a>
+            {contactPhone ? (
+              <a
+                href={contactPhone.telHref}
+                className="flex items-center gap-2 bg-red-700 hover:bg-red-800 text-white font-semibold px-6 py-3 rounded-full transition-colors"
+              >
+                <Phone size={16} />
+                {contactPhone.display}
+              </a>
+            ) : null}
+            {contactEmail ? (
+              <a
+                href={`mailto:${contactEmail}`}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-full transition-colors"
+              >
+                <Mail size={16} />
+                {contactEmail}
+              </a>
+            ) : null}
             <Link href="/stores">
               <button className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-3 rounded-full transition-colors">
                 <MapPin size={16} />

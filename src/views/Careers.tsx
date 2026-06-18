@@ -11,6 +11,8 @@ import {
   Zap,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import Jobs from "@/components/Jobs";
 
 interface JobItem {
@@ -39,6 +41,8 @@ const BENEFITS_CONFIG = [
 
 export default function Careers() {
   const t = useTranslations("Careers");
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
+  const contactPhone = useFormattedContactPhone();
 
   const jobs: JobItem[] = t.raw("jobs");
 
@@ -132,18 +136,24 @@ export default function Careers() {
             {t("cta.description")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <a
-              href="mailto:info@saigonexpress.com.au?subject=Job Application — Saigon Express Tasmania"
-              className="flex items-center gap-2 px-8 py-4 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors text-base"
-            >
-              <Mail className="w-5 h-5" /> {t("cta.emailBtn")}
-            </a>
-            <div className="text-white/50 text-sm">
-              <div className="font-medium text-white/80">
-                info@saigonexpress.com.au
+            {contactEmail ? (
+              <a
+                href={`mailto:${contactEmail}?subject=Job Application — Saigon Express Tasmania`}
+                className="flex items-center gap-2 px-8 py-4 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors text-base"
+              >
+                <Mail className="w-5 h-5" /> {t("cta.emailBtn")}
+              </a>
+            ) : null}
+            {contactEmail ? (
+              <div className="text-white/50 text-sm">
+                <div className="font-medium text-white/80">{contactEmail}</div>
+                <div className="text-xs mt-0.5">
+                  {contactPhone
+                    ? t("cta.smsLabel", { phone: contactPhone.display })
+                    : null}
+                </div>
               </div>
-              <div className="text-xs mt-0.5">{t("cta.smsLabel")}</div>
-            </div>
+            ) : null}
           </div>
           <p className="text-white/35 text-xs mt-8 max-w-lg mx-auto">
             {t("cta.equalOpportunity")}

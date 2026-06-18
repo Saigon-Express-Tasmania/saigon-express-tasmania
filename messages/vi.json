@@ -627,7 +627,7 @@
       "titleLine2": "Bắt Đầu Từ Đây.",
       "description": "Gửi CV và một bức thư ngắn giới thiệu bản thân tới đội ngũ của chúng tôi. Hãy cho chúng tôi biết vị trí bạn muốn ứng tuyển và lý do Saigon Express phù hợp với bạn.",
       "emailBtn": "Gửi Hồ Sơ Qua Email",
-      "smsLabel": "Mọi thắc mắc qua SMS: 0416 036 016",
+      "smsLabel": "Mọi thắc mắc qua SMS: {phone}",
       "equalOpportunity": "Saigon Express Tasmania là một đơn vị tuyển dụng công bằng. Chúng tôi hoan nghênh hồ sơ từ ứng viên thuộc mọi hoàn cảnh, bao gồm cả người bản địa First Nations, người khuyết tật, và những người đến từ các cộng đồng đa dạng văn hóa và ngôn ngữ."
     }
   },
@@ -1164,7 +1164,7 @@
         "questions": [
           {
             "q": "Làm thế nào để trở thành đối tác nhập sỉ sản phẩm?",
-            "a": "Hãy truy cập trang Bán sỉ trên website và hoàn thành biểu mẫu thông tin 'Trở thành đối tác', hoặc gửi email trực tiếp đến info@saigonexpress.com.au kèm theo thông tin doanh nghiệp của bạn. Đội ngũ phụ trách mảng bán sỉ sẽ liên hệ lại trong vòng 2 ngày làm việc."
+            "a": "Hãy truy cập trang Bán sỉ trên website và hoàn thành biểu mẫu thông tin 'Trở thành đối tác', hoặc gửi email trực tiếp đến {email} kèm theo thông tin doanh nghiệp của bạn. Đội ngũ phụ trách mảng bán sỉ sẽ liên hệ lại trong vòng 2 ngày làm việc."
           },
           {
             "q": "Những sản phẩm nào khả dụng trong danh mục sỉ?",
@@ -1218,7 +1218,7 @@
           },
           {
             "q": "Làm thế nào để tôi nộp đơn ứng tuyển nhượng quyền?",
-            "a": "Hãy hoàn thành biểu mẫu đăng ký nhượng quyền trên trang Nhượng Quyền của website hoặc liên hệ trực tiếp qua email info@saigonexpress.com.au. Đội ngũ phụ trách sẽ xem xét hồ sơ và sắp xếp một cuộc gọi tư vấn sơ bộ trong vòng 5 ngày làm việc."
+            "a": "Hãy hoàn thành biểu mẫu đăng ký nhượng quyền trên trang Nhượng Quyền của website hoặc liên hệ trực tiếp qua email {email}. Đội ngũ phụ trách sẽ xem xét hồ sơ và sắp xếp một cuộc gọi tư vấn sơ bộ trong vòng 5 ngày làm việc."
           }
         ]
       },
@@ -1250,7 +1250,7 @@
         "questions": [
           {
             "q": "Làm cách nào để liên hệ với Saigon Express?",
-            "a": "Bạn có thể kết nối với chúng tôi qua số điện thoại 0416 036 016, gửi email về info@saigonexpress.com.au, hoặc ghé thăm trực tiếp bất kỳ chi nhánh nào trong số 8 chi nhánh tại Tasmania. Đối với các yêu cầu đặt tiệc sự kiện, vui lòng sử dụng hòm thư {email}."
+            "a": "Bạn có thể kết nối với chúng tôi qua số điện thoại {phone}, gửi email về {email}, hoặc ghé thăm trực tiếp bất kỳ chi nhánh nào trong số 8 chi nhánh tại Tasmania. Đối với các yêu cầu đặt tiệc sự kiện, vui lòng sử dụng hòm thư {email}."
           },
           {
             "q": "Cửa hàng có chương trình tích điểm khách hàng thân thiết không?",
@@ -1258,7 +1258,7 @@
           },
           {
             "q": "Tôi có thể gửi ý kiến đóng góp, phản hồi bằng cách nào?",
-            "a": "Chúng tôi luôn trân trọng mọi ý kiến đóng góp từ khách hàng! Bạn có thể gửi email về info@saigonexpress.com.au, để lại đánh giá trên trang Google, TripAdvisor hoặc trao đổi trực tiếp với quản lý tại chi nhánh cửa hàng. Phản hồi của bạn giúp chúng tôi cải thiện chất lượng dịch vụ tốt hơn."
+            "a": "Chúng tôi luôn trân trọng mọi ý kiến đóng góp từ khách hàng! Bạn có thể gửi email về {email}, để lại đánh giá trên trang Google, TripAdvisor hoặc trao đổi trực tiếp với quản lý tại chi nhánh cửa hàng. Phản hồi của bạn giúp chúng tôi cải thiện chất lượng dịch vụ tốt hơn."
           },
           {
             "q": "Hệ thống có ứng dụng di động riêng không?",
@@ -2310,7 +2310,7 @@
     "chat": {
       "inputPlaceholder": "Nhập tin nhắn...",
       "welcomeMsg": "Xin chào! 👋 Chào mừng bạn đến với Saigon Express Tasmania. Tôi có thể giúp gì cho bạn hôm nay? Hãy hỏi tôi về thực đơn, cửa hàng, dịch vụ tiệc, giá sỉ hoặc cơ hội nhượng quyền!",
-      "errorMsg": "Rất tiếc, hệ thống đang gặp sự cố kết nối. Vui lòng liên hệ qua số điện thoại 0416 036 016 hoặc gửi email về info@saigonexpress.com.au."
+      "errorMsg": "Rất tiếc, hệ thống đang gặp sự cố kết nối. Vui lòng liên hệ qua số điện thoại {phone} hoặc gửi email về {email}."
     },
     "quickReplies": [
       "Thực đơn có gì?",
@@ -2642,13 +2642,12 @@
     "perksAndBenefits": "Quyền Lợi & Phúc Lợi",
     "applyButton": "Ứng Tuyển Vị Trí Này",
     "applyFootnote": "Gửi CV và thư xin việc của bạn đến",
-    "applyEmail": "info@saigonexpress.com.au",
     "emailSubject": "Ứng tuyển: {jobTitle}",
     "emailBody": "Kính gửi đội ngũ Saigon Express,%0D%0A%0D%0ATôi muốn ứng tuyển vị trí {jobTitle}.%0D%0A%0D%0AVui lòng xem thông tin của tôi bên dưới:%0D%0A%0D%0AHọ tên:%0D%0ASố điện thoại:%0D%0AThời gian có thể làm việc:%0D%0A%0D%0AXin cảm ơn"
   },
   "Newsletter": {
     "getInTouch": "Liên Hệ",
-    "phoneLabel": "0416 036 016 (Chỉ nhắn tin SMS)",
+    "phoneLabel": "{phone} (Chỉ nhắn tin SMS)",
     "address": "Tầng 2, 86 Collins St\nHobart TAS 7000",
     "stayUpdated": "Cập Nhật Tin Tức",
     "successMessage": "✓ Bạn đã đăng ký thành công!",

@@ -174,6 +174,28 @@
     }
   }
 
+  .main-header-under-shade {
+    @apply border-b border-black/5 bg-white/100 supports-[backdrop-filter]:bg-white/100;
+  }
+
+  .main-header-under-shade::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 0.5rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      rgba(15, 23, 42, 0.44),
+      rgba(15, 23, 42, 0.2) 45%,
+      transparent
+    );
+    filter: blur(10px);
+    transform: translateY(-35%);
+  }
+
   .font-serif {
     font-family: var(--font-serif), Georgia, serif;
   }

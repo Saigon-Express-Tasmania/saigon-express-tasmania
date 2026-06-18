@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "@/components/link";
 import { useTranslations } from "next-intl";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +24,8 @@ interface HoursItem {
 
 export default function Contact({ storeLocations }: ContactProps) {
   const t = useTranslations("Contact");
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
+  const contactPhone = useFormattedContactPhone();
 
   const [form, setForm] = useState({
     name: "",
@@ -91,38 +95,42 @@ export default function Contact({ storeLocations }: ContactProps) {
               {t("info.title")}
             </h2>
             <div className="space-y-4">
-              <a
-                href="tel:0416036016"
-                className="flex items-center gap-4 group"
-              >
-                <div className="w-11 h-11 rounded-full bg-brand-red/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-red/20 transition-colors">
-                  <Phone size={18} className="text-brand-red" />
-                </div>
-                <div>
-                  <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">
-                    {t("info.phoneLabel")}
-                  </p>
-                  <p className="text-brand-dark font-semibold group-hover:text-brand-red transition-colors">
-                    0416 036 016
-                  </p>
-                </div>
-              </a>
-              <a
-                href="mailto:info@saigonexpress.com.au"
-                className="flex items-center gap-4 group"
-              >
-                <div className="w-11 h-11 rounded-full bg-brand-red/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-red/20 transition-colors">
-                  <Mail size={18} className="text-brand-red" />
-                </div>
-                <div>
-                  <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">
-                    {t("info.emailLabel")}
-                  </p>
-                  <p className="text-brand-dark font-semibold group-hover:text-brand-red transition-colors">
-                    info@saigonexpress.com.au
-                  </p>
-                </div>
-              </a>
+              {contactPhone ? (
+                <a
+                  href={contactPhone.telHref}
+                  className="flex items-center gap-4 group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-brand-red/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-red/20 transition-colors">
+                    <Phone size={18} className="text-brand-red" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">
+                      {t("info.phoneLabel")}
+                    </p>
+                    <p className="text-brand-dark font-semibold group-hover:text-brand-red transition-colors">
+                      {contactPhone.display}
+                    </p>
+                  </div>
+                </a>
+              ) : null}
+              {contactEmail ? (
+                <a
+                  href={`mailto:${contactEmail}`}
+                  className="flex items-center gap-4 group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-brand-red/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-red/20 transition-colors">
+                    <Mail size={18} className="text-brand-red" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-brand-dark/40 uppercase tracking-wider font-semibold mb-0.5">
+                      {t("info.emailLabel")}
+                    </p>
+                    <p className="text-brand-dark font-semibold group-hover:text-brand-red transition-colors">
+                      {contactEmail}
+                    </p>
+                  </div>
+                </a>
+              ) : null}
               <div className="flex items-center gap-4">
                 <div className="w-11 h-11 rounded-full bg-brand-red/10 flex items-center justify-center flex-shrink-0">
                   <MapPin size={18} className="text-brand-red" />

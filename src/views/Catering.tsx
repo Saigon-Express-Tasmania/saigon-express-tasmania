@@ -25,6 +25,7 @@ import { stringToSlug } from "@/lib/utils";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { shouldBlockGuestCateringCart } from "@/lib/guest-catering-order-session";
 import { useSupabase } from "@/hooks/useSupabase";
 import { parseCateringPrice } from "@/lib/catering-price";
@@ -85,7 +86,7 @@ const CATERING_ENQUIRY_LAST_SUBMIT_KEY = "catering_enquiry_last_submit_at";
 
 export default function Catering({ packs }: CateringProps) {
   const t = useTranslations("Catering");
-  const contactPhone = useSiteSetting("contact_us_phone_number")?.trim();
+  const contactPhone = useFormattedContactPhone();
   const contactEmail = useSiteSetting("contact_us_email")?.trim();
   const { isSignedIn } = useSupabase();
   const { addToCart } = useCateringCart();
@@ -668,10 +669,10 @@ export default function Catering({ packs }: CateringProps) {
                   <div className="flex items-center gap-2 text-sm text-brand-dark/70 mb-1">
                     <Phone size={13} className="text-brand-red" />
                     <a
-                      href={`tel:${contactPhone.replace(/\s/g, "")}`}
+                      href={contactPhone.telHref}
                       className="hover:text-brand-red transition-colors"
                     >
-                      {contactPhone}
+                      {contactPhone.display}
                     </a>
                   </div>
                 ) : null}

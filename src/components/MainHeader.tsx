@@ -6,6 +6,8 @@ import Link from "@/components/link";
 import { useCart } from "@/contexts/CartContext";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { useSupabase } from "@/hooks/useSupabase";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
 import { MapPin, Menu, ClipboardList, ShoppingCart, X } from "lucide-react";
@@ -41,6 +43,8 @@ function isCateringShopRoute(pathname: string): boolean {
 export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const tLinks = useTranslations("NavLinks");
   const t = useTranslations("Home");
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
+  const contactPhone = useFormattedContactPhone();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
@@ -91,7 +95,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
 
   return (
     <>
-      <div className="topbar sticky top-0 z-50">
+      {/* <div className="topbar sticky top-0 z-50">
         <div className="max-w-[1280px] mx-auto px-4 h-9 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
             {PORTAL_LINKS.map((p) => (
@@ -106,23 +110,27 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
             ))}
           </div>
           <div className="hidden sm:flex items-center gap-4 text-white/60 text-xs">
-            <a
-              href="tel:0416036016"
-              className="hover:text-white transition-colors"
-            >
-              0416 036 016
-            </a>
-            <span>·</span>
-            <a
-              href="mailto:info@saigonexpress.com.au"
-              className="hover:text-white transition-colors"
-            >
-              info@saigonexpress.com.au
-            </a>
+            {contactPhone ? (
+              <a
+                href={contactPhone.telHref}
+                className="hover:text-white transition-colors"
+              >
+                {contactPhone.display}
+              </a>
+            ) : null}
+            {contactPhone && contactEmail ? <span>·</span> : null}
+            {contactEmail ? (
+              <a
+                href={`mailto:${contactEmail}`}
+                className="hover:text-white transition-colors"
+              >
+                {contactEmail}
+              </a>
+            ) : null}
           </div>
         </div>
-      </div>
-      <header className="sticky-header-scroll-shadow sticky top-9 z-50 bg-white">
+      </div> */}
+      <header className="main-header-under-shade sticky-header-scroll-shadow sticky top-0 z-50">
         <div className="max-w-[1280px] mx-auto px-4 h-16 flex items-center justify-between gap-6">
           <Link href="/" className="shrink-0">
             <AppImage
@@ -130,7 +138,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
               alt="Saigon Express Tasmania"
               width={LOGO_INTRINSIC.width}
               height={LOGO_INTRINSIC.height}
-              priority
+              preload
               className={`h-10 ${LOGO_IMG_CLASS}`}
             />
           </Link>

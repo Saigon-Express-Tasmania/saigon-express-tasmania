@@ -634,7 +634,7 @@
       "titleLine2": "Starts Here.",
       "description": "Send your CV and a brief cover letter to our team. Tell us which role you're applying for and why Saigon Express is the right fit for you.",
       "emailBtn": "Email Your Application",
-      "smsLabel": "SMS enquiries: 0416 036 016",
+      "smsLabel": "SMS enquiries: {phone}",
       "equalOpportunity": "Saigon Express Tasmania is an equal opportunity employer. We welcome applications from people of all backgrounds, including First Nations peoples, people with disability, and those from culturally and linguistically diverse communities."
     }
   },
@@ -1163,7 +1163,7 @@
         "questions": [
           {
             "q": "How do I become a wholesale partner?",
-            "a": "Visit our Wholesale page and complete the 'Become a Partner' enquiry form, or email info@saigonexpress.com.au with your business details. Our wholesale team will contact you within 2 business days."
+            "a": "Visit our Wholesale page and complete the 'Become a Partner' enquiry form, or email {email} with your business details. Our wholesale team will contact you within 2 business days."
           },
           {
             "q": "What products are available for wholesale?",
@@ -1217,7 +1217,7 @@
           },
           {
             "q": "How do I apply for a franchise?",
-            "a": "Complete the franchise application form on our Franchise page or contact us at info@saigonexpress.com.au. Our franchise team will review your application and arrange an initial consultation call within 5 business days."
+            "a": "Complete the franchise application form on our Franchise page or contact us at {email}. Our franchise team will review your application and arrange an initial consultation call within 5 business days."
           }
         ]
       },
@@ -1249,7 +1249,7 @@
         "questions": [
           {
             "q": "How do I contact Saigon Express?",
-            "a": "You can reach us by phone on 0416 036 016, by email at info@saigonexpress.com.au, or by visiting any of our 8 Tasmania locations. For catering enquiries, use {email}."
+            "a": "You can reach us by phone on {phone}, by email at {email}, or by visiting any of our 8 Tasmania locations. For catering enquiries, use {email}."
           },
           {
             "q": "Do you have a loyalty or rewards program?",
@@ -1257,7 +1257,7 @@
           },
           {
             "q": "How can I provide feedback?",
-            "a": "We welcome all feedback! You can email us at info@saigonexpress.com.au, leave a review on Google or TripAdvisor, or speak with the manager at any of our locations. Your feedback helps us improve."
+            "a": "We welcome all feedback! You can email us at {email}, leave a review on Google or TripAdvisor, or speak with the manager at any of our locations. Your feedback helps us improve."
           },
           {
             "q": "Do you have a mobile app?",
@@ -2309,7 +2309,7 @@
     "chat": {
       "inputPlaceholder": "Type a message...",
       "welcomeMsg": "Xin chào! 👋 Welcome to Saigon Express Tasmania. How can I help you today? Ask me about our menu, store locations, catering, wholesale, or franchise opportunities!",
-      "errorMsg": "Sorry, I'm having trouble connecting right now. Please call us on 0416 036 016 or email info@saigonexpress.com.au."
+      "errorMsg": "Sorry, I'm having trouble connecting right now. Please call us on {phone} or email {email}."
     },
     "quickReplies": [
       "What's on the menu?",
@@ -2641,13 +2641,12 @@
     "perksAndBenefits": "Perks & Benefits",
     "applyButton": "Apply for This Role",
     "applyFootnote": "Send your CV and cover letter to",
-    "applyEmail": "info@saigonexpress.com.au",
     "emailSubject": "Application: {jobTitle}",
     "emailBody": "Hi Saigon Express Team,%0D%0A%0D%0AI am applying for the {jobTitle} position.%0D%0A%0D%0APlease find my details below:%0D%0A%0D%0AName:%0D%0APhone:%0D%0AAvailability:%0D%0A%0D%0AThank you"
   },
   "Newsletter": {
     "getInTouch": "Get in Touch",
-    "phoneLabel": "0416 036 016 (SMS only)",
+    "phoneLabel": "{phone} (SMS only)",
     "address": "Level 2, 86 Collins St\nHobart TAS 7000",
     "stayUpdated": "Stay Updated",
     "successMessage": "✓ You're on the list!",

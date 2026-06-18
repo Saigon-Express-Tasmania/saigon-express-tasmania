@@ -6,6 +6,7 @@ import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { useCart } from "@/contexts/CartContext";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
 
 const Newsletter = dynamic(() => import("@/components/Newsletter"));
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
@@ -13,6 +14,8 @@ import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 export default function MainFooter() {
   const t = useTranslations("Home");
   const { cartCount } = useCart();
+  const facebookPageLink = useSiteSetting("facebook_page_link")?.trim();
+  const instagramPageLink = useSiteSetting("instagram_page_link")?.trim();
 
   const footerQuickLinks = [
     { href: "/menu", label: t("footer.quickLinks.ourFood") },
@@ -43,24 +46,28 @@ export default function MainFooter() {
               {t("footer.brandDescription")}
             </p>
             <div className="flex gap-3">
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Facebook"
-                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
-              >
-                <FacebookIcon size={15} />
-              </a>
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Instagram"
-                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
-              >
-                <InstagramIcon size={15} />
-              </a>
+              {facebookPageLink ? (
+                <a
+                  href={facebookPageLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
+                >
+                  <FacebookIcon size={15} />
+                </a>
+              ) : null}
+              {instagramPageLink ? (
+                <a
+                  href={instagramPageLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-brand-red hover:border-brand-red transition-colors"
+                >
+                  <InstagramIcon size={15} />
+                </a>
+              ) : null}
             </div>
           </div>
 
@@ -98,15 +105,7 @@ export default function MainFooter() {
                     {t(`portals.${p.id}`)}
                   </Link>
                 </li>
-              ))}
-              <li>
-                <Link
-                  href="/admin"
-                  className="hover:text-white transition-colors"
-                >
-                  {t("footer.adminDashboard")}
-                </Link>
-              </li>
+              ))}              
               <li>
                 <Link
                   href="/get-the-app"

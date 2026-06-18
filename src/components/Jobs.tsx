@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
@@ -29,6 +30,7 @@ type Job = {
 
 export default function Jobs({ jobs }: { jobs: Job[] }) {
   const t = useTranslations("Jobs");
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
 
   const [expandedJob, setExpandedJob] = useState<number | null>(null);
   const [filterDept, setFilterDept] = useState(t("filterAll"));
@@ -214,21 +216,25 @@ export default function Jobs({ jobs }: { jobs: Job[] }) {
 
                       {/* Apply CTA */}
                       <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
-                        <a
-                          href={`mailto:${t("applyEmail")}?subject=${encodeURIComponent(
-                            t("emailSubject", { jobTitle: job.title }),
-                          )}&body=${t("emailBody", { jobTitle: encodeURIComponent(job.title) })}`}
-                          className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors text-sm"
-                        >
-                          <Mail className="w-4 h-4" />
-                          {t("applyButton")}
-                        </a>
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-4 py-2.5">
-                          {t("applyFootnote")}{" "}
-                          <strong className="text-foreground ml-1">
-                            {t("applyEmail")}
-                          </strong>
-                        </span>
+                        {contactEmail ? (
+                          <a
+                            href={`mailto:${contactEmail}?subject=${encodeURIComponent(
+                              t("emailSubject", { jobTitle: job.title }),
+                            )}&body=${t("emailBody", { jobTitle: encodeURIComponent(job.title) })}`}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors text-sm"
+                          >
+                            <Mail className="w-4 h-4" />
+                            {t("applyButton")}
+                          </a>
+                        ) : null}
+                        {contactEmail ? (
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-4 py-2.5">
+                            {t("applyFootnote")}{" "}
+                            <strong className="text-foreground ml-1">
+                              {contactEmail}
+                            </strong>
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </motion.div>

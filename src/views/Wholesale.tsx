@@ -4,6 +4,8 @@ import AppImage from "@/components/AppImage";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "@/components/link";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { trpc } from "@/lib/trpc";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
 import type { WholesalePricingTier, WholesaleProduct } from "@/types";
@@ -38,6 +40,8 @@ export default function Wholesale({
   pricingTiers?: WholesalePricingTier[];
 }) {
   const t = useTranslations("Wholesale");
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
+  const contactPhone = useFormattedContactPhone();
   useRedirectWholesaleMembersToShop();
 
   // Array Extraction Strategy (t.raw)
@@ -310,21 +314,25 @@ export default function Wholesale({
                 <p className="font-semibold text-brand-dark text-sm mb-2">
                   {t("partnerForm.contactInfo.title")}
                 </p>
-                <div className="flex items-center gap-2 text-sm text-brand-dark/70 mb-1">
-                  <Phone size={13} className="text-brand-red" />
+                {contactPhone ? (
+                  <div className="flex items-center gap-2 text-sm text-brand-dark/70 mb-1">
+                    <Phone size={13} className="text-brand-red" />
+                    <a
+                      href={contactPhone.telHref}
+                      className="hover:text-brand-red transition-colors"
+                    >
+                      {contactPhone.display}
+                    </a>
+                  </div>
+                ) : null}
+                {contactEmail ? (
                   <a
-                    href="tel:0416036016"
-                    className="hover:text-brand-red transition-colors"
+                    href={`mailto:${contactEmail}`}
+                    className="text-brand-red font-bold hover:underline text-sm"
                   >
-                    0416 036 016
+                    {contactEmail}
                   </a>
-                </div>
-                <a
-                  href="mailto:info@saigonexpress.com.au"
-                  className="text-brand-red font-bold hover:underline text-sm"
-                >
-                  info@saigonexpress.com.au
-                </a>
+                ) : null}
               </div>
             </div>
 
