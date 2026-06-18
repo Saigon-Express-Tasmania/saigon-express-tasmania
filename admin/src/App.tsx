@@ -65,6 +65,7 @@ export function App() {
             <Route path="/partners" element={<Partners />} />
             <Route path="/interests/franchise" element={<FranchiseInterests type="franchise" />} />
             <Route path="/interests/consultation" element={<FranchiseInterests type="consultation" />} />
+            <Route path="/interests/catering_enquiries" element={<FranchiseInterests type="catering_enquiry" />} />
             <Route path="/interests/consultations" element={<Navigate to="/interests/consultation" replace />} />
             <Route path="/sales/orders" element={<Navigate to="/sales/orders/pickup" replace />} />
             <Route path="/sales/orders/:orderType" element={<SalesOrdersPage />} />

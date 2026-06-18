@@ -78,6 +78,13 @@ const navItems: NavItem[] = [
     isOrderPage: true,
   },  
   {
+    title: "Enquiries",
+    href: "/interests/catering_enquiries",
+    icon: MessageSquare,
+    group: "Catering",
+    isOrderPage: false,
+  },
+  {
     title: "Orders",
     href: "/sales/orders/wholesale",
     icon: ShoppingCart,

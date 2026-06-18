@@ -466,7 +466,7 @@ export default function CateringOrderReviewPanel({
             <div className="flex justify-between text-white/60">
               <span>Delivery</span>
               <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
-                To be calculated
+                Waiting for quotation...
               </span>
             </div>
             <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">

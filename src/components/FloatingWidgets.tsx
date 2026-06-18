@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { X, Send, ChevronDown, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { trpc } from "@/lib/trpc";
 
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
@@ -17,6 +18,7 @@ type Message = {
 
 export function FloatingWidgets() {
   const t = useTranslations("FloatingWidgets");
+  const facebookMessageLink = useSiteSetting("facebook_message_link")?.trim();
 
   // Array Extraction Strategy via t.raw[cite: 6]
   const quickReplies = (t.raw("quickReplies") || []) as string[];
@@ -99,23 +101,25 @@ export function FloatingWidgets() {
   return (
     <>
       {/* Facebook Messenger Button */}
-      <a
-        href="https://m.me/saigonexpresstasmania"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-[7.5rem] right-5 z-50 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-        style={{
-          background: "linear-gradient(135deg, #0084ff 0%, #00c6ff 100%)",
-          width: 52,
-          height: 52,
-        }}
-        title="Message us on Facebook"
-        aria-label={t("aria.facebookCta")}
-      >
-        <svg viewBox="0 0 24 24" fill="white" width="26" height="26">
-          <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.879 1.436 5.449 3.686 7.133V22l3.371-1.853c.9.25 1.854.386 2.943.386 5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.018 12.436l-2.55-2.72-4.976 2.72 5.474-5.808 2.612 2.72 4.914-2.72-5.474 5.808z" />
-        </svg>
-      </a>
+      {facebookMessageLink ? (
+        <a
+          href={facebookMessageLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-[7.5rem] right-5 z-50 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+          style={{
+            background: "linear-gradient(135deg, #0084ff 0%, #00c6ff 100%)",
+            width: 52,
+            height: 52,
+          }}
+          title="Message us on Facebook"
+          aria-label={t("aria.facebookCta")}
+        >
+          <svg viewBox="0 0 24 24" fill="white" width="26" height="26">
+            <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.879 1.436 5.449 3.686 7.133V22l3.371-1.853c.9.25 1.854.386 2.943.386 5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.018 12.436l-2.55-2.72-4.976 2.72 5.474-5.808 2.612 2.72 4.914-2.72-5.474 5.808z" />
+          </svg>
+        </a>
+      ) : null}
 
       {/* Chat Widget Button Toggle */}
       <AnimatePresence mode="wait">

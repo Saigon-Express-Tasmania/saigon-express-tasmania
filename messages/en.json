@@ -708,13 +708,13 @@
       "label": "FULL CATERING MENU",
       "title": "Order by the Box",
       "description": "All boxes are freshly prepared on the day of your event. Please provide at least 24 hours' notice. Contact ",
-      "descriptionEmail": "catering@saigonexpress.com.au",
       "descriptionEnd": " to customise your order.",
       "empty": "No catering menu items available right now.",
       "caters": "Caters {serves}",
       "enquire": "Enquire Now",
       "addToOrder": "Add to order",
       "customPrice": "Custom price",
+      "sizeLabel": "Size",
       "proteinLabel": "CHOOSE YOUR PROTEIN",
       "proteinList": "Crispy Roast Pork · BBQ Pork · Satay Chicken · Fried Chicken · Lemongrass Chicken · Lemongrass Beef · Veggie & Tofu · Grilled Prawns · BBQ Duck",
       "proteinNote": "Mixed selection recommended · Custom selection available (max 2–3 options) · Additional charge for premium flavours"
@@ -747,6 +747,7 @@
       "placeholder": "Event type, dietary requirements, preferred pack, any special requests...",
       "btnSubmit": "Send Catering Enquiry",
       "btnSending": "Sending Enquiry…",
+      "cooldownWait": "Please wait {time} before submitting again.",
       "enquireTemplate": "I'm interested in ordering the {boxName} ({price}). Please provide more details.",
       "emailSubjectHeader": "CATERING ENQUIRY",
       "emailEventDate": "Event Date",
@@ -754,7 +755,9 @@
     },
     "errors": {
       "requiredFields": "Name and email are required",
-      "submitFailed": "Failed to send enquiry. Please email catering@saigonexpress.com.au directly."
+      "rateLimit": "Please wait {time} before submitting again.",
+      "submitFailed": "Failed to send enquiry. Please email {email} directly.",
+      "submitFailedFallback": "Failed to send enquiry. Please try again later."
     }
   },
   "Checkout": {
@@ -1086,7 +1089,7 @@
           },
           {
             "q": "Can I pre-order for a specific time?",
-            "a": "Yes, scheduled ordering is available through our third-party delivery partners. For large group orders or catering, we recommend contacting us directly at catering@saigonexpress.com.au at least 48 hours in advance."
+            "a": "Yes, scheduled ordering is available through our third-party delivery partners. For large group orders or catering, we recommend contacting us directly at {email} at least 48 hours in advance."
           },
           {
             "q": "What payment methods do you accept?",
@@ -1142,7 +1145,7 @@
           },
           {
             "q": "What areas do you cater to?",
-            "a": "We cater across Greater Hobart and the surrounding Tasmanian regions. For events outside the Hobart metro area, please contact us at catering@saigonexpress.com.au to discuss logistics and any travel surcharges."
+            "a": "We cater across Greater Hobart and the surrounding Tasmanian regions. For events outside the Hobart metro area, please contact us at {email} to discuss logistics and any travel surcharges."
           },
           {
             "q": "Can I customise my catering menu?",
@@ -1246,7 +1249,7 @@
         "questions": [
           {
             "q": "How do I contact Saigon Express?",
-            "a": "You can reach us by phone on 0416 036 016, by email at info@saigonexpress.com.au, or by visiting any of our 8 Tasmania locations. For catering enquiries, use catering@saigonexpress.com.au."
+            "a": "You can reach us by phone on 0416 036 016, by email at info@saigonexpress.com.au, or by visiting any of our 8 Tasmania locations. For catering enquiries, use {email}."
           },
           {
             "q": "Do you have a loyalty or rewards program?",

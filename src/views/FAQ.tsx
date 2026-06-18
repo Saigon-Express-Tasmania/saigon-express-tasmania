@@ -20,6 +20,8 @@ import {
   getFeedbackCooldownEnd,
   recordFeedbackSubmit,
 } from "@/lib/feedback-rate-limit";
+import { withContactEmail } from "@/lib/site-setting-text";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
 
 interface QuestionItem {
   q: string;
@@ -58,6 +60,7 @@ function AccordionItem({ q, a }: { q: string; a: string }) {
 
 export default function FAQ() {
   const t = useTranslations("FAQ");
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   // Directly call the fully typed raw configuration arrays from active dictionary files
@@ -129,7 +132,11 @@ export default function FAQ() {
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-stone-100 px-6">
               {cat.questions.map((item) => (
-                <AccordionItem key={item.q} q={item.q} a={item.a} />
+                <AccordionItem
+                  key={item.q}
+                  q={item.q}
+                  a={withContactEmail(item.a, contactEmail)}
+                />
               ))}
             </div>
           </div>

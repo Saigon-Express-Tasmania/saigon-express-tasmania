@@ -701,13 +701,13 @@
       "label": "THỰC ĐƠN TIỆC ĐẦY ĐỦ",
       "title": "Đặt Hàng Theo Từng Hộp",
       "description": "Tất cả các hộp tiệc đều được chuẩn bị tươi mới vào ngày diễn ra sự kiện. Vui lòng đặt trước ít nhất 24 giờ. Liên hệ ",
-      "descriptionEmail": "catering@saigonexpress.com.au",
       "descriptionEnd": " để tùy chỉnh đơn hàng của bạn.",
       "empty": "Hiện chưa có món ăn thực đơn tiệc nào sẵn sàng.",
       "caters": "Phục vụ {serves} khách",
       "enquire": "Yêu Cầu Ngay",
       "addToOrder": "Thêm vào đơn",
       "customPrice": "Giá tùy chỉnh",
+      "sizeLabel": "Kích cỡ",
       "proteinLabel": "TÙY CHỌN PHẦN THỊT/NHÂN",
       "proteinList": "Heo Quay Giòn · Xá Xíu · Gà Sốt Satay · Gà Rán Giòn · Gà Xào Sả · Bò Xào Sả · Chay & Đậu Hũ · Tôm Nướng · Vịt Quay",
       "proteinNote": "Nên chọn menu kết hợp hỗn hợp · Có thể tùy chọn riêng (tối đa 2–3 loại) · Có tính thêm phí đối với một số hương vị cao cấp"
@@ -740,6 +740,7 @@
       "placeholder": "Loại hình sự kiện, yêu cầu chế độ ăn uống đặc biệt, gói tiệc mong muốn, hoặc các yêu cầu riêng khác...",
       "btnSubmit": "Gửi Yêu Cầu Đặt Tiệc",
       "btnSending": "Đang Gửi Yêu Cầu…",
+      "cooldownWait": "Vui lòng đợi {time} trước khi gửi lại.",
       "enquireTemplate": "Tôi muốn đặt hộp {boxName} ({price}). Vui lòng cung cấp thêm thông tin chi tiết.",
       "emailSubjectHeader": "YÊU CẦU ĐẶT TIỆC (CATERING ENQUIRY)",
       "emailEventDate": "Ngày diễn ra",
@@ -747,7 +748,9 @@
     },
     "errors": {
       "requiredFields": "Họ tên và email không được bỏ trống",
-      "submitFailed": "Gửi yêu cầu thất bại. Vui lòng gửi email trực tiếp đến catering@saigonexpress.com.au."
+      "rateLimit": "Vui lòng đợi {time} trước khi gửi lại.",
+      "submitFailed": "Gửi yêu cầu thất bại. Vui lòng gửi email trực tiếp đến {email}.",
+      "submitFailedFallback": "Gửi yêu cầu thất bại. Vui lòng thử lại sau."
     }
   },
   "Checkout": {
@@ -1087,7 +1090,7 @@
           },
           {
             "q": "Tôi có thể đặt món trước cho một khung giờ cụ thể không?",
-            "a": "Có, bạn hoàn toàn có thể lên lịch đặt món thông qua ứng dụng của bên thứ ba. Đối với các đơn hàng số lượng lớn cho tập thể hoặc tiệc sự kiện, chúng tôi khuyên bạn nên gửi email trực tiếp đến catering@saigonexpress.com.au ít nhất 48 giờ trước thời gian nhận hàng."
+            "a": "Có, bạn hoàn toàn có thể lên lịch đặt món thông qua ứng dụng của bên thứ ba. Đối với các đơn hàng số lượng lớn cho tập thể hoặc tiệc sự kiện, chúng tôi khuyên bạn nên gửi email trực tiếp đến {email} ít nhất 48 giờ trước thời gian nhận hàng."
           },
           {
             "q": "Cửa hàng chấp nhận những hình thức thanh toán nào?",
@@ -1143,7 +1146,7 @@
           },
           {
             "q": "Cửa hàng hỗ trợ phục vụ tiệc ở những khu vực nào?",
-            "a": "Chúng tôi phục vụ tiệc trên toàn khu vực Greater Hobart và các vùng lân cận thuộc đảo Tasmania. Đối với các sự kiện nằm ngoài trung tâm thành phố Hobart, vui lòng liên hệ qua địa chỉ email catering@saigonexpress.com.au để thỏa thuận về phương án logistics cũng như phụ phí di chuyển."
+            "a": "Chúng tôi phục vụ tiệc trên toàn khu vực Greater Hobart và các vùng lân cận thuộc đảo Tasmania. Đối với các sự kiện nằm ngoài trung tâm thành phố Hobart, vui lòng liên hệ qua địa chỉ email {email} để thỏa thuận về phương án logistics cũng như phụ phí di chuyển."
           },
           {
             "q": "Tôi có thể tùy chỉnh thực đơn tiệc theo yêu cầu riêng không?",
@@ -1247,7 +1250,7 @@
         "questions": [
           {
             "q": "Làm cách nào để liên hệ với Saigon Express?",
-            "a": "Bạn có thể kết nối với chúng tôi qua số điện thoại 0416 036 016, gửi email về info@saigonexpress.com.au, hoặc ghé thăm trực tiếp bất kỳ chi nhánh nào trong số 8 chi nhánh tại Tasmania. Đối với các yêu cầu đặt tiệc sự kiện, vui lòng sử dụng hòm thư riêng catering@saigonexpress.com.au."
+            "a": "Bạn có thể kết nối với chúng tôi qua số điện thoại 0416 036 016, gửi email về info@saigonexpress.com.au, hoặc ghé thăm trực tiếp bất kỳ chi nhánh nào trong số 8 chi nhánh tại Tasmania. Đối với các yêu cầu đặt tiệc sự kiện, vui lòng sử dụng hòm thư {email}."
           },
           {
             "q": "Cửa hàng có chương trình tích điểm khách hàng thân thiết không?",

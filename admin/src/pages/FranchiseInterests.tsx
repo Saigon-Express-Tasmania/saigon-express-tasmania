@@ -56,7 +56,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-type InterestType = 'franchise' | 'consultation';
+type InterestType = 'franchise' | 'consultation' | 'catering_enquiry';
 type InterestStatus = 'pending' | 'approved' | 'rejected' | 'resolved';
 
 type FranchiseInterest = {

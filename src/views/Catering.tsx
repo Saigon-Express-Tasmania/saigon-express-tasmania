@@ -1,9 +1,10 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
+import CateringTierSelect from "@/components/CateringTierSelect";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
   CheckCircle,
@@ -23,6 +24,7 @@ import {
 import { stringToSlug } from "@/lib/utils";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { shouldBlockGuestCateringCart } from "@/lib/guest-catering-order-session";
 import { useSupabase } from "@/hooks/useSupabase";
 import { parseCateringPrice } from "@/lib/catering-price";
@@ -70,7 +72,7 @@ function PackOrderButton({
     <button
       type="button"
       onClick={onAdd}
-      className="inline-flex w-full items-center justify-center gap-2 bg-brand-red px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-red/90 sm:w-auto"
+      className="inline-flex w-full items-center justify-center gap-2 bg-brand-red px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-red/90"
     >
       <Plus size={14} />
       {orderLabel}
@@ -78,8 +80,13 @@ function PackOrderButton({
   );
 }
 
+const CATERING_ENQUIRY_SUBMIT_COOLDOWN_MS = 2 * 60 * 1000;
+const CATERING_ENQUIRY_LAST_SUBMIT_KEY = "catering_enquiry_last_submit_at";
+
 export default function Catering({ packs }: CateringProps) {
   const t = useTranslations("Catering");
+  const contactPhone = useSiteSetting("contact_us_phone_number")?.trim();
+  const contactEmail = useSiteSetting("contact_us_email")?.trim();
   const { isSignedIn } = useSupabase();
   const { addToCart } = useCateringCart();
   const { session, trackedOrder, setLastOrderOpen, isHydrated } =
@@ -90,6 +97,8 @@ export default function Catering({ packs }: CateringProps) {
   const [resolveOrderWarning, setResolveOrderWarning] = useState(false);
   const [tierSelection, setTierSelection] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [form, setForm] = useState({
     contactName: "",
     email: "",
@@ -109,6 +118,27 @@ export default function Catering({ packs }: CateringProps) {
       setResolveOrderWarning(false);
     }
   }, [guestOrderBlocksCart]);
+
+  useEffect(() => {
+    const updateCooldown = () => {
+      const lastSubmitAt = Number(
+        window.localStorage.getItem(CATERING_ENQUIRY_LAST_SUBMIT_KEY) ?? "0",
+      );
+      const remainingMs =
+        lastSubmitAt + CATERING_ENQUIRY_SUBMIT_COOLDOWN_MS - Date.now();
+      setCooldownSeconds(
+        remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0,
+      );
+    };
+
+    updateCooldown();
+    const timerId = window.setInterval(updateCooldown, 1000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  const cooldownLabel = `${Math.floor(cooldownSeconds / 60)}:${String(
+    cooldownSeconds % 60,
+  ).padStart(2, "0")}`;
 
   const handleBlockedAddToOrder = () => {
     const message = t("guestOrder.resolveFirst");
@@ -164,24 +194,66 @@ export default function Catering({ packs }: CateringProps) {
     });
   };
 
-  const submitInquiry = trpc.public.submitPartnerInquiry.useMutation({
-    onSuccess: () => setSubmitted(true),
-    onError: () => toast.error(t("errors.submitFailed")),
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.contactName || !form.email) {
       toast.error(t("errors.requiredFields"));
       return;
     }
-    submitInquiry.mutate({
-      contactName: form.contactName,
-      businessName: form.businessName || form.contactName,
-      email: form.email,
-      phone: form.phone || undefined,
-      message: `${t("form.emailSubjectHeader")}\n${t("form.emailEventDate")}: ${form.eventDate}\n${t("form.emailGuestCount")}: ${form.guestCount}\n\n${form.message}`,
-    });
+
+    if (cooldownSeconds > 0) {
+      toast.error(t("errors.rateLimit", { time: cooldownLabel }));
+      return;
+    }
+
+    const parsedGuestCount = form.guestCount.trim()
+      ? Number.parseInt(form.guestCount, 10)
+      : null;
+    const guestCount =
+      parsedGuestCount != null && Number.isFinite(parsedGuestCount)
+        ? parsedGuestCount
+        : null;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.rpc("submit_franchise_interest", {
+        p_interest_type: "catering_enquiry",
+        p_full_name: form.contactName,
+        p_email: form.email,
+        p_phone: form.phone || null,
+        p_city: null,
+        p_state: null,
+        p_investment_budget: null,
+        p_business_experience: null,
+        p_preferred_date: null,
+        p_preferred_time: null,
+        p_message: form.message || null,
+        p_business_name: form.businessName || null,
+        p_event_date: form.eventDate || null,
+        p_guest_count: guestCount,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      window.localStorage.setItem(
+        CATERING_ENQUIRY_LAST_SUBMIT_KEY,
+        String(Date.now()),
+      );
+      setCooldownSeconds(
+        Math.ceil(CATERING_ENQUIRY_SUBMIT_COOLDOWN_MS / 1000),
+      );
+      setSubmitted(true);
+    } catch {
+      toast.error(
+        contactEmail
+          ? t("errors.submitFailed", { email: contactEmail })
+          : t("errors.submitFailedFallback"),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const featuredPacks = packs.filter(
@@ -322,7 +394,7 @@ export default function Catering({ packs }: CateringProps) {
               featuredPacks.map((pack) => (
                 <div
                   key={pack.id}
-                  className="bg-white overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                  className="flex h-full flex-col overflow-hidden bg-white transition-shadow duration-300 hover:shadow-lg"
                 >
                   <div className="relative aspect-[16/7] overflow-hidden">
                     <AppImage
@@ -338,7 +410,7 @@ export default function Catering({ packs }: CateringProps) {
                       {pack.tag}
                     </span>
                   </div>
-                  <div className="p-6">
+                  <div className="flex flex-1 flex-col p-6">
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <h3 className="font-serif text-brand-dark text-2xl">
                         {pack.name}
@@ -370,13 +442,15 @@ export default function Catering({ packs }: CateringProps) {
                         </li>
                       ))}
                     </ul>
-                    <PackOrderButton
-                      pack={pack}
-                      selectedTier={null}
-                      onAdd={() => handleAddPack(pack, null)}
-                      orderLabel={t("packs.addToOrder")}
-                      quoteLabel={t("packs.quoteRequired")}
-                    />
+                    <div className="mt-auto pt-4">
+                      <PackOrderButton
+                        pack={pack}
+                        selectedTier={null}
+                        onAdd={() => handleAddPack(pack, null)}
+                        orderLabel={t("packs.addToOrder")}
+                        quoteLabel={t("packs.quoteRequired")}
+                      />
+                    </div>
                   </div>
                 </div>
               ))
@@ -397,12 +471,14 @@ export default function Catering({ packs }: CateringProps) {
             </h2>
             <p className="text-brand-dark/55 mt-3 max-w-2xl mx-auto text-sm">
               {t("menu.description")}
-              <a
-                href={`mailto:${t("menu.descriptionEmail")}`}
-                className="text-brand-red underline"
-              >
-                {t("menu.descriptionEmail")}
-              </a>{" "}
+              {contactEmail ? (
+                <a
+                  href={`mailto:${contactEmail}`}
+                  className="text-brand-red underline"
+                >
+                  {contactEmail}
+                </a>
+              ) : null}
               {t("menu.descriptionEnd")}
             </p>
           </div>
@@ -476,52 +552,46 @@ export default function Catering({ packs }: CateringProps) {
                             ))}
                           </ul>
                         )}
-                        {item.prices.length > 0 ? (
-                          <div className="space-y-2 mt-2 mb-4">
-                            <label className="text-[11px] font-semibold uppercase tracking-wide text-brand-dark/45">
-                              Size
-                            </label>
-                            <select
+                        <div className="mt-auto flex flex-col gap-3 pt-4">
+                          {item.prices.length > 0 ? (
+                            <CateringTierSelect
+                              id={`catering-tier-${item.id}`}
+                              tiers={item.prices}
                               value={selectedTierIndex}
-                              onChange={(event) =>
+                              onValueChange={(index) =>
                                 setTierSelection((prev) => ({
                                   ...prev,
-                                  [item.id]: Number(event.target.value),
+                                  [item.id]: index,
                                 }))
                               }
-                              className="w-full cursor-pointer rounded-lg border border-brand-dark/15 bg-white px-3 py-2 text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-red/30"
+                              label={t("menu.sizeLabel")}
+                              variant="light"
+                            />
+                          ) : null}
+                          {hasOrderPrice ? (
+                            <PackOrderButton
+                              pack={item}
+                              selectedTier={selectedTier}
+                              onAdd={() => handleAddPack(item, selectedTier)}
+                              orderLabel={t("menu.addToOrder")}
+                              quoteLabel={t("menu.customPrice")}
+                            />
+                          ) : (
+                            <button
+                              onClick={() =>
+                                handleEnquireItem(
+                                  item.name,
+                                  item.price ??
+                                    item.prices[0]?.price ??
+                                    t("menu.customPrice"),
+                                )
+                              }
+                              className="w-full bg-brand-red text-white text-xs font-bold py-2.5 px-4 hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-1.5"
                             >
-                              {item.prices.map((tier, index) => (
-                                <option key={index} value={index}>
-                                  {tier.size} · {tier.price} ({tier.serves})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : null}
-                        {hasOrderPrice ? (
-                          <PackOrderButton
-                            pack={item}
-                            selectedTier={selectedTier}
-                            onAdd={() => handleAddPack(item, selectedTier)}
-                            orderLabel={t("menu.addToOrder")}
-                            quoteLabel={t("menu.customPrice")}
-                          />
-                        ) : (
-                          <button
-                            onClick={() =>
-                              handleEnquireItem(
-                                item.name,
-                                item.price ??
-                                  item.prices[0]?.price ??
-                                  t("menu.customPrice"),
-                              )
-                            }
-                            className="w-full bg-brand-red text-white text-xs font-bold py-2.5 px-4 hover:bg-brand-red/90 transition-colors flex items-center justify-center gap-1.5 mt-auto"
-                          >
-                            {t("menu.enquire")} <ChevronRight size={13} />
-                          </button>
-                        )}
+                              {t("menu.enquire")} <ChevronRight size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                     );
@@ -594,21 +664,25 @@ export default function Catering({ packs }: CateringProps) {
                 <p className="font-semibold text-brand-dark text-sm mb-2">
                   {t("form.directLabel")}
                 </p>
-                <div className="flex items-center gap-2 text-sm text-brand-dark/70 mb-1">
-                  <Phone size={13} className="text-brand-red" />
+                {contactPhone ? (
+                  <div className="flex items-center gap-2 text-sm text-brand-dark/70 mb-1">
+                    <Phone size={13} className="text-brand-red" />
+                    <a
+                      href={`tel:${contactPhone.replace(/\s/g, "")}`}
+                      className="hover:text-brand-red transition-colors"
+                    >
+                      {contactPhone}
+                    </a>
+                  </div>
+                ) : null}
+                {contactEmail ? (
                   <a
-                    href="tel:0416036016"
-                    className="hover:text-brand-red transition-colors"
+                    href={`mailto:${contactEmail}`}
+                    className="text-brand-red font-bold hover:underline text-sm"
                   >
-                    0416 036 016
+                    {contactEmail}
                   </a>
-                </div>
-                <a
-                  href="mailto:catering@saigonexpress.com.au"
-                  className="text-brand-red font-bold hover:underline text-sm"
-                >
-                  catering@saigonexpress.com.au
-                </a>
+                ) : null}
               </div>
             </div>
 
@@ -745,13 +819,18 @@ export default function Catering({ packs }: CateringProps) {
                   </div>
                   <button
                     type="submit"
-                    disabled={submitInquiry.isPending}
+                    disabled={isSubmitting || cooldownSeconds > 0}
                     className="w-full bg-brand-red text-white py-4 font-semibold text-sm hover:bg-brand-red/90 transition-colors disabled:opacity-50"
                   >
-                    {submitInquiry.isPending
+                    {isSubmitting
                       ? t("form.btnSending")
                       : t("form.btnSubmit")}
                   </button>
+                  {cooldownSeconds > 0 ? (
+                    <p className="text-xs font-semibold text-brand-red text-center">
+                      {t("form.cooldownWait", { time: cooldownLabel })}
+                    </p>
+                  ) : null}
                 </form>
               )}
             </div>

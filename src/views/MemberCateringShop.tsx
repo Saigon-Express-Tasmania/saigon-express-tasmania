@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import AppImage from "@/components/AppImage";
+import CateringTierSelect from "@/components/CateringTierSelect";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
@@ -60,7 +61,7 @@ function PackOrderButton({
     <button
       type="button"
       onClick={onAdd}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 sm:w-auto"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
     >
       <Plus className="h-4 w-4" />
       Add to order
@@ -188,7 +189,10 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
               </div>
             ) : (
               featuredPacks.map((pack) => (
-                <article key={pack.id} className={MEMBER_PORTAL_CARD_HOVER_CLASS}>
+                <article
+                  key={pack.id}
+                  className={`${MEMBER_PORTAL_CARD_HOVER_CLASS} flex h-full flex-col`}
+                >
                   <div className="relative aspect-[16/7] overflow-hidden">
                     <AppImage
                       src={pack.img ?? "/placeholder.svg"}
@@ -205,7 +209,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                       </span>
                     ) : null}
                   </div>
-                  <div className="p-6">
+                  <div className="flex flex-1 flex-col p-6">
                     <div className="mb-3 flex items-start justify-between gap-4">
                       <h3 className="font-serif text-2xl text-white">{pack.name}</h3>
                       <div className="shrink-0 text-right">
@@ -236,11 +240,13 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                         </li>
                       ))}
                     </ul>
-                    <PackOrderButton
-                      pack={pack}
-                      selectedTier={null}
-                      onAdd={() => handleAddPack(pack, null)}
-                    />
+                    <div className="mt-auto pt-4">
+                      <PackOrderButton
+                        pack={pack}
+                        selectedTier={null}
+                        onAdd={() => handleAddPack(pack, null)}
+                      />
+                    </div>
                   </div>
                 </article>
               ))
@@ -326,34 +332,22 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                               ))}
                             </ul>
                           ) : null}
-                          {item.prices.length > 0 ? (
-                            <div className="mb-4 space-y-2">
-                              <label className="text-[11px] font-semibold uppercase tracking-wide text-white/40">
-                                Size
-                              </label>
-                              <select
+                          <div className="mt-auto flex flex-col gap-3 pt-4">
+                            {item.prices.length > 0 ? (
+                              <CateringTierSelect
+                                id={`member-catering-tier-${item.id}`}
+                                tiers={item.prices}
                                 value={selectedTierIndex}
-                                onChange={(event) =>
+                                onValueChange={(index) =>
                                   setTierSelection((prev) => ({
                                     ...prev,
-                                    [item.id]: Number(event.target.value),
+                                    [item.id]: index,
                                   }))
                                 }
-                                className="w-full cursor-pointer rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
-                              >
-                                {item.prices.map((tier, index) => (
-                                  <option
-                                    key={index}
-                                    value={index}
-                                    className="bg-neutral-900"
-                                  >
-                                    {tier.size} · {tier.price} ({tier.serves})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          ) : null}
-                          <div className="mt-auto">
+                                label={t("menu.sizeLabel")}
+                                variant="dark"
+                              />
+                            ) : null}
                             <PackOrderButton
                               pack={item}
                               selectedTier={selectedTier}

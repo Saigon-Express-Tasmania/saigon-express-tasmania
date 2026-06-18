@@ -9,7 +9,8 @@ create type public.franchise_interest_status as enum (
 
 create type public.franchise_interest_type as enum (
   'franchise',
-  'consultation'
+  'consultation',
+  'catering_enquiry'
 );
 
 create table public.franchise_interests (
@@ -19,11 +20,14 @@ create table public.franchise_interests (
   email text not null,
   phone text,
   city text,
-  state text not null,
+  state text,
+  business_name text,
   investment_budget text,
   business_experience text,
   preferred_date date,
   preferred_time text,
+  event_date date,
+  guest_count integer,
   message text,
   status public.franchise_interest_status not null default 'pending',
   created_at timestamptz not null default now(),
@@ -41,7 +45,10 @@ create table public.franchise_interests (
     city is null or char_length(trim(city)) between 1 and 128
   ),
   constraint franchise_interests_state_length check (
-    char_length(trim(state)) between 1 and 64
+    state is null or char_length(trim(state)) between 1 and 64
+  ),
+  constraint franchise_interests_business_name_length check (
+    business_name is null or char_length(trim(business_name)) between 1 and 128
   ),
   constraint franchise_interests_investment_budget_length check (
     investment_budget is null or char_length(trim(investment_budget)) between 1 and 128
@@ -52,24 +59,31 @@ create table public.franchise_interests (
   constraint franchise_interests_preferred_time_length check (
     preferred_time is null or char_length(trim(preferred_time)) between 1 and 64
   ),
+  constraint franchise_interests_guest_count_range check (
+    guest_count is null or guest_count between 1 and 10000
+  ),
   constraint franchise_interests_message_length check (
     message is null or char_length(trim(message)) between 1 and 4000
   )
 );
 
 comment on table public.franchise_interests is
-  'Franchise and consultation submissions captured from the public FranchisePage.';
+  'Public interest submissions: franchise, consultation, and catering enquiry forms.';
 comment on column public.franchise_interests.interest_type is
-  'Submission type: franchise interest form or consultation booking form.';
+  'Submission type: franchise interest, consultation booking, or catering enquiry.';
 comment on column public.franchise_interests.full_name is 'Applicant full name.';
 comment on column public.franchise_interests.email is 'Applicant email address.';
 comment on column public.franchise_interests.phone is 'Optional applicant phone number.';
 comment on column public.franchise_interests.city is 'Optional city / location.';
 comment on column public.franchise_interests.state is 'Applicant state/region (e.g. Tasmania).';
+comment on column public.franchise_interests.business_name is
+  'Organization or business name (catering enquiry).';
 comment on column public.franchise_interests.investment_budget is 'Selected investment budget bracket.';
 comment on column public.franchise_interests.business_experience is 'Applicant prior business experience payload.';
 comment on column public.franchise_interests.preferred_date is 'Preferred consultation date.';
 comment on column public.franchise_interests.preferred_time is 'Preferred consultation time window.';
+comment on column public.franchise_interests.event_date is 'Catering event date.';
+comment on column public.franchise_interests.guest_count is 'Expected catering guest count.';
 comment on column public.franchise_interests.message is 'Freeform message.';
 comment on column public.franchise_interests.status is 'Admin review status.';
 
@@ -77,6 +91,8 @@ create index franchise_interests_created_at_idx
   on public.franchise_interests (created_at desc);
 create index franchise_interests_email_idx
   on public.franchise_interests (email);
+create index franchise_interests_interest_type_idx
+  on public.franchise_interests (interest_type);
 
 alter table public.franchise_interests enable row level security;
 
@@ -123,7 +139,10 @@ create or replace function public.submit_franchise_interest(
   p_business_experience text,
   p_preferred_date date,
   p_preferred_time text,
-  p_message text
+  p_message text,
+  p_business_name text default null,
+  p_event_date date default null,
+  p_guest_count integer default null
 )
 returns jsonb
 language plpgsql
@@ -140,10 +159,13 @@ declare
   v_phone text := nullif(trim(p_phone), '');
   v_city text := nullif(trim(p_city), '');
   v_state text := coalesce(nullif(trim(p_state), ''), 'Tasmania');
+  v_business_name text := nullif(trim(p_business_name), '');
   v_investment_budget text := nullif(trim(p_investment_budget), '');
   v_business_experience text := nullif(trim(p_business_experience), '');
   v_preferred_date date := p_preferred_date;
   v_preferred_time text := nullif(trim(p_preferred_time), '');
+  v_event_date date := p_event_date;
+  v_guest_count integer := p_guest_count;
   v_message text := nullif(trim(p_message), '');
   v_id bigint;
 begin
@@ -159,6 +181,16 @@ begin
     raise exception 'invalid request' using errcode = '22023';
   end if;
 
+  if v_guest_count is not null and (v_guest_count < 1 or v_guest_count > 10000) then
+    raise exception 'invalid request' using errcode = '22023';
+  end if;
+
+  if v_interest_type = 'consultation' then
+    if v_phone is null or v_preferred_date is null then
+      raise exception 'invalid request' using errcode = '22023';
+    end if;
+  end if;
+
   insert into public.franchise_interests (
     interest_type,
     full_name,
@@ -166,10 +198,13 @@ begin
     phone,
     city,
     state,
+    business_name,
     investment_budget,
     business_experience,
     preferred_date,
     preferred_time,
+    event_date,
+    guest_count,
     message
   )
   values (
@@ -179,10 +214,13 @@ begin
     v_phone,
     v_city,
     v_state,
+    v_business_name,
     v_investment_budget,
     v_business_experience,
     v_preferred_date,
     v_preferred_time,
+    v_event_date,
+    v_guest_count,
     v_message
   )
   returning id into v_id;
@@ -195,11 +233,11 @@ end;
 $$;
 
 comment on function public.submit_franchise_interest(
-  text, text, text, text, text, text, text, text, date, text, text
+  text, text, text, text, text, text, text, text, date, text, text, text, date, integer
 ) is
-  'Inserts a franchise_interest row for FranchisePage submissions (franchise or consultation).';
+  'Inserts a franchise_interests row for public form submissions (franchise, consultation, or catering enquiry).';
 
 grant execute on function public.submit_franchise_interest(
-  text, text, text, text, text, text, text, text, date, text, text
+  text, text, text, text, text, text, text, text, date, text, text, text, date, integer
 ) to anon, authenticated;
 
