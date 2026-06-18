@@ -1,6 +1,8 @@
+import HomeJsonLd from "@/components/HomeJsonLd";
 import { getRandomCategoriesByKind } from "@/lib/supabase/categories";
 import { getFeaturedReviews } from "@/lib/supabase/featured-reviews";
 import { getMenuItems } from "@/lib/supabase/menu";
+import { getActiveStoreLocations } from "@/lib/supabase/store-locations";
 import Home from "@/views/Home";
 
 export default async function HomePage() {
@@ -10,21 +12,26 @@ export default async function HomePage() {
     categoryContents,
     cateringContents,
     wholesaleContents,
+    storeLocations,
   ] = await Promise.all([
     getFeaturedReviews(),
     getMenuItems(),
     getRandomCategoriesByKind("menu", 6),
     getRandomCategoriesByKind("catering", 6),
     getRandomCategoriesByKind("wholesale", 6),
+    getActiveStoreLocations(),
   ]);
 
   return (
-    <Home
-      featuredReviews={featuredReviews}
-      menuItems={menuItems}
-      categoryContents={categoryContents}
-      cateringContents={cateringContents}
-      wholesaleContents={wholesaleContents}
-    />
+    <>
+      <HomeJsonLd storeLocations={storeLocations} />
+      <Home
+        featuredReviews={featuredReviews}
+        menuItems={menuItems}
+        categoryContents={categoryContents}
+        cateringContents={cateringContents}
+        wholesaleContents={wholesaleContents}
+      />
+    </>
   );
 }
