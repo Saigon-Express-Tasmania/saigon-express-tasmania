@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_ORIGIN } from "@/lib/site-origin";
+import { CANONICAL_SITE_ORIGIN } from "@/lib/site-origin";
 
 export const SEO_BRAND = "Saigon Express Tasmania";
 export const SEO_SITE_NAME = "Saigon Express";
@@ -142,14 +142,18 @@ const pageSeo = {
 
 export type SeoPageKey = keyof typeof pageSeo;
 
+function pageUrl(path: PageSeoConfig["path"]): string {
+  return path === "/" ? CANONICAL_SITE_ORIGIN : `${CANONICAL_SITE_ORIGIN}${path}`;
+}
+
 function localizedAlternates(path: PageSeoConfig["path"]) {
   const viPath = path === "/" ? "/vi" : `/vi${path}`;
 
   return {
-    canonical: path,
+    canonical: pageUrl(path),
     languages: {
-      en: path,
-      vi: viPath,
+      en: pageUrl(path),
+      vi: `${CANONICAL_SITE_ORIGIN}${viPath}`,
     },
   };
 }
@@ -170,7 +174,7 @@ function buildOpenGraph(config: PageSeoConfig): NonNullable<Metadata["openGraph"
     determiner: "auto",
     title,
     description: config.description,
-    url: config.path,
+    url: pageUrl(config.path),
     siteName: SEO_BRAND,
     locale: OG_LOCALE,
     alternateLocale: [...OG_ALTERNATE_LOCALES],
@@ -223,7 +227,7 @@ function buildMetadata(config: PageSeoConfig, options?: { isHome?: boolean }): M
       creator: SEO_BRAND,
       publisher: SEO_BRAND,
       applicationName: SEO_SITE_NAME,
-      authors: [{ name: SEO_BRAND, url: SITE_ORIGIN }],
+      authors: [{ name: SEO_BRAND, url: CANONICAL_SITE_ORIGIN }],
       robots: {
         index: true,
         follow: true,
@@ -245,14 +249,14 @@ function buildMetadata(config: PageSeoConfig, options?: { isHome?: boolean }): M
     alternates: localizedAlternates(config.path),
     creator: SEO_BRAND,
     publisher: SEO_BRAND,
-    authors: [{ name: SEO_BRAND, url: SITE_ORIGIN }],
+    authors: [{ name: SEO_BRAND, url: CANONICAL_SITE_ORIGIN }],
     ...social,
   };
 }
 
 /** Shared root layout defaults (homepage). */
 export const rootLayoutMetadata: Metadata = {
-  metadataBase: new URL(SITE_ORIGIN),
+  metadataBase: new URL(CANONICAL_SITE_ORIGIN),
   ...buildMetadata(pageSeo.home, { isHome: true }),
 };
 
