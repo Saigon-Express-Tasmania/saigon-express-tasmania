@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   createContext,
   useCallback,
   useContext,
@@ -212,7 +213,9 @@ export function GuestCateringOrderProvider({
 
   return (
     <GuestCateringOrderContext.Provider value={value}>
-      <GuestCateringOrderCheckoutSync />
+      <Suspense fallback={null}>
+        <GuestCateringOrderCheckoutSync />
+      </Suspense>
       {children}
     </GuestCateringOrderContext.Provider>
   );
