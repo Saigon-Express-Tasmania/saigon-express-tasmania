@@ -46,6 +46,7 @@
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/vite": "^4.3.0",
     "@types/google.maps": "^3.64.1",
+    "@types/aos": "^3.0.8",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -86,7 +87,6 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.11",
-    "@types/aos": "^3.0.8",    
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "vitest": "^4.1.7"
