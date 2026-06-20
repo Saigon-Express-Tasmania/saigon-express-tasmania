@@ -56,7 +56,7 @@ export default function Newsletter() {
       </ul>
 
       {/* Stay Updated */}
-      <h4 className="text-white font-semibold text-sm mb-3 uppercase tracking-wider">
+      {/* <h4 className="text-white font-semibold text-sm mb-3 uppercase tracking-wider">
         {t("stayUpdated")}
       </h4>
 
@@ -88,7 +88,7 @@ export default function Newsletter() {
             {subscribeMutation.isPending ? t("subscribing") : t("subscribe")}
           </button>
         </div>
-      )}
+      )} */}
     </div>
   );
 }
