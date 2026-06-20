@@ -13,6 +13,13 @@
     "order": "Giỏ hàng {count}",
     "order_online": "Giỏ hàng"
   },
+  "CookieConsent": {
+    "ariaLabel": "Chấp thuận cookie",
+    "message": "Chúng tôi sử dụng cookie thiết yếu để bạn có thể đặt hàng, đăng nhập và dùng giỏ hàng. Khi được phép, chúng tôi cũng dùng cookie phân tích để hiểu lưu lượng truy cập. Tìm hiểu thêm trong",
+    "privacyPolicy": "Chính Sách Bảo Mật",
+    "essentialOnly": "Chỉ thiết yếu (không phân tích)",
+    "accept": "Chấp nhận tất cả"
+  },
   "Home": {
     "portals": {
       "franchise": "Cổng Nhượng Quyền",
@@ -170,6 +177,9 @@
       "portalsTitle": "Cổng Truy Cập",
       "adminDashboard": "Bảng Điều Khiển Admin",
       "getTheApp": "Tải Ứng Dụng",
+      "privacyPolicy": "Chính Sách Bảo Mật",
+      "termsOfService": "Điều Khoản Dịch Vụ",
+      "cookieSettings": "Cài đặt cookie",
       "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "findStore": "Tìm Cửa Hàng",
       "careers": "Tuyển Dụng",

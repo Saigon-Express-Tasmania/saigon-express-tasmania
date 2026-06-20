@@ -257,6 +257,7 @@ function buildMetadata(config: PageSeoConfig, options?: { isHome?: boolean }): M
 /** Shared root layout defaults (homepage). */
 export const rootLayoutMetadata: Metadata = {
   metadataBase: new URL(CANONICAL_SITE_ORIGIN),
+  referrer: "strict-origin-when-cross-origin",
   ...buildMetadata(pageSeo.home, { isHome: true }),
 };
 

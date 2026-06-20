@@ -13,6 +13,13 @@
     "order": "Order {count}",
     "order_online": "Order Online"
   },
+  "CookieConsent": {
+    "ariaLabel": "Cookie consent",
+    "message": "We use essential cookies so you can order, stay signed in, and use your cart. With your permission, we also use analytics cookies to understand site traffic. Learn more in our",
+    "privacyPolicy": "Privacy Policy",
+    "essentialOnly": "Essential only (no analytics)",
+    "accept": "Accept all"
+  },
   "Home": {
     "portals": {
       "franchise": "Franchise Portal",
@@ -177,6 +184,9 @@
       "portalsTitle": "Portals",
       "adminDashboard": "Admin Dashboard",
       "getTheApp": "Get the App",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "cookieSettings": "Cookie settings",
       "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "findStore": "Find a Store",
       "careers": "Careers",

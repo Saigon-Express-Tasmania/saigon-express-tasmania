@@ -9,6 +9,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 
 const Newsletter = dynamic(() => import("@/components/Newsletter"));
+import { openCookieSettings } from "@/lib/cookie-consent";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 
 export default function MainFooter() {
@@ -113,6 +114,33 @@ export default function MainFooter() {
                 >
                   {t("footer.getTheApp")}
                 </Link>
+              </li>
+            </ul>
+            <ul className="mt-6 pt-6 border-t border-white/10 space-y-2.5 text-sm">
+              <li>
+                <Link
+                  href="/privacy-policy"
+                  className="hover:text-white transition-colors"
+                >
+                  {t("footer.privacyPolicy")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/terms-of-service"
+                  className="hover:text-white transition-colors"
+                >
+                  {t("footer.termsOfService")}
+                </Link>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={openCookieSettings}
+                  className="hover:text-white transition-colors text-left"
+                >
+                  {t("footer.cookieSettings")}
+                </button>
               </li>
             </ul>
           </div>

@@ -4,6 +4,7 @@ import AppChrome from "@/components/AppChrome";
 import CateringGuestLastOrderPanel from "@/components/CateringGuestLastOrderPanel";
 import CateringShoppingCart from "@/components/CateringShoppingCart";
 import ClientOnly from "@/components/ClientOnly";
+import CookieConsent from "@/components/CookieConsent";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import WholesaleCartInventorySync from "@/components/WholesaleCartInventorySync";
@@ -66,6 +67,9 @@ export function Providers({
                         </ClientOnly>
                         <ClientOnly>
                           <CateringGuestLastOrderPanel />
+                        </ClientOnly>
+                        <ClientOnly>
+                          <CookieConsent />
                         </ClientOnly>
                         <Toaster />
                       </TooltipProvider>

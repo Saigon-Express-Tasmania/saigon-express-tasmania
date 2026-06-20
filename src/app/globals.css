@@ -264,12 +264,6 @@
     overflow: hidden;
   }
 
-  /* Chat With Us pulse animation */
-  @keyframes chat-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 oklch(53% 0.207 22.3 / 0.6), 0 8px 32px oklch(53% 0.207 22.3 / 0.35); }
-    50% { box-shadow: 0 0 0 12px oklch(53% 0.207 22.3 / 0), 0 12px 40px oklch(53% 0.207 22.3 / 0.55); }
-  }
-
   /* Add-on suggestion modal */
   @keyframes card-add {
     0%   { transform: scale(1); }
