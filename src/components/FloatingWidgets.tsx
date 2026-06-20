@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { ENABLE_FACEBOOK_MESSAGE, ENABLE_TAWT_TO } from "@/config/settings";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { isTawkWidgetSupported, loadTawkWidget } from "@/lib/tawk-to";
 
@@ -11,17 +12,19 @@ export function FloatingWidgets() {
   const tawkPropertyId = useSiteSetting("tawt_to_property_id")?.trim();
   const tawkWidgetId = useSiteSetting("tawt_to_widget_id")?.trim();
   const tawkConfigured = Boolean(tawkPropertyId && tawkWidgetId);
-  const tawkEnabled = tawkConfigured && isTawkWidgetSupported();
+  const tawkEnabled =
+    ENABLE_TAWT_TO && tawkConfigured && isTawkWidgetSupported();
+  const facebookEnabled = ENABLE_FACEBOOK_MESSAGE && Boolean(facebookMessageLink);
 
   useEffect(() => {
-    if (!tawkPropertyId || !tawkWidgetId) return;
+    if (!ENABLE_TAWT_TO || !tawkPropertyId || !tawkWidgetId) return;
     return loadTawkWidget({
       propertyId: tawkPropertyId,
       widgetId: tawkWidgetId,
     });
   }, [tawkPropertyId, tawkWidgetId]);
 
-  if (!facebookMessageLink) {
+  if (!facebookEnabled) {
     return null;
   }
 

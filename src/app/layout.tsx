@@ -5,24 +5,20 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import IntlRoot from "@/components/IntlRoot";
 import NavigationProgress from "@/components/NavigationProgress";
 import SiteChromeProviders from "@/components/SiteChromeProviders";
+import SiteChromeProvidersLoader from "@/components/SiteChromeProvidersLoader";
+import {
+  DEFAULT_WHOLESALE_CART_CONFIG,
+  EMPTY_SITE_CONTENT_SNAPSHOT,
+} from "@/lib/site-chrome-defaults";
 import { rootLayoutMetadata } from "@/lib/seo-metadata";
-import { getSiteContentSnapshot } from "@/lib/supabase/site-content";
-import { getStoreLocations } from "@/lib/supabase/store-locations";
-import { loadWholesaleCartConfig } from "@/lib/wholesale-page";
 
 export const metadata = rootLayoutMetadata;
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [siteContent, storeLocations, wholesaleCartConfig] = await Promise.all([
-    getSiteContentSnapshot(),
-    getStoreLocations(),
-    loadWholesaleCartConfig(),
-  ]);
-
   return (
     <html
       lang="en"
@@ -35,13 +31,19 @@ export default async function RootLayout({
           <NavigationProgress />
         </Suspense>
         <IntlRoot>
-          <SiteChromeProviders
-            siteContent={siteContent}
-            storeLocations={storeLocations}
-            wholesaleCartConfig={wholesaleCartConfig}
+          <Suspense
+            fallback={
+              <SiteChromeProviders
+                siteContent={EMPTY_SITE_CONTENT_SNAPSHOT}
+                storeLocations={[]}
+                wholesaleCartConfig={DEFAULT_WHOLESALE_CART_CONFIG}
+              >
+                {children}
+              </SiteChromeProviders>
+            }
           >
-            {children}
-          </SiteChromeProviders>
+            <SiteChromeProvidersLoader>{children}</SiteChromeProvidersLoader>
+          </Suspense>
         </IntlRoot>
       </body>
     </html>

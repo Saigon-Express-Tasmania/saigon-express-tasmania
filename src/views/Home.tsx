@@ -1,16 +1,17 @@
 import AppImage from "@/components/AppImage";
+import HomeBestSellersSection from "@/components/home/HomeBestSellersSection";
+import HomeCateringCategoryPills from "@/components/home/HomeCateringCategoryPills";
+import HomeFeaturedReviewsSection from "@/components/home/HomeFeaturedReviewsSection";
+import HomeOurFoodCategoryPills from "@/components/home/HomeOurFoodCategoryPills";
+import HomeWholesaleCategoryPills from "@/components/home/HomeWholesaleCategoryPills";
 import HomeMediaPreload from "@/components/HomeMediaPreload";
 import LazyImage from "@/components/LazyImage";
 import Link from "@/components/link";
 
 import dynamic from "next/dynamic";
-import type { MenuItem } from "@/contexts/CartContext";
-import type { FeaturedReview, SiteCategory } from "@/types";
 import { getTranslations } from "next-intl/server";
 import { ChevronRight, MapPin, ShoppingCart } from "lucide-react";
-
-const GetApp = dynamic(() => import("@/components/GetApp"));
-const ReviewsSection = dynamic(() => import("@/components/ReviewsSection"));
+import { Suspense } from "react";
 
 // ── Uploaded food photography ─────────────────────────────────────────────────
 const IMGS = {
@@ -46,21 +47,9 @@ const CATEGORY_IMAGES = [
 
 const NEWS_IMAGES = [IMGS.news1, IMGS.news2, IMGS.news3] as const;
 
-type HomeProps = {
-  menuItems: MenuItem[];
-  featuredReviews: FeaturedReview[];
-  categoryContents: SiteCategory[];
-  cateringContents: SiteCategory[];
-  wholesaleContents: SiteCategory[];
-};
+const GetApp = dynamic(() => import("@/components/GetApp"));
 
-export default async function Home({
-  menuItems,
-  featuredReviews,
-  categoryContents,
-  cateringContents,
-  wholesaleContents,
-}: HomeProps) {
+export default async function Home() {
   const t = await getTranslations("Home");
 
   const marqueeItems = t.raw("marquee.items") as string[];
@@ -76,10 +65,6 @@ export default async function Home({
     title: string;
     excerpt: string;
   }>;
-
-  const bestSellers = menuItems
-    .filter((m) => Boolean(m.isAvailable) && Boolean(m.isPopular))
-    .slice(0, 4);
 
   return (
     <div className="min-h-screen bg-brand-cream text-brand-dark">
@@ -201,15 +186,9 @@ export default async function Home({
               {t("ourFood.description")}
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
-              {categoryContents.map((category) => (
-                <Link
-                  key={`ourfood-category-${category.id}`}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase text-white border border-white/20 bg-white/10"
-                  href={`/menu?category=${encodeURIComponent(category.name)}`}
-                >
-                  {category.name}
-                </Link>
-              ))}
+              <Suspense fallback={null}>
+                <HomeOurFoodCategoryPills />
+              </Suspense>
             </div>
             <Link href="/menu" className="btn-red">
               {t("ourFood.cta")} <ChevronRight size={16} />
@@ -279,17 +258,9 @@ export default async function Home({
             <p className="text-brand-dark/70 text-base leading-relaxed mb-6">
               {t("catering.description")}
             </p>
-            <div className="flex flex-wrap gap-2 mb-8">
-              {cateringContents.map((category) => (
-                <Link
-                  key={`catering-category-${category.id}`}
-                  className="pill-tag"
-                  href={`/catering#${category.alias}`}
-                >
-                  {category.name}
-                </Link>
-              ))}
-            </div>
+            <Suspense fallback={null}>
+              <HomeCateringCategoryPills />
+            </Suspense>
             <Link href="/catering" className="btn-red">
               {t("catering.cta")} <ChevronRight size={16} />
             </Link>
@@ -363,68 +334,9 @@ export default async function Home({
         </div>
       </section>
 
-      {/* ── BEST SELLERS ───────────────────────────── */}
-      {bestSellers.length > 0 && (
-        <section className="py-20 bg-white">
-          <div className="max-w-[1280px] mx-auto px-4">
-            <div className="flex items-end justify-between mb-10 reveal">
-              <div>
-                <span className="section-label">{t("bestSellers.label")}</span>
-                <h2 className="font-serif text-4xl text-brand-dark mt-2">
-                  {t("bestSellers.title")}
-                </h2>
-              </div>
-              <Link
-                href="/menu"
-                className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1"
-              >
-                {t("bestSellers.seeFullMenu")} <ChevronRight size={14} />
-              </Link>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {bestSellers.map((item, i) => (
-                <Link
-                  key={item.id}
-                  href="/menu"
-                  className="group block bg-brand-cream rounded-sm overflow-hidden card-lift reveal"
-                  style={{ animationDelay: `${i * 0.08}s` }}
-                >
-                  <div className="aspect-square overflow-hidden bg-gray-100">
-                    <LazyImage
-                      src={
-                        item.imageUrl ??
-                        [IMGS.cat1, IMGS.cat2, IMGS.cat3, IMGS.ourFood2a][i % 4]
-                      }
-                      alt={item.name}
-                      wrapperClassName="w-full h-full"
-                      className="group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="text-xs font-semibold text-brand-red uppercase tracking-wider mb-1">
-                      {item.category}
-                    </p>
-                    <h3 className="font-serif text-lg text-brand-dark leading-tight mb-1">
-                      {item.name}
-                    </h3>
-                    <p className="text-sm text-brand-dark/60 line-clamp-2 mb-3">
-                      {item.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-brand-dark">
-                        ${Number(item.price).toFixed(2)}
-                      </span>
-                      <span className="text-xs text-brand-red font-semibold">
-                        {t("bestSellers.order")}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <Suspense fallback={null}>
+        <HomeBestSellersSection />
+      </Suspense>
 
       {/* ── WHOLESALE ─────────────────────────────── */}
       <section className="bg-brand-dark py-20 lg:py-28">
@@ -453,17 +365,9 @@ export default async function Home({
             <p className="text-white/65 text-base leading-relaxed mb-6">
               {t("wholesale.description")}
             </p>
-            <div className="flex flex-wrap gap-3 mb-8">
-              {wholesaleContents.map((content) => (
-                <Link
-                  key={`wholesale-category-${content.id}`}
-                  className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/20 text-white/70 text-xs font-medium"
-                  href={`/wholesale/landing-shop?category=${encodeURIComponent(content.name)}`}
-                >
-                  {content.name}
-                </Link>
-              ))}
-            </div>
+            <Suspense fallback={null}>
+              <HomeWholesaleCategoryPills />
+            </Suspense>
             <Link href="/wholesale/landing-shop" className="btn-red">
               {t("wholesale.cta")} <ChevronRight size={16} />
             </Link>
@@ -563,7 +467,9 @@ export default async function Home({
       </section>
 
       <GetApp />
-      <ReviewsSection reviews={featuredReviews} />
+      <Suspense fallback={null}>
+        <HomeFeaturedReviewsSection />
+      </Suspense>
     </div>
   );
 }

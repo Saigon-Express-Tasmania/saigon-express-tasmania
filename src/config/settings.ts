@@ -40,3 +40,6 @@ export const CACHE_TAGS = {
 } as const;
 
 export const REVALIDATE_TAG_LIST = Object.values(CACHE_TAGS);
+
+export const ENABLE_TAWT_TO = false;
+export const ENABLE_FACEBOOK_MESSAGE = true;
