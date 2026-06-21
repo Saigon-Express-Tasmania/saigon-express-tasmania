@@ -205,14 +205,18 @@ export default async function Home() {
             IMGS.ourFood2e,
             IMGS.ourFood2f,
           ].map((src, i) => (
-            <div key={i} className="overflow-hidden rounded-sm aspect-[4/3]">
+            <Link
+              key={i}
+              href="/menu"
+              className="overflow-hidden rounded-sm aspect-[4/3]"
+            >
               <LazyImage
                 src={src}
                 alt={t("ourFood.mosaicAlt")}
                 wrapperClassName="w-full h-full"
                 className="hover:scale-105 transition-transform duration-500"
               />
-            </div>
+            </Link>
           ))}
         </div>
       </section>
