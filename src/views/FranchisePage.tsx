@@ -151,7 +151,8 @@ export default function FranchisePage() {
       const lastSubmitAt = Number(
         window.localStorage.getItem(CONSULT_LAST_SUBMIT_KEY) ?? "0",
       );
-      const remainingMs = lastSubmitAt + CONSULT_SUBMIT_COOLDOWN_MS - Date.now();
+      const remainingMs =
+        lastSubmitAt + CONSULT_SUBMIT_COOLDOWN_MS - Date.now();
       setConsultCooldownSeconds(
         remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0,
       );
@@ -205,8 +206,13 @@ export default function FranchisePage() {
         throw new Error(result.error);
       }
 
-      window.localStorage.setItem(FRANCHISE_LAST_SUBMIT_KEY, String(Date.now()));
-      setInterestCooldownSeconds(Math.ceil(FRANCHISE_SUBMIT_COOLDOWN_MS / 1000));
+      window.localStorage.setItem(
+        FRANCHISE_LAST_SUBMIT_KEY,
+        String(Date.now()),
+      );
+      setInterestCooldownSeconds(
+        Math.ceil(FRANCHISE_SUBMIT_COOLDOWN_MS / 1000),
+      );
       setSubmitted(true);
     } catch {
       toast.error(t("toasts.error"));
@@ -282,7 +288,7 @@ export default function FranchisePage() {
       <AnimationOnScroll />
       <div className="min-h-screen bg-brand-cream font-sans overflow-hidden">
         {/* Hero Section */}
-        <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
+        <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
           <div
             className="absolute inset-0 bg-cover bg-center transform scale-105 animate-slow-zoom"
             style={{
@@ -791,7 +797,10 @@ export default function FranchisePage() {
                           className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors"
                         >
                           <div className="w-8 h-8 rounded-full bg-brand-red/20 flex items-center justify-center">
-                            <MessageCircle size={14} className="text-brand-red" />
+                            <MessageCircle
+                              size={14}
+                              className="text-brand-red"
+                            />
                           </div>
                           <span className="font-medium text-brand-red">
                             {contactEmail}
@@ -954,7 +963,9 @@ export default function FranchisePage() {
 
                     <button
                       type="submit"
-                      disabled={isSubmittingInterest || interestCooldownSeconds > 0}
+                      disabled={
+                        isSubmittingInterest || interestCooldownSeconds > 0
+                      }
                       className="w-full bg-brand-red text-white py-4 mt-4 rounded-xl font-bold text-sm hover:bg-brand-red/90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0"
                     >
                       {isSubmittingInterest
@@ -963,8 +974,8 @@ export default function FranchisePage() {
                     </button>
                     {interestCooldownSeconds > 0 && (
                       <p className="text-xs font-semibold text-brand-red text-center">
-                        Please wait {interestCooldownLabel} before
-                        submitting again.
+                        Please wait {interestCooldownLabel} before submitting
+                        again.
                       </p>
                     )}
                     <p className="text-[11px] text-brand-dark/40 text-center uppercase tracking-widest mt-4">
@@ -1178,7 +1189,8 @@ export default function FranchisePage() {
                   </button>
                   {consultCooldownSeconds > 0 && (
                     <p className="text-xs font-semibold text-brand-red text-center">
-                      Please wait {consultCooldownLabel} before submitting again.
+                      Please wait {consultCooldownLabel} before submitting
+                      again.
                     </p>
                   )}
                   <p className="text-[10px] text-brand-dark/30 text-center uppercase tracking-widest">

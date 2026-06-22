@@ -107,7 +107,7 @@ export default function Wholesale({
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero Section */}
-      <section className="relative w-full aspect-3/1 overflow-hidden">
+      <section className="relative w-full aspect-5/2 overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
