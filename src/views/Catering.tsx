@@ -4,7 +4,7 @@ import AppImage from "@/components/AppImage";
 import CateringTierSelect from "@/components/CateringTierSelect";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { supabase } from "@/lib/supabase/client";
+import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { toast } from "sonner";
 import {
   CheckCircle,
@@ -217,25 +217,30 @@ export default function Catering({ packs }: CateringProps) {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.rpc("submit_franchise_interest", {
-        p_interest_type: "catering_enquiry",
-        p_full_name: form.contactName,
-        p_email: form.email,
-        p_phone: form.phone || null,
-        p_city: null,
-        p_state: null,
-        p_investment_budget: null,
-        p_business_experience: null,
-        p_preferred_date: null,
-        p_preferred_time: null,
-        p_message: form.message || null,
-        p_business_name: form.businessName || null,
-        p_event_date: form.eventDate || null,
-        p_guest_count: guestCount,
-      });
+      const result = await invokeEdgeFunction<{ id: number; submitted: boolean }>(
+        "franchise-interest",
+        {
+          body: {
+            p_interest_type: "catering_enquiry",
+            p_full_name: form.contactName,
+            p_email: form.email,
+            p_phone: form.phone || null,
+            p_city: null,
+            p_state: null,
+            p_investment_budget: null,
+            p_business_experience: null,
+            p_preferred_date: null,
+            p_preferred_time: null,
+            p_message: form.message || null,
+            p_business_name: form.businessName || null,
+            p_event_date: form.eventDate || null,
+            p_guest_count: guestCount,
+          },
+        },
+      );
 
-      if (error) {
-        throw error;
+      if (!result.ok) {
+        throw new Error(result.error);
       }
 
       window.localStorage.setItem(

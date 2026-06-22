@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
-import { supabase } from "@/lib/supabase/client";
+import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { toast } from "sonner";
 import {
   CheckCircle,
@@ -179,25 +179,30 @@ export default function FranchisePage() {
 
     setIsSubmittingInterest(true);
     try {
-      const { error } = await supabase.rpc("submit_franchise_interest", {
-        p_interest_type: "franchise",
-        p_full_name: form.fullName,
-        p_email: form.email,
-        p_phone: form.phone || null,
-        p_city: form.city || null,
-        p_state: "Tasmania",
-        p_investment_budget: form.investmentBudget || null,
-        p_business_experience:
-          form.hasExperience === "yes"
-            ? t("interestForm.experiencePayloadYes")
-            : t("interestForm.experiencePayloadNo"),
-        p_preferred_date: null,
-        p_preferred_time: null,
-        p_message: form.message || null,
-      });
+      const result = await invokeEdgeFunction<{ id: number; submitted: boolean }>(
+        "franchise-interest",
+        {
+          body: {
+            p_interest_type: "franchise",
+            p_full_name: form.fullName,
+            p_email: form.email,
+            p_phone: form.phone || null,
+            p_city: form.city || null,
+            p_state: "Tasmania",
+            p_investment_budget: form.investmentBudget || null,
+            p_business_experience:
+              form.hasExperience === "yes"
+                ? t("interestForm.experiencePayloadYes")
+                : t("interestForm.experiencePayloadNo"),
+            p_preferred_date: null,
+            p_preferred_time: null,
+            p_message: form.message || null,
+          },
+        },
+      );
 
-      if (error) {
-        throw error;
+      if (!result.ok) {
+        throw new Error(result.error);
       }
 
       window.localStorage.setItem(FRANCHISE_LAST_SUBMIT_KEY, String(Date.now()));
@@ -232,22 +237,27 @@ export default function FranchisePage() {
 
     setIsSubmittingConsult(true);
     try {
-      const { error } = await supabase.rpc("submit_franchise_interest", {
-        p_interest_type: "consultation",
-        p_full_name: consultForm.name,
-        p_email: consultForm.email,
-        p_phone: consultForm.phone || null,
-        p_city: null,
-        p_state: "Tasmania",
-        p_investment_budget: null,
-        p_business_experience: null,
-        p_preferred_date: consultForm.preferredDate || null,
-        p_preferred_time: consultForm.preferredTime || null,
-        p_message: consultForm.message || null,
-      });
+      const result = await invokeEdgeFunction<{ id: number; submitted: boolean }>(
+        "franchise-interest",
+        {
+          body: {
+            p_interest_type: "consultation",
+            p_full_name: consultForm.name,
+            p_email: consultForm.email,
+            p_phone: consultForm.phone || null,
+            p_city: null,
+            p_state: "Tasmania",
+            p_investment_budget: null,
+            p_business_experience: null,
+            p_preferred_date: consultForm.preferredDate || null,
+            p_preferred_time: consultForm.preferredTime || null,
+            p_message: consultForm.message || null,
+          },
+        },
+      );
 
-      if (error) {
-        throw error;
+      if (!result.ok) {
+        throw new Error(result.error);
       }
 
       window.localStorage.setItem(CONSULT_LAST_SUBMIT_KEY, String(Date.now()));

@@ -405,6 +405,12 @@ verify_jwt = false
 [functions.shipping-quotes]
 verify_jwt = false
 
+[functions.franchise-interest]
+verify_jwt = false
+
+[functions.catering-order]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
