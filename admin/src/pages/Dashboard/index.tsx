@@ -6,8 +6,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { PendingCateringOrders } from '@/pages/Dashboard/PendingCateringOrders';
 import { PendingFeedbacks } from '@/pages/Dashboard/PendingFeedbacks';
+import { PendingInterests } from '@/pages/Dashboard/PendingInterests';
 import { PendingWholesaleMembers } from '@/pages/Dashboard/PendingWholesaleMembers';
+import { ReadyOrders } from '@/pages/Dashboard/ReadyOrders';
 
 export function Dashboard() {
   const { user } = useSupabaseAuth();
@@ -27,6 +30,18 @@ export function Dashboard() {
         <PendingWholesaleMembers />
 
         <div className="xl:col-span-2">
+          <ReadyOrders />
+        </div>
+
+        <div className="xl:col-span-2">
+          <PendingCateringOrders />
+        </div>
+
+        <div>
+          <PendingInterests />
+        </div>
+
+        <div>
           <PendingFeedbacks />
         </div>
       </div>

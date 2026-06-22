@@ -45,7 +45,7 @@ export async function fetchUnresolvedFeedbacks(input: {
   const { data, error, count } = await supabase
     .from('feedbacks')
     .select('*', { count: 'exact' })
-    .neq('status', 'resolved')
+    .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(input.limit);
 
