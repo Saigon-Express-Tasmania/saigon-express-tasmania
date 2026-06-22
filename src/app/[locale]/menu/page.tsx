@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getCategoriesByKind } from "@/lib/supabase/categories";
 import { getMenuItems } from "@/lib/supabase/menu";
 import { getActiveStoreLocations } from "@/lib/supabase/store-locations";
@@ -13,10 +14,12 @@ export default async function LocaleMenuPage() {
     getCategoriesByKind("menu"),
   ]);
   return (
-    <Menu
-      menuItems={menuItems}
-      storeLocations={storeLocations}
-      categoriesContent={categoriesContent}
-    />
+    <Suspense fallback={null}>
+      <Menu
+        menuItems={menuItems}
+        storeLocations={storeLocations}
+        categoriesContent={categoriesContent}
+      />
+    </Suspense>
   );
 }

@@ -16,6 +16,7 @@ import {
   applyWholesaleProductAvailability,
   type WholesaleProductAvailabilityRow,
 } from "@/types";
+import { buildWholesaleProductsAvailabilityRpcArgs } from "@/lib/wholesale-availability-rpc";
 import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { SiteCategory, UserProfile, WholesaleProduct } from "@/types";
@@ -146,7 +147,7 @@ export default function WholesaleShop({
     void (async () => {
       const { data, error } = await supabase.rpc(
         "get_wholesale_products_availability",
-        { p_customer_account: profile.id },
+        buildWholesaleProductsAvailabilityRpcArgs(profile.id),
       );
 
       if (cancelled || error || !data) return;

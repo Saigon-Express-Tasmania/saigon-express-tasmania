@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import WholesaleInventoryHydration from "@/components/WholesaleInventoryHydration";
 import WholesaleOrders from "@/views/WholesaleOrders";
 import { loadWholesalePageData } from "@/lib/wholesale-page";
@@ -7,7 +8,9 @@ export default async function LocaleWholesaleOrdersPage() {
   return (
     <>
       <WholesaleInventoryHydration inventory={inventory} />
-      <WholesaleOrders products={products} />
+      <Suspense fallback={null}>
+        <WholesaleOrders products={products} />
+      </Suspense>
     </>
   );
 }

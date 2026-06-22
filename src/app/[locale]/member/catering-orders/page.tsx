@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import MemberCateringOrders from "@/views/MemberCateringOrders";
 
 export default function LocaleMemberCateringOrdersPage() {
-  return <MemberCateringOrders />;
+  return (
+    <Suspense fallback={null}>
+      <MemberCateringOrders />
+    </Suspense>
+  );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import {
   fetchOrderByTrackingToken,
   formatTrackedOrderId,
@@ -50,11 +51,13 @@ export default async function LocaleOrderTrackingDetailsPage({
     await resolveOrderTrackingStores(order);
 
   return (
-    <OrderTrackingDetails
-      order={order}
-      trackingToken={trackingToken}
-      pickupStore={pickupStore}
-      invoiceCreatorStore={invoiceCreatorStore}
-    />
+    <Suspense fallback={null}>
+      <OrderTrackingDetails
+        order={order}
+        trackingToken={trackingToken}
+        pickupStore={pickupStore}
+        invoiceCreatorStore={invoiceCreatorStore}
+      />
+    </Suspense>
   );
 }

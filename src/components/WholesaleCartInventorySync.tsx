@@ -1,5 +1,6 @@
 "use client";
 
+import { buildWholesaleProductsAvailabilityRpcArgs } from "@/lib/wholesale-availability-rpc";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useWholesaleInventory } from "@/contexts/WholesaleInventoryContext";
 import { supabase, useSupabase } from "@/hooks/useSupabase";
@@ -20,7 +21,7 @@ function WholesaleCartInventorySync() {
     void (async () => {
       const { data, error } = await supabase.rpc(
         "get_wholesale_products_availability",
-        { p_customer_account: profile?.id ?? null },
+        buildWholesaleProductsAvailabilityRpcArgs(profile?.id),
       );
 
       if (cancelled || error || !data) return;
