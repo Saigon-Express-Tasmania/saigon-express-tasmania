@@ -74,6 +74,26 @@ function stripLocalePrefix(pathname: string): string {
   return pathname;
 }
 
+type RefreshTrackedOrderOptions = {
+  clearIfMissing?: boolean;
+};
+
+async function fetchTrackedOrderWithRetry(
+  trackingToken: string,
+  maxAttempts = 1,
+): Promise<TrackedOrder | null> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const order = await fetchOrderByTrackingToken(trackingToken);
+    if (order) return order;
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 300 * (attempt + 1));
+      });
+    }
+  }
+  return null;
+}
+
 function isCateringRoute(pathname: string): boolean {
   const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
   return path === "/catering";
@@ -122,6 +142,7 @@ export function GuestCateringOrderProvider({
   const [trackedOrder, setTrackedOrder] = useState<TrackedOrder | null>(null);
   const [isLoadingOrder, setIsLoadingOrder] = useState(false);
   const [lastOrderOpen, setLastOrderOpen] = useState(false);
+  const skipNextSessionRefreshRef = useRef(false);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -133,34 +154,56 @@ export function GuestCateringOrderProvider({
     setLastOrderOpen(false);
   }, [clearSession]);
 
-  const refreshTrackedOrder = useCallback(async (): Promise<TrackedOrder | null> => {
-    const trackingToken = session?.trackingToken?.trim();
-    if (!trackingToken) {
-      setTrackedOrder(null);
-      return null;
-    }
-
-    setIsLoadingOrder(true);
-    try {
-      const order = await fetchOrderByTrackingToken(trackingToken);
-      if (!order) {
-        clearGuestOrder();
+  const loadTrackedOrder = useCallback(
+    async (
+      trackingToken: string,
+      options: RefreshTrackedOrderOptions = {},
+    ): Promise<TrackedOrder | null> => {
+      const token = trackingToken.trim();
+      if (!token) {
+        setTrackedOrder(null);
         return null;
       }
 
-      if (!isGuestCateringOrderTrackable(order.status)) {
-        clearGuestOrder();
-        return null;
-      }
+      const clearIfMissing = options.clearIfMissing ?? true;
+      const maxAttempts = clearIfMissing ? 1 : 4;
 
-      setTrackedOrder(order);
-      return order;
-    } catch {
-      return null;
-    } finally {
-      setIsLoadingOrder(false);
-    }
-  }, [clearGuestOrder, session?.trackingToken]);
+      setIsLoadingOrder(true);
+      try {
+        const order = await fetchTrackedOrderWithRetry(token, maxAttempts);
+        if (!order) {
+          if (clearIfMissing) {
+            clearGuestOrder();
+          } else {
+            setTrackedOrder(null);
+          }
+          return null;
+        }
+
+        if (!isGuestCateringOrderTrackable(order.status)) {
+          clearGuestOrder();
+          return null;
+        }
+
+        setTrackedOrder(order);
+        return order;
+      } catch {
+        return null;
+      } finally {
+        setIsLoadingOrder(false);
+      }
+    },
+    [clearGuestOrder],
+  );
+
+  const refreshTrackedOrder = useCallback(
+    async (): Promise<TrackedOrder | null> => {
+      return loadTrackedOrder(session?.trackingToken ?? "", {
+        clearIfMissing: true,
+      });
+    },
+    [loadTrackedOrder, session?.trackingToken],
+  );
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -168,15 +211,21 @@ export function GuestCateringOrderProvider({
       setTrackedOrder(null);
       return;
     }
-    void refreshTrackedOrder();
-  }, [isHydrated, session?.trackingToken, refreshTrackedOrder]);
+    if (skipNextSessionRefreshRef.current) {
+      skipNextSessionRefreshRef.current = false;
+      return;
+    }
+    void loadTrackedOrder(session.trackingToken, { clearIfMissing: true });
+  }, [isHydrated, loadTrackedOrder, session?.trackingToken]);
 
   const saveGuestOrder = useCallback(
     (next: GuestCateringOrderSession) => {
+      skipNextSessionRefreshRef.current = true;
       setSession(next);
       setLastOrderOpen(true);
+      void loadTrackedOrder(next.trackingToken, { clearIfMissing: false });
     },
-    [setSession],
+    [loadTrackedOrder, setSession],
   );
 
   const hasActiveGuestOrder = shouldBlockGuestCateringCart(

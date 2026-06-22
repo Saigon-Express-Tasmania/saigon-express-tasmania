@@ -36,6 +36,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
+import { fetchCommerceTaxSettings } from '@/lib/commerce-tax';
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
@@ -138,7 +139,10 @@ function emptyDraftOrderForm(orderType: string): DraftOrderForm {
   };
 }
 
-function syncDraftTotals(form: DraftOrderForm): DraftOrderForm {
+function syncDraftTotals(
+  form: DraftOrderForm,
+  tax: { isGstInclusive: boolean } = { isGstInclusive: true },
+): DraftOrderForm {
   const subtotal = form.items.reduce((sum, item) => {
     const qty = Number(item.qty);
     const unitPrice = Number(item.unit_price);
@@ -147,11 +151,12 @@ function syncDraftTotals(form: DraftOrderForm): DraftOrderForm {
   }, 0);
   const couponDiscount = Number(form.coupon_discount) || 0;
   const wholesaleDiscount = Number(form.wholesale_discount) || 0;
-  const taxTotal = Number(form.tax_total) || 0;
   const shippingFee = Number(form.shipping_fee) || 0;
+  const taxTotal = tax.isGstInclusive ? 0 : Number(form.tax_total) || 0;
   return {
     ...form,
     subtotal: subtotal.toFixed(2),
+    tax_total: tax.isGstInclusive ? '0.00' : taxTotal.toFixed(2),
     grand_total: Math.max(
       subtotal - couponDiscount - wholesaleDiscount + taxTotal + shippingFee,
       0,
@@ -159,7 +164,11 @@ function syncDraftTotals(form: DraftOrderForm): DraftOrderForm {
   };
 }
 
-function draftRowToForm(row: DraftOrderRow, items: SalesOrderItemForm[]): DraftOrderForm {
+function draftRowToForm(
+  row: DraftOrderRow,
+  items: SalesOrderItemForm[],
+  tax: { isGstInclusive: boolean } = { isGstInclusive: true },
+): DraftOrderForm {
   return syncDraftTotals({
     customer_name: row.customer_name ?? '',
     customer_email: row.customer_email ?? '',
@@ -179,7 +188,7 @@ function draftRowToForm(row: DraftOrderRow, items: SalesOrderItemForm[]): DraftO
     items,
     expires_at: row.expires_at ?? '',
     ...pickOrderAddressFields(row),
-  });
+  }, tax);
 }
 
 export function DraftOrders() {
@@ -202,6 +211,14 @@ export function DraftOrders() {
     emptyDraftOrderForm(orderType ?? 'pickup'),
   );
   const [deleteTarget, setDeleteTarget] = useState<DraftOrderRow | null>(null);
+  const [isGstInclusive, setIsGstInclusive] = useState(true);
+  const taxMode = useMemo(() => ({ isGstInclusive }), [isGstInclusive]);
+
+  useEffect(() => {
+    void fetchCommerceTaxSettings()
+      .then((settings) => setIsGstInclusive(settings.isGstInclusive))
+      .catch(() => setIsGstInclusive(true));
+  }, []);
 
   const loadRows = useCallback(async () => {
     if (!orderType) return;
@@ -258,7 +275,7 @@ export function DraftOrders() {
       const itemRows = await fetchOrderItems(row.id);
       const items = itemRows.map((item) => mapDbItemToForm(item));
       setEditingId(row.id);
-      setForm(draftRowToForm(row, items));
+      setForm(draftRowToForm(row, items, taxMode));
       setDialogOpen(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load draft order.');
@@ -268,7 +285,7 @@ export function DraftOrders() {
   };
 
   const applyItemsChange = (items: SalesOrderItemForm[]) => {
-    setForm((prev) => syncDraftTotals({ ...prev, items }));
+    setForm((prev) => syncDraftTotals({ ...prev, items }, taxMode));
   };
 
   const handleSave = async () => {
@@ -282,7 +299,7 @@ export function DraftOrders() {
       return;
     }
 
-    const synced = syncDraftTotals({ ...form, items: parsedItems });
+    const synced = syncDraftTotals({ ...form, items: parsedItems }, taxMode);
 
     const targetDate = new Date(synced.requested_target_date);
     if (Number.isNaN(targetDate.getTime())) {
@@ -605,7 +622,7 @@ export function DraftOrders() {
                     value={form.coupon_discount}
                     onChange={(e) =>
                       setForm((prev) =>
-                        syncDraftTotals({ ...prev, coupon_discount: e.target.value }),
+                        syncDraftTotals({ ...prev, coupon_discount: e.target.value }, taxMode),
                       )
                     }
                   />
@@ -619,23 +636,27 @@ export function DraftOrders() {
                     value={form.wholesale_discount}
                     onChange={(e) =>
                       setForm((prev) =>
-                        syncDraftTotals({ ...prev, wholesale_discount: e.target.value }),
+                        syncDraftTotals({ ...prev, wholesale_discount: e.target.value }, taxMode),
                       )
                     }
                   />
                 </SalesOrderFormField>
-                <SalesOrderFormField label="Tax total" htmlFor="draft-tax">
-                  <Input
-                    id="draft-tax"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.tax_total}
-                    onChange={(e) =>
-                      setForm((prev) => syncDraftTotals({ ...prev, tax_total: e.target.value }))
-                    }
-                  />
-                </SalesOrderFormField>
+                {!isGstInclusive ? (
+                  <SalesOrderFormField label="Tax total" htmlFor="draft-tax-total">
+                    <Input
+                      id="draft-tax-total"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.tax_total}
+                      onChange={(e) =>
+                        setForm((prev) =>
+                          syncDraftTotals({ ...prev, tax_total: e.target.value }, taxMode),
+                        )
+                      }
+                    />
+                  </SalesOrderFormField>
+                ) : null}
                 <SalesOrderFormField label="Shipping fee" htmlFor="draft-shipping">
                   <Input
                     id="draft-shipping"
@@ -644,7 +665,7 @@ export function DraftOrders() {
                     step="0.01"
                     value={form.shipping_fee}
                     onChange={(e) =>
-                      setForm((prev) => syncDraftTotals({ ...prev, shipping_fee: e.target.value }))
+                      setForm((prev) => syncDraftTotals({ ...prev, shipping_fee: e.target.value }, taxMode))
                     }
                   />
                 </SalesOrderFormField>

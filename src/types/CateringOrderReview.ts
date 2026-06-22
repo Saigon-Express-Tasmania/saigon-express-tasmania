@@ -9,7 +9,7 @@ export type CateringOrderReviewForm = {
   shipping_dba_name: string;
   shipping_address: string;
   shipping_city: string;
-  shipping_state: AustralianStateCode | "";
+  shipping_state: AustralianStateCode;
   shipping_postal_code: string;
   shipping_country: string;
   shipping_preferred_window: string;

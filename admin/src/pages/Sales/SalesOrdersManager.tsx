@@ -10,16 +10,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
+import { fetchCommerceTaxSettings } from '@/lib/commerce-tax';
 import { Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SalesOrderDeleteDialog } from './SalesOrderDeleteDialog';
 import { SalesOrderEditorDialog } from './SalesOrderEditorDialog';
-import { SalesOrderFulfillmentDialog } from './SalesOrderFulfillmentDialog';
+import { SalesOrderFulfillmentDialog, type SalesOrderFulfillmentDetails } from './SalesOrderFulfillmentDialog';
 import { SalesOrdersTable } from './SalesOrdersTable';
 import { serializeB2BForDb } from './salesOrderB2b';
 import {
+  fetchLatestPayment,
   fetchPaymentStatusByOrderIds,
   replaceOrderItems,
   saveOrderPayment,
@@ -67,6 +69,15 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
   const [deleteTarget, setDeleteTarget] = useState<SalesOrderRow | null>(null);
   const [fulfillTarget, setFulfillTarget] = useState<SalesOrderRow | null>(null);
+  const [isGstInclusive, setIsGstInclusive] = useState(true);
+
+  useEffect(() => {
+    void fetchCommerceTaxSettings()
+      .then((settings) => setIsGstInclusive(settings.isGstInclusive))
+      .catch(() => setIsGstInclusive(true));
+  }, []);
+
+  const taxMode = useMemo(() => ({ isGstInclusive }), [isGstInclusive]);
 
   const loadOrders = useCallback(async () => {
     if (!orderType) return;
@@ -182,7 +193,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
       return;
     }
 
-    const syncedForm = syncTotalsFromItems({ ...form, items: parsedItems });
+    const syncedForm = syncTotalsFromItems({ ...form, items: parsedItems }, taxMode);
     const subtotal = Number(syncedForm.subtotal);
     const couponDiscount = Number(syncedForm.coupon_discount);
     const wholesaleDiscount = Number(syncedForm.wholesale_discount);
@@ -341,6 +352,115 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
     void handleFulfillStatusUpdate(orderId, 'cancelled', 'Order cancelled.');
   };
 
+  const handleFulfillSaveDetails = async (
+    orderId: number,
+    details: SalesOrderFulfillmentDetails,
+  ) => {
+    if (!orderType) return;
+
+    const target = fulfillTarget;
+    if (!target || target.id !== orderId || target.status !== 'pending') {
+      toast.error('Only pending orders can be edited from fulfillment.');
+      return;
+    }
+
+    let parsedItems;
+    try {
+      parsedItems = validateOrderItems(details.items);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Invalid line items.');
+      return;
+    }
+
+    const syncedTotals = syncTotalsFromItems({
+      ...emptyOrderForm(dataset.defaultPaymentMode, orderType),
+      items: parsedItems,
+      subtotal: details.subtotal,
+      coupon_code: details.coupon_code,
+      coupon_discount: details.coupon_discount,
+      wholesale_discount: details.wholesale_discount,
+      tax_total: details.tax_total,
+      shipping_fee: details.shipping_fee,
+      grand_total: details.grand_total,
+    }, taxMode);
+
+    const subtotal = Number(syncedTotals.subtotal);
+    const couponDiscount = Number(syncedTotals.coupon_discount);
+    const wholesaleDiscount = Number(syncedTotals.wholesale_discount);
+    const taxTotal = Number(syncedTotals.tax_total);
+    const shippingFee = Number(syncedTotals.shipping_fee);
+    const grandTotal = Number(syncedTotals.grand_total);
+
+    if (
+      !Number.isFinite(subtotal) ||
+      !Number.isFinite(couponDiscount) ||
+      !Number.isFinite(wholesaleDiscount) ||
+      !Number.isFinite(taxTotal) ||
+      !Number.isFinite(shippingFee) ||
+      !Number.isFinite(grandTotal) ||
+      subtotal < 0 ||
+      couponDiscount < 0 ||
+      wholesaleDiscount < 0 ||
+      taxTotal < 0 ||
+      shippingFee < 0 ||
+      grandTotal < 0
+    ) {
+      toast.error('Order totals must be valid non-negative numbers.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          subtotal: subtotal.toFixed(2),
+          coupon_code: syncedTotals.coupon_code?.trim() || null,
+          coupon_discount: couponDiscount.toFixed(2),
+          wholesale_discount: wholesaleDiscount.toFixed(2),
+          tax_total: taxTotal.toFixed(2),
+          shipping_fee: shippingFee.toFixed(2),
+          grand_total: grandTotal.toFixed(2),
+        })
+        .eq('id', orderId)
+        .eq('status', 'pending')
+        .eq('is_testing', dataset.isTestingFilter);
+
+      if (updateError) throw updateError;
+
+      await replaceOrderItems(orderId, orderType, parsedItems);
+
+      const existingPayment = await fetchLatestPayment(orderId);
+      if (existingPayment) {
+        await saveOrderPayment(orderId, {
+          ...existingPayment,
+          amount: grandTotal.toFixed(2),
+        });
+      }
+
+      const updatedOrder: SalesOrderRow = {
+        ...target,
+        subtotal: subtotal.toFixed(2),
+        coupon_code: syncedTotals.coupon_code?.trim() || null,
+        coupon_discount: couponDiscount.toFixed(2),
+        wholesale_discount: wholesaleDiscount.toFixed(2),
+        tax_total: taxTotal.toFixed(2),
+        shipping_fee: shippingFee.toFixed(2),
+        grand_total: grandTotal.toFixed(2),
+      };
+
+      setFulfillTarget(updatedOrder);
+      toast.success('Order items and totals updated.');
+      await loadOrders();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : `Failed to update ${dataset.entityName} details.`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setSaving(true);
@@ -436,6 +556,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
             ) : (
               <SalesOrdersTable
                 orders={filteredOrders}
+                orderType={orderType ?? undefined}
                 saving={saving}
                 onView={(order) => void openOrderDialog(order, true)}
                 onEdit={(order) => void openOrderDialog(order, false)}
@@ -458,6 +579,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         onFormChange={setForm}
         saving={saving}
         onSave={() => void handleSave()}
+        isGstInclusive={isGstInclusive}
       />
 
       <SalesOrderDeleteDialog
@@ -471,9 +593,11 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
       <SalesOrderFulfillmentDialog
         order={fulfillTarget}
         saving={saving}
+        isGstInclusive={isGstInclusive}
         onOpenChange={(open) => !open && setFulfillTarget(null)}
         onStatusChange={handleFulfillStatusChange}
         onCancelOrder={handleFulfillCancel}
+        onSaveDetails={(orderId, details) => void handleFulfillSaveDetails(orderId, details)}
       />
     </DashboardLayout>
   );

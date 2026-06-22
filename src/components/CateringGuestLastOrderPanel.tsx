@@ -6,6 +6,8 @@ import Link from "@/components/link";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { buildCateringPaymentFinancialDetails } from "@/lib/catering-order-review";
+import { useCommerceTax } from "@/contexts/CommerceTaxContext";
+import { formatGstRateLabel } from "@/lib/gst";
 import {
   formatGuestOrderId,
 } from "@/lib/guest-catering-order-session";
@@ -47,6 +49,16 @@ const panelMotion = {
   transition: { duration: PANEL_ANIMATION_DURATION, ease: "easeOut" as const },
 };
 
+function formatDeliveryTotal(
+  status: string,
+  shippingFee: number,
+): string {
+  if (status === "pending") {
+    return "Waiting quotation...";
+  }
+  return formatTrackedCurrency(shippingFee);
+}
+
 function statusBadgeClass(status: string): string {
   switch (status) {
     case "completed":
@@ -63,6 +75,9 @@ function statusBadgeClass(status: string): string {
 }
 
 export default function CateringGuestLastOrderPanel() {
+  const commerceTax = useCommerceTax();
+  const { isGstInclusive, gstTaxRate } = commerceTax;
+  const gstRateLabel = formatGstRateLabel(gstTaxRate);
   const {
     session,
     trackedOrder,
@@ -89,17 +104,20 @@ export default function CateringGuestLastOrderPanel() {
 
   const paymentTotals = useMemo(() => {
     if (!trackedOrder) return null;
-    return buildCateringPaymentFinancialDetails({
-      subtotal: trackedOrder.subtotal,
-      coupon_code: trackedOrder.coupon_code,
-      coupon_discount: trackedOrder.coupon_discount,
-      wholesale_discount: trackedOrder.wholesale_discount,
-      tax_total: trackedOrder.tax_total,
-      shipping_fee: trackedOrder.shipping_fee,
-      grand_total: trackedOrder.grand_total,
-      items: trackedOrder.items,
-    });
-  }, [trackedOrder]);
+    return buildCateringPaymentFinancialDetails(
+      {
+        subtotal: trackedOrder.subtotal,
+        coupon_code: trackedOrder.coupon_code,
+        coupon_discount: trackedOrder.coupon_discount,
+        wholesale_discount: trackedOrder.wholesale_discount,
+        tax_total: trackedOrder.tax_total,
+        shipping_fee: trackedOrder.shipping_fee,
+        grand_total: trackedOrder.grand_total,
+        items: trackedOrder.items,
+      },
+      commerceTax,
+    );
+  }, [trackedOrder, commerceTax]);
 
   const trackingToken = session?.trackingToken ?? "";
   const trackingNumberLabel = formatTrackingTokenInput(trackingToken);
@@ -346,17 +364,21 @@ export default function CateringGuestLastOrderPanel() {
                         <p>Your quotation is ready. Review the totals and pay below.</p>
                         <dl className="space-y-1.5">
                           <div className="flex justify-between gap-4">
-                            <dt>Subtotal (ex GST)</dt>
+                            <dt>
+                              {isGstInclusive ? "Subtotal" : "Subtotal (ex GST)"}
+                            </dt>
                             <dd className="tabular-nums">
                               {formatTrackedCurrency(paymentTotals.subtotal_ex_gst)}
                             </dd>
                           </div>
-                          <div className="flex justify-between gap-4">
-                            <dt>GST</dt>
-                            <dd className="tabular-nums">
-                              {formatTrackedCurrency(paymentTotals.gst_total)}
-                            </dd>
-                          </div>
+                          {!isGstInclusive ? (
+                            <div className="flex justify-between gap-4">
+                              <dt>GST ({gstRateLabel})</dt>
+                              <dd className="tabular-nums">
+                                {formatTrackedCurrency(paymentTotals.gst_total)}
+                              </dd>
+                            </div>
+                          ) : null}
                           <div className="flex justify-between gap-4">
                             <dt>Delivery</dt>
                             <dd className="tabular-nums">
@@ -364,7 +386,9 @@ export default function CateringGuestLastOrderPanel() {
                             </dd>
                           </div>
                           <div className="flex justify-between gap-4 border-t border-white/15 pt-2 font-semibold text-white">
-                            <dt>Grand total (inc GST)</dt>
+                            <dt>
+                              {isGstInclusive ? "Grand total" : "Grand total (inc GST)"}
+                            </dt>
                             <dd className="tabular-nums">
                               {formatTrackedCurrency(
                                 paymentTotals.grand_total_inc_gst,
@@ -431,17 +455,38 @@ export default function CateringGuestLastOrderPanel() {
                           <dd>{formatTrackedCurrency(trackedOrder.subtotal)}</dd>
                         </div>
                         <div className="flex justify-between gap-4 text-white/70">
-                          <dt>GST</dt>
-                          <dd>{formatTrackedCurrency(trackedOrder.tax_total)}</dd>
-                        </div>
-                        <div className="flex justify-between gap-4 text-white/70">
                           <dt>Delivery</dt>
-                          <dd>{formatTrackedCurrency(trackedOrder.shipping_fee)}</dd>
+                          <dd
+                            className={
+                              trackedOrder.status === "pending"
+                                ? "text-right text-xs font-medium text-white/45"
+                                : undefined
+                            }
+                          >
+                            {formatDeliveryTotal(
+                              trackedOrder.status,
+                              trackedOrder.shipping_fee,
+                            )}
+                          </dd>
                         </div>
                         <div className="flex justify-between gap-4 border-t border-white/10 pt-2 font-semibold text-white">
                           <dt>Grand total</dt>
-                          <dd>{formatTrackedCurrency(trackedOrder.grand_total)}</dd>
+                          <dd className="tabular-nums">
+                            {formatTrackedCurrency(trackedOrder.grand_total)}
+                            {trackedOrder.status === "pending" ? (
+                              <span className="ml-1 text-xs font-normal text-white/45">
+                                est.
+                              </span>
+                            ) : null}
+                          </dd>
                         </div>
+                        {trackedOrder.status === "pending" ? (
+                          <p className="pt-1 text-xs leading-relaxed text-white/45">
+                            The total shown is an estimate. Please wait for our
+                            formal quotation — we will update this order when
+                            your quote is ready for review and payment.
+                          </p>
+                        ) : null}
                       </dl>
                     </section>
                   </>

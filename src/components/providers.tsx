@@ -13,6 +13,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
 import { CateringCartProvider } from "@/contexts/CateringCartContext";
+import { CommerceTaxProvider } from "@/contexts/CommerceTaxContext";
 import { GuestCateringOrderProvider } from "@/contexts/GuestCateringOrderContext";
 import { WholesaleInventoryProvider } from "@/contexts/WholesaleInventoryContext";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
@@ -50,6 +51,10 @@ export function Providers({
                     wholesaleCartConfig.minimumWholesaleOrderValue
                   }
                 >
+                  <CommerceTaxProvider
+                    isGstInclusive={wholesaleCartConfig.isGstInclusive}
+                    gstTaxRate={wholesaleCartConfig.gstTaxRate}
+                  >
                   <CateringCartProvider>
                     <GuestCateringOrderProvider>
                       <WholesaleCartInventorySync />
@@ -75,6 +80,7 @@ export function Providers({
                       </TooltipProvider>
                     </GuestCateringOrderProvider>
                   </CateringCartProvider>
+                  </CommerceTaxProvider>
                 </WholesaleCartProvider>
               </WholesaleInventoryProvider>
             </CartProvider>

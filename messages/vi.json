@@ -2306,8 +2306,10 @@
     }
   },
   "FloatingWidgets": {
+    "messagePrefill": "Xin chào! Tôi muốn trao đổi về Saigon Express Tasmania.",
     "aria": {
       "facebookCta": "Nhắn tin cho Saigon Express qua Facebook",
+      "whatsappCta": "Nhắn tin cho Saigon Express qua WhatsApp",
       "openChat": "Trò chuyện với Saigon Express",
       "closeChat": "Đóng cửa sổ chat",
       "minimize": "Thu nhỏ khung chat"

@@ -22,6 +22,8 @@ import {
   hydrateWholesaleOrderReview,
 } from "@/lib/wholesale-order-review-storage";
 import { computeWholesaleTierDiscount } from "@/lib/wholesale-tier-discount";
+import { useCommerceTax } from "@/contexts/CommerceTaxContext";
+import { formatGstRateLabel } from "@/lib/gst";
 import { formatTierDiscountValue } from "@/types";
 import type { StoreLocation, WholesaleOrderReviewForm } from "@/types";
 import {
@@ -39,11 +41,12 @@ import type { UserProfileSelfUpdate } from "@/types/UserProfile";
 type CartSidebarView = "cart" | "review";
 
 function toPricingLines(
-  cart: { qty: number; unitPrice: number }[],
-): { qty: number; unitPriceExGst: number }[] {
+  cart: { qty: number; unitPrice: number; gstFree?: boolean }[],
+): { qty: number; unitPriceExGst: number; gstFree?: boolean }[] {
   return cart.map((item) => ({
     qty: item.qty,
     unitPriceExGst: Number(item.unitPrice),
+    gstFree: item.gstFree,
   }));
 }
 
@@ -81,11 +84,14 @@ function MinimumOrderProgress({
   cartTotal,
   minimumOrderValue,
   highlight,
+  isGstInclusive = true,
 }: {
   cartTotal: number;
   minimumOrderValue: number;
   highlight: boolean;
+  isGstInclusive?: boolean;
 }) {
+  const gstSuffix = isGstInclusive ? "" : " ex GST";
   const progress = Math.min(cartTotal / minimumOrderValue, 1);
   const remaining = Math.max(minimumOrderValue - cartTotal, 0);
   const hasMetMinimum = cartTotal >= minimumOrderValue;
@@ -120,7 +126,8 @@ function MinimumOrderProgress({
           <p className="mt-1 text-xl font-bold text-white leading-none">
             ${cartTotal.toFixed(2)}
             <span className="ml-2 text-sm font-medium text-white/45">
-              / ${minimumOrderValue.toFixed(2)} ex GST
+              / ${minimumOrderValue.toFixed(2)}
+              {gstSuffix}
             </span>
           </p>
         </div>
@@ -159,7 +166,7 @@ function MinimumOrderProgress({
             ${remaining.toFixed(2)} more
           </span>{" "}
           in products to reach the ${minimumOrderValue.toFixed(2)} wholesale
-          minimum before checkout.
+          minimum{gstSuffix} before checkout.
         </p>
       )}
     </motion.div>
@@ -322,6 +329,9 @@ export default function WholesaleShoppingCart({
 }: {
   storeLocations: StoreLocation[];
 }) {
+  const commerceTax = useCommerceTax();
+  const { isGstInclusive, gstTaxRate } = commerceTax;
+  const gstRateLabel = formatGstRateLabel(gstTaxRate);
   const {
     cart,
     cartTotal,
@@ -366,8 +376,8 @@ export default function WholesaleShoppingCart({
 
   const pricingLines = useMemo(() => toPricingLines(cart), [cart]);
   const tierTotals = useMemo(
-    () => computeWholesaleTierDiscount(pricingLines, pricingTiers),
-    [pricingLines, pricingTiers],
+    () => computeWholesaleTierDiscount(pricingLines, pricingTiers, 0, commerceTax),
+    [pricingLines, pricingTiers, commerceTax],
   );
 
   const hasMetMinimum = cartTotal >= minimumOrderValue;
@@ -497,7 +507,7 @@ export default function WholesaleShoppingCart({
     }
 
     if (!hasMetMinimum) {
-      const message = `Your cart is $${cartTotal.toFixed(2)} ex GST. Wholesale orders must reach $${minimumOrderValue.toFixed(2)} in product value before checkout. Please add $${remainingToMinimum.toFixed(2)} more to your cart.`;
+      const message = `Your cart is $${cartTotal.toFixed(2)}${isGstInclusive ? "" : " ex GST"}. Wholesale orders must reach $${minimumOrderValue.toFixed(2)}${isGstInclusive ? "" : " ex GST"} in product value before checkout. Please add $${remainingToMinimum.toFixed(2)} more to your cart.`;
       setMinimumWarning(message);
       setHighlightMinimum(true);
       toast.error(message, { duration: 6000 });
@@ -534,6 +544,7 @@ export default function WholesaleShoppingCart({
         buildWholesaleCartItemsSignature(sortedCart),
         pricingLines,
         pricingTiers,
+        commerceTax,
       ),
     );
     setCartView("review");
@@ -784,7 +795,7 @@ export default function WholesaleShoppingCart({
                       {item.productName}
                     </p>
                     <p className="text-xs text-white/40 mt-0.5">
-                      ${Number(item.unitPrice).toFixed(2)} ex GST
+                      ${Number(item.unitPrice).toFixed(2)}
                     </p>
                     {availability && Number.isFinite(maxQty) ? (
                       <p className="text-[11px] text-amber-200/80 mt-1">
@@ -855,6 +866,7 @@ export default function WholesaleShoppingCart({
               cartTotal={cartTotal}
               minimumOrderValue={minimumOrderValue}
               highlight={highlightMinimum}
+              isGstInclusive={isGstInclusive}
             />
 
             {minimumWarning && !hasMetMinimum ? (
@@ -870,7 +882,9 @@ export default function WholesaleShoppingCart({
             ) : null}
 
             <div className="flex justify-between text-sm">
-              <span className="text-white/60">Subtotal (ex GST)</span>
+              <span className="text-white/60">
+                {isGstInclusive ? "Subtotal" : "Subtotal (ex GST)"}
+              </span>
               <span className="font-bold text-white">
                 ${tierTotals.subtotalExGst.toFixed(2)}
               </span>
@@ -886,14 +900,18 @@ export default function WholesaleShoppingCart({
                 </span>
               </div>
             ) : null}
-            <div className="flex justify-between text-sm">
-              <span className="text-white/60">GST (10%)</span>
-              <span className="font-bold text-white">
-                ${tierTotals.taxTotal.toFixed(2)}
-              </span>
-            </div>
+            {!isGstInclusive ? (
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">GST ({gstRateLabel})</span>
+                <span className="font-bold text-white">
+                  ${tierTotals.taxTotal.toFixed(2)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between text-base font-bold border-t border-white/10 pt-3">
-              <span className="text-white">Total (inc GST)</span>
+              <span className="text-white">
+                {isGstInclusive ? "Total" : "Total (inc GST)"}
+              </span>
               <span className="text-primary">
                 ${tierTotals.grandTotal.toFixed(2)}
               </span>
@@ -925,7 +943,7 @@ export default function WholesaleShoppingCart({
             <p className="text-xs text-white/30 text-center">
               {hasMetMinimum
                 ? "Review shipping and billing before payment"
-                : `Wholesale minimum is $${minimumOrderValue.toFixed(2)} ex GST in product value.`}
+                : `Wholesale minimum is $${minimumOrderValue.toFixed(2)} in product value.`}
             </p>
           </div>
         ) : null}

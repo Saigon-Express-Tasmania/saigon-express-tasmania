@@ -12,6 +12,8 @@ export type WholesaleCartItem = {
   qty: number;
   unitPrice: number;
   imageUrl?: string | null;
+  /** When true, line is GST-free (basic food, etc.). */
+  gstFree?: boolean;
   /** Unix ms when this line was last added from the shop. */
   addedAt: number;
 };
@@ -21,6 +23,8 @@ export type WholesaleCartProductInput = {
   productName: string;
   unitPrice: number;
   imageUrl?: string | null;
+  /** When true, line is GST-free (basic food, etc.). */
+  gstFree?: boolean;
 };
 
 type WholesaleCartStore = {
@@ -86,6 +90,7 @@ const useWholesaleCartStore = create<WholesaleCartStore>()(
                   qty: 1,
                   unitPrice: product.unitPrice,
                   imageUrl: product.imageUrl ?? null,
+                  gstFree: product.gstFree ?? false,
                   addedAt: now,
                 },
               ];

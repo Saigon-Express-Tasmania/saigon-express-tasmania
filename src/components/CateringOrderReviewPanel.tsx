@@ -7,6 +7,8 @@ import { DayPicker } from "react-day-picker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
 import { withCateringOrderTotals } from "@/lib/catering-order-review";
+import { useCommerceTax } from "@/contexts/CommerceTaxContext";
+import { formatGstRateLabel } from "@/lib/gst";
 import { AUSTRALIAN_STATES, WHOLESALE_DEFAULT_COUNTRY } from "@/lib/wholesale-b2b-order";
 import {
   Popover,
@@ -20,10 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  buildCateringCartItemsSignature,
+  extractPersistableCateringReviewFields,
+  writeCateringOrderReviewDraft,
+} from "@/lib/catering-order-review-storage";
 import { cn } from "@/lib/utils";
 import type { UserProfile } from "@/types/UserProfile";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
-import type { AustralianStateCode } from "@/types/WholesaleB2BOrder";
+import {
+  DEFAULT_AUSTRALIAN_STATE_CODE,
+  type AustralianStateCode,
+} from "@/types/WholesaleB2BOrder";
 import { ArrowLeft, CalendarIcon, ClipboardCheck, Loader2 } from "lucide-react";
 import "react-day-picker/style.css";
 
@@ -194,9 +204,12 @@ export default function CateringOrderReviewPanel({
   onConfirm,
   isPlacingOrder,
 }: CateringOrderReviewPanelProps) {
+  const commerceTax = useCommerceTax();
+  const { isGstInclusive, gstTaxRate } = commerceTax;
+  const gstRateLabel = formatGstRateLabel(gstTaxRate);
   const totalsReview = useMemo(
-    () => withCateringOrderTotals(review, items),
-    [review, items],
+    () => withCateringOrderTotals(review, items, commerceTax),
+    [review, items, commerceTax],
   );
   const couponDiscount = totalsReview.coupon_discount ?? 0;
   const totalDiscount =
@@ -211,6 +224,7 @@ export default function CateringOrderReviewPanel({
           shipping_country: WHOLESALE_DEFAULT_COUNTRY,
         },
         items,
+        commerceTax,
       ),
     );
   };
@@ -243,7 +257,7 @@ export default function CateringOrderReviewPanel({
       shipping_state:
         review.shipping_state ||
         (profile.shipping_state as AustralianStateCode | null) ||
-        review.shipping_state,
+        DEFAULT_AUSTRALIAN_STATE_CODE,
     };
 
     const changed =
@@ -261,12 +275,21 @@ export default function CateringOrderReviewPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- profile backfill only
   }, [profile]);
 
+  const handleBack = () => {
+    writeCateringOrderReviewDraft({
+      version: 1,
+      cartItemsSignature: buildCateringCartItemsSignature(items),
+      form: extractPersistableCateringReviewFields(review),
+    });
+    onBack();
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-white/10 px-6 py-5">
         <button
           type="button"
-          onClick={onBack}
+          onClick={handleBack}
           disabled={isPlacingOrder}
           className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-40"
           aria-label="Back to cart"
@@ -385,7 +408,7 @@ export default function CateringOrderReviewPanel({
               onValueChange={(value) =>
                 patch({ shipping_state: value as AustralianStateCode })
               }
-              options={AUSTRALIAN_STATES.map((state) => ({
+              options={AUSTRALIAN_STATES.filter((state) => state.active).map((state) => ({
                 value: state.value,
                 label: state.label,
               }))}
@@ -421,7 +444,8 @@ export default function CateringOrderReviewPanel({
                     <p className="mt-0.5 text-xs text-white/45">{item.variantLabel}</p>
                   ) : null}
                   <p className="mt-0.5 text-xs text-white/40">
-                    {item.qty} × ${Number(item.unitPrice).toFixed(2)} ex GST
+                    {item.qty} × ${Number(item.unitPrice).toFixed(2)}
+                    {!isGstInclusive ? " ex GST" : ""}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-semibold tabular-nums text-white">
@@ -436,7 +460,7 @@ export default function CateringOrderReviewPanel({
           <SectionTitle title="Totals" />
           <div className="mt-3 space-y-2">
             <div className="flex justify-between text-white/60">
-              <span>Subtotal (ex GST)</span>
+              <span>{isGstInclusive ? "Subtotal" : "Subtotal (ex GST)"}</span>
               <span className="tabular-nums text-white">
                 ${totalsReview.subtotal.toFixed(2)}
               </span>
@@ -457,12 +481,14 @@ export default function CateringOrderReviewPanel({
                 </span>
               </div>
             ) : null}
-            <div className="flex justify-between text-white/60">
-              <span>Tax total (GST)</span>
-              <span className="tabular-nums text-white">
-                ${totalsReview.tax_total.toFixed(2)}
-              </span>
-            </div>
+            {!isGstInclusive ? (
+              <div className="flex justify-between text-white/60">
+                <span>Tax total (GST {gstRateLabel})</span>
+                <span className="tabular-nums text-white">
+                  ${totalsReview.tax_total.toFixed(2)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between text-white/60">
               <span>Delivery</span>
               <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
@@ -470,7 +496,7 @@ export default function CateringOrderReviewPanel({
               </span>
             </div>
             <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
-              <span>Grand total (inc GST)</span>
+              <span>{isGstInclusive ? "Grand total" : "Grand total (inc GST)"}</span>
               <span className="tabular-nums text-emerald-400">
                 ${totalsReview.grand_total.toFixed(2)} est
               </span>

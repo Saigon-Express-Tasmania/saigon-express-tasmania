@@ -2305,8 +2305,10 @@
     }
   },
   "FloatingWidgets": {
+    "messagePrefill": "Hi! I have something I'd like to talk about with Saigon Express Tasmania.",
     "aria": {
       "facebookCta": "Message Saigon Express on Facebook",
+      "whatsappCta": "Message Saigon Express on WhatsApp",
       "openChat": "Chat with Saigon Express",
       "closeChat": "Close chat",
       "minimize": "Minimize chat panel"

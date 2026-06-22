@@ -319,7 +319,10 @@ export function emptyOrderForm(
   };
 }
 
-export function syncTotalsFromItems(form: SalesOrderForm): SalesOrderForm {
+export function syncTotalsFromItems(
+  form: SalesOrderForm,
+  tax: { isGstInclusive: boolean } = { isGstInclusive: true },
+): SalesOrderForm {
   const subtotal = form.items.reduce((sum, item) => {
     const qty = Number(item.qty);
     const unitPrice = Number(item.unit_price);
@@ -329,13 +332,15 @@ export function syncTotalsFromItems(form: SalesOrderForm): SalesOrderForm {
 
   const couponDiscount = Number(form.coupon_discount) || 0;
   const wholesaleDiscount = Number(form.wholesale_discount) || 0;
-  const taxTotal = Number(form.tax_total) || 0;
   const shippingFee = Number(form.shipping_fee) || 0;
-  const grandTotal = subtotal - couponDiscount - wholesaleDiscount + taxTotal + shippingFee;
+  const taxTotal = tax.isGstInclusive ? 0 : Number(form.tax_total) || 0;
+  const grandTotal =
+    subtotal - couponDiscount - wholesaleDiscount + taxTotal + shippingFee;
 
   return {
     ...form,
     subtotal: subtotal.toFixed(2),
+    tax_total: tax.isGstInclusive ? '0.00' : taxTotal.toFixed(2),
     grand_total: Math.max(grandTotal, 0).toFixed(2),
     payment: {
       ...form.payment,

@@ -20,6 +20,8 @@ export type AustralianStateCode =
   | "VIC"
   | "WA";
 
+export const DEFAULT_AUSTRALIAN_STATE_CODE: AustralianStateCode = "TAS";
+
 export type WholesaleOrderBuyer = {
   name: string;
   role?: string | null;

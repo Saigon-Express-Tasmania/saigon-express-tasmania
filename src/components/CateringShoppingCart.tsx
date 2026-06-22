@@ -14,6 +14,15 @@ import {
   validateCateringOrderReview,
   withCateringOrderTotals,
 } from "@/lib/catering-order-review";
+import { useCommerceTax } from "@/contexts/CommerceTaxContext";
+import {
+  buildCateringCartItemsSignature,
+  clearCateringOrderReviewDraft,
+  extractPersistableCateringReviewFields,
+  hydrateCateringOrderReview,
+  readCateringOrderReviewDraft,
+  writeCateringOrderReviewDraft,
+} from "@/lib/catering-order-review-storage";
 import { formatAud } from "@/lib/catering-price";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
@@ -51,6 +60,7 @@ const panelMotion = {
 
 export default function CateringShoppingCart() {
   const router = useRouter();
+  const commerceTax = useCommerceTax();
   const { profile, user, session, updateOwnProfile } = useSupabase();
   const { saveGuestOrder } = useGuestCateringOrder();
   const {
@@ -73,6 +83,28 @@ export default function CateringShoppingCart() {
     [cart],
   );
 
+  const cartItemsSignature = useMemo(
+    () => buildCateringCartItemsSignature(sortedCart),
+    [sortedCart],
+  );
+
+  const persistReviewDraft = () => {
+    if (!orderReview) return;
+    writeCateringOrderReviewDraft({
+      version: 1,
+      cartItemsSignature,
+      form: extractPersistableCateringReviewFields(orderReview),
+    });
+  };
+
+  const closeCart = () => {
+    if (cartView === "review" && orderReview) {
+      persistReviewDraft();
+    }
+    setCartView("cart");
+    setCartOpen(false);
+  };
+
   useEffect(() => {
     if (!cartOpen && !isPlacingOrder) return;
 
@@ -87,7 +119,6 @@ export default function CateringShoppingCart() {
   useEffect(() => {
     if (!cartOpen) {
       setCartView("cart");
-      setOrderReview(null);
     }
   }, [cartOpen]);
 
@@ -95,6 +126,15 @@ export default function CateringShoppingCart() {
     if (cart.length === 0) {
       toast.error("Your cart is empty.");
       return;
+    }
+
+    if (orderReview) {
+      const draft = readCateringOrderReviewDraft();
+      if (!draft || draft.cartItemsSignature === cartItemsSignature) {
+        setOrderReview(withCateringOrderTotals(orderReview, sortedCart, commerceTax));
+        setCartView("review");
+        return;
+      }
     }
 
     if (user && profile) {
@@ -111,10 +151,27 @@ export default function CateringShoppingCart() {
       }
 
       setOrderReview(
-        buildCateringOrderReviewFromProfile(profile, customerEmail, sortedCart),
+        hydrateCateringOrderReview(
+          buildCateringOrderReviewFromProfile(
+            profile,
+            customerEmail,
+            sortedCart,
+            commerceTax,
+          ),
+          cartItemsSignature,
+          sortedCart,
+          commerceTax,
+        ),
       );
     } else {
-      setOrderReview(buildCateringOrderReviewForGuest(sortedCart));
+      setOrderReview(
+        hydrateCateringOrderReview(
+          buildCateringOrderReviewForGuest(sortedCart, commerceTax),
+          cartItemsSignature,
+          sortedCart,
+          commerceTax,
+        ),
+      );
     }
 
     setCartView("review");
@@ -134,14 +191,21 @@ export default function CateringShoppingCart() {
       return;
     }
 
-    const reviewForPlacement = withCateringOrderTotals(orderReview, sortedCart);
+    const reviewForPlacement = withCateringOrderTotals(
+      orderReview,
+      sortedCart,
+      commerceTax,
+    );
     const validationError = validateCateringOrderReview(reviewForPlacement);
     if (validationError) {
       toast.error(validationError);
       return;
     }
 
-    const placementFields = serializeCateringOrderReviewForPlacement(reviewForPlacement);
+    const placementFields = serializeCateringOrderReviewForPlacement(
+      reviewForPlacement,
+      commerceTax,
+    );
 
     const trimOrNull = (value: string | null | undefined): string | null => {
       const next = String(value ?? "").trim();
@@ -232,13 +296,14 @@ export default function CateringShoppingCart() {
       }
 
       const trackingToken = result.data.trackingToken;
-      clearCart();
-      setCartView("cart");
-      setOrderReview(null);
-      setCartOpen(false);
-      setIsPlacingOrder(false);
 
       if (isMemberOrder) {
+        clearCateringOrderReviewDraft();
+        clearCart();
+        setCartView("cart");
+        setOrderReview(null);
+        setCartOpen(false);
+        setIsPlacingOrder(false);
         router.push("/member/catering-orders?placed=success");
         return;
       }
@@ -250,9 +315,13 @@ export default function CateringShoppingCart() {
         invoiceNumber: result.data.invoiceNumber,
         placedAt: Date.now(),
       });
-      toast.success(
-        "Order placed! Use Last order in the header to track status and pay when ready.",
-      );
+      clearCateringOrderReviewDraft();
+      clearCart();
+      setCartView("cart");
+      setOrderReview(null);
+      setCartOpen(false);
+      setIsPlacingOrder(false);
+      toast.success("Order placed! We are preparing your quotation.");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to place catering order";
@@ -289,8 +358,7 @@ export default function CateringShoppingCart() {
               className="fixed inset-0 z-50 bg-black/60"
               onClick={() => {
                 if (!isPlacingOrder) {
-                  setCartView("cart");
-                  setCartOpen(false);
+                  closeCart();
                 }
               }}
               {...backdropMotion}
@@ -332,7 +400,7 @@ export default function CateringShoppingCart() {
                       ) : null}
                       <button
                         type="button"
-                        onClick={() => setCartOpen(false)}
+                        onClick={closeCart}
                         disabled={isPlacingOrder}
                         className="text-2xl leading-none text-white/40 transition-colors hover:text-white disabled:pointer-events-none disabled:opacity-40"
                       >
@@ -415,7 +483,7 @@ export default function CateringShoppingCart() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-white/45">Subtotal</span>
                         <span className="text-lg font-bold text-white">
-                          {formatAud(cartTotal)}
+                          {formatAud(cartTotal)} est
                         </span>
                       </div>
                       <button

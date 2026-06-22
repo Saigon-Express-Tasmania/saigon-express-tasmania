@@ -350,20 +350,10 @@ export default function MemberDashboard({
     return items;
   }, [activeOrdersWithItems, products]);
 
-  const tierPerks = useMemo(() => {
-    if (pricingTiers.length === 0) {
-      return hasWholesale
-        ? ["Volume discounts on wholesale orders", "Priority member support"]
-        : ["Member account access", "Order history and profile management"];
-    }
-
-    return pricingTiers.map(
-      (tier) =>
-        `${tier.label}: ${formatTierDiscountValue(tier.discountValue)} off from ${formatTierMinValue(tier.minValue)}${
-          tier.popular ? " (popular tier)" : ""
-        }`,
-    );
-  }, [pricingTiers, hasWholesale]);
+  const sortedPricingTiers = useMemo(
+    () => [...pricingTiers].sort((a, b) => a.sortOrder - b.sortOrder),
+    [pricingTiers],
+  );
 
   const handleLogout = async () => {
     await signOut();
@@ -687,13 +677,48 @@ export default function MemberDashboard({
 
             <div className={`flex-1 ${MEMBER_PORTAL_PANEL_CLASS} p-4`}>
               <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-white/90">
-                Membership Tier Perks
+                Wholesale Pricing Tiers
               </h2>
-              <ul className="list-disc space-y-1.5 pl-4 text-[13px] text-white/55">
-                {tierPerks.map((perk) => (
-                  <li key={perk}>{perk}</li>
-                ))}
-              </ul>
+              {sortedPricingTiers.length === 0 ? (
+                <p className="text-[13px] text-white/45">
+                  No pricing tiers configured.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-[13px]">
+                    <thead>
+                      <tr className="border-b border-white/10 text-white/45">
+                        <th className="pb-2 pr-2 font-normal">Tier</th>
+                        <th className="pb-2 pr-2 font-normal">Min. spend</th>
+                        <th className="pb-2 font-normal">Discount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedPricingTiers.map((tier) => (
+                        <tr
+                          key={tier.id}
+                          className="border-b border-white/5 last:border-0"
+                        >
+                          <td className="py-2.5 pr-2 text-white/80">
+                            {tier.label}
+                            {tier.popular ? (
+                              <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                                Popular
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="py-2.5 pr-2 text-white/65">
+                            {formatTierMinValue(tier.minValue)}
+                          </td>
+                          <td className="py-2.5 font-medium text-cyan-200">
+                            {formatTierDiscountValue(tier.discountValue)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>

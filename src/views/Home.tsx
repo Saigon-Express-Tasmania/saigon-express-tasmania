@@ -376,7 +376,7 @@ export default async function Home() {
       </section>
 
       {/* ── GET THE APP ─────────────────────────────────────────────────── */}
-      <section className="py-16 bg-brand-cream border-b border-gray-100">
+      {/* <section className="py-16 bg-brand-cream border-b border-gray-100">
         <div className="max-w-[1280px] mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 reveal">
           <div>
             <span className="section-label">{t("getApp.label")}</span>
@@ -391,7 +391,7 @@ export default async function Home() {
             {t("getApp.cta")} <ChevronRight size={16} />
           </Link>
         </div>
-      </section>
+      </section> */}
 
       {/* ── NEWS ────────────────────────────────────────────────────────── */}
       <section className="py-20 lg:py-28 bg-white">
@@ -466,7 +466,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <GetApp />
+      {/* <GetApp /> */}
       <Suspense fallback={null}>
         <HomeFeaturedReviewsSection />
       </Suspense>

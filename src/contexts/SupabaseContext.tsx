@@ -58,6 +58,7 @@ export const SupabaseContext = createContext<SupabaseContextValue | null>(null);
 type LoadedUser = {
   profile: UserProfile | null;
   authMetadata: UserAuthMetadata;
+  authMetadataSource: "database" | "jwt";
 };
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
@@ -86,7 +87,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       if (
         !options?.force &&
         loadedAccessTokenRef.current === accessToken &&
-        loadedUserRef.current
+        loadedUserRef.current?.authMetadataSource === "database"
       ) {
         return loadedUserRef.current;
       }
@@ -97,16 +98,25 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
       const userId = activeSession.user.id;
       const loadPromise = (async () => {
-        const [row, metadata] = await Promise.all([
+        const [row, metadataLoad] = await Promise.all([
           fetchUserProfile(userId),
           fetchUserAuthMetadata(userId, activeSession.user.app_metadata),
         ]);
 
-        const loaded: LoadedUser = { profile: row, authMetadata: metadata };
+        const loaded: LoadedUser = {
+          profile: row,
+          authMetadata: metadataLoad.metadata,
+          authMetadataSource: metadataLoad.source,
+        };
         setProfile(row);
-        setAuthMetadata(metadata);
-        loadedAccessTokenRef.current = accessToken;
-        loadedUserRef.current = loaded;
+        setAuthMetadata(metadataLoad.metadata);
+        if (metadataLoad.source === "database") {
+          loadedAccessTokenRef.current = accessToken;
+          loadedUserRef.current = loaded;
+        } else {
+          loadedAccessTokenRef.current = null;
+          loadedUserRef.current = null;
+        }
         return loaded;
       })();
 
@@ -140,13 +150,15 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
         if (!mounted) return;
 
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-
         if (initialSession?.user) {
           await loadSignedInUser(initialSession);
+          if (!mounted) return;
+          setSession(initialSession);
+          setUser(initialSession.user);
         } else {
           clearSignedInUser();
+          setSession(null);
+          setUser(null);
         }
       } catch (error) {
         console.error("Error initializing Supabase session:", error);
@@ -162,31 +174,42 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (event === "TOKEN_REFRESHED") {
         setSession(newSession);
+        if (newSession?.user) {
+          try {
+            await loadSignedInUser(newSession, { force: true });
+          } catch (error) {
+            console.error("Error reloading profile after token refresh:", error);
+          }
+        }
         return;
       }
 
       // getSession() in init() already loads profile/metadata for the first session.
       if (event === "INITIAL_SESSION") {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        if (mounted) setIsLoading(false);
         return;
       }
 
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-
       if (newSession?.user) {
+        if (mounted) setIsLoading(true);
         try {
           await loadSignedInUser(newSession);
+          if (!mounted) return;
+          setSession(newSession);
+          setUser(newSession.user);
         } catch (error) {
           console.error("Error loading profile after auth change:", error);
           clearSignedInUser();
+          setSession(null);
+          setUser(null);
+        } finally {
+          if (mounted) setIsLoading(false);
         }
-      } else {
-        clearSignedInUser();
+        return;
       }
 
+      setSession(null);
+      setUser(null);
+      clearSignedInUser();
       if (mounted) setIsLoading(false);
     });
 
@@ -197,18 +220,23 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, [clearSignedInUser, loadSignedInUser]);
 
   const signInWithPassword = useCallback(async (email: string, password: string) => {
-    const nextSession = await signInWithEmail(email, password);
-    setSession(nextSession);
-    setUser(nextSession.user);
+    setIsLoading(true);
+    try {
+      const nextSession = await signInWithEmail(email, password);
+      const { profile: row, authMetadata: metadata } =
+        await loadSignedInUser(nextSession);
 
-    const { profile: row, authMetadata: metadata } =
-      await loadSignedInUser(nextSession);
+      if (!row) {
+        throw new Error("Unable to load your profile. Please try again.");
+      }
 
-    if (!row) {
-      throw new Error("Unable to load your profile. Please try again.");
+      setSession(nextSession);
+      setUser(nextSession.user);
+
+      return { profile: row, authMetadata: metadata };
+    } finally {
+      setIsLoading(false);
     }
-
-    return { profile: row, authMetadata: metadata };
   }, [loadSignedInUser]);
 
   const signUpWithPassword = useCallback(
@@ -220,9 +248,14 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       const result = await signUpWithEmail(email, password, metadata);
 
       if (result.session) {
-        setSession(result.session);
-        setUser(result.session.user);
-        await loadSignedInUser(result.session);
+        setIsLoading(true);
+        try {
+          await loadSignedInUser(result.session);
+          setSession(result.session);
+          setUser(result.session.user);
+        } finally {
+          setIsLoading(false);
+        }
       }
 
       return result;

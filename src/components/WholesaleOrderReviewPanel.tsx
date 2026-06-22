@@ -6,6 +6,8 @@ import { format, parseISO } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { WholesaleCartItem } from "@/contexts/WholesaleCartContext";
+import { useCommerceTax } from "@/contexts/CommerceTaxContext";
+import { formatGstRateLabel, type CommerceTaxSettings } from "@/lib/gst";
 import { formatStoreHours } from "@/lib/store-hours";
 import {
   Popover,
@@ -318,13 +320,14 @@ function PickupStorePicker({
 
 function withDeliveryFee(
   review: WholesaleOrderReviewForm,
-  lines: { qty: number; unitPriceExGst: number }[],
+  lines: { qty: number; unitPriceExGst: number; gstFree?: boolean }[],
   tiers: WholesalePricingTier[],
   deliveryFee: number,
+  tax?: CommerceTaxSettings,
 ): WholesaleOrderReviewForm {
   return {
     ...review,
-    ...buildWholesaleOrderTotals(lines, tiers, deliveryFee),
+    ...buildWholesaleOrderTotals(lines, tiers, deliveryFee, tax),
   };
 }
 
@@ -367,6 +370,9 @@ export default function WholesaleOrderReviewPanel({
   onConfirm: () => void;
   isCheckingOut: boolean;
 }) {
+  const commerceTax = useCommerceTax();
+  const { isGstInclusive, gstTaxRate } = commerceTax;
+  const gstRateLabel = formatGstRateLabel(gstTaxRate);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(() => {
     const persisted = readWholesaleOrderReviewBillingSameAsShipping(
       buildWholesaleCartItemsSignature(items),
@@ -390,6 +396,7 @@ export default function WholesaleOrderReviewPanel({
       items.map((item) => ({
         qty: item.qty,
         unitPriceExGst: Number(item.unitPrice),
+        gstFree: item.gstFree,
       })),
     [items],
   );
@@ -494,7 +501,7 @@ export default function WholesaleOrderReviewPanel({
 
     if (changed) {
       onReviewChange(
-        withDeliveryFee(next, pricingLines, pricingTiers, review.shipping_fee),
+        withDeliveryFee(next, pricingLines, pricingTiers, review.shipping_fee, commerceTax),
       );
     }
   }, [profile, pricingLines, pricingTiers, review, onReviewChange]);
@@ -503,7 +510,7 @@ export default function WholesaleOrderReviewPanel({
     if (isPickup) {
       setDeliveryQuoteStatus("pickup");
       setDeliveryError(null);
-      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
+      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
       return;
     }
 
@@ -523,7 +530,7 @@ export default function WholesaleOrderReviewPanel({
         if (context.status === "incomplete_address") {
           setDeliveryQuoteStatus("incomplete_address");
           onReviewChange(
-            withDeliveryFee(review, pricingLines, pricingTiers, 0),
+            withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax),
           );
           return;
         }
@@ -531,7 +538,7 @@ export default function WholesaleOrderReviewPanel({
         if (context.status === "no_shipping_origin") {
           setDeliveryQuoteStatus("no_shipping_origin");
           onReviewChange(
-            withDeliveryFee(review, pricingLines, pricingTiers, 0),
+            withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax),
           );
           return;
         }
@@ -539,7 +546,7 @@ export default function WholesaleOrderReviewPanel({
         if (context.status === "no_shippable_items") {
           setDeliveryQuoteStatus("no_shippable_items");
           onReviewChange(
-            withDeliveryFee(review, pricingLines, pricingTiers, 0),
+            withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax),
           );
           return;
         }
@@ -553,13 +560,14 @@ export default function WholesaleOrderReviewPanel({
               pricingLines,
               pricingTiers,
               Number(cachedTotal.toFixed(2)),
+              commerceTax,
             ),
           );
           return;
         }
 
         setDeliveryQuoteStatus("pending");
-        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
+        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
       } catch (err) {
         if (requestId !== quoteContextRequestIdRef.current) return;
         setDeliveryQuoteStatus("error");
@@ -570,7 +578,7 @@ export default function WholesaleOrderReviewPanel({
               : "Unable to prepare shipping quote",
           ),
         );
-        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
+        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh cache lookup when shipping inputs change
@@ -607,7 +615,7 @@ export default function WholesaleOrderReviewPanel({
 
       if (context.status !== "quotable") {
         setDeliveryQuoteStatus(context.status);
-        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
+        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
         return;
       }
 
@@ -624,6 +632,7 @@ export default function WholesaleOrderReviewPanel({
           pricingLines,
           pricingTiers,
           Number(total.toFixed(2)),
+          commerceTax,
         ),
       );
     } catch (err) {
@@ -636,7 +645,7 @@ export default function WholesaleOrderReviewPanel({
             : "Failed to calculate shipping quote",
         ),
       );
-      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0));
+      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
     }
   };
 
@@ -930,7 +939,7 @@ export default function WholesaleOrderReviewPanel({
                           shipping_state: value as AustralianStateCode,
                         })
                       }
-                      options={AUSTRALIAN_STATES.map((state) => ({
+                      options={AUSTRALIAN_STATES.filter((state) => state.active).map((state) => ({
                         value: state.value,
                         label: state.label,
                       }))}
@@ -1138,7 +1147,8 @@ export default function WholesaleOrderReviewPanel({
                     {item.productName}
                   </p>
                   <p className="text-xs text-white/40 mt-0.5">
-                    {item.qty} × ${Number(item.unitPrice).toFixed(2)} ex GST
+                    {item.qty} × ${Number(item.unitPrice).toFixed(2)}
+                    {!isGstInclusive ? " ex GST" : ""}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-semibold tabular-nums text-white">
@@ -1156,7 +1166,7 @@ export default function WholesaleOrderReviewPanel({
           <SectionTitle title="Totals" />
           <div className="mt-3 space-y-2">
             <div className="flex justify-between text-white/60">
-              <span>Subtotal (ex GST)</span>
+              <span>{isGstInclusive ? "Subtotal" : "Subtotal (ex GST)"}</span>
               <span className="tabular-nums text-white">
                 ${review.subtotal.toFixed(2)}
               </span>
@@ -1177,12 +1187,6 @@ export default function WholesaleOrderReviewPanel({
                 </span>
               </div>
             ) : null}
-            <div className="flex justify-between text-white/60">
-              <span>Tax total (GST)</span>
-              <span className="tabular-nums text-white">
-                ${review.tax_total.toFixed(2)}
-              </span>
-            </div>
             {!isPickup ? (
               <div className="flex justify-between text-white/60">
                 <span>Delivery</span>
@@ -1214,8 +1218,16 @@ export default function WholesaleOrderReviewPanel({
             {!isPickup && deliveryQuoteStatus === "error" && deliveryError ? (
               <p className="text-xs text-amber-200/90">{deliveryError}</p>
             ) : null}
+            {!isGstInclusive ? (
+              <div className="flex justify-between text-white/60">
+                <span>GST ({gstRateLabel})</span>
+                <span className="tabular-nums text-white">
+                  ${review.tax_total.toFixed(2)}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
-              <span>Grand total (inc GST)</span>
+              <span>{isGstInclusive ? "Grand total" : "Grand total (inc GST)"}</span>
               <span className="tabular-nums text-primary">
                 ${review.grand_total.toFixed(2)}
               </span>

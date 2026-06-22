@@ -65,9 +65,10 @@ type SalesOrderEditorDialogProps = {
   onFormChange: (updater: (prev: SalesOrderForm) => SalesOrderForm) => void;
   saving: boolean;
   onSave: () => void;
+  isGstInclusive?: boolean;
 };
 
-type EditorTab = 'customer' | 'addresses' | 'items' | 'status' | 'payment' | 'b2b';
+type EditorTab = 'customer' | 'addresses' | 'items' | 'payment' | 'b2b';
 
 export function SalesOrderEditorDialog({
   dataset,
@@ -80,8 +81,10 @@ export function SalesOrderEditorDialog({
   onFormChange,
   saving,
   onSave,
+  isGstInclusive = true,
 }: SalesOrderEditorDialogProps) {
   const id = (field: string) => `${dataset.formIdPrefix}-${field}`;
+  const taxMode = { isGstInclusive };
   const isEditing = editingOrderId !== null;
   const isWholesale = orderType === 'wholesale';
   const [activeTab, setActiveTab] = useState<EditorTab>('customer');
@@ -114,7 +117,7 @@ export function SalesOrderEditorDialog({
   };
 
   const applyItemsChange = (items: SalesOrderForm['items']) => {
-    onFormChange((prev) => syncTotalsFromItems({ ...prev, items }));
+    onFormChange((prev) => syncTotalsFromItems({ ...prev, items }, taxMode));
   };
 
   return (
@@ -156,9 +159,8 @@ export function SalesOrderEditorDialog({
             <TabsTrigger value="customer">Customer</TabsTrigger>
             <TabsTrigger value="addresses">Addresses</TabsTrigger>
             <TabsTrigger value="items">
-              Items{form.items.length > 0 ? ` (${form.items.length})` : ''}
+              Items & totals{form.items.length > 0 ? ` (${form.items.length})` : ''}
             </TabsTrigger>
-            <TabsTrigger value="status">Status & totals</TabsTrigger>
             <TabsTrigger value="payment">Payment & tokens</TabsTrigger>
             {isWholesale ? <TabsTrigger value="b2b">B2B</TabsTrigger> : null}
           </TabsList>
@@ -444,18 +446,16 @@ export function SalesOrderEditorDialog({
           </TabsContent>
 
           <TabsContent value="items" className={tabPanelClass}>
-            <SalesOrderItemsEditor
-              orderType={orderType}
-              items={form.items}
-              onItemsChange={applyItemsChange}
-              idPrefix={dataset.formIdPrefix}
-              disabled={saving}
-              readOnly={readOnly}
-            />
-          </TabsContent>
-
-          <TabsContent value="status" className={tabPanelClass}>
             <div className="space-y-6 py-1">
+              <SalesOrderItemsEditor
+                orderType={orderType}
+                items={form.items}
+                onItemsChange={applyItemsChange}
+                idPrefix={dataset.formIdPrefix}
+                disabled={saving}
+                readOnly={readOnly}
+              />
+
               <SalesOrderFormSection title="Order totals">
                 <div className={salesOrderFormGridClass}>
                   <SalesOrderFormField
@@ -474,7 +474,7 @@ export function SalesOrderEditorDialog({
                       disabled={saving}
                       onChange={(e) =>
                         onFormChange((prev) =>
-                          syncTotalsFromItems({ ...prev, subtotal: e.target.value }),
+                          syncTotalsFromItems({ ...prev, subtotal: e.target.value }, taxMode),
                         )
                       }
                     />
@@ -513,7 +513,7 @@ export function SalesOrderEditorDialog({
                       disabled={saving}
                       onChange={(e) =>
                         onFormChange((prev) =>
-                          syncTotalsFromItems({ ...prev, coupon_discount: e.target.value }),
+                          syncTotalsFromItems({ ...prev, coupon_discount: e.target.value }, taxMode),
                         )
                       }
                     />
@@ -534,32 +534,34 @@ export function SalesOrderEditorDialog({
                       disabled={saving}
                       onChange={(e) =>
                         onFormChange((prev) =>
-                          syncTotalsFromItems({ ...prev, wholesale_discount: e.target.value }),
+                          syncTotalsFromItems({ ...prev, wholesale_discount: e.target.value }, taxMode),
                         )
                       }
                     />
                   </SalesOrderFormField>
-                  <SalesOrderFormField
-                    label="Tax total"
-                    htmlFor={id('tax-total')}
-                    readOnly={readOnly}
-                    value={`$${Number(form.tax_total).toFixed(2)}`}
-                    valueClassName="tabular-nums"
-                  >
-                    <Input
-                      id={id('tax-total')}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.tax_total}
-                      disabled={saving}
-                      onChange={(e) =>
-                        onFormChange((prev) =>
-                          syncTotalsFromItems({ ...prev, tax_total: e.target.value }),
-                        )
-                      }
-                    />
-                  </SalesOrderFormField>
+                  {!isGstInclusive ? (
+                    <SalesOrderFormField
+                      label="Tax total"
+                      htmlFor={id('tax-total')}
+                      readOnly={readOnly}
+                      value={`$${Number(form.tax_total).toFixed(2)}`}
+                      valueClassName="tabular-nums"
+                    >
+                      <Input
+                        id={id('tax-total')}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={form.tax_total}
+                        disabled={saving}
+                        onChange={(e) =>
+                          onFormChange((prev) =>
+                            syncTotalsFromItems({ ...prev, tax_total: e.target.value }, taxMode),
+                          )
+                        }
+                      />
+                    </SalesOrderFormField>
+                  ) : null}
                   <SalesOrderFormField
                     label="Shipping fee"
                     htmlFor={id('shipping-fee')}
@@ -576,28 +578,17 @@ export function SalesOrderEditorDialog({
                       disabled={saving}
                       onChange={(e) =>
                         onFormChange((prev) =>
-                          syncTotalsFromItems({ ...prev, shipping_fee: e.target.value }),
+                          syncTotalsFromItems({ ...prev, shipping_fee: e.target.value }, taxMode),
                         )
                       }
                     />
                   </SalesOrderFormField>
                   <SalesOrderFormField
                     label="Grand total"
-                    htmlFor={id('grand-total')}
-                    readOnly={readOnly}
+                    readOnly
                     value={`$${Number(form.grand_total).toFixed(2)}`}
                     valueClassName="tabular-nums font-medium"
-                  >
-                    <Input
-                      id={id('grand-total')}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.grand_total}
-                      disabled={saving}
-                      readOnly
-                    />
-                  </SalesOrderFormField>
+                  />
                 </div>
               </SalesOrderFormSection>
 

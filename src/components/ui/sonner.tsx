@@ -7,6 +7,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="light"
       position="top-center"
+      closeButton
       className="toaster group"
       style={
         {
@@ -21,6 +22,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           error: "toast-error",
           success: "toast-success",
           warning: "toast-warning",
+          closeButton:
+            "border-border/60 bg-background/90 text-foreground/70 hover:bg-background hover:text-foreground",
         },
       }}
       {...props}

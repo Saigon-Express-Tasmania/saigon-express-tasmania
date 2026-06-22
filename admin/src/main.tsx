@@ -25,7 +25,7 @@ createRoot(document.getElementById('root')!).render(
         <UserProfileProvider>
           <MasterDataProvider>
             <App />
-            <Toaster richColors position="top-right" />
+            <Toaster richColors position="top-right" closeButton />
           </MasterDataProvider>
         </UserProfileProvider>
       </SupabaseStorageProvider>

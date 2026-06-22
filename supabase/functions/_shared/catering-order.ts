@@ -4,6 +4,10 @@ import {
   formatOrderInvoiceNumber,
   type StripePaymentMode,
 } from "./order.ts";
+import {
+  fetchCommerceTaxSettings,
+  type CommerceTaxSettings,
+} from "./commerce-tax-settings.ts";
 
 const ORDER_TOKEN_LENGTH = 12;
 const CROCKFORD_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -120,25 +124,35 @@ function parseRequestedTargetDate(eventDate: string): string {
   throw new Error("Please select a valid event date");
 }
 
-function parseFinancialDetails(value: unknown): CateringFinancialDetails {
+function parseFinancialDetails(
+  value: unknown,
+  tax: CommerceTaxSettings,
+): CateringFinancialDetails {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Invalid financial details");
   }
 
   const row = value as Record<string, unknown>;
   const subtotal = Number(row.subtotal_ex_gst);
-  const gstTotal = Number(row.gst_total);
+  const clientGstTotal = Number(row.gst_total);
   const grandTotal = Number(row.grand_total_inc_gst);
   const shippingFee = row.shipping_fee != null ? Number(row.shipping_fee) : 0;
 
   if (!Number.isFinite(subtotal) || subtotal < 0) {
     throw new Error("Invalid subtotal");
   }
-  if (!Number.isFinite(gstTotal) || gstTotal < 0) {
-    throw new Error("Invalid tax total");
-  }
   if (!Number.isFinite(grandTotal) || grandTotal <= 0) {
     throw new Error("Order total must be greater than zero");
+  }
+
+  const gstTotal = tax.isGstInclusive
+    ? 0
+    : Number.isFinite(clientGstTotal) && clientGstTotal >= 0
+      ? clientGstTotal
+      : 0;
+
+  if (!tax.isGstInclusive && gstTotal < 0) {
+    throw new Error("Invalid tax total");
   }
 
   return {
@@ -216,10 +230,15 @@ function parseItems(value: unknown): CateringOrderItemInput[] {
   });
 }
 
-export function validateCateringOrderInput(body: unknown): CateringOrderInput {
+export async function validateCateringOrderInput(
+  body: unknown,
+): Promise<CateringOrderInput> {
   if (!body || typeof body !== "object") {
     throw new Error("Invalid request body");
   }
+
+  const supabase = createServiceClient();
+  const commerceTax = await fetchCommerceTaxSettings(supabase);
 
   const data = body as Record<string, unknown>;
   const mode = parsePaymentMode(data.mode);
@@ -253,7 +272,7 @@ export function validateCateringOrderInput(body: unknown): CateringOrderInput {
     fulfillmentType,
     eventDate,
     notes: notes || undefined,
-    financialDetails: parseFinancialDetails(data.financialDetails),
+    financialDetails: parseFinancialDetails(data.financialDetails, commerceTax),
     shippingAddress: parseShippingAddress(data.shippingAddress),
     items: parseItems(data.items),
   };

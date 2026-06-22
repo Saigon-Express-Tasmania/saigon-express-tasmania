@@ -27,6 +27,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
+import { fetchCommerceTaxSettings } from '@/lib/commerce-tax';
 import { Loader2, Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
@@ -170,6 +171,13 @@ export function ArchivedOrders() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ArchivedOrderForm | null>(null);
+  const [isGstInclusive, setIsGstInclusive] = useState(true);
+
+  useEffect(() => {
+    void fetchCommerceTaxSettings()
+      .then((settings) => setIsGstInclusive(settings.isGstInclusive))
+      .catch(() => setIsGstInclusive(true));
+  }, []);
 
   const loadRows = useCallback(async () => {
     if (!orderType) return;
@@ -290,7 +298,7 @@ export function ArchivedOrders() {
         coupon_code: form.coupon_code.trim() || null,
         coupon_discount: couponDiscount.toFixed(2),
         wholesale_discount: wholesaleDiscount.toFixed(2),
-        tax_total: taxTotal.toFixed(2),
+        tax_total: isGstInclusive ? '0.00' : taxTotal.toFixed(2),
         shipping_fee: shippingFee.toFixed(2),
         grand_total: grandTotal.toFixed(2),
         status: form.status,
@@ -617,18 +625,6 @@ export function ArchivedOrders() {
                       value={form.wholesale_discount}
                       onChange={(e) =>
                         setForm((prev) => prev && { ...prev, wholesale_discount: e.target.value })
-                      }
-                    />
-                  </SalesOrderFormField>
-                  <SalesOrderFormField label="Tax total" htmlFor="arch-tax">
-                    <Input
-                      id="arch-tax"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.tax_total}
-                      onChange={(e) =>
-                        setForm((prev) => prev && { ...prev, tax_total: e.target.value })
                       }
                     />
                   </SalesOrderFormField>

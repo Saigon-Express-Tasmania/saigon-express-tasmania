@@ -6,6 +6,7 @@ import {
   validateCancelCateringOrderInput,
   validateCateringOrderInput,
 } from "../_shared/catering-order.ts";
+import { sendCateringOrderNotifyEmail } from "../_shared/catering-order-notify-email.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
       return jsonResponse(result);
     }
 
-    const input = validateCateringOrderInput(body);
+    const input = await validateCateringOrderInput(body);
 
     if (input.customerAccount) {
       const auth = await requireAuthenticatedUser(req);
@@ -46,6 +47,16 @@ Deno.serve(async (req) => {
     }
 
     const result = await createPendingCateringOrder(input);
+
+    try {
+      await sendCateringOrderNotifyEmail(result.orderId);
+    } catch (err) {
+      console.error(
+        `[catering-order] Failed to send admin notify for #${result.orderId}:`,
+        err,
+      );
+    }
+
     return jsonResponse(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to process catering order";

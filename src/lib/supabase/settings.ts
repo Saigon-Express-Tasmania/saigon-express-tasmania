@@ -4,6 +4,7 @@ import {
   DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE,
   SHORT_REVALIDATE_SECONDS,
 } from "@/config";
+import { parseGstTaxRate, parseIsGstInclusive, resolveCommerceTaxSettings } from "@/lib/gst";
 import { createServerSupabaseClient } from "./server";
 
 const CACHE_TAG = CACHE_TAGS.settings;
@@ -40,3 +41,13 @@ export function getMinimumWholesaleOrderValue(
 
   return parsed;
 }
+
+export function getGstTaxRate(settings: Record<string, string>): number {
+  return parseGstTaxRate(settings.gst_tax_rate);
+}
+
+export function getIsGstInclusive(settings: Record<string, string>): boolean {
+  return parseIsGstInclusive(settings.is_gst_inclusive);
+}
+
+export { resolveCommerceTaxSettings };

@@ -2,6 +2,8 @@ import { getCategoriesByKind } from "@/lib/supabase/categories";
 import { mergeWholesaleProductsWithAvailability } from "@/lib/supabase/wholesale-availability";
 import { getWholesaleInventorySnapshot } from "@/lib/supabase/wholesale-inventory-snapshot";
 import {
+  getGstTaxRate,
+  getIsGstInclusive,
   getMinimumWholesaleOrderValue,
   getSettings,
 } from "@/lib/supabase/settings";
@@ -20,12 +22,16 @@ export type WholesalePageData = {
   categoriesContent: SiteCategory[];
   pricingTiers: WholesalePricingTier[];
   minimumWholesaleOrderValue: number;
+  gstTaxRate: number;
+  isGstInclusive: boolean;
 };
 
-export type WholesaleCartConfig = Pick<
-  WholesalePageData,
-  "pricingTiers" | "minimumWholesaleOrderValue"
->;
+export type WholesaleCartConfig = {
+  pricingTiers: WholesalePricingTier[];
+  minimumWholesaleOrderValue: number;
+  gstTaxRate: number;
+  isGstInclusive: boolean;
+};
 
 export async function loadWholesaleCartConfig(): Promise<WholesaleCartConfig> {
   const [pricingTiers, settings] = await Promise.all([
@@ -36,6 +42,8 @@ export async function loadWholesaleCartConfig(): Promise<WholesaleCartConfig> {
   return {
     pricingTiers,
     minimumWholesaleOrderValue: getMinimumWholesaleOrderValue(settings),
+    gstTaxRate: getGstTaxRate(settings),
+    isGstInclusive: getIsGstInclusive(settings),
   };
 }
 

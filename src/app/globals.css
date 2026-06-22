@@ -299,6 +299,10 @@
     animation: toast-slide-down 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  [data-sonner-toast] [data-close-button] {
+    opacity: 1;
+  }
+
   [data-sonner-toast].toast-error,
   [data-sonner-toast][data-type="error"] {
     background: #fef2f2 !important;

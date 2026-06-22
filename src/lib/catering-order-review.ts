@@ -1,23 +1,26 @@
+import {
+  cartItemsToGstPricingLines,
+  computeGstTotals,
+  type CommerceTaxSettings,
+  type GstPricingLine,
+} from "@/lib/gst";
 import { getWholesaleContactName, WHOLESALE_DEFAULT_COUNTRY } from "@/lib/wholesale-b2b-order";
 import type { UserProfile } from "@/types/UserProfile";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
-import type { AustralianStateCode } from "@/types/WholesaleB2BOrder";
+import {
+  DEFAULT_AUSTRALIAN_STATE_CODE,
+  type AustralianStateCode,
+} from "@/types/WholesaleB2BOrder";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
 
 function trimmedOrEmpty(value: string | null | undefined): string {
   return String(value ?? "").trim();
 }
 
-export type CateringPricingLine = {
-  qty: number;
-  unitPriceExGst: number;
-};
+export type CateringPricingLine = GstPricingLine;
 
 function toPricingLines(items: CateringCartItem[]): CateringPricingLine[] {
-  return items.map((item) => ({
-    qty: item.qty,
-    unitPriceExGst: Number(item.unitPrice),
-  }));
+  return cartItemsToGstPricingLines(items);
 }
 
 export function buildCateringOrderTotals(
@@ -26,6 +29,8 @@ export function buildCateringOrderTotals(
     couponDiscount?: number;
     wholesaleDiscount?: number;
     shippingFee?: number;
+    isGstInclusive?: boolean;
+    gstTaxRate?: number;
   } = {},
 ): Pick<
   CateringOrderReviewForm,
@@ -36,6 +41,27 @@ export function buildCateringOrderTotals(
   | "shipping_fee"
   | "grand_total"
 > {
+  const isGstInclusive = options.isGstInclusive !== false;
+
+  if (!isGstInclusive) {
+    const totals = computeGstTotals({
+      lines,
+      gstTaxRate: options.gstTaxRate,
+      couponDiscount: options.couponDiscount,
+      wholesaleDiscount: options.wholesaleDiscount,
+      shippingFee: options.shippingFee,
+    });
+
+    return {
+      subtotal: totals.subtotalExGst,
+      coupon_discount: totals.couponDiscount,
+      wholesale_discount: totals.wholesaleDiscount,
+      tax_total: totals.taxTotal,
+      shipping_fee: totals.shippingFee,
+      grand_total: totals.grandTotalIncGst,
+    };
+  }
+
   const subtotal = Number(
     lines
       .reduce((sum, line) => sum + line.qty * line.unitPriceExGst, 0)
@@ -47,16 +73,13 @@ export function buildCateringOrderTotals(
   const discountedSubtotal = Number(
     Math.max(subtotal - couponDiscount - wholesaleDiscount, 0).toFixed(2),
   );
-  const taxTotal = Number((discountedSubtotal * 0.1).toFixed(2));
-  const grandTotal = Number(
-    (discountedSubtotal + taxTotal + shippingFee).toFixed(2),
-  );
+  const grandTotal = Number((discountedSubtotal + shippingFee).toFixed(2));
 
   return {
     subtotal,
     coupon_discount: couponDiscount,
     wholesale_discount: wholesaleDiscount,
-    tax_total: taxTotal,
+    tax_total: 0,
     shipping_fee: shippingFee,
     grand_total: grandTotal,
   };
@@ -65,6 +88,7 @@ export function buildCateringOrderTotals(
 export function withCateringOrderTotals(
   form: CateringOrderReviewForm,
   items: CateringCartItem[],
+  tax?: CommerceTaxSettings,
 ): CateringOrderReviewForm {
   return {
     ...form,
@@ -72,6 +96,8 @@ export function withCateringOrderTotals(
       couponDiscount: form.coupon_discount,
       wholesaleDiscount: form.wholesale_discount,
       shippingFee: form.shipping_fee,
+      isGstInclusive: tax?.isGstInclusive,
+      gstTaxRate: tax?.gstTaxRate,
     }),
   };
 }
@@ -80,8 +106,12 @@ export function buildCateringOrderReviewFromProfile(
   profile: UserProfile,
   customerEmail: string,
   items: CateringCartItem[],
+  tax?: CommerceTaxSettings,
 ): CateringOrderReviewForm {
-  const totals = buildCateringOrderTotals(toPricingLines(items));
+  const totals = buildCateringOrderTotals(toPricingLines(items), {
+    isGstInclusive: tax?.isGstInclusive,
+    gstTaxRate: tax?.gstTaxRate,
+  });
 
   return {
     customer_name: getWholesaleContactName(profile),
@@ -92,7 +122,9 @@ export function buildCateringOrderReviewFromProfile(
     shipping_dba_name: trimmedOrEmpty(profile.shipping_dba_name || profile.business_name),
     shipping_address: trimmedOrEmpty(profile.shipping_address),
     shipping_city: trimmedOrEmpty(profile.shipping_city),
-    shipping_state: (profile.shipping_state as AustralianStateCode | null) ?? "",
+    shipping_state:
+      (profile.shipping_state as AustralianStateCode | null) ??
+      DEFAULT_AUSTRALIAN_STATE_CODE,
     shipping_postal_code: trimmedOrEmpty(profile.shipping_postal_code),
     shipping_country: trimmedOrEmpty(profile.shipping_country) || WHOLESALE_DEFAULT_COUNTRY,
     shipping_preferred_window: trimmedOrEmpty(profile.shipping_preferred_window),
@@ -104,8 +136,12 @@ export function buildCateringOrderReviewFromProfile(
 
 export function buildCateringOrderReviewForGuest(
   items: CateringCartItem[],
+  tax?: CommerceTaxSettings,
 ): CateringOrderReviewForm {
-  const totals = buildCateringOrderTotals(toPricingLines(items));
+  const totals = buildCateringOrderTotals(toPricingLines(items), {
+    isGstInclusive: tax?.isGstInclusive,
+    gstTaxRate: tax?.gstTaxRate,
+  });
 
   return {
     customer_name: "",
@@ -116,7 +152,7 @@ export function buildCateringOrderReviewForGuest(
     shipping_dba_name: "",
     shipping_address: "",
     shipping_city: "",
-    shipping_state: "",
+    shipping_state: DEFAULT_AUSTRALIAN_STATE_CODE,
     shipping_postal_code: "",
     shipping_country: WHOLESALE_DEFAULT_COUNTRY,
     shipping_preferred_window: "",
@@ -137,16 +173,19 @@ export type CateringPaymentFinancialDetails = {
   currency: string;
 };
 
-export function buildCateringPaymentFinancialDetails(input: {
-  subtotal: number;
-  coupon_code?: string | null;
-  coupon_discount?: number;
-  wholesale_discount?: number;
-  tax_total?: number;
-  shipping_fee?: number;
-  grand_total?: number;
-  items?: Array<{ qty: number; unit_price: number }>;
-}): CateringPaymentFinancialDetails {
+export function buildCateringPaymentFinancialDetails(
+  input: {
+    subtotal: number;
+    coupon_code?: string | null;
+    coupon_discount?: number;
+    wholesale_discount?: number;
+    tax_total?: number;
+    shipping_fee?: number;
+    grand_total?: number;
+    items?: Array<{ qty: number; unit_price: number }>;
+  },
+  tax?: CommerceTaxSettings,
+): CateringPaymentFinancialDetails {
   const subtotalExGst =
     input.items && input.items.length > 0
       ? input.items.reduce((sum, item) => sum + item.qty * item.unit_price, 0)
@@ -154,8 +193,9 @@ export function buildCateringPaymentFinancialDetails(input: {
   const couponDiscount = input.coupon_discount ?? 0;
   const wholesaleDiscount = input.wholesale_discount ?? 0;
   const totalDiscount = couponDiscount + wholesaleDiscount;
-  const gstTotal = input.tax_total ?? 0;
   const shippingFee = input.shipping_fee ?? 0;
+  const isGstInclusive = tax?.isGstInclusive !== false;
+  const gstTotal = isGstInclusive ? 0 : (input.tax_total ?? 0);
   const grandTotal = Math.max(
     input.grand_total ??
       subtotalExGst - totalDiscount + gstTotal + shippingFee,
@@ -191,7 +231,9 @@ export function validateCateringOrderReview(
 
 export function serializeCateringOrderReviewForPlacement(
   form: CateringOrderReviewForm,
+  tax?: CommerceTaxSettings,
 ) {
+  const isGstInclusive = tax?.isGstInclusive !== false;
   const noteLines = [
     form.guest_count.trim() ? `Guest count: ${form.guest_count.trim()}` : null,
     form.shipping_preferred_window.trim()
@@ -209,7 +251,7 @@ export function serializeCateringOrderReviewForPlacement(
     notes: noteLines.length > 0 ? noteLines.join("\n") : undefined,
     financialDetails: {
       subtotal_ex_gst: form.subtotal,
-      gst_total: form.tax_total,
+      gst_total: isGstInclusive ? 0 : form.tax_total,
       grand_total_inc_gst: form.grand_total,
       shipping_fee: form.shipping_fee,
       coupon_code: form.coupon_code,

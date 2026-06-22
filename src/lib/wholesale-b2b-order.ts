@@ -64,14 +64,23 @@ export function isBillingSameAsShipping(
 }
 
 export function buildWholesaleFinancialDetails(
-  cartTotalExGst: number,
+  cartTotalIncGst: number,
+  tax?: { isGstInclusive: boolean; gstTaxRate: number },
 ): WholesaleOrderFinancialDetails {
-  const subtotal = Number(cartTotalExGst.toFixed(2));
-  const gst = Number((subtotal * 0.1).toFixed(2));
+  const subtotal = Number(cartTotalIncGst.toFixed(2));
+  if (tax?.isGstInclusive === false) {
+    const gst = Number((subtotal * tax.gstTaxRate).toFixed(2));
+    return {
+      subtotal_ex_gst: subtotal,
+      gst_total: gst,
+      grand_total_inc_gst: Number((subtotal + gst).toFixed(2)),
+      currency: "AUD",
+    };
+  }
   return {
     subtotal_ex_gst: subtotal,
-    gst_total: gst,
-    grand_total_inc_gst: Number((subtotal + gst).toFixed(2)),
+    gst_total: 0,
+    grand_total_inc_gst: subtotal,
     currency: "AUD",
   };
 }
@@ -79,15 +88,16 @@ export function buildWholesaleFinancialDetails(
 export const AUSTRALIAN_STATES: {
   value: AustralianStateCode;
   label: string;
+  active: boolean;
 }[] = [
-  { value: "ACT", label: "Australian Capital Territory" },
-  { value: "NSW", label: "New South Wales" },
-  { value: "NT", label: "Northern Territory" },
-  { value: "QLD", label: "Queensland" },
-  { value: "SA", label: "South Australia" },
-  { value: "TAS", label: "Tasmania" },
-  { value: "VIC", label: "Victoria" },
-  { value: "WA", label: "Western Australia" },
+  { value: "ACT", label: "Australian Capital Territory", active: false },
+  { value: "NSW", label: "New South Wales", active: false },
+  { value: "NT", label: "Northern Territory", active: false },
+  { value: "QLD", label: "Queensland", active: false },
+  { value: "SA", label: "South Australia", active: false },
+  { value: "TAS", label: "Tasmania", active: true },
+  { value: "VIC", label: "Victoria", active: false },
+  { value: "WA", label: "Western Australia", active: false },
 ];
 
 function isAustralianStateCode(value: string): value is AustralianStateCode {
@@ -159,9 +169,10 @@ export function requestedTargetDateLocalToIso(value: string): string {
 }
 
 export function buildWholesaleOrderTotals(
-  lines: { qty: number; unitPriceExGst: number }[],
+  lines: { qty: number; unitPriceExGst: number; gstFree?: boolean }[],
   pricingTiers: WholesalePricingTier[] = [],
   shippingFee = 0,
+  tax?: { isGstInclusive: boolean; gstTaxRate: number },
 ): Pick<
   WholesaleOrderReviewForm,
   "subtotal" | "wholesale_discount" | "tax_total" | "shipping_fee" | "grand_total"
@@ -170,6 +181,7 @@ export function buildWholesaleOrderTotals(
     lines,
     pricingTiers,
     shippingFee,
+    tax,
   );
   return {
     subtotal: totals.subtotalExGst,

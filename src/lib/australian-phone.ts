@@ -70,3 +70,13 @@ export function formatAustralianPhone(
   if (!display || !telHref) return null;
   return { display, telHref };
 }
+
+/** `https://wa.me/` link for the `whatsapp_phone_number` settings value. */
+export function buildWhatsAppUrl(raw?: string, text?: string): string | null {
+  const national = normalizeAustralianPhoneNationalDigits(raw?.trim() ?? "");
+  if (!national?.startsWith("0")) return null;
+  const base = `https://wa.me/61${national.slice(1)}`;
+  const trimmedText = text?.trim();
+  if (!trimmedText) return base;
+  return `${base}?text=${encodeURIComponent(trimmedText)}`;
+}

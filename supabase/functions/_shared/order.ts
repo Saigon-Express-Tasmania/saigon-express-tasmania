@@ -4,6 +4,10 @@ import {
   computeWholesaleTierDiscountTotals,
   type WholesaleTierRow,
 } from "./wholesale-tier-discount.ts";
+import {
+  fetchCommerceTaxSettings,
+  type CommerceTaxSettings,
+} from "./commerce-tax-settings.ts";
 import { resolveWholesaleShippingFee } from "./wholesale-freight.ts";
 import {
   createStripeClient,
@@ -204,7 +208,10 @@ function parseRequestedTargetDate(pickupTime: string | null | undefined): string
   return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 }
 
-function computeCheckoutTotals(input: OrderCheckoutInput): {
+function computeCheckoutTotals(
+  input: OrderCheckoutInput,
+  tax?: CommerceTaxSettings,
+): {
   subtotal: number;
   coupon_code: string | null;
   coupon_discount: number;
@@ -213,6 +220,7 @@ function computeCheckoutTotals(input: OrderCheckoutInput): {
   shipping_fee: number;
   grand_total: number;
 } {
+  const isGstInclusive = tax?.isGstInclusive !== false;
   const itemsSubtotal = input.items.reduce(
     (sum, item) => sum + item.qty * item.unitPrice,
     0,
@@ -224,7 +232,7 @@ function computeCheckoutTotals(input: OrderCheckoutInput): {
       coupon_code: input.financialDetails.coupon_code?.trim() || null,
       coupon_discount: input.financialDetails.coupon_discount ?? 0,
       wholesale_discount: 0,
-      tax_total: input.financialDetails.gst_total,
+      tax_total: isGstInclusive ? 0 : input.financialDetails.gst_total,
       shipping_fee: input.financialDetails.shipping_fee ?? 0,
       grand_total: input.financialDetails.grand_total_inc_gst,
     };
@@ -1293,6 +1301,7 @@ async function fetchExistingCateringAwaitingPaymentOrder(
 function resolveExistingCateringCheckoutTotals(
   order: ExistingCateringOrderRow,
   financialDetails?: WholesaleFinancialDetails,
+  tax?: CommerceTaxSettings,
 ): {
   subtotal: number;
   couponDiscount: number;
@@ -1301,12 +1310,15 @@ function resolveExistingCateringCheckoutTotals(
   shippingFee: number;
   grandTotal: number;
 } {
+  const isGstInclusive = tax?.isGstInclusive !== false;
   const subtotal = Number(financialDetails?.subtotal_ex_gst ?? order.subtotal ?? 0);
   const couponDiscount = Number(financialDetails?.coupon_discount ?? order.coupon_discount ?? 0);
   const wholesaleDiscount = Number(
     financialDetails?.wholesale_discount ?? order.wholesale_discount ?? 0,
   );
-  const taxTotal = Number(financialDetails?.gst_total ?? order.tax_total ?? 0);
+  const taxTotal = isGstInclusive
+    ? 0
+    : Number(financialDetails?.gst_total ?? order.tax_total ?? 0);
   const shippingFee = Number(financialDetails?.shipping_fee ?? order.shipping_fee ?? 0);
   const grandFromFormula =
     subtotal - (couponDiscount + wholesaleDiscount) + taxTotal + shippingFee;
@@ -1435,6 +1447,7 @@ export async function createOrderCheckoutSession(
   input: OrderCheckoutInput,
 ): Promise<OrderCheckoutResult> {
   const supabase = createServiceClient();
+  const commerceTax = await fetchCommerceTaxSettings(supabase);
 
   if (input.existingOrderId != null) {
     if (input.orderType !== "catering") {
@@ -1452,6 +1465,7 @@ export async function createOrderCheckoutSession(
     const totals = resolveExistingCateringCheckoutTotals(
       existingOrder,
       input.financialDetails,
+      commerceTax,
     );
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
@@ -1507,7 +1521,7 @@ export async function createOrderCheckoutSession(
     return { url: session.url, draftOrderId: null, mode: input.mode };
   }
 
-  let totals = computeCheckoutTotals(input);
+  let totals = computeCheckoutTotals(input, commerceTax);
   let wholesaleStripeUnitAmountCents: number[] | null = null;
 
   if (input.orderType === "wholesale") {
@@ -1533,6 +1547,7 @@ export async function createOrderCheckoutSession(
       pricingLines,
       tiers,
       shippingFee,
+      commerceTax,
     );
 
     totals = {

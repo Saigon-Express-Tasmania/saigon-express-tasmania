@@ -209,8 +209,14 @@ function MemberPortalContent() {
     | ""
   >("");
 
-  const { signInWithPassword, profile, authMetadata, isSignedIn, signOut } =
-    useSupabase();
+  const {
+    signInWithPassword,
+    profile,
+    authMetadata,
+    isSignedIn,
+    isLoading,
+    signOut,
+  } = useSupabase();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
@@ -255,12 +261,12 @@ function MemberPortalContent() {
   }, [mode]);
 
   useEffect(() => {
-    if (isSignedIn && !isPasswordRecovery) {
-      clearWholesaleRegistrationStatus();
-      setRegistrationStatus(null);
-      router.replace("/member/dashboard");
-    }
-  }, [isPasswordRecovery, isSignedIn, router]);
+    if (isLoading || !isSignedIn || isPasswordRecovery) return;
+
+    clearWholesaleRegistrationStatus();
+    setRegistrationStatus(null);
+    router.replace("/member/dashboard");
+  }, [isLoading, isPasswordRecovery, isSignedIn, router]);
 
   useEffect(() => {
     if (isSignedIn) return;

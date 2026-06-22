@@ -100,11 +100,12 @@ export function readWholesaleOrderReviewBillingSameAsShipping(
 export function hydrateWholesaleOrderReview(
   base: WholesaleOrderReviewForm,
   cartItemsSignature: string,
-  pricingLines: { qty: number; unitPriceExGst: number }[],
+  pricingLines: { qty: number; unitPriceExGst: number; gstFree?: boolean }[],
   pricingTiers: WholesalePricingTier[],
+  tax?: { isGstInclusive: boolean; gstTaxRate: number },
 ): WholesaleOrderReviewForm {
   const draft = readWholesaleOrderReviewDraft();
-  const totals = buildWholesaleOrderTotals(pricingLines, pricingTiers, 0);
+  const totals = buildWholesaleOrderTotals(pricingLines, pricingTiers, 0, tax);
 
   if (!draft || draft.cartItemsSignature !== cartItemsSignature) {
     return { ...base, ...totals };

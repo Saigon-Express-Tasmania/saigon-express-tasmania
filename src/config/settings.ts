@@ -11,6 +11,12 @@ export const WHOLESALE_INVENTORY_REVALIDATE_SECONDS =
 /** Fallback when `minimum_wholesale_order_value` is missing or invalid. */
 export const DEFAULT_MINIMUM_WHOLESALE_ORDER_VALUE = 300;
 
+/** Fallback when `gst_tax_rate` is missing or invalid (10% Australian GST). */
+export const DEFAULT_GST_TAX_RATE = 0.1;
+
+/** Default when `is_gst_inclusive` is missing from settings. */
+export const DEFAULT_IS_GST_INCLUSIVE = true;
+
 /**
  * Long ISR/data-cache revalidation interval (in seconds).
  * 1 day.
@@ -43,3 +49,4 @@ export const REVALIDATE_TAG_LIST = Object.values(CACHE_TAGS);
 
 export const ENABLE_TAWT_TO = false;
 export const ENABLE_FACEBOOK_MESSAGE = true;
+export const ENABLE_WHATSAPP_MESSAGE = true;

@@ -1,11 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, PackageCheck, Pencil, Trash2 } from 'lucide-react';
+import type { OrderType } from './orderType';
 import { formatTargetDateDisplay } from './salesOrderDb';
 import type { SalesOrderRow } from './salesOrderShared';
 
 type SalesOrdersTableProps = {
   orders: SalesOrderRow[];
+  orderType?: OrderType;
   saving: boolean;
   onView: (order: SalesOrderRow) => void;
   onEdit: (order: SalesOrderRow) => void;
@@ -15,12 +17,15 @@ type SalesOrdersTableProps = {
 
 export function SalesOrdersTable({
   orders,
+  orderType,
   saving,
   onView,
   onEdit,
   onFulfill,
   onDelete,
 }: SalesOrdersTableProps) {
+  const showOrderDate = orderType === 'catering' || orderType === 'wholesale';
+
   return (
     <div className="overflow-x-auto rounded-md border">
       <table className="w-full">
@@ -28,6 +33,9 @@ export function SalesOrdersTable({
           <tr className="border-b bg-muted/50">
             <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
+            {showOrderDate ? (
+              <th className="px-4 py-3 text-left text-sm font-semibold">Order date</th>
+            ) : null}
             <th className="px-4 py-3 text-left text-sm font-semibold">Target date</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
@@ -43,6 +51,11 @@ export function SalesOrdersTable({
                 <p className="font-medium">{order.customer_name}</p>
                 <p className="text-muted-foreground">{order.customer_email}</p>
               </td>
+              {showOrderDate ? (
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {formatTargetDateDisplay(order.created_at)}
+                </td>
+              ) : null}
               <td className="px-4 py-3 text-sm text-muted-foreground">
                 {formatTargetDateDisplay(order.requested_target_date)}
               </td>

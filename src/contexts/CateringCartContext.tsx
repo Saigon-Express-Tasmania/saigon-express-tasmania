@@ -13,6 +13,8 @@ export type CateringCartItem = {
   qty: number;
   unitPrice: number;
   imageUrl: string | null;
+  /** When true, line is GST-free (basic food, etc.). */
+  gstFree?: boolean;
   addedAt: number;
 };
 
@@ -22,6 +24,7 @@ export type CateringCartProductInput = {
   variantLabel?: string | null;
   unitPrice: number;
   imageUrl?: string | null;
+  gstFree?: boolean;
 };
 
 function buildLineKey(productId: number, variantLabel?: string | null): string {
@@ -83,6 +86,7 @@ const useCateringCartStore = create<CateringCartStore>()(
                   qty: 1,
                   unitPrice: product.unitPrice,
                   imageUrl: product.imageUrl ?? null,
+                  gstFree: product.gstFree ?? false,
                   addedAt: now,
                 },
               ];

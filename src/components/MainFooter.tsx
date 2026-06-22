@@ -107,14 +107,14 @@ export default function MainFooter() {
                   </Link>
                 </li>
               ))}              
-              <li>
+              {/* <li>
                 <Link
                   href="/get-the-app"
                   className="hover:text-white transition-colors"
                 >
                   {t("footer.getTheApp")}
                 </Link>
-              </li>
+              </li> */}
             </ul>
             <ul className="mt-6 pt-6 border-t border-white/10 space-y-2.5 text-sm">
               <li>
