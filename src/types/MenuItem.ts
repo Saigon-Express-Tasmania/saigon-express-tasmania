@@ -141,6 +141,7 @@ export type MenuItemRow = {
   is_popular: boolean;
   sort_order: number;
   ingredients: unknown;
+  energy: number;
 };
 
 export function normalizeMenuImageUrls(value: unknown): MenuImageUrls {
@@ -188,5 +189,6 @@ export function mapMenuItemRow(row: MenuItemRow): MenuItem {
     sortOrder: row.sort_order,
     isPopular: row.is_popular,
     ingredients: parseMenuItemIngredient(row.ingredients),
+    energy: row.energy ?? 0,
   };
 }

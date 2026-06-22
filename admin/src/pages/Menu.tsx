@@ -1,6 +1,7 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
+import { MenuFoodContentEditor } from '@/components/MenuFoodContentEditor';
 import { MenuIngredientsEditor } from '@/components/MenuIngredientsEditor';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
 import {
@@ -66,6 +67,13 @@ import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
+  emptyFoodContent,
+  isFoodContentEmpty,
+  parseFoodContent,
+  serializeFoodContent,
+  type FoodContent,
+} from '@/types/FoodContent';
+import {
   emptyMenuItemIngredient,
   isMenuItemIngredientEmpty,
   parseMenuItemIngredient,
@@ -91,12 +99,19 @@ type MenuItemRow = {
   is_popular: boolean;
   sort_order: number;
   ingredients: unknown;
+  energy: number;
+  food_content: unknown;
+  spicy_level: number;
 } & ProductShippingRow;
 
-type MenuItemInput = Omit<MenuItemRow, 'ingredients' | 'image_urls' | keyof ProductShippingRow> & {
+type MenuItemInput = Omit<
+  MenuItemRow,
+  'ingredients' | 'image_urls' | 'food_content' | keyof ProductShippingRow
+> & {
   image_sizes: ImageUrlsMap;
   additional_images: MenuImageMoreEntry[];
   ingredients: MenuItemIngredient;
+  food_content: FoodContent;
 } & ProductShippingInput;
 
 const emptyMenuItemInput = (): MenuItemInput => ({
@@ -114,8 +129,20 @@ const emptyMenuItemInput = (): MenuItemInput => ({
   is_popular: false,
   sort_order: 0,
   ingredients: emptyMenuItemIngredient(),
+  energy: 0,
+  food_content: emptyFoodContent(),
+  spicy_level: 0,
   ...emptyProductShippingInput(),
 });
+
+const SPICY_LEVEL_OPTIONS = [
+  { value: '0', label: 'None (0)' },
+  { value: '1', label: 'Mild (1)' },
+  { value: '2', label: 'Medium (2)' },
+  { value: '3', label: 'Hot (3)' },
+  { value: '4', label: 'Extra hot (4)' },
+  { value: '5', label: 'Very hot (5)' },
+] as const;
 
 async function nextMenuId(): Promise<number> {
   return nextProductId('alacarte');
@@ -150,7 +177,7 @@ export function Menu() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, spicy_level, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'alacarte')
         .order('sort_order', { ascending: true })
@@ -242,6 +269,9 @@ export function Menu() {
       is_popular: item.is_popular,
       sort_order: item.sort_order,
       ingredients: parseMenuItemIngredient(item.ingredients),
+      energy: item.energy ?? 0,
+      food_content: parseFoodContent(item.food_content),
+      spicy_level: Math.min(5, Math.max(0, item.spicy_level ?? 0)),
       ...productShippingFromRow(item),
     });
     setImagePreviewUrl(
@@ -372,6 +402,18 @@ export function Menu() {
       ? {}
       : serializeMenuItemIngredient(form.ingredients);
 
+    const foodContentValue = isFoodContentEmpty(form.food_content)
+      ? {}
+      : serializeFoodContent(form.food_content);
+
+    const energyValue = Number.isFinite(form.energy)
+      ? Math.max(0, Math.round(form.energy))
+      : 0;
+
+    const spicyLevelValue = Number.isFinite(form.spicy_level)
+      ? Math.min(5, Math.max(0, Math.round(form.spicy_level)))
+      : 0;
+
     setSaving(true);
     try {
       const slug = slugFromName(form.name);
@@ -397,6 +439,9 @@ export function Menu() {
         is_popular: form.is_popular,
         sort_order: Number(form.sort_order) || 0,
         ingredients: ingredientsValue,
+        energy: energyValue,
+        food_content: foodContentValue,
+        spicy_level: spicyLevelValue,
         ...productShippingToPayload(form),
       };
 
@@ -415,6 +460,9 @@ export function Menu() {
             is_popular: payload.is_popular,
             sort_order: payload.sort_order,
             ingredients: payload.ingredients,
+            energy: payload.energy,
+            food_content: payload.food_content,
+            spicy_level: payload.spicy_level,
             is_shippable: payload.is_shippable,
             ship_weight_kg: payload.ship_weight_kg,
             ship_length_cm: payload.ship_length_cm,
@@ -820,6 +868,45 @@ export function Menu() {
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="menu-energy">Energy (kJ)</Label>
+              <Input
+                id="menu-energy"
+                type="number"
+                min={0}
+                step={1}
+                value={form.energy}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    energy: Math.max(0, Number(e.target.value) || 0),
+                  }))
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="menu-spicy-level">Spicy level</Label>
+              <Select
+                value={String(form.spicy_level)}
+                onValueChange={(value) =>
+                  setForm((f) => ({
+                    ...f,
+                    spicy_level: Number(value) || 0,
+                  }))
+                }
+              >
+                <SelectTrigger id="menu-spicy-level">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SPICY_LEVEL_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="menu-available">Available</Label>
               <Select
                 value={form.is_available ? 'yes' : 'no'}
@@ -870,6 +957,15 @@ export function Menu() {
               onChange={(shipping) => setForm((f) => ({ ...f, ...shipping }))}
               disabled={saving || imageUploadBusy}
             />
+            <div className="md:col-span-2">
+              <MenuFoodContentEditor
+                value={form.food_content}
+                onChange={(food_content) =>
+                  setForm((f) => ({ ...f, food_content }))
+                }
+                disabled={saving || imageUploadBusy}
+              />
+            </div>
             <div className="md:col-span-2">
               <MenuIngredientsEditor
                 value={form.ingredients}

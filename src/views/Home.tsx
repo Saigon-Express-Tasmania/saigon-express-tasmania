@@ -29,7 +29,7 @@ const IMGS = {
     "/manus-storage/saigo_express__Viet_rice_Grilled_pork_and_fried_egg_rice_Native_fc6d43db.jpg",
   catering: "/manus-storage/catering-hero-counter_71eb7271.jpg",
   cateringBox: "/manus-storage/SaigonFeastBox_6c26a5d8.jpg",
-  signature: "/manus-storage/banh-mi-3_465cb7d1.jpg",
+  signature: "/manus-storage/crispyroastporkbanhmi_ce355122.jpg",
   cat1: "/manus-storage/banh-mi-2_7d02846f.jpg",
   cat2: "/manus-storage/pho-2_4fc44f9f.jpg",
   cat3: "/manus-storage/spring-rolls-1_02f22814.jpg",
@@ -273,13 +273,21 @@ export default async function Home() {
       </section>
 
       {/* ── SIGNATURE ─────────────────────────────────── */}
-      <section className="relative py-28 overflow-hidden">
-        <AppImage
-          src="/manus-storage/IMG_4152Large_d9da7044.png"
-          alt={t("signature.imageAlt")}
-          fill
-          className="object-cover"
-        />
+      <section className="relative min-h-[28rem] overflow-hidden py-28">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute left-1/2 top-1/2 h-[100%] w-[100%] -translate-x-1/2 -translate-y-1/2">
+            <div className="relative size-full">
+              <AppImage
+                src={IMGS.signature}
+                alt={t("signature.imageAlt")}
+                fill
+                sizes="100vw"
+                quality={90}
+                className="object-cover object-center"
+              />
+            </div>
+          </div>
+        </div>
         <div className="absolute inset-0 bg-black/70" />
         <div className="relative z-10 max-w-[1280px] mx-auto px-4 text-center">
           <span className="section-label text-white/60 mb-4 block">

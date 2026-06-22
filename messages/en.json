@@ -90,7 +90,7 @@
       "titleLine1": "The Original.",
       "titleLine2": "The Iconic.",
       "description": "This is what bánh mì is meant to taste like.",
-      "imageAlt": "Saigon Express food spread",
+      "imageAlt": "Crispy roast pork bánh mì",
       "cta": "See Our Menu"
     },
     "categories": {
@@ -1652,6 +1652,9 @@
       "clearLabel": "✕ Clear"
     },
     "allCategory": "All",
+    "categories": {
+      "label": "Category"
+    },
     "empty": {
       "headingSearch": "No results for \"{query}\"",
       "headingCategory": "No items in this category",
@@ -1661,6 +1664,7 @@
     },
     "card": {
       "popularBadge": "★ Popular",
+      "energyBadge": "{value} kJ",
       "unavailableBadge": "Temporarily Unavailable",
       "addButton": "Add"
     },
@@ -2048,7 +2052,7 @@
       "title": "Bulk Pricing Tiers",
       "desc": "Discounts applied automatically at checkout based on order quantity",
       "off": "off",
-      "disclaimer": "Prices exclude GST. Minimum order 10 units. Delivery charges may apply outside Greater Hobart."
+      "disclaimer": "Prices include GST. Minimum order 10 units. Delivery charges may apply outside Greater Hobart."
     },
     "pricingTiers": [
       {

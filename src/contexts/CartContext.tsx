@@ -24,6 +24,8 @@ export type MenuItem = {
   sortOrder?: number | null;
   isPopular?: boolean | number | null;
   ingredients?: MenuItemIngredient;
+  /** Energy in kilojoules (kJ). */
+  energy: number;
 };
 
 export type CartItem = {

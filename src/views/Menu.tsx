@@ -26,6 +26,15 @@ import { useCart, type MenuItem } from "@/contexts/CartContext";
 import PickLocationModal from "@/components/PickLocationModal";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
 import LazyImage from "@/components/LazyImage";
+import { CategoryIcon } from "@/components/CategoryIcon";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, StoreLocation } from "@/types";
 // 1. Import Fuse
@@ -121,6 +130,15 @@ export default function Menu({
     () =>
       categoriesContent.reduce<Record<string, string>>((acc, category) => {
         if (category.imageUrl) acc[category.imageUrl] = category.imageUrl; // Quick bugfix placeholder, kept original fallback schema
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const categoryIconMap = useMemo<Record<string, string | null>>(
+    () =>
+      categoriesContent.reduce<Record<string, string | null>>((acc, category) => {
+        acc[category.name] = category.icon;
         return acc;
       }, {}),
     [categoriesContent],
@@ -229,6 +247,19 @@ export default function Menu({
 
   const cartIds = new Set(cart.map((c) => c.item.id));
 
+  const categoryButtonClass = (cat: string) =>
+    `shrink-0 px-4 py-2 text-sm font-semibold transition-colors border ${
+      activeCategory === cat
+        ? "bg-brand-red text-white border-brand-red"
+        : "bg-transparent text-brand-dark/60 border-gray-200 hover:border-brand-red/40 hover:text-brand-dark"
+    }`;
+
+  const getCategoryIcon = (cat: string) =>
+    cat === allLabel ? null : categoryIconMap[cat];
+
+  const getCategoryIconFallback = (cat: string): "all" | "category" =>
+    cat === allLabel ? "all" : "category";
+
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
@@ -289,22 +320,71 @@ export default function Menu({
       {/* Category strip */}
       <div
         id="categories"
-        className="bg-white border-b border-gray-100 sticky top-24 z-40"
+        className="bg-white border-b border-gray-100 sticky top-16 z-40"
       >
-        <div className="max-w-[1280px] mx-auto px-6 py-3 flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => handleCategoryClick(cat)}
-              className={`px-4 py-2 text-sm font-semibold transition-colors border ${
-                activeCategory === cat
-                  ? "bg-brand-red text-white border-brand-red"
-                  : "bg-transparent text-brand-dark/60 border-gray-200 hover:border-brand-red/40 hover:text-brand-dark"
-              }`}
+        <div className="max-w-[1280px] mx-auto px-6 py-3">
+          <div className="md:hidden">
+            <Label
+              htmlFor="menu-category-select"
+              className="mb-2 block text-xs font-bold uppercase tracking-wider text-brand-dark/60"
             >
-              {cat}
-            </button>
-          ))}
+              {t("categories.label")}
+            </Label>
+            <Select value={activeCategory} onValueChange={handleCategoryClick}>
+              <SelectTrigger
+                id="menu-category-select"
+                className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-semibold text-brand-dark shadow-sm hover:border-brand-red/30 focus-visible:border-brand-red focus-visible:ring-brand-red/20 [&>svg]:text-brand-red/70"
+                iconClassName="text-brand-red/70"
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-3">                  
+                  <SelectValue />
+                </span>
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                sideOffset={6}
+                viewportClassName="grid grid-cols-2 gap-2"
+                className="max-h-[min(24rem,70vh)] border-gray-200 shadow-xl"
+              >
+                {categories.map((cat) => (
+                  <SelectItem
+                    key={cat}
+                    value={cat}
+                    className="min-w-0 rounded-lg px-3 py-3 data-[highlighted]:bg-brand-red/5 data-[state=checked]:bg-brand-red data-[state=checked]:text-white data-[state=checked]:[&_.category-icon]:text-white data-[state=checked]:[&_.category-icon_svg]:fill-white data-[state=checked]:[&_.category-icon_svg]:stroke-white [&>span>span:first-child]:hidden [&>span]:gap-0"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <CategoryIcon
+                        icon={getCategoryIcon(cat)}
+                        fallback={getCategoryIconFallback(cat)}
+                        accent
+                        className="size-8 shrink-0 text-2xl"
+                        fallbackClassName="size-5"
+                      />
+                      <span className="truncate text-sm font-semibold leading-snug">
+                        {cat}
+                      </span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div
+            id="menu-category-list"
+            className="hidden flex-wrap gap-2 md:flex"
+          >
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => handleCategoryClick(cat)}
+                className={categoryButtonClass(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -393,13 +473,18 @@ export default function Menu({
                         className="group-hover:scale-105 transition-transform duration-500"
                       />
                     </Link>
-                    {item.isPopular ? (
-                      <div className="pointer-events-none absolute top-2 left-2 z-10">
-                        <span className="bg-brand-red text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 flex items-center gap-1 shadow-md">
+                    <div className="pointer-events-none absolute top-2 right-2 z-10 flex w-max flex-col items-stretch gap-1">
+                      {item.isPopular ? (
+                        <span className="block w-full bg-brand-red text-center text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 shadow-md">
                           {t("card.popularBadge")}
                         </span>
-                      </div>
-                    ) : null}
+                      ) : null}
+                      {item.energy != null && item.energy > 0 ? (
+                        <span className="block w-full bg-white/95 text-center text-brand-dark text-[10px] font-bold uppercase tracking-wider px-2 py-1 shadow-md">
+                          {t("card.energyBadge", { value: item.energy })}
+                        </span>
+                      ) : null}
+                    </div>
                     {!item.isAvailable ? (
                       <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/50">
                         <span className="bg-white text-brand-dark text-xs font-bold px-3 py-1.5 flex items-center gap-1.5">

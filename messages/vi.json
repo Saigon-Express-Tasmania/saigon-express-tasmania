@@ -83,7 +83,7 @@
       "titleLine1": "Bản Gốc.",
       "titleLine2": "Biểu Tượng.",
       "description": "Đây mới là hương vị bánh mì đích thực.",
-      "imageAlt": "Món ăn Saigon Express",
+      "imageAlt": "Bánh mì thịt heo quay giòn",
       "cta": "Xem Thực Đơn"
     },
     "categories": {
@@ -1653,6 +1653,9 @@
       "clearLabel": "✕ Xoá"
     },
     "allCategory": "Tất cả",
+    "categories": {
+      "label": "Danh mục"
+    },
     "empty": {
       "headingSearch": "Không có kết quả cho \"{query}\"",
       "headingCategory": "Không có món nào trong danh mục này",
@@ -1662,6 +1665,7 @@
     },
     "card": {
       "popularBadge": "★ Phổ biến",
+      "energyBadge": "{value} kJ",
       "unavailableBadge": "Tạm Thời Không Có",
       "addButton": "Thêm"
     },
@@ -2049,7 +2053,7 @@
       "title": "Hạn Mức Giá Bán Sỉ",
       "desc": "Chiết khấu sẽ được tự động áp dụng khi thanh toán dựa trên số lượng đơn hàng",
       "off": "giảm",
-      "disclaimer": "Giá chưa bao gồm thuế GST. Đơn hàng tối thiểu từ 10 sản phẩm. Phí giao hàng có thể được áp dụng ngoài khu vực Greater Hobart."
+      "disclaimer": "Giá đã bao gồm thuế GST. Đơn hàng tối thiểu từ 10 sản phẩm. Phí giao hàng có thể được áp dụng ngoài khu vực Greater Hobart."
     },
     "pricingTiers": [
       {

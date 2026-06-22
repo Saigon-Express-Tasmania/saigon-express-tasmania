@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
+import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import {
   fetchCateringProductRows,
   type CateringProductRow,
@@ -91,7 +92,11 @@ async function loadCateringPacks(): Promise<CateringPack[]> {
   return rows.map(mapCateringPackRow);
 }
 
-export const getCateringPacks = unstable_cache(loadCateringPacks, [CACHE_TAG], {
-  revalidate: SHORT_REVALIDATE_SECONDS,
-  tags: [CACHE_TAG],
-});
+export const getCateringPacks = unstable_cache(
+  loadCateringPacks,
+  [CACHE_TAG, SERVER_CACHE_INSTANCE_ID],
+  {
+    revalidate: SHORT_REVALIDATE_SECONDS,
+    tags: [CACHE_TAG],
+  },
+);

@@ -29,6 +29,9 @@ create table public.products (
   related_items bigint[] not null default '{}'::bigint[],
   is_popular boolean not null default false,
   ingredients jsonb not null default '[]'::jsonb,
+  energy integer not null default 0,
+  food_content jsonb not null default '{}'::jsonb,
+  spicy_level integer not null default 0,
 
   -- Wholesale
   sku text,

@@ -56,10 +56,13 @@ function SelectTrigger({
 
 function SelectContent({
   className,
+  viewportClassName,
   children,
   position = "popper",
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Content>) {
+}: React.ComponentProps<typeof SelectPrimitive.Content> & {
+  viewportClassName?: string;
+}) {
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -75,7 +78,7 @@ function SelectContent({
         {...props}
       >
         <SelectScrollUpButton />
-        <SelectPrimitive.Viewport className="p-1">
+        <SelectPrimitive.Viewport className={cn("p-1", viewportClassName)}>
           {children}
         </SelectPrimitive.Viewport>
         <SelectScrollDownButton />
