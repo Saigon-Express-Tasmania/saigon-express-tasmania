@@ -1,7 +1,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { SITE_ORIGIN } from "@/lib/site-origin";
-import { updateUserProfile } from "@/lib/supabase/user-profiles";
 import type { BusinessType } from "@/types/UserProfile";
 
 export type WholesaleMemberMetadata = {
@@ -197,69 +197,36 @@ export type WholesaleRegistrationResult = {
   emailConfirmationRequired: boolean;
 };
 
-function buildWholesaleMemberAuthMetadata(
-  input: WholesaleMemberRegistration,
-): Record<string, unknown> {
-  const { first_name, last_name } = splitContactName(input.contactName);
-
-  const metadata: Record<string, unknown> = {
-    business_name: input.business_name.trim(),
-    first_name,
-    last_name,
-    contact_name: input.contactName.trim()
-  };
-
-  const phone = input.phone?.trim();
-  if (phone) metadata.phone = phone;
-
-  const address = input.address?.trim();
-  if (address) metadata.address_line1 = address;
-
-  const abn = input.abn?.trim();
-  if (abn) metadata.abn = abn;
-
-  const businessCategory = input.business_category?.trim();
-  if (businessCategory) metadata.business_category = businessCategory;
-
-  return metadata;
-}
-
 export async function registerWholesaleMemberApplication(
   input: WholesaleMemberRegistration,
 ): Promise<WholesaleRegistrationResult> {
-  const { first_name, last_name } = splitContactName(input.contactName);
-
-  const metadata = buildWholesaleMemberAuthMetadata(input);
-
-  const { session, user } = await signUpWithEmail(
-    input.email,
-    input.password,
-    metadata,
-  );
-
-  const signedUpUser = session?.user ?? user;
-  if (!signedUpUser?.id) {
-    throw new Error(
-      "Registration could not be completed. Please try again or contact support.",
-    );
-  }
-
-  // Profile row is created by handle_new_auth_user from signup metadata.
-  // updateUserProfile requires an authenticated session.
-  if (session?.user) {
-    await updateUserProfile(session.user.id, {
-      first_name,
-      last_name,
-      phone: input.phone ?? null,
-      address_line1: input.address ?? null,
+  const result = await invokeEdgeFunction<{
+    userId: string;
+    emailConfirmationRequired: boolean;
+  }>("admin-partner", {
+    body: {
+      action: "register",
       business_name: input.business_name,
-      abn: input.abn ?? null,
-      business_category: input.business_category ?? null,
-    });
+      contactName: input.contactName,
+      email: input.email,
+      password: input.password,
+      phone: input.phone,
+      abn: input.abn,
+      business_category: input.business_category,
+      address: input.address,
+      business_type: input.business_type,
+    },
+  });
+
+  if (!result.ok) {
+    if (isAlreadyRegisteredAuthError({ message: result.error })) {
+      throw new AlreadyRegisteredError();
+    }
+    throw new Error(result.error);
   }
 
   return {
-    userId: signedUpUser.id,
-    emailConfirmationRequired: !session,
+    userId: result.data.userId,
+    emailConfirmationRequired: result.data.emailConfirmationRequired,
   };
 }
