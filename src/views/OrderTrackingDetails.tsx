@@ -14,6 +14,7 @@ import {
 } from "@/lib/member-portal-surfaces";
 import { useSupabase } from "@/hooks/useSupabase";
 import { buildCateringPaymentFinancialDetails } from "@/lib/catering-order-review";
+import { clearCateringOrderRateLimit } from "@/lib/catering-order-rate-limit";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
@@ -273,13 +274,16 @@ export default function OrderTrackingDetails({
     if (!checkout) return;
 
     if (checkout === "success") {
+      if (isCateringOrder) {
+        clearCateringOrderRateLimit();
+      }
       toast.success(t("paymentSuccess"));
     } else if (checkout === "cancelled") {
       toast.error(t("paymentCancelled"));
     }
 
     router.replace(trackingPath, { scroll: false });
-  }, [searchParams, router, trackingPath, t]);
+  }, [searchParams, router, trackingPath, t, isCateringOrder]);
 
   const handlePayNow = async () => {
     if (order.status !== "awaiting_payment") {

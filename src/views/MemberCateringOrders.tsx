@@ -21,6 +21,7 @@ import {
   orderStatusIsPositive,
 } from "@/lib/order-status";
 import { resolvePortalType } from "@/lib/privileges";
+import { clearCateringOrderRateLimit } from "@/lib/catering-order-rate-limit";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import {
@@ -723,6 +724,7 @@ export default function MemberCateringOrders() {
       );
       void loadOrders();
     } else if (checkout === "success") {
+      clearCateringOrderRateLimit();
       clearCart();
       toast.success("Payment successful! Your catering order has been placed.");
       void loadOrders();

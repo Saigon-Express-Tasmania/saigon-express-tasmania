@@ -52,9 +52,14 @@ const navItems: NavItem[] = [
     icon: Utensils,
   },
   {
-    title: "Partners",
-    href: "/partners",
-    icon: UserRoundSearch,
+    title: "Wholesale Products",
+    href: "/wholesale-products",
+    icon: Truck,
+  },
+  {
+    title: "Catering Packs",
+    href: "/catering-packs",
+    icon: Gift,
   },
   {
     title: "Orders",
@@ -109,13 +114,25 @@ const navItems: NavItem[] = [
     title: "Franchise Interests",
     href: "/interests/franchise",
     icon: Building2,
-    group: "Franchise",
+    group: "Contact",
   },
   {
     title: "Consultations",
     href: "/interests/consultation",
     icon: PhoneCall,
-    group: "Franchise",
+    group: "Contact",
+  },  
+  {
+    title: "Partners",
+    href: "/partners",
+    icon: UserRoundSearch,
+    group: "Contact",
+  },
+  {
+    title: "Feedbacks",
+    href: "/feedbacks",
+    icon: MessageSquare,
+    group: "Contact",
   },
   {
     title: "Categories",
@@ -128,25 +145,13 @@ const navItems: NavItem[] = [
     href: "/promotions",
     icon: Megaphone,
     group: "Content",
-  },
-  {
-    title: "Catering Packs",
-    href: "/catering-packs",
-    icon: Gift,
-    group: "Content",
-  },
+  },  
   {
     title: "Store Locations",
     href: "/store-locations",
     icon: MapPin,
     group: "Content",
-  },
-  {
-    title: "Wholesale Products",
-    href: "/wholesale-products",
-    icon: Truck,
-    group: "Content",
-  },
+  },  
   {
     title: "Wholesale Tiers",
     href: "/wholesale-tiers",
@@ -164,13 +169,7 @@ const navItems: NavItem[] = [
     href: "/featured-reviews",
     icon: Star,
     group: "Content",
-  },
-  {
-    title: "Feedbacks",
-    href: "/feedbacks",
-    icon: MessageSquare,
-    group: "Content",
-  },
+  },  
   {
     title: "Settings",
     href: "/settings",

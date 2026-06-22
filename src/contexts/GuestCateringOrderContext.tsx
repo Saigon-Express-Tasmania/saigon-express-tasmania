@@ -20,6 +20,7 @@ import {
   shouldBlockGuestCateringCart,
   type GuestCateringOrderSession,
 } from "@/lib/guest-catering-order-session";
+import { clearCateringOrderRateLimit } from "@/lib/catering-order-rate-limit";
 import {
   fetchOrderByTrackingToken,
   type TrackedOrder,
@@ -117,6 +118,7 @@ function GuestCateringOrderCheckoutSync() {
     handledCheckoutRef.current = key;
 
     if (checkout === "success") {
+      clearCateringOrderRateLimit();
       clearGuestOrder();
       toast.success("Payment successful. Your catering order is confirmed.");
     } else if (checkout === "cancelled") {

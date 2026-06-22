@@ -24,6 +24,11 @@ import {
   writeCateringOrderReviewDraft,
 } from "@/lib/catering-order-review-storage";
 import { formatAud } from "@/lib/catering-price";
+import {
+  formatRateLimitCooldown,
+  getCateringOrderRateLimitState,
+  recordCateringOrderPlacement,
+} from "@/lib/catering-order-rate-limit";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
@@ -77,6 +82,10 @@ export default function CateringShoppingCart() {
     null,
   );
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [rateLimitRemainingMs, setRateLimitRemainingMs] = useState(0);
+
+  const isRateLimited = rateLimitRemainingMs > 0;
+  const rateLimitCooldownLabel = formatRateLimitCooldown(rateLimitRemainingMs);
 
   const sortedCart = useMemo(
     () => [...cart].sort((a, b) => b.addedAt - a.addedAt),
@@ -122,7 +131,24 @@ export default function CateringShoppingCart() {
     }
   }, [cartOpen]);
 
+  useEffect(() => {
+    const updateRateLimit = () => {
+      setRateLimitRemainingMs(getCateringOrderRateLimitState().remainingMs);
+    };
+
+    updateRateLimit();
+    const timerId = window.setInterval(updateRateLimit, 1000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
   const handleBeginReview = () => {
+    if (isRateLimited) {
+      toast.error(
+        `Too many orders placed recently. Please wait ${rateLimitCooldownLabel} before reviewing another order.`,
+      );
+      return;
+    }
+
     if (cart.length === 0) {
       toast.error("Your cart is empty.");
       return;
@@ -294,6 +320,9 @@ export default function CateringShoppingCart() {
       if (!result.ok) {
         throw new Error(result.error || "Failed to place catering order");
       }
+
+      recordCateringOrderPlacement();
+      setRateLimitRemainingMs(getCateringOrderRateLimitState().remainingMs);
 
       const trackingToken = result.data.trackingToken;
 
@@ -489,15 +518,19 @@ export default function CateringShoppingCart() {
                       <button
                         type="button"
                         onClick={handleBeginReview}
-                        disabled={isPlacingOrder}
+                        disabled={isPlacingOrder || isRateLimited}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500/90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <ClipboardCheck className="h-4 w-4" />
-                        Review order
-                        <ChevronRight className="h-4 w-4" />
+                        {isRateLimited
+                          ? `Please wait ${rateLimitCooldownLabel}`
+                          : "Review order"}
+                        {!isRateLimited ? <ChevronRight className="h-4 w-4" /> : null}
                       </button>
                       <p className="text-center text-xs text-white/30">
-                        Review event and delivery details before placing your order
+                        {isRateLimited
+                          ? "You can place up to 5 catering orders every 10 minutes."
+                          : "Review event and delivery details before placing your order"}
                       </p>
                     </div>
                   ) : null}
