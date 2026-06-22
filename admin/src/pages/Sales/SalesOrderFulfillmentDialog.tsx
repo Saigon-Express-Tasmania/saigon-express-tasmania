@@ -204,7 +204,7 @@ export function SalesOrderFulfillmentDialog({
     <>
       <Dialog open={order !== null} onOpenChange={onOpenChange}>
         <DialogContent
-          className="flex max-h-[90vh] w-[95vw] max-w-5xl flex-col overflow-hidden sm:max-w-5xl"
+          className="flex max-h-[90vh] w-[95vw] max-w-[calc(100%-2rem)] flex-col overflow-hidden sm:max-w-6xl [&_[data-slot=dialog-header]]:shrink-0 [&_[data-slot=dialog-footer]]:shrink-0"
           onPointerDownOutside={(event) => {
             if (isSalesOrderItemPickerTarget(event.target)) {
               event.preventDefault();
@@ -233,6 +233,7 @@ export function SalesOrderFulfillmentDialog({
               description={
                 isPending ? 'Edit products and quantities while the order is pending.' : undefined
               }
+              className="min-w-0"
             >
               {itemsLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -248,10 +249,13 @@ export function SalesOrderFulfillmentDialog({
                   idPrefix={`fulfill-${order.id}`}
                   disabled={saving}
                   readOnly={!canEditDetails}
+                  showHeader={false}
+                  compact
                 />
               )}
             </SalesOrderFormSection>
 
+            <div className="grid gap-4 lg:grid-cols-2">
             <SalesOrderFormSection
               title="Order totals"
               description={
@@ -350,7 +354,7 @@ export function SalesOrderFulfillmentDialog({
                   />
                 </div>
               ) : (
-                <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <dl className="grid grid-cols-1 gap-3 text-sm">
                   <div className="flex justify-between gap-4 sm:block">
                     <dt className="text-muted-foreground">Subtotal</dt>
                     <dd className="font-medium tabular-nums">{formatMoney(totals.subtotal)}</dd>
@@ -382,7 +386,7 @@ export function SalesOrderFulfillmentDialog({
                     <dt className="text-muted-foreground">Shipping</dt>
                     <dd className="font-medium tabular-nums">{formatMoney(totals.shipping_fee)}</dd>
                   </div>
-                  <div className="flex justify-between gap-4 border-t pt-3 sm:col-span-2 lg:col-span-3">
+                  <div className="flex justify-between gap-4 border-t pt-3">
                     <dt className="font-medium">Grand total</dt>
                     <dd className="text-base font-semibold tabular-nums">
                       {formatMoney(totals.grand_total)}
@@ -469,6 +473,7 @@ export function SalesOrderFulfillmentDialog({
                 )}
               </div>
             </SalesOrderFormSection>
+            </div>
           </div>
 
           <DialogFooter className="shrink-0 gap-2 sm:justify-between">

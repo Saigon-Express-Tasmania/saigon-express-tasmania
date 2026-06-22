@@ -10,7 +10,9 @@ import { WholesaleTiers } from '@/pages/WholesaleTiers';
 import { Categories } from '@/pages/Categories';
 import { DraftOrders } from '@/pages/Sales/DraftOrders';
 import { SalesOrdersPage } from '@/pages/Sales/SalesOrdersPage';
+import { SalesOrderDetailsPage } from '@/pages/Sales/SalesOrderDetailsPage';
 import { RedirectTestOrdersToSalesOrders } from '@/pages/Sales/RedirectTestOrdersToSalesOrders';
+import { RedirectTestOrderDetailsToSalesOrderDetails } from '@/pages/Sales/RedirectTestOrderDetailsToSalesOrderDetails';
 import { ArchivedOrders } from '@/pages/Sales/ArchivedOrders';
 import { SalesOrderModeProvider } from '@/contexts/SalesOrderModeContext';
 import {
@@ -68,7 +70,12 @@ export function App() {
             <Route path="/interests/catering_enquiries" element={<FranchiseInterests type="catering_enquiry" />} />
             <Route path="/interests/consultations" element={<Navigate to="/interests/consultation" replace />} />
             <Route path="/sales/orders" element={<Navigate to="/sales/orders/pickup" replace />} />
+            <Route path="/sales/orders/:orderType/:orderId" element={<SalesOrderDetailsPage />} />
             <Route path="/sales/orders/:orderType" element={<SalesOrdersPage />} />
+            <Route
+              path="/sales/test-orders/:orderType/:orderId"
+              element={<RedirectTestOrderDetailsToSalesOrderDetails />}
+            />
             <Route
               path="/sales/test-orders/:orderType"
               element={<RedirectTestOrdersToSalesOrders />}

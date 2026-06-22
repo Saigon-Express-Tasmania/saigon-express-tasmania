@@ -30,6 +30,8 @@ type SalesOrderItemsEditorProps = {
   idPrefix: string;
   disabled?: boolean;
   readOnly?: boolean;
+  showHeader?: boolean;
+  compact?: boolean;
 };
 
 function updateItem(
@@ -47,10 +49,16 @@ export function SalesOrderItemsEditor({
   idPrefix,
   disabled = false,
   readOnly = false,
+  showHeader = true,
+  compact = false,
 }: SalesOrderItemsEditorProps) {
   const { options, loading, error } = useSalesOrderCatalog(orderType);
   const itemIdLabel = getOrderItemIdColumnLabel(orderType);
   const fieldsDisabled = disabled || readOnly;
+  const cellClass = compact ? 'px-2 py-1.5' : 'px-3 py-2';
+  const imageSizeClass = compact ? 'size-10' : 'size-12';
+  const iconSizeClass = compact ? 'size-4' : 'size-5';
+  const inputClass = compact ? 'h-8 text-xs' : 'h-9';
   const imageByProductId = useMemo(() => {
     const map = new Map<number, string>();
     for (const option of options) {
@@ -67,10 +75,25 @@ export function SalesOrderItemsEditor({
   }, 0);
 
   return (
-    <div className="grid w-full gap-3">
-      <div className="flex items-center justify-between gap-4">
-        <Label>Line items</Label>
-        {!readOnly ? (
+    <div className="grid w-full min-w-0 gap-3">
+      {showHeader ? (
+        <div className="flex items-center justify-between gap-4">
+          <Label>Line items</Label>
+          {!readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => onItemsChange([...items, emptyOrderItem()])}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add line item
+            </Button>
+          ) : null}
+        </div>
+      ) : !readOnly ? (
+        <div className="flex justify-end">
           <Button
             type="button"
             variant="outline"
@@ -81,8 +104,8 @@ export function SalesOrderItemsEditor({
             <Plus className="mr-2 h-4 w-4" />
             Add line item
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
@@ -93,36 +116,47 @@ export function SalesOrderItemsEditor({
           No line items yet.{readOnly ? '' : ' Add one to continue.'}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full min-w-[960px]">
+        <div className="min-w-0 rounded-md border">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className={compact ? 'w-11' : 'w-14'} />
+              <col className="w-[4.5rem]" />
+              <col className="w-[5.5rem]" />
+              <col />
+              <col className="w-14" />
+              <col className="w-16" />
+              <col className="w-[5.25rem]" />
+              <col className="w-[5.25rem]" />
+              {!readOnly ? <col className="w-11" /> : null}
+            </colgroup>
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="w-16 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-left text-xs font-semibold uppercase tracking-wide`}>
                   <span className="sr-only">Image</span>
                 </th>
-                <th className="w-28 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-left text-xs font-semibold uppercase tracking-wide`}>
                   {itemIdLabel}
                 </th>
-                <th className="w-28 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-left text-xs font-semibold uppercase tracking-wide`}>
                   SKU
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-left text-xs font-semibold uppercase tracking-wide`}>
                   Item name
                 </th>
-                <th className="w-20 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-left text-xs font-semibold uppercase tracking-wide`}>
                   UOM
                 </th>
-                <th className="w-24 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-left text-xs font-semibold uppercase tracking-wide`}>
                   Qty
                 </th>
-                <th className="w-32 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-left text-xs font-semibold uppercase tracking-wide`}>
                   Unit price
                 </th>
-                <th className="w-28 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide">
+                <th className={`${cellClass} text-right text-xs font-semibold uppercase tracking-wide`}>
                   Line total
                 </th>
                 {!readOnly ? (
-                  <th className="w-16 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide">
+                  <th className={`${cellClass} text-right text-xs font-semibold uppercase tracking-wide`}>
                     <span className="sr-only">Actions</span>
                   </th>
                 ) : null}
@@ -139,28 +173,30 @@ export function SalesOrderItemsEditor({
 
                 return (
                   <tr key={`${idPrefix}-item-${index}`} className="border-b last:border-b-0">
-                    <td className="px-3 py-2 align-top">
+                    <td className={`${cellClass} align-top`}>
                       {imageUrl ? (
                         <img
                           src={imageUrl}
                           alt=""
-                          className="size-12 shrink-0 rounded border object-cover bg-muted"
+                          className={`${imageSizeClass} shrink-0 rounded border object-cover bg-muted`}
                         />
                       ) : (
                         <div
-                          className="flex size-12 shrink-0 items-center justify-center rounded border bg-muted text-muted-foreground"
+                          className={`flex ${imageSizeClass} shrink-0 items-center justify-center rounded border bg-muted text-muted-foreground`}
                           aria-hidden
                         >
-                          <ImageIcon className="size-5" />
+                          <ImageIcon className={iconSizeClass} />
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-sm font-mono text-muted-foreground">
+                    <td className={`${cellClass} align-top font-mono text-xs text-muted-foreground`}>
                       {item.menu_item_id > 0 ? item.menu_item_id : '—'}
                     </td>
-                    <td className="px-3 py-2 align-top text-sm">
+                    <td className={`${cellClass} align-top text-sm`}>
                       {readOnly ? (
-                        item.sku || '—'
+                        <span className="block truncate" title={item.sku || undefined}>
+                          {item.sku || '—'}
+                        </span>
                       ) : (
                         <Input
                           id={`${idPrefix}-item-${index}-sku`}
@@ -171,13 +207,15 @@ export function SalesOrderItemsEditor({
                               updateItem(items, index, { sku: e.target.value }),
                             )
                           }
-                          className="h-9 font-mono text-xs"
+                          className={`${inputClass} font-mono text-xs`}
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-sm">
+                    <td className={`${cellClass} min-w-0 align-top text-sm`}>
                       {readOnly ? (
-                        item.item_name || '—'
+                        <span className="block truncate" title={item.item_name || undefined}>
+                          {item.item_name || '—'}
+                        </span>
                       ) : (
                         <SalesOrderItemPicker
                           id={`${idPrefix}-item-${index}-name`}
@@ -199,7 +237,7 @@ export function SalesOrderItemsEditor({
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-sm">
+                    <td className={`${cellClass} align-top text-sm`}>
                       {readOnly ? (
                         item.uom
                       ) : (
@@ -212,7 +250,7 @@ export function SalesOrderItemsEditor({
                             )
                           }
                         >
-                          <SelectTrigger className="h-9 w-full">
+                          <SelectTrigger className={`${inputClass} w-full min-w-0`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -225,7 +263,7 @@ export function SalesOrderItemsEditor({
                         </Select>
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-sm tabular-nums">
+                    <td className={`${cellClass} align-top text-sm tabular-nums`}>
                       {readOnly ? (
                         qty
                       ) : (
@@ -242,11 +280,11 @@ export function SalesOrderItemsEditor({
                               }),
                             )
                           }
-                          className="h-9"
+                          className={inputClass}
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-sm tabular-nums">
+                    <td className={`${cellClass} align-top text-sm tabular-nums`}>
                       {readOnly ? (
                         `$${unitPrice.toFixed(2)}`
                       ) : (
@@ -264,15 +302,15 @@ export function SalesOrderItemsEditor({
                               }),
                             )
                           }
-                          className="h-9"
+                          className={inputClass}
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-right text-sm font-medium tabular-nums">
+                    <td className={`${cellClass} align-top text-right text-sm font-medium tabular-nums`}>
                       ${lineTotal.toFixed(2)}
                     </td>
                     {!readOnly ? (
-                      <td className="px-3 py-2 align-top text-right">
+                      <td className={`${cellClass} align-top text-right`}>
                         <Button
                           type="button"
                           variant="outline"
@@ -293,13 +331,13 @@ export function SalesOrderItemsEditor({
             </tbody>
             <tfoot>
               <tr className="bg-muted/30">
-                <td colSpan={7} className="px-3 py-2 text-right text-sm font-semibold">
+                <td colSpan={readOnly ? 7 : 7} className={`${cellClass} text-right text-sm font-semibold`}>
                   Items subtotal
                 </td>
-                <td className="px-3 py-2 text-right text-sm font-semibold tabular-nums">
+                <td className={`${cellClass} text-right text-sm font-semibold tabular-nums`}>
                   ${itemsTotal.toFixed(2)}
                 </td>
-                {!readOnly ? <td /> : null}
+                {!readOnly ? <td className={cellClass} /> : null}
               </tr>
             </tfoot>
           </table>

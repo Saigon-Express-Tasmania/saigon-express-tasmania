@@ -1,0 +1,40 @@
+---
+description: Supabase Edge Function import and bundling conventions
+globs: supabase/functions/**/*
+alwaysApply: false
+---
+
+# Supabase Edge Functions
+
+## Static imports only for `_shared` modules
+
+Supabase bundles each function from its entry `index.ts` and only ships modules reachable via **static** `import` statements. Dynamic `import()` of `_shared` files is not reliably included at deploy time and causes runtime `ERR_MODULE_NOT_FOUND`.
+
+```typescript
+// ❌ BAD — may not be bundled for stripe-webhook
+const { sendOrderPaymentReceivedEmail } = await import("./order-payment-received-email.ts");
+
+// ✅ GOOD — included in the bundle via order.ts → stripe-webhook/index.ts
+import { sendOrderPaymentReceivedEmail } from "./order-payment-received-email.ts";
+```
+
+## Wiring new `_shared` files
+
+When adding a new module under `supabase/functions/_shared/`:
+
+1. Add a **static** `import` from a file already in the target function's import chain (usually `_shared/order.ts` or the function's own `index.ts`).
+2. Use `.ts` extensions in import paths (Deno convention).
+3. Do not rely on lazy/dynamic imports to avoid circular dependencies — refactor shared code instead.
+
+## Entry-point pattern
+
+Function-specific behavior (e.g. `catering-order-notify-email.ts`) should be imported statically from that function's `index.ts`, not only from other `_shared` files the function does not import.
+
+```typescript
+// supabase/functions/catering-order/index.ts
+import { sendCateringOrderNotifyEmail } from "../_shared/catering-order-notify-email.ts";
+```
+
+## After adding shared modules
+
+Redeploy affected functions (`supabase functions deploy <name>`) so the new files are shipped with the bundle.

@@ -2,15 +2,14 @@ import { sendEmail } from "./send-email/index.ts";
 import { renderExtensionVariables } from "./send-email/render-template.ts";
 import { createServiceClient } from "./supabase.ts";
 
-const CATERING_ORDER_NOTIFY_TEMPLATE = "catering_order_notify";
+const ORDER_PAYMENT_RECEIVED_TEMPLATE = "order_payment_received";
 const ORDER_NOTIFY_EMAIL_SETTING = "order_notify_email";
-const ADMIN_CATERING_ORDER_URL_SETTING = "admin_catering_order_url";
 const DEFAULT_SENDER_EMAIL = "info@saigonexpress.com.au";
 const DEFAULT_SENDER_NAME = "Saigon Express Tasmania";
 
 type OrderFulfillmentMethod = "pick_up" | "delivery" | "shipping";
 
-type CateringOrderNotifyRow = {
+type OrderPaymentReceivedRow = {
   id: number;
   status: string;
   order_type: string;
@@ -18,7 +17,6 @@ type CateringOrderNotifyRow = {
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
-  notes: string | null;
   subtotal: number | string | null;
   coupon_discount: number | string | null;
   wholesale_discount: number | string | null;
@@ -35,6 +33,12 @@ type CateringOrderNotifyRow = {
   shipping_state: string | null;
   shipping_postal_code: string | null;
   shipping_country: string | null;
+  billing_legal_name: string | null;
+  billing_address: string | null;
+  billing_city: string | null;
+  billing_state: string | null;
+  billing_postal_code: string | null;
+  billing_country: string | null;
 };
 
 type StoreLocationRow = {
@@ -58,7 +62,15 @@ type EmailTemplateRow = {
   html_extensions: string[] | null;
 };
 
-function buildAdminCateringOrderUrl(baseUrl: string, orderId: number): string {
+type PaidPaymentRow = {
+  created_at: string;
+};
+
+function adminOrderUrlSettingKey(orderType: string): string {
+  return `admin_${orderType.trim().toLowerCase()}_order_url`;
+}
+
+function buildAdminOrderUrl(baseUrl: string, orderId: number): string {
   const trimmed = baseUrl.trim().replace(/\/$/, "");
   if (!trimmed) return "";
   return `${trimmed}/${orderId}`;
@@ -77,6 +89,12 @@ function parseRecipientEmails(value: string): string[] {
   )];
 }
 
+function formatOrderTypeLabel(orderType: string): string {
+  const raw = orderType.trim();
+  if (!raw) return "Order";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
 function isPickupFulfillment(method: OrderFulfillmentMethod): boolean {
   return method === "pick_up";
 }
@@ -91,7 +109,7 @@ function formatCurrency(amount: number | string | null | undefined): string {
 }
 
 function getTotalDiscount(
-  order: Pick<CateringOrderNotifyRow, "coupon_discount" | "wholesale_discount">,
+  order: Pick<OrderPaymentReceivedRow, "coupon_discount" | "wholesale_discount">,
 ): number {
   const wholesale = Number(order.wholesale_discount ?? 0);
   const coupon = Number(order.coupon_discount ?? 0);
@@ -117,12 +135,26 @@ function formatOrderDate(value: string | null | undefined): string {
   }).format(new Date(parsed));
 }
 
-function formatCustomerName(order: CateringOrderNotifyRow): string {
+function formatCustomerName(order: OrderPaymentReceivedRow): string {
   return order.customer_name?.trim() || "Customer";
 }
 
 function formatShippingType(method: OrderFulfillmentMethod): string {
   return isPickupFulfillment(method) ? "Pickup" : "Delivery";
+}
+
+function formatBillingAddress(order: OrderPaymentReceivedRow): string {
+  const parts = [
+    order.billing_legal_name?.trim(),
+    order.billing_address?.trim(),
+    [order.billing_city, order.billing_state, order.billing_postal_code]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join(" "),
+    order.billing_country?.trim(),
+  ].filter((part) => part && part !== "N/A");
+
+  return parts.join("\n");
 }
 
 function formatPickupStoreAddress(store: StoreLocationRow): string {
@@ -132,7 +164,7 @@ function formatPickupStoreAddress(store: StoreLocationRow): string {
     .join("\n");
 }
 
-function formatDeliveryShippingAddress(order: CateringOrderNotifyRow): string {
+function formatDeliveryShippingAddress(order: OrderPaymentReceivedRow): string {
   const parts = [
     order.shipping_dba_name?.trim(),
     order.shipping_address?.trim(),
@@ -147,7 +179,7 @@ function formatDeliveryShippingAddress(order: CateringOrderNotifyRow): string {
 }
 
 function formatShippingAddress(
-  order: CateringOrderNotifyRow,
+  order: OrderPaymentReceivedRow,
   pickupStore: StoreLocationRow | null,
 ): string {
   if (isPickupFulfillment(order.requested_fulfillment_method)) {
@@ -181,36 +213,36 @@ function buildOrderItemTemplateRows(
   }));
 }
 
-function resolvePickupStoreId(order: CateringOrderNotifyRow): number | null {
+function resolvePickupStoreId(order: OrderPaymentReceivedRow): number | null {
   return order.requested_pick_up_store_id ?? order.store_id;
 }
 
-async function fetchCateringOrderNotifyTemplate(
+async function fetchOrderPaymentReceivedTemplate(
   supabase: ReturnType<typeof createServiceClient>,
 ): Promise<EmailTemplateRow | null> {
   const { data, error } = await supabase
     .from("email_templates")
     .select("subject, html_body, html_extensions")
-    .eq("name", CATERING_ORDER_NOTIFY_TEMPLATE)
+    .eq("name", ORDER_PAYMENT_RECEIVED_TEMPLATE)
     .maybeSingle();
 
   if (error) {
     throw new Error(
-      `Failed to load ${CATERING_ORDER_NOTIFY_TEMPLATE} template: ${error.message}`,
+      `Failed to load ${ORDER_PAYMENT_RECEIVED_TEMPLATE} template: ${error.message}`,
     );
   }
 
   return (data as EmailTemplateRow | null) ?? null;
 }
 
-async function fetchOrderForCateringNotify(
+async function fetchOrderForPaymentReceived(
   supabase: ReturnType<typeof createServiceClient>,
   orderId: number,
-): Promise<CateringOrderNotifyRow | null> {
+): Promise<OrderPaymentReceivedRow | null> {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, status, order_type, created_at, customer_name, customer_email, customer_phone, notes, subtotal, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, store_id, shipping_dba_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country",
+      "id, status, order_type, created_at, customer_name, customer_email, customer_phone, subtotal, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, store_id, shipping_dba_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -219,7 +251,27 @@ async function fetchOrderForCateringNotify(
     throw new Error(`Failed to load order #${orderId}: ${error.message}`);
   }
 
-  return (data as CateringOrderNotifyRow | null) ?? null;
+  return (data as OrderPaymentReceivedRow | null) ?? null;
+}
+
+async function fetchLatestPaidPayment(
+  supabase: ReturnType<typeof createServiceClient>,
+  orderId: number,
+): Promise<PaidPaymentRow | null> {
+  const { data, error } = await supabase
+    .from("order_payments")
+    .select("created_at")
+    .eq("order_id", orderId)
+    .eq("status", "paid")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load payment for order #${orderId}: ${error.message}`);
+  }
+
+  return (data as PaidPaymentRow | null) ?? null;
 }
 
 async function fetchPickupStore(
@@ -278,32 +330,21 @@ async function fetchSettingsByKeys(
   }, {});
 }
 
-export async function sendCateringOrderNotifyEmail(orderId: number): Promise<void> {
+export async function sendOrderPaymentReceivedEmail(orderId: number): Promise<void> {
   const supabase = createServiceClient();
-  const order = await fetchOrderForCateringNotify(supabase, orderId);
+  const order = await fetchOrderForPaymentReceived(supabase, orderId);
 
   if (!order) {
-    console.warn(`[catering-order-notify] Order #${orderId} not found; skipping email`);
+    console.warn(`[order-payment-received] Order #${orderId} not found; skipping email`);
     return;
   }
 
-  if (order.order_type !== "catering") {
-    console.warn(
-      `[catering-order-notify] Order #${orderId} is not catering; skipping email`,
-    );
-    return;
-  }
-
-  if (order.status !== "pending") {
-    console.warn(
-      `[catering-order-notify] Order #${orderId} status is ${order.status}; skipping email`,
-    );
-    return;
-  }
+  const orderType = order.order_type.trim().toLowerCase();
+  const adminUrlSettingKey = adminOrderUrlSettingKey(orderType);
 
   const settings = await fetchSettingsByKeys(supabase, [
     ORDER_NOTIFY_EMAIL_SETTING,
-    ADMIN_CATERING_ORDER_URL_SETTING,
+    adminUrlSettingKey,
   ]);
 
   const recipientEmails = parseRecipientEmails(
@@ -312,15 +353,15 @@ export async function sendCateringOrderNotifyEmail(orderId: number): Promise<voi
 
   if (recipientEmails.length === 0) {
     console.warn(
-      `[catering-order-notify] Setting ${ORDER_NOTIFY_EMAIL_SETTING} is missing or invalid; skipping`,
+      `[order-payment-received] Setting ${ORDER_NOTIFY_EMAIL_SETTING} is missing or invalid; skipping`,
     );
     return;
   }
 
-  const adminOrderBaseUrl = settings[ADMIN_CATERING_ORDER_URL_SETTING]?.trim() ?? "";
+  const adminOrderBaseUrl = settings[adminUrlSettingKey]?.trim() ?? "";
   if (!adminOrderBaseUrl) {
     console.warn(
-      `[catering-order-notify] Setting ${ADMIN_CATERING_ORDER_URL_SETTING} is missing; admin order link will be empty`,
+      `[order-payment-received] Setting ${adminUrlSettingKey} is missing; admin order link will be empty`,
     );
   }
 
@@ -328,21 +369,22 @@ export async function sendCateringOrderNotifyEmail(orderId: number): Promise<voi
     ? resolvePickupStoreId(order)
     : null;
 
-  const [items, template, pickupStore] = await Promise.all([
+  const [items, template, pickupStore, latestPayment] = await Promise.all([
     fetchOrderItems(supabase, orderId),
-    fetchCateringOrderNotifyTemplate(supabase),
+    fetchOrderPaymentReceivedTemplate(supabase),
     pickupStoreId
       ? fetchPickupStore(supabase, pickupStoreId)
       : Promise.resolve(null),
+    fetchLatestPaidPayment(supabase, orderId),
   ]);
 
   if (!template?.html_body?.trim()) {
-    throw new Error(`Email template ${CATERING_ORDER_NOTIFY_TEMPLATE} not found`);
+    throw new Error(`Email template ${ORDER_PAYMENT_RECEIVED_TEMPLATE} not found`);
   }
 
   if (!template.html_extensions?.[0]?.trim()) {
     throw new Error(
-      `Email template ${CATERING_ORDER_NOTIFY_TEMPLATE} is missing extension_1 in html_extensions`,
+      `Email template ${ORDER_PAYMENT_RECEIVED_TEMPLATE} is missing extension_1 in html_extensions`,
     );
   }
 
@@ -351,22 +393,25 @@ export async function sendCateringOrderNotifyEmail(orderId: number): Promise<voi
     template.html_extensions,
     itemRows,
   );
+  const orderTypeLabel = formatOrderTypeLabel(orderType);
   const templateVariables: Record<string, string | number | boolean> = {
     orderId: `SE-${order.id}`,
+    orderType: orderTypeLabel,
     orderCreatedAt: formatOrderDate(order.created_at),
+    paymentReceivedAt: formatOrderDate(latestPayment?.created_at ?? new Date().toISOString()),
     customerName: formatCustomerName(order),
     customerEmail: order.customer_email?.trim() ?? "",
     customerPhone: order.customer_phone?.trim() ?? "",
+    billingAddress: formatBillingAddress(order),
     shippingAddress: formatShippingAddress(order, pickupStore),
     deliveryBy: formatOrderDate(order.requested_target_date),
-    notes: order.notes?.trim() || "None",
     subtotal: formatCurrency(order.subtotal),
     totalDiscount: formatTotalDiscount(getTotalDiscount(order)),
     taxTotal: formatCurrency(order.tax_total),
     shippingFee: formatCurrency(order.shipping_fee),
     grandTotal: formatCurrency(order.grand_total),
     shippingType: formatShippingType(order.requested_fulfillment_method),
-    adminOrderUrl: buildAdminCateringOrderUrl(adminOrderBaseUrl, order.id),
+    adminOrderUrl: buildAdminOrderUrl(adminOrderBaseUrl, order.id),
     ...extensionVariables,
   };
 
@@ -374,11 +419,11 @@ export async function sendCateringOrderNotifyEmail(orderId: number): Promise<voi
     senderEmail: DEFAULT_SENDER_EMAIL,
     senderName: DEFAULT_SENDER_NAME,
     recipientEmails,
-    templateId: CATERING_ORDER_NOTIFY_TEMPLATE,
+    templateId: ORDER_PAYMENT_RECEIVED_TEMPLATE,
     templateVarialbles: templateVariables,
   });
 
   console.log(
-    `[catering-order-notify] Sent ${CATERING_ORDER_NOTIFY_TEMPLATE} for order #${orderId} to ${recipientEmails.join(", ")}`,
+    `[order-payment-received] Sent ${ORDER_PAYMENT_RECEIVED_TEMPLATE} for ${orderTypeLabel} order #${orderId} to ${recipientEmails.join(", ")}`,
   );
 }

@@ -18,3 +18,20 @@ export function salesPagePath(
 ): string {
   return `/sales/${page}/${orderType}`;
 }
+
+export function salesOrderDetailsPath(
+  page: 'orders' | 'test-orders',
+  orderType: OrderType,
+  orderId: number,
+): string {
+  return `/sales/${page}/${orderType}/${orderId}`;
+}
+
+export function salesOrderDetailsLink(
+  mode: 'live' | 'test',
+  orderType: OrderType,
+  orderId: number,
+): string {
+  const page = mode === 'test' ? 'test-orders' : 'orders';
+  return salesOrderDetailsPath(page, orderType, orderId);
+}

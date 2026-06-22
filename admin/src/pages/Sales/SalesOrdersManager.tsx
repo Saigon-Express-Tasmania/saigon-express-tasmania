@@ -11,17 +11,17 @@ import { Input } from '@/components/ui/input';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { fetchCommerceTaxSettings } from '@/lib/commerce-tax';
+import { useSalesOrderMode } from '@/contexts/SalesOrderModeContext';
 import { Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SalesOrderDeleteDialog } from './SalesOrderDeleteDialog';
 import { SalesOrderEditorDialog } from './SalesOrderEditorDialog';
-import { SalesOrderFulfillmentDialog, type SalesOrderFulfillmentDetails } from './SalesOrderFulfillmentDialog';
+import { SalesOrderFulfillmentDialog } from './SalesOrderFulfillmentDialog';
 import { SalesOrdersTable } from './SalesOrdersTable';
 import { serializeB2BForDb } from './salesOrderB2b';
 import {
-  fetchLatestPayment,
   fetchPaymentStatusByOrderIds,
   replaceOrderItems,
   saveOrderPayment,
@@ -34,19 +34,21 @@ import {
   syncTotalsFromItems,
   validateOrderItems,
   SALES_ORDER_COLUMNS,
-  type OrderStatus,
   type SalesOrderForm,
   type SalesOrderRow,
   type SalesOrdersDataset,
 } from './salesOrderShared';
-import { formatOrderStatusLabel } from './salesOrderFulfillment';
+import { salesOrderDetailsLink } from './orderType';
 import { useSalesOrderType } from './useSalesOrderType';
+import { useSalesOrderRowActions } from './useSalesOrderRowActions';
 
 type SalesOrdersManagerProps = {
   dataset: SalesOrdersDataset;
 };
 
 export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
+  const navigate = useNavigate();
+  const { mode } = useSalesOrderMode();
   const { profile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = profile?.user_role === 'admin';
   const { orderType, pageTitle, tableTitle, redirectTo } = useSalesOrderType(
@@ -56,20 +58,17 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
   const [orders, setOrders] = useState<SalesOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogReadOnly, setDialogReadOnly] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [form, setForm] = useState<SalesOrderForm>(() =>
     emptyOrderForm(dataset.defaultPaymentMode, orderType ?? 'pickup'),
   );
 
-  const [deleteTarget, setDeleteTarget] = useState<SalesOrderRow | null>(null);
-  const [fulfillTarget, setFulfillTarget] = useState<SalesOrderRow | null>(null);
   const [isGstInclusive, setIsGstInclusive] = useState(true);
+  const [formSaving, setFormSaving] = useState(false);
 
   useEffect(() => {
     void fetchCommerceTaxSettings()
@@ -112,6 +111,25 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
     }
   }, [dataset.entityName, dataset.isTestingFilter, orderType]);
 
+  const {
+    saving: actionSaving,
+    deleteTarget,
+    setDeleteTarget,
+    fulfillTarget,
+    setFulfillTarget,
+    handleFulfillStatusChange,
+    handleFulfillCancel,
+    handleFulfillSaveDetails,
+    handleDelete,
+  } = useSalesOrderRowActions({
+    dataset,
+    orderType: orderType ?? 'pickup',
+    isGstInclusive,
+    onAfterChange: loadOrders,
+  });
+
+  const saving = formSaving || actionSaving;
+
   useEffect(() => {
     if (isAdmin && orderType) {
       void loadOrders();
@@ -135,17 +153,15 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
   const openCreate = () => {
     setEditingOrderId(null);
-    setDialogReadOnly(false);
     setForm(emptyOrderForm(dataset.defaultPaymentMode, orderType ?? 'pickup'));
     setDialogOpen(true);
   };
 
-  const openOrderDialog = async (order: SalesOrderRow, readOnly: boolean) => {
-    setSaving(true);
+  const openEditDialog = async (order: SalesOrderRow) => {
+    setFormSaving(true);
     try {
       const loadedForm = await loadOrderForm(order, dataset.defaultPaymentMode);
       setEditingOrderId(order.id);
-      setDialogReadOnly(readOnly);
       setForm(loadedForm);
       setDialogOpen(true);
     } catch (err) {
@@ -155,8 +171,13 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
           : `Failed to load ${dataset.entityName} details.`,
       );
     } finally {
-      setSaving(false);
+      setFormSaving(false);
     }
+  };
+
+  const handleView = (order: SalesOrderRow) => {
+    if (!orderType) return;
+    navigate(salesOrderDetailsLink(mode, orderType, order.id));
   };
 
   const handleSave = async () => {
@@ -219,7 +240,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
       return;
     }
 
-    setSaving(true);
+    setFormSaving(true);
     try {
       const b2bPayload = serializeB2BForDb(syncedForm.b2b, orderType);
       const billingTerms = syncedForm.b2b.billing_address.payment_terms;
@@ -302,193 +323,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         err instanceof Error ? err.message : `Failed to save ${dataset.entityName}.`,
       );
     } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleFulfillStatusUpdate = async (
-    orderId: number,
-    status: OrderStatus,
-    successMessage: string,
-  ) => {
-    setSaving(true);
-    try {
-      const statusUpdatedAt = new Date().toISOString();
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({
-          status,
-          status_updated_at: statusUpdatedAt,
-        })
-        .eq('id', orderId)
-        .eq('is_testing', dataset.isTestingFilter);
-      if (updateError) throw updateError;
-
-      toast.success(successMessage);
-      setFulfillTarget((current) =>
-        current?.id === orderId
-          ? { ...current, status, status_updated_at: statusUpdatedAt }
-          : current,
-      );
-      await loadOrders();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : `Failed to update ${dataset.entityName} status.`,
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleFulfillStatusChange = (orderId: number, status: OrderStatus) => {
-    void handleFulfillStatusUpdate(
-      orderId,
-      status,
-      `Order status updated to ${formatOrderStatusLabel(status)}.`,
-    );
-  };
-
-  const handleFulfillCancel = (orderId: number) => {
-    void handleFulfillStatusUpdate(orderId, 'cancelled', 'Order cancelled.');
-  };
-
-  const handleFulfillSaveDetails = async (
-    orderId: number,
-    details: SalesOrderFulfillmentDetails,
-  ) => {
-    if (!orderType) return;
-
-    const target = fulfillTarget;
-    if (!target || target.id !== orderId || target.status !== 'pending') {
-      toast.error('Only pending orders can be edited from fulfillment.');
-      return;
-    }
-
-    let parsedItems;
-    try {
-      parsedItems = validateOrderItems(details.items);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Invalid line items.');
-      return;
-    }
-
-    const syncedTotals = syncTotalsFromItems({
-      ...emptyOrderForm(dataset.defaultPaymentMode, orderType),
-      items: parsedItems,
-      subtotal: details.subtotal,
-      coupon_code: details.coupon_code,
-      coupon_discount: details.coupon_discount,
-      wholesale_discount: details.wholesale_discount,
-      tax_total: details.tax_total,
-      shipping_fee: details.shipping_fee,
-      grand_total: details.grand_total,
-    }, taxMode);
-
-    const subtotal = Number(syncedTotals.subtotal);
-    const couponDiscount = Number(syncedTotals.coupon_discount);
-    const wholesaleDiscount = Number(syncedTotals.wholesale_discount);
-    const taxTotal = Number(syncedTotals.tax_total);
-    const shippingFee = Number(syncedTotals.shipping_fee);
-    const grandTotal = Number(syncedTotals.grand_total);
-
-    if (
-      !Number.isFinite(subtotal) ||
-      !Number.isFinite(couponDiscount) ||
-      !Number.isFinite(wholesaleDiscount) ||
-      !Number.isFinite(taxTotal) ||
-      !Number.isFinite(shippingFee) ||
-      !Number.isFinite(grandTotal) ||
-      subtotal < 0 ||
-      couponDiscount < 0 ||
-      wholesaleDiscount < 0 ||
-      taxTotal < 0 ||
-      shippingFee < 0 ||
-      grandTotal < 0
-    ) {
-      toast.error('Order totals must be valid non-negative numbers.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({
-          subtotal: subtotal.toFixed(2),
-          coupon_code: syncedTotals.coupon_code?.trim() || null,
-          coupon_discount: couponDiscount.toFixed(2),
-          wholesale_discount: wholesaleDiscount.toFixed(2),
-          tax_total: taxTotal.toFixed(2),
-          shipping_fee: shippingFee.toFixed(2),
-          grand_total: grandTotal.toFixed(2),
-        })
-        .eq('id', orderId)
-        .eq('status', 'pending')
-        .eq('is_testing', dataset.isTestingFilter);
-
-      if (updateError) throw updateError;
-
-      await replaceOrderItems(orderId, orderType, parsedItems);
-
-      const existingPayment = await fetchLatestPayment(orderId);
-      if (existingPayment) {
-        await saveOrderPayment(orderId, {
-          ...existingPayment,
-          amount: grandTotal.toFixed(2),
-        });
-      }
-
-      const updatedOrder: SalesOrderRow = {
-        ...target,
-        subtotal: subtotal.toFixed(2),
-        coupon_code: syncedTotals.coupon_code?.trim() || null,
-        coupon_discount: couponDiscount.toFixed(2),
-        wholesale_discount: wholesaleDiscount.toFixed(2),
-        tax_total: taxTotal.toFixed(2),
-        shipping_fee: shippingFee.toFixed(2),
-        grand_total: grandTotal.toFixed(2),
-      };
-
-      setFulfillTarget(updatedOrder);
-      toast.success('Order items and totals updated.');
-      await loadOrders();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : `Failed to update ${dataset.entityName} details.`,
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setSaving(true);
-    try {
-      if (dataset.archiveOnDelete) {
-        const { error: archiveDeleteError } = await supabase.rpc('archive_and_delete_order', {
-          p_order_id: deleteTarget.id,
-          p_archived_reason: 'Deleted from admin sales page',
-        });
-        if (archiveDeleteError) throw archiveDeleteError;
-        toast.success(`${dataset.entityNameTitle} archived and deleted.`);
-      } else {
-        const { error: deleteError } = await supabase
-          .from('orders')
-          .delete()
-          .eq('id', deleteTarget.id)
-          .eq('is_testing', dataset.isTestingFilter);
-        if (deleteError) throw deleteError;
-        toast.success(`${dataset.entityNameTitle} deleted.`);
-      }
-      setDeleteTarget(null);
-      await loadOrders();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : `Failed to delete ${dataset.entityName}.`,
-      );
-    } finally {
-      setSaving(false);
+      setFormSaving(false);
     }
   };
 
@@ -558,8 +393,8 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
                 orders={filteredOrders}
                 orderType={orderType ?? undefined}
                 saving={saving}
-                onView={(order) => void openOrderDialog(order, true)}
-                onEdit={(order) => void openOrderDialog(order, false)}
+                onView={handleView}
+                onEdit={(order) => void openEditDialog(order)}
                 onFulfill={setFulfillTarget}
                 onDelete={setDeleteTarget}
               />
@@ -574,7 +409,6 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         editingOrderId={editingOrderId}
-        readOnly={dialogReadOnly}
         form={form}
         onFormChange={setForm}
         saving={saving}

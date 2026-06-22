@@ -14,6 +14,8 @@ import {
   type StripePaymentMode,
   parsePaymentMode,
 } from "./stripe.ts";
+import { sendOrderConfirmationEmail } from "./order-confirmation-email.ts";
+import { sendOrderPaymentReceivedEmail } from "./order-payment-received-email.ts";
 
 export type { StripePaymentMode };
 
@@ -1791,6 +1793,15 @@ export async function markOrderPaidFromStripeSession(
     console.log(
       `[stripe-webhook] Existing catering order #${existingOrderId} marked paid (${paymentMode})`,
     );
+
+    try {
+      await sendOrderPaymentReceivedEmail(existingOrderId);
+    } catch (err) {
+      console.error(
+        `[stripe-webhook] Failed to send payment received email for #${existingOrderId}:`,
+        err,
+      );
+    }
     return;
   }
 
@@ -1872,11 +1883,19 @@ export async function markOrderPaidFromStripeSession(
   );
 
   try {
-    const { sendOrderConfirmationEmail } = await import("./order-confirmation-email.ts");
     await sendOrderConfirmationEmail(orderId);
   } catch (err) {
     console.error(
       `[stripe-webhook] Failed to send order confirmation for #${orderId}:`,
+      err,
+    );
+  }
+
+  try {
+    await sendOrderPaymentReceivedEmail(orderId);
+  } catch (err) {
+    console.error(
+      `[stripe-webhook] Failed to send payment received email for #${orderId}:`,
       err,
     );
   }

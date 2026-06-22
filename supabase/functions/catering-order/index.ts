@@ -7,6 +7,7 @@ import {
   validateCateringOrderInput,
 } from "../_shared/catering-order.ts";
 import { sendCateringOrderNotifyEmail } from "../_shared/catering-order-notify-email.ts";
+import { sendOrderCancelledEmail } from "../_shared/order-cancelled-email.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -32,6 +33,16 @@ Deno.serve(async (req) => {
       }
 
       const result = await cancelCateringOrder(input);
+
+      try {
+        await sendOrderCancelledEmail(result.orderId);
+      } catch (err) {
+        console.error(
+          `[catering-order] Failed to send cancelled notify for #${result.orderId}:`,
+          err,
+        );
+      }
+
       return jsonResponse(result);
     }
 
