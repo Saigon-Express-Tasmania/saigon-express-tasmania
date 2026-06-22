@@ -21,6 +21,11 @@ export type {
   MenuItemNutritionalInformation,
   MenuItemRow,
 } from "./MenuItem";
+export type { FoodContent } from "./FoodContent";
+export {
+  getActiveFoodContentKeys,
+  parseFoodContent,
+} from "./FoodContent";
 export {
   isMenuItemIngredientEmpty,
   mapMenuItemRow,

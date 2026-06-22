@@ -1,4 +1,5 @@
 import type { MenuItem } from "@/contexts/CartContext";
+import { parseFoodContent, type FoodContent } from "@/types/FoodContent";
 
 /** Size key → image URL (e.g. `"512"` → `https://...`). */
 export type MenuImageUrls = Record<string, string>;
@@ -142,6 +143,7 @@ export type MenuItemRow = {
   sort_order: number;
   ingredients: unknown;
   energy: number;
+  food_content: unknown;
 };
 
 export function normalizeMenuImageUrls(value: unknown): MenuImageUrls {
@@ -190,5 +192,6 @@ export function mapMenuItemRow(row: MenuItemRow): MenuItem {
     isPopular: row.is_popular,
     ingredients: parseMenuItemIngredient(row.ingredients),
     energy: row.energy ?? 0,
+    foodContent: parseFoodContent(row.food_content),
   };
 }

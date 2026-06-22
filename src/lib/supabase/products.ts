@@ -7,7 +7,7 @@ import { createServerSupabaseClient } from "./server";
 export type ProductType = "alacarte" | "wholesale" | "catering";
 
 const ALACARTE_SELECT =
-  "id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, energy";
+  "id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content";
 
 const WHOLESALE_SELECT =
   "id, name, sku, category, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at";

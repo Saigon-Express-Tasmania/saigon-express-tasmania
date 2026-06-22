@@ -14,6 +14,7 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { menuItemDetailPath } from "@/lib/menu-item-routes";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
+import FoodContentLabels from "@/components/FoodContentLabels";
 import LazyImage from "@/components/LazyImage";
 import { getRelatedMenuItems } from "@/lib/menu-related-items";
 import { pickMenuImageUrl } from "@/types";
@@ -73,8 +74,6 @@ export default function MenuItemView({
     );
   }, [menuItems, catOrderMap]);
 
-  const priceLabel = `$${parseFloat(item.price).toFixed(2)}`;
-
   const menuItemPath = useCallback(
     (menuItem: MenuItem) => menuItemDetailPath(menuItem, locale),
     [locale],
@@ -128,11 +127,6 @@ export default function MenuItemView({
   const selectedGallery =
     galleryOptions.find((option) => option.id === selectedGalleryId) ??
     galleryOptions[0];
-
-  const lineTotal = useMemo(() => {
-    const base = parseFloat(item.price);
-    return (base + extraPrice) * qty;
-  }, [item.price, extraPrice, qty]);
 
   const handleOrderNow = useCallback(() => {
     if (!item.isAvailable) return;
@@ -285,13 +279,20 @@ export default function MenuItemView({
 
             {/* Media */}
             <div className="flex-[1.2]">
-              {selectedGallery ? (
-                <MenuItemImageZoom
-                  src={selectedGallery.displaySrc}
-                  zoomSrc={selectedGallery.zoomSrc}
-                  alt={item.name}
+              <div>
+                {selectedGallery ? (
+                  <MenuItemImageZoom
+                    src={selectedGallery.displaySrc}
+                    zoomSrc={selectedGallery.zoomSrc}
+                    alt={item.name}
+                  />
+                ) : null}
+                <FoodContentLabels
+                  foodContent={item.foodContent}
+                  variant="accent"
+                  className="mt-2 max-w-full"
                 />
-              ) : null}
+              </div>
             </div>
 
             {hasMoreImages ? (
@@ -355,10 +356,6 @@ export default function MenuItemView({
               ) : null}
             </div>
 
-            <div className="mb-5 inline-block rounded bg-brand-red px-4 py-1.5 text-xl font-bold text-white">
-              {priceLabel}
-            </div>
-
             {item.description ? (
               <p className="mb-6 text-sm leading-relaxed text-brand-dark/70">
                 {item.description}
@@ -413,7 +410,7 @@ export default function MenuItemView({
                 type="button"
                 onClick={handleOrderNow}
                 disabled={!item.isAvailable}
-                className={`flex h-10 flex-1 items-center justify-between rounded px-4 text-sm font-semibold transition-colors ${
+                className={`flex h-10 flex-1 items-center justify-center gap-2 rounded px-4 text-sm font-semibold transition-colors ${
                   item.isAvailable
                     ? "bg-brand-amber text-white hover:bg-brand-amber/90"
                     : "cursor-not-allowed bg-gray-100 text-gray-400"
@@ -424,9 +421,6 @@ export default function MenuItemView({
                   {/* {t("addToOrder")} */}
                   Order Now
                 </span>
-                {item.isAvailable ? (
-                  <span>${lineTotal.toFixed(2)}</span>
-                ) : null}
               </button>
             </div>
           </div>
@@ -445,6 +439,13 @@ export default function MenuItemView({
                   className="group overflow-hidden bg-white card-lift"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
+                    {related.isPopular ? (
+                      <div className="pointer-events-none absolute left-2 top-2 z-10">
+                        <span className="bg-brand-red px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+                          {tMenu("card.popularBadge")}
+                        </span>
+                      </div>
+                    ) : null}
                     <LazyImage
                       src={
                         pickMenuImageUrl(related.imageUrls, [
@@ -461,19 +462,16 @@ export default function MenuItemView({
                       wrapperClassName="size-full"
                       className="transition-transform duration-500 group-hover:scale-105"
                     />
-                    {related.isPopular ? (
-                      <span className="absolute top-2 left-2 bg-brand-red px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
-                        {tMenu("card.popularBadge")}
-                      </span>
-                    ) : null}
                   </div>
-                  <div className="p-4">
+                  <FoodContentLabels
+                    foodContent={related.foodContent}
+                    variant="accent"
+                    className="px-4 pt-2 max-w-full"
+                  />
+                  <div className="p-4 pt-2">
                     <h3 className="font-serif text-lg leading-snug text-brand-dark transition-colors group-hover:text-brand-red">
                       {related.name}
                     </h3>
-                    <span className="mt-2 inline-block rounded-full bg-brand-red px-3 py-1.5 text-sm font-bold text-white">
-                      ${parseFloat(related.price).toFixed(2)}
-                    </span>
                   </div>
                 </Link>
               ))}

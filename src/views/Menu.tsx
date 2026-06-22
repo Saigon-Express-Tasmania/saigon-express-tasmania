@@ -26,6 +26,7 @@ import { useCart, type MenuItem } from "@/contexts/CartContext";
 import PickLocationModal from "@/components/PickLocationModal";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
 import LazyImage from "@/components/LazyImage";
+import FoodContentLabels from "@/components/FoodContentLabels";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Label } from "@/components/ui/label";
 import {
@@ -480,7 +481,7 @@ export default function Menu({
                         </span>
                       ) : null}
                       {item.energy != null && item.energy > 0 ? (
-                        <span className="block w-full bg-white/95 text-center text-brand-dark text-[10px] font-bold uppercase tracking-wider px-2 py-1 shadow-md">
+                        <span className="block w-full bg-brand-dark text-center text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 shadow-md">
                           {t("card.energyBadge", { value: item.energy })}
                         </span>
                       ) : null}
@@ -492,7 +493,16 @@ export default function Menu({
                           {t("card.unavailableBadge")}
                         </span>
                       </div>
-                    ) : totalQtyInCart > 0 && lastEntry ? (
+                    ) : null}
+                    <FoodContentLabels
+                      foodContent={item.foodContent}
+                      className={`pointer-events-none absolute bottom-2 left-2 z-10 ${
+                        item.isAvailable && totalQtyInCart > 0 && lastEntry
+                          ? "max-w-[calc(100%-4.5rem)]"
+                          : "max-w-[calc(100%-1rem)]"
+                      }`}
+                    />
+                    {item.isAvailable && totalQtyInCart > 0 && lastEntry ? (
                       <div className="absolute bottom-2 right-2 z-10 flex items-center gap-0 overflow-hidden bg-white shadow-lg">
                         <button
                           type="button"
@@ -505,9 +515,7 @@ export default function Menu({
                           {totalQtyInCart}
                         </span>
                       </div>
-                    ) : (
-                      <></>
-                    )}
+                    ) : null}
                   </div>
                   <Link
                     href={detailHref}
@@ -528,9 +536,6 @@ export default function Menu({
                   <div className="flex-1" />
                   <div className="px-4 pb-4">
                     <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
-                      <span className="flex-shrink-0 bg-brand-red text-white text-sm font-bold px-3 py-2 rounded-full">
-                        ${parseFloat(item.price).toFixed(2)}
-                      </span>
                       {totalQtyInCart > 0 && lastEntry ? (
                         <div className="flex items-center gap-0 border border-gray-200 overflow-hidden rounded-full flex-1">
                           <button

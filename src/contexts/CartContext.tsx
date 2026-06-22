@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { toast } from "sonner";
 import type { ItemCustomisation } from "@/components/ItemCustomiseModal";
+import type { FoodContent } from "@/types/FoodContent";
 import type { MenuItemIngredient } from "@/types/MenuItem";
 
 // ─── Shared MenuItem type ─────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ export type MenuItem = {
   ingredients?: MenuItemIngredient;
   /** Energy in kilojoules (kJ). */
   energy: number;
+  foodContent?: FoodContent;
 };
 
 export type CartItem = {
