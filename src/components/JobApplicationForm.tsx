@@ -21,12 +21,9 @@ import {
   JOB_APPLICATION_FILE_INPUT_ACCEPT,
   JOB_APPLICATION_MAX_FILE_BYTES,
 } from "@/lib/job-application-files";
-
-export type JobApplicationJob = {
-  id: number;
-  title: string;
-  location: string;
-};
+import JobApplicationRoleSelect, {
+  type JobApplicationJob,
+} from "@/components/JobApplicationRoleSelect";
 
 type AttachmentState = {
   fileName: string;
@@ -462,22 +459,15 @@ export default function JobApplicationForm({ jobs }: JobApplicationFormProps) {
                         <label htmlFor="job-application-role" className={labelClassName}>
                           {t("fields.role")} *
                         </label>
-                        <select
+                        <JobApplicationRoleSelect
                           id="job-application-role"
-                          required
+                          jobs={jobs}
                           value={form.jobId}
-                          onChange={(event) =>
-                            setForm((prev) => ({ ...prev, jobId: event.target.value }))
+                          onValueChange={(jobId) =>
+                            setForm((prev) => ({ ...prev, jobId }))
                           }
-                          className={inputClassName}
-                        >
-                          <option value="">{t("fields.selectRole")}</option>
-                          {jobs.map((job) => (
-                            <option key={job.id} value={String(job.id)}>
-                              {job.title} — {job.location}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder={t("fields.selectRole")}
+                        />
                       </div>
 
                       <div className="grid gap-4 sm:grid-cols-2">

@@ -15,21 +15,7 @@ import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import Jobs from "@/components/Jobs";
 import JobApplicationForm from "@/components/JobApplicationForm";
-
-interface JobItem {
-  id: number;
-  title: string;
-  department: string;
-  type: string;
-  location: string;
-  salary: string;
-  badge: string | null;
-  badgeColor: string;
-  summary: string;
-  responsibilities: string[];
-  requirements: string[];
-  perks: string[];
-}
+import type { JobListing } from "@/types/JobListing";
 
 const BENEFITS_CONFIG = [
   { icon: Star, key: "discount" },
@@ -40,12 +26,10 @@ const BENEFITS_CONFIG = [
   { icon: MapPin, key: "locations" },
 ];
 
-export default function Careers() {
+export default function Careers({ jobs }: { jobs: JobListing[] }) {
   const t = useTranslations("Careers");
   const contactEmail = useSiteSetting("contact_us_email")?.trim();
   const contactPhone = useFormattedContactPhone();
-
-  const jobs: JobItem[] = t.raw("jobs");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -165,6 +149,7 @@ export default function Careers() {
           id: job.id,
           title: job.title,
           location: job.location,
+          salary: job.salary,
         }))}
       />
     </div>

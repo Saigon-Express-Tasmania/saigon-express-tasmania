@@ -3,6 +3,7 @@ import type {
   BlogPostDetailRow,
   BlogPostRow,
   FeaturedReviewRow,
+  JobListingRow,
   PromotionRow,
   StoreLocationRow,
 } from "@/types";
@@ -118,6 +119,25 @@ export async function fetchBlogPostBySlug(
   }
 
   return (data as BlogPostDetailRow | null) ?? null;
+}
+
+const JOB_LISTING_SELECT =
+  "id, title, department, employment_type, location, salary, badge, badge_color, summary, responsibilities, requirements, perks, is_active, sort_order, store_id, created_at, updated_at";
+
+export async function fetchJobListingRows(): Promise<JobListingRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("job_listings")
+    .select(JOB_LISTING_SELECT)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`job_listings: ${error.message}`);
+  }
+
+  return (data ?? []) as JobListingRow[];
 }
 
 export async function fetchBlogPostCountingSecret(

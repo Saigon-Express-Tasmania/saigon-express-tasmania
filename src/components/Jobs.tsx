@@ -12,23 +12,9 @@ import {
   Briefcase,
   Mail,
 } from "lucide-react";
+import type { JobListing } from "@/types/JobListing";
 
-type Job = {
-  id: number;
-  title: string;
-  department: string;
-  type: string;
-  location: string;
-  salary: string;
-  badge: string | null;
-  badgeColor: string;
-  summary: string;
-  responsibilities: string[];
-  requirements: string[];
-  perks: string[];
-};
-
-export default function Jobs({ jobs }: { jobs: Job[] }) {
+export default function Jobs({ jobs }: { jobs: JobListing[] }) {
   const t = useTranslations("Jobs");
   const contactEmail = useSiteSetting("contact_us_email")?.trim();
 

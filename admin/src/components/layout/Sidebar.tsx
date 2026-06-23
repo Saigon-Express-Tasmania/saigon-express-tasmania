@@ -4,6 +4,7 @@ import { useSalesOrderMode } from "@/contexts/SalesOrderModeContext";
 import { cn } from "@/lib/utils";
 import {
   Archive,
+  Briefcase,
   Building2,
   ChevronLeft,
   ChevronRight,
@@ -183,6 +184,12 @@ const navItems: NavItem[] = [
     icon: Star,
     group: "Content",
   },  
+  {
+    title: "Job Listings",
+    href: "/job-listings",
+    icon: Briefcase,
+    group: "Content",
+  },
   {
     title: "Settings",
     href: "/settings",

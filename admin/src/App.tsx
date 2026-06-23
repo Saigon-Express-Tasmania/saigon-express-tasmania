@@ -31,6 +31,7 @@ import { UserProfile } from './pages/UserProfile';
 import { Partners } from './pages/Partners';
 import { FranchiseInterests } from './pages/FranchiseInterests';
 import JobApplications from './pages/JobApplications';
+import { JobListings } from './pages/JobListings';
 
 export function App() {
   const { user, isLoading } = useSupabaseAuth();
@@ -100,6 +101,7 @@ export function App() {
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/job-applications/:applicationId" element={<JobApplications />} />
             <Route path="/job-applications" element={<JobApplications />} />
+            <Route path="/job-listings" element={<JobListings />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/sign-in"

@@ -57,7 +57,14 @@
       "badgeTitle": "LÀM THỦ CÔNG MỖI NGÀY",
       "badgeSubtitle": "Mỗi món ăn đều được chế biến tận tâm, mỗi lần.",
       "description": "Ẩm thực Việt tươi phù hợp cho họp mặt, tiệc tùng và bữa ăn hàng ngày. Bánh mì của chúng tôi được nướng tươi suốt cả ngày — vỏ giòn, pate nhà làm và nhân tươi khiến bạn muốn quay lại.",
-      "tags": ["Bánh Mì", "Phở", "Bún", "Chả Giò", "Gỏi Cuốn", "Cơm Tấm"],
+      "tags": [
+        "Bánh Mì",
+        "Phở",
+        "Bún",
+        "Chả Giò",
+        "Gỏi Cuốn",
+        "Cơm Tấm"
+      ],
       "cta": "Muốn Thử Món Ăn Của Chúng Tôi?",
       "mosaicAlt": "Món ăn Saigon Express"
     },
@@ -225,412 +232,6 @@
         }
       }
     },
-    "jobs": [
-      {
-        "id": 1,
-        "title": "Bếp Trưởng Chảo Wok",
-        "department": "Bộ Phận Bếp",
-        "type": "Toàn Thời Gian",
-        "location": "North Hobart / CBD",
-        "salary": "$65,000 – $80,000 + Quỹ hưu trí",
-        "badge": "VỊ TRÍ CẤP CAO",
-        "badgeColor": "bg-red-600",
-        "summary": "Dẫn dắt đội ngũ bếp tại các chi nhánh bận rộn nhất của chúng tôi. Bạn sẽ làm chủ khu vực chảo wok, thiết lập các tiêu chuẩn chất lượng cho từng món ăn xuất xưởng và hướng dẫn nhân viên bếp cấp dưới các kỹ thuật nấu ăn Việt Nam chính thống.",
-        "responsibilities": [
-          "Chế biến toàn bộ thực đơn Saigon Express theo đúng quy chuẩn, tập trung vào các món xào chảo wok, phở và bún tô",
-          "Duy trì hương vị đồng nhất trên tất cả các món ăn trong những giai đoạn phục vụ cao điểm",
-          "Đào tạo và giám sát các đầu bếp phụ và phụ bếp về kỹ thuật nấu ăn Việt Nam",
-          "Quản lý công đoạn chuẩn bị (mise en place), lịch sơ chế và quy trình làm việc trong bếp để giảm thiểu thời gian lên món",
-          "Giám sát chất lượng thực phẩm, kiểm soát định lượng và tiêu chuẩn trình bày món ăn",
-          "Hỗ trợ Quản lý Nhà hàng trong việc đặt hàng, luân chuyển kho và giảm thiểu hao hụt",
-          "Luôn tuân thủ tất cả các tiêu chuẩn về an toàn thực phẩm, vệ sinh và hệ thống HACCP",
-          "Đóng góp ý tưởng cho các món đặc sản theo mùa và phát triển thực đơn mới"
-        ],
-        "requirements": [
-          "Tối thiểu 3 năm kinh nghiệm làm đầu bếp chảo wok hoặc đầu bếp chính tại một nhà hàng Việt Nam hoặc Châu Á",
-          "Khả năng làm việc tốc độ cao và duy trì chất lượng tốt trong suốt khung giờ cao điểm",
-          "Am hiểu sâu sắc về hồ sơ hương vị, các loại nước dùng và nước sốt Việt Nam",
-          "Có chứng chỉ Giám sát An toàn Thực phẩm (hoặc sẵn sàng tham gia đào tạo để cấp bằng)",
-          "Có khả năng làm việc theo lịch phân công xoay ca bao gồm cuối tuần và các ngày lễ",
-          "Ứng viên có kinh nghiệm quản lý/lãnh đạo đội ngũ là một lợi thế lớn"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Cơ hội thăng tiến lên Bếp Trưởng Toàn Hệ Thống",
-          "Được đào tạo bài bản tại bếp trung tâm của chúng tôi",
-          "Được cung cấp đồng phục miễn phí"
-        ]
-      },
-      {
-        "id": 2,
-        "title": "Bếp Phó (Sous Chef)",
-        "department": "Bộ Phận Bếp",
-        "type": "Toàn Thời Gian",
-        "location": "Mọi Chi Nhánh Tại Tasmania",
-        "salary": "$58,000 – $68,000 + Quỹ hưu trí",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Hỗ trợ Bếp trưởng vận hành căn bếp chất lượng cao và trơn tru. Bạn sẽ chịu trách nhiệm chuẩn bị nguyên liệu hàng ngày, điều hành ca phục vụ và tạm thời thay thế vị trí Bếp trưởng khi được yêu cầu.",
-        "responsibilities": [
-          "Hỗ trợ Bếp trưởng trong mọi khía cạnh quản lý bếp và điều phối dịch vụ",
-          "Dẫn dắt đội ngũ bếp trong ca làm việc khi Bếp trưởng vắng mặt",
-          "Giám sát danh mục chuẩn bị hàng ngày, đảm bảo tất cả các trạm bếp được thiết lập đầy đủ trước giờ mở cửa",
-          "Kiểm soát chi phí thực phẩm, định lượng khẩu phần và tỷ lệ hao hụt theo mục tiêu đề ra",
-          "Thực hiện kiểm tra nhiệt độ hàng ngày và ghi chép tài liệu an toàn thực phẩm",
-          "Đào tạo nhân viên bếp mới và hướng dẫn, kèm cặp liên tục",
-          "Duy trì không gian bếp sạch sẽ, ngăn nắp và an toàn"
-        ],
-        "requirements": [
-          "Hơn 2 năm kinh nghiệm làm Bếp phó hoặc Đầu bếp chính trong môi trường bếp bận rộn",
-          "Hiểu biết vững chắc về ẩm thực Việt Nam hoặc ẩm thực Châu Á",
-          "Có chứng chỉ Giám sát An toàn Thực phẩm",
-          "Kỹ năng tổ chức tốt và khả năng xử lý đa nhiệm dưới áp lực công việc cao",
-          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Lộ trình phát triển rõ ràng lên vị trí Bếp trưởng",
-          "Được cung cấp đồng phục miễn phí",
-          "Được trả lương đầy đủ trong thời gian đào tạo"
-        ]
-      },
-      {
-        "id": 3,
-        "title": "Đầu Bếp / Phụ Bếp",
-        "department": "Bộ Phận Bếp",
-        "type": "Toàn Thời Gian / Bán Thời Gian",
-        "location": "Tất Cả Các Chi Nhánh",
-        "salary": "$24 – $30/giờ + Quỹ hưu trí",
-        "badge": "TUYỂN NHIỀU VỊ TRÍ",
-        "badgeColor": "bg-amber-600",
-        "summary": "Gia nhập đội ngũ bếp của chúng tôi và học hỏi nghệ thuật nấu ăn món Việt chính thống. Cho dù bạn là một đầu bếp có kinh nghiệm hay một người mới đầy nhiệt huyết, chúng tôi sẽ đào tạo bạn theo tiêu chuẩn của Saigon Express.",
-        "responsibilities": [
-          "Chuẩn bị nguyên liệu và hoàn thành các công việc sơ chế hàng ngày",
-          "Hỗ trợ nấu ăn trong ca phục vụ dưới sự điều hành của Bếp trưởng",
-          "Giữ gìn vệ sinh và sự ngăn nắp tại trạm bếp được giao trong suốt ca làm việc",
-          "Hoàn thành các nhiệm vụ dọn dẹp cuối ca theo đúng tiêu chuẩn an toàn thực phẩm",
-          "Nhận và sắp xếp các đơn hàng giao đến, kiểm tra chất lượng và luân chuyển kho hàng",
-          "Hỗ trợ rửa chén bát và hỗ trợ chung trong bếp khi có yêu cầu"
-        ],
-        "requirements": [
-          "Có niềm đam mê với ẩm thực và tinh thần sẵn sàng học hỏi",
-          "Khả năng làm việc hiệu quả trong môi trường nhịp độ nhanh",
-          "Đáng tin cậy, đúng giờ và có tinh thần đồng đội cao",
-          "Có chứng chỉ an toàn vệ sinh thực phẩm (hoặc sẵn sàng học — chúng tôi sẽ hỗ trợ chi phí)",
-          "Có kinh nghiệm làm bếp trước đây là một lợi thế nhưng không bắt buộc"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Được đào tạo có trả lương",
-          "Giêu làm việc linh hoạt",
-          "Lộ trình phát triển lên vị trí Đầu bếp chính hoặc Bếp phó"
-        ]
-      },
-      {
-        "id": 4,
-        "title": "Quản Lý Nhà Hàng",
-        "department": "Bộ Phận Quản Lý",
-        "type": "Toàn Thời Gian",
-        "location": "North Hobart / CBD",
-        "salary": "$70,000 – $85,000 + Quỹ hưu trí + Thưởng",
-        "badge": "VỊ TRÍ LÃNH ĐẠO",
-        "badgeColor": "bg-emerald-700",
-        "summary": "Chịu trách nhiệm toàn diện về hoạt động hàng ngày tại một chi nhánh của Saigon Express. Bạn sẽ quản lý đội ngũ lên đến 15 nhân viên, thúc đẩy doanh số và đảm bảo mọi khách hàng đều rời đi với sự hài lòng.",
-        "responsibilities": [
-          "Giám sát toàn bộ hoạt động của cả khu vực sảnh (FOH) và khu vực bếp (BOH) tại chi nhánh",
-          "Tuyển dụng, đào tạo hội nhập, xếp lịch làm việc và quản lý đội ngũ lên đến 15 nhân viên",
-          "Thúc đẩy doanh thu thông qua các chương trình ưu đãi, bán thêm và nâng cao trải nghiệm khách hàng",
-          "Theo dõi doanh số hàng ngày, chi phí nhân công và giá vốn hàng bán (COGS) so với ngân sách mục tiêu",
-          "Quản lý việc đặt hàng từ nhà cung cấp, duy trì mối quan hệ và độ chính xác của lượng hàng tồn kho",
-          "Tiếp nhận ý kiến phản hồi của khách hàng và giải quyết các khiếu nại một cách chuyên nghiệp, nhanh chóng",
-          "Đảm bảo tuân thủ tất cả các quy định về an toàn thực phẩm, giấy phép kinh doanh rượu và luật an toàn lao động (OH&S)",
-          "Lập báo cáo hàng tuần cho Quản lý Vận hành và Giám đốc Nhượng quyền",
-          "Lan tỏa các tiêu chuẩn thương hiệu và văn hóa Saigon Express tại chi nhánh của bạn"
-        ],
-        "requirements": [
-          "Hơn 3 năm kinh nghiệm quản lý nhà hàng, quán cà phê hoặc chuỗi phục vụ nhanh (QSR)",
-          "Thành tích chứng minh năng lực dẫn dắt và phát triển đội ngũ ngành dịch vụ nhà hàng",
-          "Có tư duy tài chính tốt — thành thạo việc đọc và hiểu các báo cáo doanh thu, lỗ lãi (P&L)",
-          "Có chứng chỉ phục vụ rượu an toàn (RSA) và chứng chỉ Giám sát An toàn Thực phẩm",
-          "Kỹ năng giao tiếp xuất sắc và giải quyết xung đột tốt",
-          "Thời gian làm việc linh hoạt bao gồm cả cuối tuần và các ngày lễ"
-        ],
-        "perks": [
-          "Thưởng hiệu quả công việc",
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Cơ hội thăng tiến lên Quản lý Khu vực",
-          "Được cấp điện thoại công việc",
-          "Được tham gia các khóa đào tạo kỹ năng lãnh đạo có trả lương"
-        ]
-      },
-      {
-        "id": 5,
-        "title": "Trợ Lý Quản Lý Nhà Hàng",
-        "department": "Bộ Phận Quản Lý",
-        "type": "Toàn Thời Gian",
-        "location": "Tất Cả Các Chi Nhánh",
-        "salary": "$58,000 – $68,000 + Quỹ hưu trí",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Hỗ trợ Quản lý Nhà hàng vận hành chi nhánh đạt hiệu quả cao. Đây là vị trí lý tưởng cho một nhân viên phục vụ sảnh cấp cao có kinh nghiệm sẵn sàng bước lên nấc thang quản lý.",
-        "responsibilities": [
-          "Hỗ trợ Quản lý Nhà hàng trong mọi khía cạnh vận hành hàng ngày",
-          "Giám sát nhân viên phục vụ trong ca trực và đóng vai trò quản lý điều hành khi được yêu cầu",
-          "Mở cửa và đóng cửa nhà hàng, bao gồm đối soát tiền mặt và lập báo cáo cuối ngày",
-          "Tiếp nhận và giải quyết các phản hồi, thắc mắc của khách hàng một cách chuyên nghiệp",
-          "Hỗ trợ xếp lịch làm việc, hướng dẫn nhân viên mới và đánh giá hiệu quả công việc định kỳ",
-          "Theo dõi mức tồn kho và hỗ trợ quy trình đặt hàng hàng tuần",
-          "Đảm bảo các tiêu chuẩn thương hiệu và quy trình dịch vụ được thực hiện đồng nhất"
-        ],
-        "requirements": [
-          "Hơn 2 năm kinh nghiệm ở vị trí phục vụ sảnh cấp cao hoặc trưởng nhóm",
-          "Có chứng chỉ phục vụ rượu an toàn (RSA)",
-          "Tác phong lãnh đạo tự tin và kỹ năng giao tiếp tốt",
-          "Sử dụng thành thạo hệ thống POS và có kỹ năng cơ bản về quản lý tiền mặt",
-          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Lộ trình thăng tiến rõ ràng lên vị trí Quản lý Nhà hàng",
-          "Được đào tạo bài bản có trả lương",
-          "Được cung cấp đồng phục"
-        ]
-      },
-      {
-        "id": 6,
-        "title": "Trưởng Nhóm Phục Vụ Sảnh (FOH)",
-        "department": "Bộ Phận Sảnh",
-        "type": "Toàn Thời Gian / Bán Thời Gian",
-        "location": "Tất Cả Các Chi Nhánh",
-        "salary": "$27 – $32/giờ + Quỹ hưu trí",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Điều hành khu vực sảnh trong ca làm việc, đảm bảo mỗi khách hàng đều có trải nghiệm Saigon Express ấm áp, nhanh chóng và đáng nhớ. Bạn sẽ kèm cặp nhân viên phục vụ mới và là người đầu tiên tiếp nhận phản hồi của khách.",
-        "responsibilities": [
-          "Dẫn dắt đội ngũ sảnh trong ca, điều phối nhân viên trực bàn và các trạm dịch vụ",
-          "Chào đón và sắp xếp chỗ ngồi cho khách, quản lý danh sách chờ và giám sát tốc độ xoay bàn",
-          "Xử lý các phản hồi và khiếu nại của khách một cách kịp thời và chuyên nghiệp",
-          "Đào tạo và hướng dẫn nhân viên sảnh cấp dưới về tiêu chuẩn phục vụ và kiến thức thực đơn",
-          "Hỗ trợ các công việc mở/đóng cửa bao gồm kiểm đếm doanh thu tiền mặt",
-          "Đảm bảo khu vực ăn uống luôn sạch sẽ, gọn gàng và được chuẩn bị đầy đủ dụng cụ",
-          "Giao tiếp rõ ràng với đội ngũ bếp để điều phối dòng chảy của các đơn hàng"
-        ],
-        "requirements": [
-          "Hơn 2 năm kinh nghiệm phục vụ sảnh, với ít nhất 6 tháng ở vị trí trưởng nhóm hoặc cấp tương đương",
-          "Có chứng chỉ phục vụ rượu an toàn (RSA)",
-          "Kỹ năng giao tiếp và tương tác cá nhân tuyệt vời",
-          "Khả năng giữ bình tĩnh và tổ chức công việc tốt trong những khoảng thời gian phục vụ bận rộn",
-          "Thời gian làm việc linh hoạt, bao gồm cả cuối tuần và các ngày lễ"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Lộ trình thăng tiến lên Trợ lý Quản lý",
-          "Được cung cấp đồng phục",
-          "Giờ làm việc linh hoạt"
-        ]
-      },
-      {
-        "id": 7,
-        "title": "Nhân Viên Phục Vụ Sảnh / Chăm Sóc Khách Hàng",
-        "department": "Bộ Phận Sảnh",
-        "type": "Toàn Thời Gian / Bán Thời Gian / Thời Vụ",
-        "location": "Tất Cả Các Chi Nhánh",
-        "salary": "$24 – $28/giờ + Quỹ hưu trí",
-        "badge": "ĐANG TUYỂN DỤNG",
-        "badgeColor": "bg-primary",
-        "summary": "Chào đón khách hàng với sự nồng hậu và nhiệt huyết, tạo ấn tượng đầu tiên đáng nhớ. Chúng tôi luôn tìm kiếm những con người năng động để cùng gia nhập sảnh ăn.",
-        "responsibilities": [
-          "Chào đón khách hàng với sự nồng hậu và nhiệt huyết, tạo ấn tượng đầu tiên đáng nhớ",
-          "Ghi nhận order chính xác trên hệ thống POS và truyền đạt các yêu cầu đặc biệt tới nhà bếp",
-          "Lên món ăn và thức uống nhanh chóng, đồng thời kiểm tra mức độ hài lòng của khách",
-          "Nắm rõ thực đơn của Saigon Express, bao gồm các thành phần nguyên liệu và chất gây dị ứng",
-          "Giữ gìn khu vực dùng bữa luôn sạch sẽ, gọn gàng trong suốt ca phục vụ",
-          "Thực hiện quy trình thanh toán chính xác đối với các giao dịch tiền mặt và thẻ",
-          "Hỗ trợ các công việc chuẩn bị phụ khi mở và đóng cửa theo sự hướng dẫn",
-          "Gợi ý khéo léo để bán thêm các món ăn, đồ uống hoặc gói dịch vụ tiệc khi thích hợp"
-        ],
-        "requirements": [
-          "Đam mê thực sự với ngành dịch vụ nhà hàng và mong muốn tạo ra trải nghiệm tuyệt vời cho khách",
-          "Có chứng chỉ phục vụ rượu an toàn RSA (hoặc sẵn sàng học — chúng tôi sẽ hỗ trợ bạn)",
-          "Đáng tin cậy, đúng giờ và là một thành viên có tinh thần đồng đội cao",
-          "Khả năng làm việc với tốc độ nhanh trong những khung giờ cao điểm bận rộn",
-          "Có kinh nghiệm làm việc trong ngành dịch vụ là một lợi thế nhưng không bắt buộc",
-          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Thời gian làm việc linh hoạt (thời vụ, bán thời gian hoặc toàn thời gian)",
-          "Được cung cấp đồng phục miễn phí",
-          "Lộ trình phát triển lên vị trí Trưởng nhóm và các cấp bậc cao hơn"
-        ]
-      },
-      {
-        "id": 8,
-        "title": "Nhân Viên Pha Chế / Chuyên Viên Đồ Uống",
-        "department": "Bộ Phận Sảnh",
-        "type": "Bán Thời Gian / Thời Vụ",
-        "location": "CBD / North Hobart",
-        "salary": "$25 – $30/giờ + Quỹ hưu trí",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Pha chế cà phê sữa đá Việt Nam, trà chanh nhà làm và thực đơn espresso phong phú cho khách hàng. Nếu bạn yêu thích cà phê và văn hóa đồ uống Việt Nam, vị trí này dành cho bạn.",
-        "responsibilities": [
-          "Pha chế và phục vụ các loại cà phê máy espresso, cà phê đá Việt Nam và các loại thức uống đặc trưng theo công thức quy chuẩn",
-          "Bảo dưỡng và vệ sinh máy pha cà phê, máy xay và trạm đồ uống theo tiêu chuẩn cao",
-          "Quản lý mức tồn kho cho cà phê, sữa và các nguyên liệu pha chế khác",
-          "Hỗ trợ nhân viên phục vụ sảnh trong những khoảng thời gian khách đông",
-          "Trò chuyện, kết nối với khách hàng và chia sẻ kiến thức của bạn về thực đơn đồ uống"
-        ],
-        "requirements": [
-          "Có kinh nghiệm làm barista với hiểu biết vững chắc về kỹ thuật pha chế espresso",
-          "Có sở thích hoặc hiểu biết về văn hóa đồ uống Việt Nam là một điểm cộng lớn",
-          "Có chứng chỉ phục vụ rượu an toàn (RSA)",
-          "Tính cách thân thiện, côi mở và luôn hướng tới khách hàng",
-          "Thời gian làm việc linh hoạt, bao gồm cả những ngày cuối tuần"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Miễn phí cà phê trong ca làm việc",
-          "Giờ làm việc linh hoạt",
-          "Được cung cấp đồng phục miễn phí"
-        ]
-      },
-      {
-        "id": 9,
-        "title": "Điều Phối Viên Giao Hàng & Tiệc Sự Kiện",
-        "department": "Bộ Phận Vận Hành",
-        "type": "Toàn Thời Gian / Bán Thời Gian",
-        "location": "Khu Vực Hobart",
-        "salary": "$26 – $32/giờ + Quỹ hưu trí",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Điều phối các hoạt động giao hàng và dịch vụ tiệc (catering) đang ngày càng phát triển của chúng tôi trên khắp khu vực Greater Hobart. Bạn sẽ là xương sống logistics, đảm bảo mọi đơn hàng đến đúng giờ.",
-        "responsibilities": [
-          "Quản lý tất cả các lượt đặt tiệc, xác nhận đơn hàng và giao tiếp trao đổi với khách hàng",
-          "Điều phối lịch trình giao hàng và quản lý tài xế cho các đơn hàng tiệc và đơn hàng sỉ",
-          "Đóng gói và kiểm tra chất lượng các khay tiệc trước khi phân phối",
-          "Liên lạc chặt chẽ với đội ngũ bếp để đảm bảo các đơn hàng tiệc được chuẩn bị đúng giờ",
-          "Bảo quản thiết bị tiệc, kiểm kê bao bì đóng gói và giữ gìn xe giao hàng sạch sẽ",
-          "Thực hiện chăm sóc và lấy ý kiến phản hồi của khách hàng sau sự kiện",
-          "Hỗ trợ phát triển các gói dịch vụ tiệc mới và thiết lập chính sách giá"
-        ],
-        "requirements": [
-          "Có kinh nghiệm trong vai trò điều phối logistics, sự kiện hoặc điều phối ngành dịch vụ",
-          "Có bằng lái xe Úc hợp lệ",
-          "Kỹ năng tổ chức tốt và cực kỳ chú trọng đến từng chi tiết nhỏ",
-          "Kỹ năng giao tiếp xuất sắc — bạn sẽ là đầu mối liên hệ chính của khách hàng",
-          "Có khả năng nâng vác và vận chuyển các thiết bị tiệc nặng lên đến 15kg",
-          "Có chứng chỉ an toàn vệ sinh thực phẩm"
-        ],
-        "perks": [
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Cung cấp xe công ty phục vụ cho việc giao hàng",
-          "Giờ làm việc linh hoạt",
-          "Cơ hội thăng tiến lên Quản lý Vận hành"
-        ]
-      },
-      {
-        "id": 10,
-        "title": "Quản Lý Tài Khoản Khách Hàng Doanh Nghiệp (B2B)",
-        "department": "Phòng Kinh Doanh Sỉ",
-        "type": "Toàn Thời Gian",
-        "location": "Hobart (Yêu cầu di chuyển)",
-        "salary": "$60,000 – $72,000 + Quỹ hưu trí + Hoa hồng",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Phát triển mảng kinh doanh bán buôn của chúng tôi trên khắp vùng Tasmania. Bạn sẽ quản lý mối quan hệ với các đối tác quán cà phê, cửa hàng thực phẩm và nhà hàng hiện tại.",
-        "responsibilities": [
-          "Quản lý và phát triển danh mục các tài khoản bán buôn trên toàn Tasmania",
-          "Tiến hành thăm khám khách hàng định kỳ để đảm bảo sự hài lòng và tìm kiếm cơ hội bán thêm",
-          "Tìm kiếm và kết nối với các đối tác B2B mới bao gồm các quán cà phê, cửa hàng delis và khách hàng doanh nghiệp",
-          "Chuẩn bị và trình bày các đề xuất bán sỉ, bảng báo giá và gửi mẫu thử sản phẩm",
-          "Phối hợp với đội ngũ kho để đảm bảo các đơn hàng được hoàn thành chính xác và đúng hạn",
-          "Theo dõi hiệu suất doanh số và báo cáo hàng tuần cho Quản lý Vận hành",
-          "Đại diện cho Saigon Express tại các sự kiện thương mại, triển lãm ẩm thực và các buổi kết nối doanh nghiệp"
-        ],
-        "requirements": [
-          "Hơn 2 năm kinh nghiệm trong vai trò bán hàng B2B hoặc quản lý khách hàng, ưu tiên trong ngành F&B",
-          "Kỹ năng đàm phán và xây dựng mối quan hệ bền vững",
-          "Có bằng lái xe Úc hợp lệ",
-          "Tinh thần tự giác cao với năng lực chứng minh đạt chỉ tiêu doanh số",
-          "Sử dụng thành thạo các công cụ CRM và Microsoft Office"
-        ],
-        "perks": [
-          "Cơ cấu hoa hồng hấp dẫn dựa trên các tài khoản mới",
-          "Được cấp xe công ty di chuyển",
-          "Có ngân sách chi phí tiếp khách để phục vụ công việc",
-          "Lộ trình thăng tiến lên Giám đốc Kinh doanh"
-        ]
-      },
-      {
-        "id": 11,
-        "title": "Điều Phối Viên Marketing & Mạng Xã Hội",
-        "department": "Phòng Marketing",
-        "type": "Bán Thời Gian / Toàn Thời Gian",
-        "location": "Hobart (Làm việc linh hoạt Hybrid)",
-        "salary": "$55,000 – $65,000 + Quỹ hưu trí (Chia theo tỷ lệ)",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Kể câu chuyện về Saigon Express đến với cộng đồng Tasmania và xa hơn nữa. Bạn sẽ quản lý các kênh mạng xã hội, sáng tạo nội dung, chạy chiến dịch và góp phần xây dựng một thương hiệu được yêu thích.",
-        "responsibilities": [
-          "Lên kế hoạch, sáng tạo nội dung và lên lịch bài viết trên Instagram, Facebook và TikTok",
-          "Chụp ảnh và quay video về món ăn, đội ngũ nhân sự và các nội dung hậu trường tại các chi nhánh",
-          "Quản lý tương tác cộng đồng — trả lời các bình luận, tin nhắn trực tiếp (DMs) và các lượt đánh giá",
-          "Lên kế hoạch và triển khai các chương trình khuyến mãi theo mùa, minigames tặng quà và hợp tác với KOLs/KOCs",
-          "Viết nội dung (copywriting) cho trang web, bản tin email và hệ thống bảng biển tại cửa hàng",
-          "Theo dõi số liệu phân tích và báo cáo hiệu quả nội dung hàng tháng",
-          "Hỗ trợ thiết kế menu, tờ rơi và các ấn phẩm truyền thông bổ trợ",
-          "Hỗ trợ đội ngũ nhượng quyền và bán sỉ bằng các tài liệu tiếp thị B2B"
-        ],
-        "requirements": [
-          "Có kinh nghiệm thực tế quản lý mạng xã hội cho các thương hiệu ẩm thực, nhà hàng hoặc phong cách sống",
-          "Kỹ năng chụp ảnh và chỉnh sửa video cơ bản tốt (Reels, TikTok)",
-          "Khả năng viết tốt — văn phong ấm áp, lôi cuốn và đúng tinh thần thương hiệu",
-          "Sử dụng thành thạo Canva hoặc bộ công cụ Adobe Creative Suite",
-          "Có niềm đam mê với văn hóa ẩm thực Việt Nam và nghệ thuật kể chuyện",
-          "Có bằng cấp về Marketing, Truyền thông hoặc lĩnh vực liên quan là một lợi thế"
-        ],
-        "perks": [
-          "Chế độ làm việc kết hợp (lên văn phòng + tại nhà linh hoạt)",
-          "Giảm giá 30% bữa ăn cho nhân viên",
-          "Tự do sáng tạo để phát triển thương hiệu",
-          "Lộ trình phát triển sự nghiệp lên Quản lý Tiếp thị"
-        ]
-      },
-      {
-        "id": 12,
-        "title": "Chuyên Viên Hỗ Trợ Nhượng Quyền",
-        "department": "Phòng Nhượng Quyền",
-        "type": "Toàn Thời Gian",
-        "location": "Hobart CBD",
-        "salary": "$58,000 – $70,000 + Quỹ hưu trí",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Hỗ trợ sự phát triển của mạng lưới nhượng quyền thương hiệu Saigon Express. Bạn sẽ là đầu mối liên hệ chính cho các đối tác nhận quyền mới và hiện tại.",
-        "responsibilities": [
-          "Hướng dẫn các đối tác nhận quyền mới trải qua toàn bộ quy trình đào tạo và thiết lập cửa hàng",
-          "Thực hiện các chuyến thăm cửa hàng định kỳ để đánh giá việc tuân thủ các tiêu chuẩn thương hiệu và quy trình vận hành tiêu chuẩn (SOPs)",
-          "Cung cấp hỗ trợ vận hành liên tục và giải quyết các sự cố phát sinh cho đối tác nhận quyền",
-          "Duy trì và cập nhật Sách hướng dẫn vận hành nhượng quyền cùng các tài liệu đào tạo nội bộ",
-          "Điều phối quy trình tiếp nhận hồ sơ và phê duyệt ứng viên nhượng quyền",
-          "Thay mặt các đối tác nhận quyền để liên lạc và làm việc với các bộ phận pháp lý, tài chính và tiếp thị",
-          "Lập báo cáo hiệu quả hoạt động hàng tháng cho từng địa điểm nhượng quyền"
-        ],
-        "requirements": [
-          "Kinh nghiệm làm việc trong lĩnh vực vận hành nhượng quyền, quản lý nhà hàng hoặc lĩnh vực tương đương",
-          "Kỹ năng tương tác cá nhân tốt và khả năng tạo dựng niềm tin vững chắc với các chủ doanh nghiệp",
-          "Khả năng tổ chức công việc cao cùng kỹ năng giao tiếp bằng văn bản và lời nói xuất sắc",
-          "Sẵn sàng di chuyển công tác đến các địa điểm nhượng quyền trên khắp Tasmania",
-          "Có hiểu biết về hợp đồng nhượng quyền và các khung quy định tuân thủ là một lợi thế lớn"
-        ],
-        "perks": [
-          "Trợ cấp chi phí đi lại công tác",
-          "Lộ trình phát triển lên Giám đốc Phát triển Nhượng quyền",
-          "Được cấp máy tính xách tay và điện thoại công việc",
-          "Được đài thọ các khóa học phát triển chuyên môn nâng cao"
-        ]
-      }
-    ],
     "cta": {
       "label": "BẠN ĐÃ SẴN SÀNG ỨNG TUYỂN?",
       "titleLine1": "Bước Tiến Sự Nghiệp Tiếp Theo",
@@ -717,10 +318,22 @@
       "ctaQuote": "Yêu Cầu Báo Giá"
     },
     "stats": [
-      { "num": "500+", "label": "Sự Kiện Đã Phục Vụ" },
-      { "num": "50,000+", "label": "Khách Đã Phục Vụ" },
-      { "num": "8", "label": "Chi Nhánh Tại Tasmania" },
-      { "num": "100%", "label": "Tươi Ngon Mỗi Ngày" }
+      {
+        "num": "500+",
+        "label": "Sự Kiện Đã Phục Vụ"
+      },
+      {
+        "num": "50,000+",
+        "label": "Khách Đã Phục Vụ"
+      },
+      {
+        "num": "8",
+        "label": "Chi Nhánh Tại Tasmania"
+      },
+      {
+        "num": "100%",
+        "label": "Tươi Ngon Mỗi Ngày"
+      }
     ],
     "whyUs": {
       "label": "TẠI SAO CHỌN TIỆC SAIGON EXPRESS",
@@ -1108,10 +721,22 @@
     "hours": {
       "title": "Giờ Mở Cửa",
       "schedule": [
-        { "day": "Thứ 2 – Thứ 6", "hours": "10:00 sáng – 8:00 tối" },
-        { "day": "Thứ 7", "hours": "10:00 sáng – 8:30 tối" },
-        { "day": "Chủ Nhật", "hours": "11:00 sáng – 7:00 tối" },
-        { "day": "Ngày Lễ Công Cộng", "hours": "11:00 sáng – 6:00 tối" }
+        {
+          "day": "Thứ 2 – Thứ 6",
+          "hours": "10:00 sáng – 8:00 tối"
+        },
+        {
+          "day": "Thứ 7",
+          "hours": "10:00 sáng – 8:30 tối"
+        },
+        {
+          "day": "Chủ Nhật",
+          "hours": "11:00 sáng – 7:00 tối"
+        },
+        {
+          "day": "Ngày Lễ Công Cộng",
+          "hours": "11:00 sáng – 6:00 tối"
+        }
       ]
     },
     "locations": {
@@ -1384,10 +1009,22 @@
       "ctaModels": "Xem Các Mô Hình Nhượng Quyền"
     },
     "investmentStrip": [
-      { "num": "$30K", "label": "Phí Cấp Phép Nhượng Quyền (+ GST)" },
-      { "num": "5%", "label": "Phí Tác Quyền (Royalty)" },
-      { "num": "2%", "label": "Phí Quỹ Tiếp Thị" },
-      { "num": "5 + 5", "label": "Thời Hạn Hợp Đồng (Năm)" }
+      {
+        "num": "$30K",
+        "label": "Phí Cấp Phép Nhượng Quyền (+ GST)"
+      },
+      {
+        "num": "5%",
+        "label": "Phí Tác Quyền (Royalty)"
+      },
+      {
+        "num": "2%",
+        "label": "Phí Quỹ Tiếp Thị"
+      },
+      {
+        "num": "5 + 5",
+        "label": "Thời Hạn Hợp Đồng (Năm)"
+      }
     ],
     "about": {
       "label": "THÔNG TIN VỀ CƠ HỘI HỢP TÁC",
@@ -2148,12 +1785,30 @@
     },
     "supplyTitle": "ĐỐI TƯỢNG CUNG CẤP",
     "supplyList": [
-      { "emoji": "☕", "label": "Quán Café & Cà Phê" },
-      { "emoji": "🏪", "label": "Tiệm Tạp Hóa & Deli" },
-      { "emoji": "🏨", "label": "Khách Sạn & Lưu Trú" },
-      { "emoji": "🏫", "label": "Trường Học & Đại Học" },
-      { "emoji": "🏥", "label": "Bệnh Viện & Viện Dưỡng Lão" },
-      { "emoji": "🎪", "label": "Sự Kiện & Lễ Hội" }
+      {
+        "emoji": "☕",
+        "label": "Quán Café & Cà Phê"
+      },
+      {
+        "emoji": "🏪",
+        "label": "Tiệm Tạp Hóa & Deli"
+      },
+      {
+        "emoji": "🏨",
+        "label": "Khách Sạn & Lưu Trú"
+      },
+      {
+        "emoji": "🏫",
+        "label": "Trường Học & Đại Học"
+      },
+      {
+        "emoji": "🏥",
+        "label": "Bệnh Viện & Viện Dưỡng Lão"
+      },
+      {
+        "emoji": "🎪",
+        "label": "Sự Kiện & Lễ Hội"
+      }
     ],
     "benefitsHeading": {
       "tag": "QUYỀN LỢI ĐỐI TÁC",
@@ -2391,16 +2046,46 @@
       }
     ],
     "categories": [
-      { "key": "All", "label": "Tất Cả" },
-      { "key": "Dough", "label": "Bột Bánh" },
-      { "key": "Dried Foods", "label": "Đồ Khô" },
-      { "key": "Equipment", "label": "Thiết Bị" },
-      { "key": "Fresh Food", "label": "Thực Phẩm Tươi" },
-      { "key": "Frozen Food", "label": "Thực Phẩm Đông Lạnh" },
-      { "key": "Frozen Marinated Meat", "label": "Thịt Ướp Đông Lạnh" },
-      { "key": "Packaging", "label": "Bao Bì" },
-      { "key": "Sauce", "label": "Nước Sốt" },
-      { "key": "Pastry", "label": "Bánh Ngọt" }
+      {
+        "key": "All",
+        "label": "Tất Cả"
+      },
+      {
+        "key": "Dough",
+        "label": "Bột Bánh"
+      },
+      {
+        "key": "Dried Foods",
+        "label": "Đồ Khô"
+      },
+      {
+        "key": "Equipment",
+        "label": "Thiết Bị"
+      },
+      {
+        "key": "Fresh Food",
+        "label": "Thực Phẩm Tươi"
+      },
+      {
+        "key": "Frozen Food",
+        "label": "Thực Phẩm Đông Lạnh"
+      },
+      {
+        "key": "Frozen Marinated Meat",
+        "label": "Thịt Ướp Đông Lạnh"
+      },
+      {
+        "key": "Packaging",
+        "label": "Bao Bì"
+      },
+      {
+        "key": "Sauce",
+        "label": "Nước Sốt"
+      },
+      {
+        "key": "Pastry",
+        "label": "Bánh Ngọt"
+      }
     ]
   },
   "CartAddOnModal": {

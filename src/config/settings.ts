@@ -43,6 +43,7 @@ export const CACHE_TAGS = {
   wholesaleInventory: "wholesale-inventory",
   wholesaleTiers: "wholesale-tiers",
   blogPosts: "blog-posts",
+  jobListings: "job-listings",
   settings: "settings",
   localization: "localization",
 } as const;

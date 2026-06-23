@@ -232,412 +232,6 @@
         }
       }
     },
-    "jobs": [
-      {
-        "id": 1,
-        "title": "Head Wok Chef",
-        "department": "Kitchen",
-        "type": "Full-Time",
-        "location": "North Hobart / CBD",
-        "salary": "$65,000 – $80,000 + super",
-        "badge": "SENIOR ROLE",
-        "badgeColor": "bg-red-600",
-        "summary": "Lead our kitchen brigade across our busiest locations. You will own the wok station, set the quality standard for every dish that leaves the pass, and mentor junior kitchen staff in authentic Vietnamese cooking techniques.",
-        "responsibilities": [
-          "Execute the full Saigon Express menu to specification, with a focus on wok-based dishes, pho, and bún bowls",
-          "Maintain consistent flavour profiles across all menu items during high-volume service periods",
-          "Train and supervise junior cooks and kitchen hands in Vietnamese cooking techniques",
-          "Manage mise en place, prep schedules, and kitchen workflow to minimise ticket times",
-          "Monitor food quality, portion control, and plate presentation standards",
-          "Assist the Restaurant Manager with ordering, stock rotation, and waste reduction",
-          "Uphold all food safety, hygiene, and HACCP standards at all times",
-          "Contribute ideas for seasonal specials and menu development"
-        ],
-        "requirements": [
-          "Minimum 3 years' experience as a wok chef or senior cook in a Vietnamese or Asian restaurant",
-          "Proven ability to work at speed and maintain quality during peak service",
-          "Strong knowledge of Vietnamese flavour profiles, stocks, and sauces",
-          "Food Safety Supervisor certificate (or willingness to obtain)",
-          "Ability to work a rotating roster including weekends and public holidays",
-          "Team leadership experience is highly regarded"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Career progression to Head Chef",
-          "Training in our central kitchen",
-          "Uniform provided"
-        ]
-      },
-      {
-        "id": 2,
-        "title": "Sous Chef",
-        "department": "Kitchen",
-        "type": "Full-Time",
-        "location": "Any Tasmanian Location",
-        "salary": "$58,000 – $68,000 + super",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Support the Head Chef in running a smooth, high-quality kitchen operation. You will be responsible for daily prep, service execution, and stepping up as acting Head Chef when required.",
-        "responsibilities": [
-          "Assist the Head Chef in all aspects of kitchen management and service",
-          "Lead the kitchen team during service in the Head Chef's absence",
-          "Oversee daily prep lists, ensuring all stations are fully set up before service",
-          "Monitor food costs, portion sizes, and wastage in line with targets",
-          "Conduct daily temperature checks and food safety documentation",
-          "Train new kitchen staff and provide ongoing coaching",
-          "Maintain a clean, organised, and safe kitchen environment"
-        ],
-        "requirements": [
-          "2+ years' experience as a Sous Chef or Senior Cook in a fast-paced kitchen",
-          "Solid understanding of Vietnamese or Asian cuisine",
-          "Food Safety Supervisor certificate",
-          "Strong organisational skills and ability to multitask under pressure",
-          "Flexible availability including weekends"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Clear pathway to Head Chef",
-          "Uniform provided",
-          "Paid training"
-        ]
-      },
-      {
-        "id": 3,
-        "title": "Cook / Kitchen Hand",
-        "department": "Kitchen",
-        "type": "Full-Time / Part-Time",
-        "location": "All Locations",
-        "salary": "$24 – $30/hr + super",
-        "badge": "MULTIPLE POSITIONS",
-        "badgeColor": "bg-amber-600",
-        "summary": "Join our kitchen team and learn the craft of authentic Vietnamese cooking. Whether you are an experienced cook or an enthusiastic beginner, we will train you to the Saigon Express standard.",
-        "responsibilities": [
-          "Prepare ingredients and complete daily mise en place tasks",
-          "Assist with cooking during service under the direction of the Head Chef",
-          "Maintain cleanliness and organisation of your station throughout service",
-          "Complete end-of-shift cleaning duties to food safety standards",
-          "Receive and store deliveries, checking quality and rotating stock",
-          "Assist with dishwashing and general kitchen support as required"
-        ],
-        "requirements": [
-          "Passion for food and a willingness to learn",
-          "Ability to work efficiently in a fast-paced environment",
-          "Reliable, punctual, and a strong team player",
-          "Food handling certificate (or willingness to obtain — we will help)",
-          "Previous kitchen experience is an advantage but not essential"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Paid training",
-          "Flexible hours",
-          "Pathway to Cook or Sous Chef"
-        ]
-      },
-      {
-        "id": 4,
-        "title": "Restaurant Manager",
-        "department": "Management",
-        "type": "Full-Time",
-        "location": "North Hobart / CBD",
-        "salary": "$70,000 – $85,000 + super + bonus",
-        "badge": "LEADERSHIP",
-        "badgeColor": "bg-emerald-700",
-        "summary": "Take ownership of the daily operations of a Saigon Express location. You will lead a team of up to 15 staff, drive sales performance, and ensure every guest leaves with a smile.",
-        "responsibilities": [
-          "Oversee all front-of-house and back-of-house operations for your location",
-          "Recruit, onboard, roster, and manage a team of up to 15 FOH and BOH staff",
-          "Drive revenue through upselling, promotions, and excellent guest experience",
-          "Monitor daily sales, labour costs, and COGS against budget targets",
-          "Manage stock ordering, supplier relationships, and inventory accuracy",
-          "Handle guest feedback and resolve complaints professionally and promptly",
-          "Ensure compliance with all food safety, liquor licensing, and OH&S regulations",
-          "Prepare weekly reports for the Operations Manager and Franchise Director",
-          "Champion the Saigon Express brand standards and culture at your location"
-        ],
-        "requirements": [
-          "3+ years' experience managing a restaurant, café, or QSR location",
-          "Proven track record of leading and developing hospitality teams",
-          "Strong financial acumen — comfortable reading P&L reports",
-          "RSA certificate and Food Safety Supervisor certificate",
-          "Excellent communication and conflict-resolution skills",
-          "Flexible availability including weekends and public holidays"
-        ],
-        "perks": [
-          "Performance bonus",
-          "30% staff meal discount",
-          "Career path to Area Manager",
-          "Company phone",
-          "Paid leadership training"
-        ]
-      },
-      {
-        "id": 5,
-        "title": "Assistant Restaurant Manager",
-        "department": "Management",
-        "type": "Full-Time",
-        "location": "All Locations",
-        "salary": "$58,000 – $68,000 + super",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Support the Restaurant Manager in running a high-performing location. This is an ideal role for an experienced senior FOH team member ready to take the next step into management.",
-        "responsibilities": [
-          "Assist the Restaurant Manager in all aspects of daily operations",
-          "Supervise FOH staff during service and act as duty manager when required",
-          "Open and close the venue, including cash reconciliation and end-of-day reporting",
-          "Handle guest feedback and escalations with professionalism",
-          "Assist with rostering, onboarding new staff, and conducting performance check-ins",
-          "Monitor stock levels and assist with ordering",
-          "Ensure brand standards and service procedures are followed consistently"
-        ],
-        "requirements": [
-          "2+ years' experience in a senior FOH or team leader role",
-          "RSA certificate",
-          "Strong leadership presence and communication skills",
-          "Comfortable with POS systems and basic cash handling",
-          "Flexible availability including weekends"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Clear pathway to Restaurant Manager",
-          "Paid training",
-          "Uniform provided"
-        ]
-      },
-      {
-        "id": 6,
-        "title": "Front of House (FOH) Team Leader",
-        "department": "Front of House",
-        "type": "Full-Time / Part-Time",
-        "location": "All Locations",
-        "salary": "$27 – $32/hr + super",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Lead the floor during service, ensuring every guest receives a warm, efficient, and memorable Saigon Express experience. You will mentor junior FOH staff and be the first point of contact for guest feedback.",
-        "responsibilities": [
-          "Lead the FOH team during service, directing staff to tables and stations",
-          "Greet and seat guests, manage waitlists, and oversee table turnover",
-          "Handle guest feedback and complaints promptly and professionally",
-          "Train and coach junior FOH staff in service standards and menu knowledge",
-          "Assist with opening and closing duties including cash reconciliation",
-          "Ensure the dining area is clean, well-presented, and fully stocked at all times",
-          "Communicate clearly with the kitchen team to manage ticket flow"
-        ],
-        "requirements": [
-          "2+ years' experience in a FOH role, with at least 6 months in a team leader or senior capacity",
-          "RSA certificate",
-          "Excellent communication and interpersonal skills",
-          "Ability to stay calm and organised during busy service periods",
-          "Flexible availability including weekends and public holidays"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Pathway to Assistant Manager",
-          "Uniform provided",
-          "Flexible hours"
-        ]
-      },
-      {
-        "id": 7,
-        "title": "Talented FOH Staff / Wait Staff",
-        "department": "Front of House",
-        "type": "Full-Time / Part-Time / Casual",
-        "location": "All Locations",
-        "salary": "$24 – $28/hr + super",
-        "badge": "NOW HIRING",
-        "badgeColor": "bg-primary",
-        "summary": "Be the face of Saigon Express. We are always looking for warm, energetic, and guest-focused people to join our front-of-house team. No Vietnamese food experience required — just a genuine love of hospitality.",
-        "responsibilities": [
-          "Welcome guests with warmth and enthusiasm, creating a memorable first impression",
-          "Take orders accurately using our POS system and communicate special requests to the kitchen",
-          "Deliver food and beverages promptly and check in on guest satisfaction",
-          "Maintain a thorough knowledge of the full Saigon Express menu, including ingredients and allergens",
-          "Keep the dining area clean, tidy, and well-presented throughout service",
-          "Process payments and handle cash and card transactions accurately",
-          "Assist with opening and closing side duties as directed",
-          "Upsell menu items, drinks, and catering packages where appropriate"
-        ],
-        "requirements": [
-          "Genuine passion for hospitality and creating great guest experiences",
-          "RSA certificate (or willingness to obtain — we will support you)",
-          "Reliable, punctual, and a strong team player",
-          "Ability to work at pace during busy service periods",
-          "Previous hospitality experience is an advantage but not essential",
-          "Flexible availability including weekends"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Flexible casual, part-time, or full-time hours",
-          "Uniform provided",
-          "Pathway to Team Leader and beyond"
-        ]
-      },
-      {
-        "id": 8,
-        "title": "Barista / Drinks Specialist",
-        "department": "Front of House",
-        "type": "Part-Time / Casual",
-        "location": "CBD / North Hobart",
-        "salary": "$25 – $30/hr + super",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Craft our Vietnamese iced coffee, homemade lemon tea, and full espresso menu for our guests. If you love coffee and Vietnamese drinks culture, this role is for you.",
-        "responsibilities": [
-          "Prepare and serve espresso-based coffees, Vietnamese iced coffee, and homemade drinks to specification",
-          "Maintain the coffee machine, grinder, and drinks station to a high standard of cleanliness",
-          "Manage stock levels for coffee, milk, and drinks ingredients",
-          "Assist FOH staff during busy service periods",
-          "Engage with guests and share your knowledge of our drinks menu"
-        ],
-        "requirements": [
-          "Barista experience with a strong understanding of espresso technique",
-          "Interest in Vietnamese drinks culture is a bonus",
-          "RSA certificate",
-          "Friendly, guest-focused personality",
-          "Flexible availability including weekends"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Free coffee on shift",
-          "Flexible hours",
-          "Uniform provided"
-        ]
-      },
-      {
-        "id": 9,
-        "title": "Delivery & Catering Coordinator",
-        "department": "Operations",
-        "type": "Full-Time / Part-Time",
-        "location": "Hobart Region",
-        "salary": "$26 – $32/hr + super",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Coordinate our growing catering and delivery operations across Greater Hobart. You will be the logistics backbone of our catering business, ensuring every order arrives on time, at temperature, and presented perfectly.",
-        "responsibilities": [
-          "Manage all catering order bookings, confirmations, and client communication",
-          "Coordinate delivery schedules and driver logistics for catering and wholesale orders",
-          "Pack and quality-check catering orders before dispatch",
-          "Liaise with the kitchen team to ensure catering orders are prepared on time",
-          "Maintain catering equipment, packaging inventory, and delivery vehicle cleanliness",
-          "Handle post-event follow-up with catering clients",
-          "Assist with the development of new catering packages and pricing"
-        ],
-        "requirements": [
-          "Experience in a logistics, events, or hospitality coordination role",
-          "Valid Australian driver's licence",
-          "Strong organisational skills and attention to detail",
-          "Excellent communication skills — you will be the client's main point of contact",
-          "Ability to lift and carry catering equipment (up to 15kg)",
-          "Food handling certificate"
-        ],
-        "perks": [
-          "30% staff meal discount",
-          "Company vehicle for deliveries",
-          "Flexible hours",
-          "Pathway to Operations Manager"
-        ]
-      },
-      {
-        "id": 10,
-        "title": "Wholesale & B2B Account Manager",
-        "department": "Sales & Wholesale",
-        "type": "Full-Time",
-        "location": "Hobart (Travel Required)",
-        "salary": "$60,000 – $72,000 + super + commission",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Grow our wholesale business across Tasmania. You will manage relationships with existing café, grocery, and hospitality partners, and actively prospect for new B2B accounts.",
-        "responsibilities": [
-          "Manage and grow a portfolio of wholesale accounts across Tasmania",
-          "Conduct regular client visits to ensure satisfaction and identify upsell opportunities",
-          "Prospect and onboard new B2B partners including cafés, delis, and corporate clients",
-          "Prepare and present wholesale proposals, pricing, and product samples",
-          "Coordinate with the warehouse team to ensure accurate and timely order fulfilment",
-          "Track sales performance and report weekly to the Operations Manager",
-          "Represent Saigon Express at trade events, food expos, and networking functions"
-        ],
-        "requirements": [
-          "2+ years' experience in a B2B sales or account management role, preferably in food & beverage",
-          "Strong relationship-building and negotiation skills",
-          "Valid Australian driver's licence",
-          "Self-motivated with a proven ability to hit sales targets",
-          "Proficiency in CRM tools and Microsoft Office"
-        ],
-        "perks": [
-          "Commission structure on new accounts",
-          "Company vehicle",
-          "Expense account for client entertainment",
-          "Career path to Sales Manager"
-        ]
-      },
-      {
-        "id": 11,
-        "title": "Marketing & Social Media Coordinator",
-        "department": "Marketing",
-        "type": "Part-Time / Full-Time",
-        "location": "Hobart (Hybrid)",
-        "salary": "$55,000 – $65,000 + super (pro-rata)",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Tell the Saigon Express story to Tasmania and beyond. You will manage our social media presence, create content, run promotions, and help build one of Tasmania's most loved food brands.",
-        "responsibilities": [
-          "Plan, create, and schedule content across Instagram, Facebook, and TikTok",
-          "Photograph and film food, team, and behind-the-scenes content at our locations",
-          "Manage community engagement — respond to comments, DMs, and reviews",
-          "Plan and execute seasonal promotions, giveaways, and influencer partnerships",
-          "Write copy for the website, email newsletters, and in-store signage",
-          "Monitor analytics and report on content performance monthly",
-          "Assist with the design of menus, flyers, and marketing collateral",
-          "Support the franchise and wholesale teams with B2B marketing materials"
-        ],
-        "requirements": [
-          "Demonstrated experience managing social media for a food, hospitality, or lifestyle brand",
-          "Strong photography and basic video editing skills (Reels, TikTok)",
-          "Excellent copywriting ability — warm, engaging, and on-brand",
-          "Proficiency in Canva or Adobe Creative Suite",
-          "Passion for Vietnamese food culture and storytelling",
-          "Degree in Marketing, Communications, or a related field is advantageous"
-        ],
-        "perks": [
-          "Hybrid work arrangement",
-          "30% staff meal discount",
-          "Creative freedom to build the brand",
-          "Career path to Marketing Manager"
-        ]
-      },
-      {
-        "id": 12,
-        "title": "Franchise Support Officer",
-        "department": "Franchise",
-        "type": "Full-Time",
-        "location": "Hobart CBD",
-        "salary": "$58,000 – $70,000 + super",
-        "badge": null,
-        "badgeColor": "",
-        "summary": "Support the growth of the Saigon Express franchise network. You will be the primary point of contact for new and existing franchisees, helping them succeed through training, compliance, and operational support.",
-        "responsibilities": [
-          "Onboard new franchisees through the full training and set-up process",
-          "Conduct regular store visits to assess compliance with brand standards and SOPs",
-          "Provide ongoing operational support and troubleshooting to franchisees",
-          "Maintain and update the Franchise Operations Manual and training materials",
-          "Coordinate the franchise application and approval process",
-          "Liaise with legal, finance, and marketing teams on behalf of franchisees",
-          "Prepare monthly performance reports for each franchise location"
-        ],
-        "requirements": [
-          "Experience in franchise operations, hospitality management, or a similar field",
-          "Strong interpersonal skills and ability to build trust with business owners",
-          "Highly organised with excellent written and verbal communication",
-          "Willingness to travel to franchise locations across Tasmania",
-          "Understanding of franchise agreements and compliance frameworks is advantageous"
-        ],
-        "perks": [
-          "Travel allowance",
-          "Career path to Franchise Development Manager",
-          "Company phone and laptop",
-          "Paid professional development"
-        ]
-      }
-    ],
     "cta": {
       "label": "READY TO APPLY?",
       "titleLine1": "Your Next Career Move",
@@ -724,10 +318,22 @@
       "ctaQuote": "Request a Quote"
     },
     "stats": [
-      { "num": "500+", "label": "Events Catered" },
-      { "num": "50,000+", "label": "Guests Served" },
-      { "num": "8", "label": "Tasmania Locations" },
-      { "num": "100%", "label": "Fresh Daily" }
+      {
+        "num": "500+",
+        "label": "Events Catered"
+      },
+      {
+        "num": "50,000+",
+        "label": "Guests Served"
+      },
+      {
+        "num": "8",
+        "label": "Tasmania Locations"
+      },
+      {
+        "num": "100%",
+        "label": "Fresh Daily"
+      }
     ],
     "whyUs": {
       "label": "WHY SAIGON EXPRESS CATERING",
@@ -844,7 +450,15 @@
     "dateStrings": {
       "today": "Today",
       "tomorrow": "Tomorrow",
-      "days": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "days": [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      ],
       "months": [
         "Jan",
         "Feb",
@@ -1107,10 +721,22 @@
     "hours": {
       "title": "Opening Hours",
       "schedule": [
-        { "day": "Monday – Friday", "hours": "10:00 am – 8:00 pm" },
-        { "day": "Saturday", "hours": "10:00 am – 8:30 pm" },
-        { "day": "Sunday", "hours": "11:00 am – 7:00 pm" },
-        { "day": "Public Holidays", "hours": "11:00 am – 6:00 pm" }
+        {
+          "day": "Monday – Friday",
+          "hours": "10:00 am – 8:00 pm"
+        },
+        {
+          "day": "Saturday",
+          "hours": "10:00 am – 8:30 pm"
+        },
+        {
+          "day": "Sunday",
+          "hours": "11:00 am – 7:00 pm"
+        },
+        {
+          "day": "Public Holidays",
+          "hours": "11:00 am – 6:00 pm"
+        }
       ]
     },
     "locations": {
@@ -1383,10 +1009,22 @@
       "ctaModels": "View Franchise Models"
     },
     "investmentStrip": [
-      { "num": "$30K", "label": "Franchise Licence Fee (+ GST)" },
-      { "num": "5%", "label": "Royalty Fee" },
-      { "num": "2%", "label": "Marketing Levy" },
-      { "num": "5 + 5", "label": "Year Contract Term" }
+      {
+        "num": "$30K",
+        "label": "Franchise Licence Fee (+ GST)"
+      },
+      {
+        "num": "5%",
+        "label": "Royalty Fee"
+      },
+      {
+        "num": "2%",
+        "label": "Marketing Levy"
+      },
+      {
+        "num": "5 + 5",
+        "label": "Year Contract Term"
+      }
     ],
     "about": {
       "label": "ABOUT THE OPPORTUNITY",
@@ -2147,12 +1785,30 @@
     },
     "supplyTitle": "WHO WE SUPPLY",
     "supplyList": [
-      { "emoji": "☕", "label": "Cafés & Coffee Shops" },
-      { "emoji": "🏪", "label": "Grocery & Deli Stores" },
-      { "emoji": "🏨", "label": "Hotels & Accommodation" },
-      { "emoji": "🏫", "label": "Schools & Universities" },
-      { "emoji": "🏥", "label": "Hospitals & Aged Care" },
-      { "emoji": "🎪", "label": "Events & Festivals" }
+      {
+        "emoji": "☕",
+        "label": "Cafés & Coffee Shops"
+      },
+      {
+        "emoji": "🏪",
+        "label": "Grocery & Deli Stores"
+      },
+      {
+        "emoji": "🏨",
+        "label": "Hotels & Accommodation"
+      },
+      {
+        "emoji": "🏫",
+        "label": "Schools & Universities"
+      },
+      {
+        "emoji": "🏥",
+        "label": "Hospitals & Aged Care"
+      },
+      {
+        "emoji": "🎪",
+        "label": "Events & Festivals"
+      }
     ],
     "benefitsHeading": {
       "tag": "PARTNER BENEFITS",
@@ -2390,16 +2046,46 @@
       }
     ],
     "categories": [
-      { "key": "All", "label": "All" },
-      { "key": "Dough", "label": "Dough" },
-      { "key": "Dried Foods", "label": "Dried Foods" },
-      { "key": "Equipment", "label": "Equipment" },
-      { "key": "Fresh Food", "label": "Fresh Food" },
-      { "key": "Frozen Food", "label": "Frozen Food" },
-      { "key": "Frozen Marinated Meat", "label": "Frozen Marinated Meat" },
-      { "key": "Packaging", "label": "Packaging" },
-      { "key": "Sauce", "label": "Sauce" },
-      { "key": "Pastry", "label": "Pastry" }
+      {
+        "key": "All",
+        "label": "All"
+      },
+      {
+        "key": "Dough",
+        "label": "Dough"
+      },
+      {
+        "key": "Dried Foods",
+        "label": "Dried Foods"
+      },
+      {
+        "key": "Equipment",
+        "label": "Equipment"
+      },
+      {
+        "key": "Fresh Food",
+        "label": "Fresh Food"
+      },
+      {
+        "key": "Frozen Food",
+        "label": "Frozen Food"
+      },
+      {
+        "key": "Frozen Marinated Meat",
+        "label": "Frozen Marinated Meat"
+      },
+      {
+        "key": "Packaging",
+        "label": "Packaging"
+      },
+      {
+        "key": "Sauce",
+        "label": "Sauce"
+      },
+      {
+        "key": "Pastry",
+        "label": "Pastry"
+      }
     ]
   },
   "CartAddOnModal": {
