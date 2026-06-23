@@ -5,9 +5,12 @@ export const INVOICE_COMPANY = {
   name: "Saigon Express Lounge",
   address: "329 Elizabeth Street",
   locality: "North Hobart TAS 7000",
-  phone: "0416 036 016",
-  email: "info@saigonexpress.com.au",
 } as const;
+
+export type InvoiceContactDefaults = {
+  phone: string;
+  email: string;
+};
 
 export function formatInvoiceNumber(orderId: number, createdAt: string): string {
   const year = new Date(createdAt).getFullYear();

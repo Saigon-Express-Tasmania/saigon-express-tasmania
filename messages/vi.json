@@ -2237,7 +2237,9 @@
       },
       "messages": {
         "validation": "Vui lòng nhập đầy đủ các trường thông tin bắt buộc.",
-        "error": "Gửi thông tin thất bại. Vui lòng thử lại sau."
+        "error": "Gửi thông tin thất bại. Vui lòng thử lại sau.",
+        "cooldownWait": "Vui lòng đợi {time} trước khi gửi lại.",
+        "rateLimit": "Vui lòng đợi {time} trước khi gửi lại."
       }
     }
   },

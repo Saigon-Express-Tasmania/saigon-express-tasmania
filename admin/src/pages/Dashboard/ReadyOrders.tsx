@@ -1,19 +1,15 @@
 'use client';
 
 import { ReadyOrdersList } from '@/components/orders/ReadyOrdersList';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { DashboardSectionCard } from '@/components/dashboard/DashboardSectionCard';
+import { DashboardRefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   DASHBOARD_READY_ORDERS_LIMIT,
   fetchReadyOrders,
   type ReadyOrder,
 } from '@/lib/ready-orders';
+import { PackageCheck } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -55,25 +51,26 @@ export function ReadyOrders() {
   }
 
   return (
-    <Card className="overflow-visible">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-        <div>
-          <CardTitle>Confirmed orders</CardTitle>
-          <CardDescription>
-            Live orders confirmed and ready for fulfillment.
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ReadyOrdersList
-          orders={orders}
-          totalCount={totalCount}
-          limit={DASHBOARD_READY_ORDERS_LIMIT}
-          loading={loading || profileLoading}
-          skeletonCount={3}
-          emptyMessage="No confirmed orders."
+    <DashboardSectionCard
+      title="Confirmed orders"
+      description="Live orders confirmed and ready for fulfillment."
+      icon={PackageCheck}
+      accent="emerald"
+      action={
+        <DashboardRefreshTableButton
+          onClick={() => void loadReadyOrders()}
+          disabled={loading || profileLoading}
         />
-      </CardContent>
-    </Card>
+      }
+    >
+      <ReadyOrdersList
+        orders={orders}
+        totalCount={totalCount}
+        limit={DASHBOARD_READY_ORDERS_LIMIT}
+        loading={loading || profileLoading}
+        skeletonCount={3}
+        emptyMessage="No confirmed orders."
+      />
+    </DashboardSectionCard>
   );
 }

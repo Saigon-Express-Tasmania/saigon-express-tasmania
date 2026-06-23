@@ -25,16 +25,16 @@ export function SalesOrderDeleteDialog({
   onOpenChange,
   onConfirm,
 }: SalesOrderDeleteDialogProps) {
-  const description = dataset.archiveOnDelete
-    ? `This archives and permanently removes ${dataset.entityName} #${target?.id} and all line items. This cannot be undone.`
-    : `This permanently removes ${dataset.entityName} #${target?.id} and all line items. This cannot be undone.`;
-
   return (
     <AlertDialog open={target !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {dataset.entityName}?</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogTitle>Archive {dataset.entityName}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This moves {dataset.entityName} #{target?.id} to archived orders and
+            removes it from the active list. Line items and payment history stay
+            linked by order ID.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
@@ -46,7 +46,7 @@ export function SalesOrderDeleteDialog({
               onConfirm();
             }}
           >
-            Delete
+            Archive
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

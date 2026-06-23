@@ -9,27 +9,29 @@ import {
 import {
   formatFranchiseInterestDate,
   franchiseInterestStatusBadgeClass,
-  pendingFranchiseInterestsRemainingMessage,
-  type PendingFranchiseInterest,
 } from '@/lib/pending-franchise-interests';
+import {
+  pendingWholesaleEnquiriesRemainingMessage,
+  type PendingWholesaleEnquiry,
+} from '@/lib/pending-wholesale-enquiries';
 import { Eye } from 'lucide-react';
 
-export type PendingFranchiseInterestsListProps = {
-  interests: PendingFranchiseInterest[];
+export type PendingWholesaleEnquiriesListProps = {
+  enquiries: PendingWholesaleEnquiry[];
   totalCount: number;
   limit: number;
   loading: boolean;
-  onView: (interest: PendingFranchiseInterest) => void;
+  onView: (enquiry: PendingWholesaleEnquiry) => void;
   skeletonCount?: number;
   emptyMessage?: string;
 };
 
-function PendingFranchiseInterestsTableSkeleton({ rows }: { rows: number }) {
+function PendingWholesaleEnquiriesTableSkeleton({ rows }: { rows: number }) {
   return (
     <DashboardDataTable>
       <thead>
         <tr className="border-b bg-muted/50">
-          {['Contact', 'Submitted', 'Status', ''].map((label) => (
+          {['Contact', 'Business', 'Submitted', 'Status', ''].map((label) => (
             <th key={label || 'actions'} className={dashboardThClass}>
               {label}
             </th>
@@ -39,7 +41,7 @@ function PendingFranchiseInterestsTableSkeleton({ rows }: { rows: number }) {
       <tbody>
         {Array.from({ length: rows }, (_, index) => (
           <tr key={index} className="border-b">
-            {Array.from({ length: 4 }, (_, cellIndex) => (
+            {Array.from({ length: 5 }, (_, cellIndex) => (
               <td key={cellIndex} className={dashboardTdClass}>
                 <div className="h-4 animate-pulse rounded bg-muted" />
               </td>
@@ -51,28 +53,28 @@ function PendingFranchiseInterestsTableSkeleton({ rows }: { rows: number }) {
   );
 }
 
-export function PendingFranchiseInterestsList({
-  interests,
+export function PendingWholesaleEnquiriesList({
+  enquiries,
   totalCount,
   limit,
   loading,
   onView,
   skeletonCount = 3,
-  emptyMessage = 'No pending franchise interest submissions.',
-}: PendingFranchiseInterestsListProps) {
-  const remainingMessage = pendingFranchiseInterestsRemainingMessage(
-    interests.length,
+  emptyMessage = 'No pending wholesale enquiries.',
+}: PendingWholesaleEnquiriesListProps) {
+  const remainingMessage = pendingWholesaleEnquiriesRemainingMessage(
+    enquiries.length,
     totalCount,
   );
   const summaryMessage =
     totalCount > 0
-      ? `Showing ${Math.min(interests.length, limit)} of ${totalCount} pending ${
-          totalCount === 1 ? 'submission' : 'submissions'
+      ? `Showing ${Math.min(enquiries.length, limit)} of ${totalCount} pending ${
+          totalCount === 1 ? 'enquiry' : 'enquiries'
         }.`
       : null;
 
   if (loading) {
-    return <PendingFranchiseInterestsTableSkeleton rows={skeletonCount} />;
+    return <PendingWholesaleEnquiriesTableSkeleton rows={skeletonCount} />;
   }
 
   if (totalCount === 0) {
@@ -87,44 +89,51 @@ export function PendingFranchiseInterestsList({
 
       <DashboardDataTable>
         <colgroup>
-          <col className="w-[42%]" />
+          <col className="w-[30%]" />
           <col className="w-[28%]" />
-          <col className="w-[18%]" />
+          <col className="w-[22%]" />
           <col className="w-[12%]" />
+          <col className="w-[8%]" />
         </colgroup>
         <thead>
           <tr className="border-b bg-muted/50">
             <th className={dashboardThClass}>Contact</th>
+            <th className={dashboardThClass}>Business</th>
             <th className={dashboardThClass}>Submitted</th>
             <th className={dashboardThClass}>Status</th>
             <th className={`${dashboardThClass} text-right`}> </th>
           </tr>
         </thead>
         <tbody>
-          {interests.map((interest) => (
+          {enquiries.map((enquiry) => (
             <tr
-              key={interest.id}
+              key={enquiry.id}
               className="border-b transition-colors hover:bg-muted/50"
             >
               <td className={dashboardTdClass}>
-                <DashboardTruncate title={interest.full_name}>
-                  <span className="font-medium">{interest.full_name}</span>
+                <DashboardTruncate title={enquiry.full_name}>
+                  <span className="font-medium">{enquiry.full_name}</span>
                 </DashboardTruncate>
-                <DashboardTruncate title={interest.email}>
-                  <span className="text-muted-foreground">{interest.email}</span>
+                <DashboardTruncate title={enquiry.email}>
+                  <span className="text-muted-foreground">{enquiry.email}</span>
                 </DashboardTruncate>
               </td>
               <td className={`${dashboardTdClass} text-muted-foreground`}>
-                <DashboardTruncate title={formatFranchiseInterestDate(interest.created_at)}>
-                  {formatFranchiseInterestDate(interest.created_at)}
+                <DashboardTruncate title={enquiry.business_name ?? undefined}>
+                  {enquiry.business_name ?? '—'}
+                </DashboardTruncate>
+              </td>
+              <td className={`${dashboardTdClass} text-muted-foreground`}>
+                <DashboardTruncate title={formatFranchiseInterestDate(enquiry.created_at)}>
+                  {formatFranchiseInterestDate(enquiry.created_at)}
                 </DashboardTruncate>
               </td>
               <td className={dashboardTdClass}>
                 <Badge
                   variant="secondary"
-                  className={franchiseInterestStatusBadgeClass(interest.status)}
+                  className={franchiseInterestStatusBadgeClass(enquiry.status)}
                 >
-                  {interest.status}
+                  {enquiry.status}
                 </Badge>
               </td>
               <td className={dashboardTdClass}>
@@ -133,8 +142,8 @@ export function PendingFranchiseInterestsList({
                     variant="outline"
                     size="sm"
                     className="h-7 w-7 shrink-0 p-0"
-                    onClick={() => onView(interest)}
-                    aria-label={`View franchise interest ${interest.id}`}
+                    onClick={() => onView(enquiry)}
+                    aria-label={`View wholesale enquiry ${enquiry.id}`}
                   >
                     <Eye className="h-3.5 w-3.5" />
                   </Button>

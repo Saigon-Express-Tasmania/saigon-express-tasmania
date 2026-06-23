@@ -1,27 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
-import { trpc } from "@/lib/trpc";
 
 export default function Newsletter() {
   const t = useTranslations("Newsletter");
   const contactEmail = useSiteSetting("contact_us_email")?.trim();
   const contactPhone = useFormattedContactPhone();
-
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [subSuccess, setSubSuccess] = useState(false);
-
-  const subscribeMutation = trpc.public.subscribeNewsletter.useMutation({
-    onSuccess: () => {
-      setSubSuccess(true);
-      setEmail("");
-      setName("");
-    },
-  });
 
   return (
     <div>

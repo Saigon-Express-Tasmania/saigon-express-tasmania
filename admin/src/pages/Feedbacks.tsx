@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import {
   Card,
   CardContent,
@@ -63,7 +64,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type SortColumn = 'id' | 'name' | 'email' | 'created_at' | 'resolved_at';
@@ -162,9 +163,12 @@ export function Feedbacks() {
 
   const [viewTarget, setViewTarget] = useState<Feedback | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Feedback | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   const loadFeedbacks = useCallback(async () => {
     try {
@@ -225,6 +229,54 @@ export function Feedbacks() {
       }
     });
   }, [feedbacks, statusFilter, sortColumn, sortDirection]);
+
+  const selectedCount = selectedIds.size;
+
+  const allFilteredSelected =
+    filteredFeedbacks.length > 0 &&
+    filteredFeedbacks.every((feedback) => selectedIds.has(feedback.id));
+
+  const someFilteredSelected =
+    filteredFeedbacks.some((feedback) => selectedIds.has(feedback.id)) &&
+    !allFilteredSelected;
+
+  useEffect(() => {
+    if (!selectAllRef.current) return;
+    selectAllRef.current.indeterminate = someFilteredSelected;
+  }, [someFilteredSelected, allFilteredSelected, filteredFeedbacks.length]);
+
+  const toggleSelected = (id: number, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = (checked: boolean) => {
+    if (!checked) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const feedback of filteredFeedbacks) {
+          next.delete(feedback.id);
+        }
+        return next;
+      });
+      return;
+    }
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const feedback of filteredFeedbacks) {
+        next.add(feedback.id);
+      }
+      return next;
+    });
+  };
 
   const openCreate = () => {
     setEditingId(null);
@@ -324,7 +376,39 @@ export function Feedbacks() {
 
       if (deleteError) throw deleteError;
       toast.success('Feedback deleted.');
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteTarget.id);
+        return next;
+      });
       setDeleteTarget(null);
+      await loadFeedbacks();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to delete feedback.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setSaving(true);
+    try {
+      const { error: deleteError } = await supabase
+        .from('feedbacks')
+        .delete()
+        .in('id', ids);
+
+      if (deleteError) throw deleteError;
+      toast.success(
+        `Deleted ${ids.length} ${ids.length === 1 ? 'feedback' : 'feedbacks'}.`,
+      );
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
       await loadFeedbacks();
     } catch (err) {
       toast.error(
@@ -374,10 +458,16 @@ export function Feedbacks() {
                 FAQ questions and feedback submitted from the public website.
               </CardDescription>
             </div>
-            <Button onClick={openCreate} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add feedback
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshTableButton
+                onClick={() => void loadFeedbacks()}
+                disabled={loading}
+              />
+              <Button onClick={openCreate} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add feedback
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
@@ -386,7 +476,7 @@ export function Feedbacks() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Label htmlFor="feedback-status-filter" className="whitespace-nowrap">
                   Status
@@ -408,6 +498,20 @@ export function Feedbacks() {
                   </SelectContent>
                 </Select>
               </div>
+              {selectedCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0 self-end sm:self-auto"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  Delete {selectedCount}{' '}
+                  {selectedCount === 1 ? 'item' : 'items'}
+                </Button>
+              ) : null}
             </div>
 
             {loading ? (
@@ -425,6 +529,17 @@ export function Feedbacks() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-10 px-4 py-3">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input"
+                          checked={allFilteredSelected}
+                          disabled={saving || filteredFeedbacks.length === 0}
+                          aria-label="Select all visible feedback"
+                          onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
+                        />
+                      </th>
                       <SortableHeader
                         label="ID"
                         column="id"
@@ -478,8 +593,22 @@ export function Feedbacks() {
                     {filteredFeedbacks.map((feedback) => (
                       <tr
                         key={feedback.id}
-                        className="border-b transition-colors hover:bg-muted/50"
+                        className={`border-b transition-colors hover:bg-muted/50 ${
+                          selectedIds.has(feedback.id) ? 'bg-muted/30' : ''
+                        }`}
                       >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-input"
+                            checked={selectedIds.has(feedback.id)}
+                            disabled={saving}
+                            aria-label={`Select feedback ${feedback.id}`}
+                            onChange={(e) =>
+                              toggleSelected(feedback.id, e.target.checked)
+                            }
+                          />
+                        </td>
                         <td className="px-4 py-3 font-mono text-sm">
                           {feedback.id}
                         </td>
@@ -706,6 +835,37 @@ export function Feedbacks() {
         }
         onEdit={openEdit}
       />
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedCount} {selectedCount === 1 ? 'feedback' : 'feedbacks'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {selectedCount}{' '}
+              {selectedCount === 1 ? 'submission' : 'submissions'} from{' '}
+              <code>feedbacks</code>. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleBulkDelete();
+              }}
+            >
+              {saving ? 'Deleting…' : `Delete ${selectedCount} items`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteTarget !== null}

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import {
   Card,
   CardContent,
@@ -831,10 +832,16 @@ export function BlogPosts() {
                 Manage news articles shown on the public /news pages.
               </CardDescription>
             </div>
-            <Button onClick={openCreate} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add post
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshTableButton
+                onClick={() => void loadPosts()}
+                disabled={loading}
+              />
+              <Button onClick={openCreate} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add post
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (

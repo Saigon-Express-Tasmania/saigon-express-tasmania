@@ -2236,7 +2236,9 @@
       },
       "messages": {
         "validation": "Please fill in all required fields.",
-        "error": "Failed to submit. Please try again."
+        "error": "Failed to submit. Please try again.",
+        "cooldownWait": "Please wait {time} before submitting again.",
+        "rateLimit": "Please wait {time} before submitting again."
       }
     }
   },

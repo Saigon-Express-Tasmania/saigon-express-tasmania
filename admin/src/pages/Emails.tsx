@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import {
   Card,
   CardContent,
@@ -525,6 +526,10 @@ export function Emails() {
               </CardDescription>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
+              <RefreshTableButton
+                onClick={() => void loadTemplates()}
+                disabled={loading}
+              />
               <Button
                 variant="outline"
                 disabled={loading || templates.length === 0}

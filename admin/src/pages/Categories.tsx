@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import {
   Card,
   CardContent,
@@ -383,10 +384,16 @@ export function Categories() {
                 menu.
               </CardDescription>
             </div>
-            <Button onClick={openCreate} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add category
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshTableButton
+                onClick={() => void loadCategories()}
+                disabled={loading}
+              />
+              <Button onClick={openCreate} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add category
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (

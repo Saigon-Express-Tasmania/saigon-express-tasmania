@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, PackageCheck, Pencil, Trash2 } from 'lucide-react';
+import type { RefObject } from 'react';
 import type { OrderType } from './orderType';
 import { formatTargetDateDisplay } from './salesOrderDb';
 import type { SalesOrderRow } from './salesOrderShared';
@@ -13,6 +14,11 @@ type SalesOrdersTableProps = {
   onEdit: (order: SalesOrderRow) => void;
   onFulfill: (order: SalesOrderRow) => void;
   onDelete: (order: SalesOrderRow) => void;
+  selectedIds: Set<number>;
+  selectAllRef: RefObject<HTMLInputElement | null>;
+  allFilteredSelected: boolean;
+  onToggleSelected: (id: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
 };
 
 export function SalesOrdersTable({
@@ -23,6 +29,11 @@ export function SalesOrdersTable({
   onEdit,
   onFulfill,
   onDelete,
+  selectedIds,
+  selectAllRef,
+  allFilteredSelected,
+  onToggleSelected,
+  onToggleSelectAll,
 }: SalesOrdersTableProps) {
   const showOrderDate = orderType === 'catering' || orderType === 'wholesale';
 
@@ -31,6 +42,17 @@ export function SalesOrdersTable({
       <table className="w-full">
         <thead>
           <tr className="border-b bg-muted/50">
+            <th className="w-10 px-4 py-3">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                className="h-4 w-4 rounded border-input"
+                checked={allFilteredSelected}
+                disabled={saving || orders.length === 0}
+                aria-label="Select all visible orders"
+                onChange={(e) => onToggleSelectAll(e.target.checked)}
+              />
+            </th>
             <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
             <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
             {showOrderDate ? (
@@ -45,7 +67,22 @@ export function SalesOrdersTable({
         </thead>
         <tbody>
           {orders.map((order) => (
-            <tr key={order.id} className="border-b transition-colors hover:bg-muted/50">
+            <tr
+              key={order.id}
+              className={`border-b transition-colors hover:bg-muted/50 ${
+                selectedIds.has(order.id) ? 'bg-muted/30' : ''
+              }`}
+            >
+              <td className="px-4 py-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-input"
+                  checked={selectedIds.has(order.id)}
+                  disabled={saving}
+                  aria-label={`Select order ${order.id}`}
+                  onChange={(e) => onToggleSelected(order.id, e.target.checked)}
+                />
+              </td>
               <td className="px-4 py-3 font-mono text-sm">{order.id}</td>
               <td className="px-4 py-3 text-sm">
                 <p className="font-medium">{order.customer_name}</p>

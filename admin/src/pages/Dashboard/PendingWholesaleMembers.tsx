@@ -1,14 +1,11 @@
 'use client';
 
 import { PendingPartnersList } from '@/components/partners/PendingPartnersList';
-import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  DashboardSectionCard,
+  DashboardViewAllLink,
+} from '@/components/dashboard/DashboardSectionCard';
+import { DashboardRefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { normalizePartnerPrivileges } from '@/lib/partner-privilege-form';
 import { hasAnyPortalPartnerPrivilege } from '@/lib/privileges';
@@ -20,6 +17,7 @@ import {
   type PendingPartnerProfile,
 } from '@/lib/partner-profiles';
 import type { BusinessType } from '@/types/UserProfile';
+import { UserRoundSearch } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -97,38 +95,41 @@ export function PendingWholesaleMembers() {
   }
 
   return (
-    <Card className="overflow-visible">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-        <div>
-          <CardTitle>Pending wholesale members</CardTitle>
-          <CardDescription>
-            Registrations waiting for administrator confirmation.
-          </CardDescription>
+    <DashboardSectionCard
+      title="Pending wholesale members"
+      description="Registrations waiting for administrator confirmation."
+      icon={UserRoundSearch}
+      accent="blue"
+      action={
+        <div className="flex items-center gap-2">
+          <DashboardRefreshTableButton
+            onClick={() => void loadPending()}
+            disabled={loading || profileLoading}
+          />
+          {!loading && totalCount > 0 ? (
+            <DashboardViewAllLink>
+              <Link to="/partners">View all</Link>
+            </DashboardViewAllLink>
+          ) : null}
         </div>
-        {!loading && totalCount > 0 ? (
-          <Button asChild variant="outline" size="sm">
-            <Link to="/partners">View all</Link>
-          </Button>
-        ) : null}
-      </CardHeader>
-      <CardContent>
-        <PendingPartnersList
-          partners={partners}
-          totalCount={totalCount}
-          limit={DASHBOARD_PENDING_PARTNERS_LIMIT}
-          loading={loading || profileLoading}
-          confirmingId={confirmingId}
-          confirmPromptId={confirmPromptId}
-          onConfirmPromptToggle={handleConfirmPromptToggle}
-          onConfirmPromptClose={() => setConfirmPromptId(null)}
-          onConfirm={(partner, privileges) =>
-            void handleConfirm(partner, privileges)
-          }
-          skeletonCount={3}
-          showHeader={false}
-          emptyMessage="No pending wholesale registrations."
-        />
-      </CardContent>
-    </Card>
+      }
+    >
+      <PendingPartnersList
+        partners={partners}
+        totalCount={totalCount}
+        limit={DASHBOARD_PENDING_PARTNERS_LIMIT}
+        loading={loading || profileLoading}
+        confirmingId={confirmingId}
+        confirmPromptId={confirmPromptId}
+        onConfirmPromptToggle={handleConfirmPromptToggle}
+        onConfirmPromptClose={() => setConfirmPromptId(null)}
+        onConfirm={(partner, privileges) =>
+          void handleConfirm(partner, privileges)
+        }
+        skeletonCount={3}
+        showHeader={false}
+        emptyMessage="No pending wholesale registrations."
+      />
+    </DashboardSectionCard>
   );
 }

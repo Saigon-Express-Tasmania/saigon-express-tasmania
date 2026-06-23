@@ -10,6 +10,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
+import { Pagination } from '@/components/ui/pagination';
+import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useTablePagination } from '@/hooks/useTablePagination';
 import {
   Card,
   CardContent,
@@ -26,6 +30,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -55,9 +60,11 @@ import {
 import { fulfillmentMethodLabel } from './salesOrderFulfillment';
 import {
   DRAFT_ORDER_COLUMNS,
+  DRAFT_STALE_PERIOD_OPTIONS,
   fetchOrderItems,
   formatTargetDateDisplay,
   fromDatetimeLocalValue,
+  isDraftOrderStale,
   mapDbItemToForm,
   replaceOrderItems,
   toDatetimeLocalValue,
@@ -73,6 +80,7 @@ import {
   type SalesOrderItemForm,
 } from './salesOrderShared';
 import { useSalesOrderType } from './useSalesOrderType';
+import type { DraftStalePeriod } from './salesOrderDb';
 
 type DraftOrderRow = {
   id: number;
@@ -211,6 +219,8 @@ export function DraftOrders() {
     emptyDraftOrderForm(orderType ?? 'pickup'),
   );
   const [deleteTarget, setDeleteTarget] = useState<DraftOrderRow | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [stalePeriod, setStalePeriod] = useState<DraftStalePeriod>('48h');
   const [isGstInclusive, setIsGstInclusive] = useState(true);
   const taxMode = useMemo(() => ({ isGstInclusive }), [isGstInclusive]);
 
@@ -262,6 +272,28 @@ export function DraftOrders() {
       );
     });
   }, [rows, search]);
+
+  const {
+    paginatedItems: paginatedRows,
+    page,
+    perPage,
+    totalPages,
+    totalRecords,
+    perPageOptions,
+    setPage,
+    onPerPageChange,
+  } = useTablePagination(filteredRows, search);
+
+  const {
+    selectedIds,
+    selectedCount,
+    selectAllRef,
+    allFilteredSelected,
+    toggleSelected,
+    toggleSelectAllFiltered,
+    clearSelection,
+    removeFromSelection,
+  } = useBulkRowSelection(filteredRows);
 
   const openCreate = () => {
     setEditingId(null);
@@ -384,10 +416,35 @@ export function DraftOrders() {
         .eq('id', deleteTarget.id);
       if (deleteError) throw deleteError;
       toast.success('Draft order deleted.');
+      removeFromSelection(deleteTarget.id);
       setDeleteTarget(null);
       await loadRows();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete draft order.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setSaving(true);
+    try {
+      const { error: deleteError } = await supabase
+        .from('draft_orders')
+        .delete()
+        .in('id', ids);
+      if (deleteError) throw deleteError;
+      toast.success(
+        `Deleted ${ids.length} draft ${ids.length === 1 ? 'order' : 'orders'}.`,
+      );
+      clearSelection();
+      setBulkDeleteOpen(false);
+      await loadRows();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete draft orders.');
     } finally {
       setSaving(false);
     }
@@ -427,10 +484,16 @@ export function DraftOrders() {
               <CardTitle>{tableTitle}</CardTitle>
               <CardDescription>Manage unpaid or abandoned checkout drafts.</CardDescription>
             </div>
-            <Button onClick={openCreate} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add draft
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshTableButton
+                onClick={() => void loadRows()}
+                disabled={loading}
+              />
+              <Button onClick={openCreate} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add draft
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
@@ -439,12 +502,49 @@ export function DraftOrders() {
               </div>
             )}
 
-            <Input
-              placeholder="Search by ID, customer, email or phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <Input
+                  placeholder="Search by ID, customer, email or phone..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="max-w-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="draft-stale-period" className="whitespace-nowrap">
+                    Stale after
+                  </Label>
+                  <Select
+                    value={stalePeriod}
+                    onValueChange={(value) => setStalePeriod(value as DraftStalePeriod)}
+                  >
+                    <SelectTrigger id="draft-stale-period" className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DRAFT_STALE_PERIOD_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {selectedCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0 self-end sm:self-auto"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  Delete {selectedCount} {selectedCount === 1 ? 'item' : 'items'}
+                </Button>
+              ) : null}
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -453,12 +553,25 @@ export function DraftOrders() {
             ) : filteredRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No draft orders found.</p>
             ) : (
+              <div className="space-y-4">
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-10 px-4 py-3">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input"
+                          checked={allFilteredSelected}
+                          disabled={saving || filteredRows.length === 0}
+                          aria-label="Select all visible draft orders"
+                          onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Order date</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Target date</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Expires</th>
@@ -466,12 +579,36 @@ export function DraftOrders() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row) => (
-                      <tr key={row.id} className="border-b transition-colors hover:bg-muted/50">
+                    {paginatedRows.map((row) => {
+                      const stale = isDraftOrderStale(row.updated_at, stalePeriod);
+                      return (
+                      <tr
+                        key={row.id}
+                        className={`border-b transition-colors hover:bg-muted/50 ${
+                          stale
+                            ? 'bg-amber-50 dark:bg-amber-950/25'
+                            : selectedIds.has(row.id)
+                              ? 'bg-muted/30'
+                              : ''
+                        } ${stale && selectedIds.has(row.id) ? 'ring-1 ring-inset ring-amber-300/70 dark:ring-amber-700/50' : ''}`}
+                      >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-input"
+                            checked={selectedIds.has(row.id)}
+                            disabled={saving}
+                            aria-label={`Select draft order ${row.id}`}
+                            onChange={(e) => toggleSelected(row.id, e.target.checked)}
+                          />
+                        </td>
                         <td className="px-4 py-3 font-mono text-sm">{row.id}</td>
                         <td className="px-4 py-3 text-sm">
                           <p className="font-medium">{row.customer_name ?? '-'}</p>
                           <p className="text-muted-foreground">{row.customer_email ?? '-'}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {formatTargetDateDisplay(row.created_at)}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {formatTargetDateDisplay(row.requested_target_date)}
@@ -503,9 +640,20 @@ export function DraftOrders() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
+              </div>
+              <Pagination
+                totalRecords={totalRecords}
+                page={page}
+                perPage={perPage}
+                totalPages={totalPages}
+                perPageOptions={perPageOptions}
+                onPageChange={setPage}
+                onPerPageChange={onPerPageChange}
+              />
               </div>
             )}
           </CardContent>
@@ -774,6 +922,36 @@ export function DraftOrders() {
               onClick={(e) => {
                 e.preventDefault();
                 void handleDelete();
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedCount} draft {selectedCount === 1 ? 'order' : 'orders'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {selectedCount} draft{' '}
+              {selectedCount === 1 ? 'order' : 'orders'}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleBulkDelete();
               }}
             >
               Delete

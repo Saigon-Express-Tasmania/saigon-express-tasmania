@@ -8,6 +8,7 @@ import {
   getInvoiceTotalDiscount,
 } from "@/lib/order-invoice";
 import { formatTrackedCurrency, type TrackedOrder } from "@/lib/supabase/order-tracking";
+import type { InvoiceContactDefaults } from "@/lib/order-invoice";
 import { LOGO_URL } from "@/lib/site-images";
 import type { StoreLocation } from "@/types";
 import { useTranslations } from "next-intl";
@@ -17,6 +18,7 @@ type OrderInvoicePrintViewProps = {
   order: TrackedOrder;
   pickupStore?: StoreLocation | null;
   invoiceCreatorStore?: StoreLocation | null;
+  contactDefaults: InvoiceContactDefaults;
 };
 
 const pageStyle: CSSProperties = {
@@ -81,11 +83,13 @@ export default function OrderInvoicePrintView({
   order,
   pickupStore = null,
   invoiceCreatorStore = null,
+  contactDefaults,
 }: OrderInvoicePrintViewProps) {
   const t = useTranslations("OrderTrackingDetails.invoice");
   const model = buildOrderInvoiceViewModel(order, {
     pickupStore,
     invoiceCreatorStore,
+    contactDefaults,
   });
   const { company } = model;
   const totalDiscount = getInvoiceTotalDiscount(order);

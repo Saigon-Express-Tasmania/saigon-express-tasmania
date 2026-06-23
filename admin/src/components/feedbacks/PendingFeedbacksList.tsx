@@ -1,6 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  DashboardDataTable,
+  DashboardTruncate,
+  dashboardTdClass,
+  dashboardThClass,
+} from '@/components/dashboard/DashboardDataTable';
+import {
   formatFeedbackDate,
   pendingFeedbacksRemainingMessage,
   statusBadgeVariant,
@@ -21,35 +27,28 @@ export type PendingFeedbacksListProps = {
 
 function PendingFeedbacksTableSkeleton({ rows }: { rows: number }) {
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            {['ID', 'Name', 'Email', 'Question', 'Status', 'Submitted', ''].map(
-              (label) => (
-                <th
-                  key={label || 'actions'}
-                  className="px-3 py-2 text-left text-sm font-semibold"
-                >
-                  {label}
-                </th>
-              ),
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: rows }, (_, index) => (
-            <tr key={index} className="border-b">
-              {Array.from({ length: 7 }, (_, cellIndex) => (
-                <td key={cellIndex} className="px-3 py-2">
-                  <div className="h-4 animate-pulse rounded bg-muted" />
-                </td>
-              ))}
-            </tr>
+    <DashboardDataTable>
+      <thead>
+        <tr className="border-b bg-muted/50">
+          {['Contact', 'Question', 'Submitted', 'Status', ''].map((label) => (
+            <th key={label || 'actions'} className={dashboardThClass}>
+              {label}
+            </th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: rows }, (_, index) => (
+          <tr key={index} className="border-b">
+            {Array.from({ length: 5 }, (_, cellIndex) => (
+              <td key={cellIndex} className={dashboardTdClass}>
+                <div className="h-4 animate-pulse rounded bg-muted" />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </DashboardDataTable>
   );
 }
 
@@ -87,65 +86,71 @@ export function PendingFeedbacksList({
         <p className="text-xs text-muted-foreground">{summaryMessage}</p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="px-3 py-2 text-left text-sm font-semibold">ID</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Name</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Email</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Question
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Status
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Submitted
-              </th>
-              <th className="px-3 py-2 text-right text-sm font-semibold">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {feedbacks.map((feedback) => (
-              <tr
-                key={feedback.id}
-                className="border-b transition-colors hover:bg-muted/50"
-              >
-                <td className="px-3 py-2 font-mono text-sm">{feedback.id}</td>
-                <td className="px-3 py-2 text-sm font-medium">{feedback.name}</td>
-                <td className="px-3 py-2 text-sm text-muted-foreground">
-                  {feedback.email ?? '—'}
-                </td>
-                <td className="max-w-xs px-3 py-2 text-sm text-muted-foreground">
-                  {truncateFeedbackText(feedback.question, 60)}
-                </td>
-                <td className="px-3 py-2">
-                  <Badge variant={statusBadgeVariant(feedback.status)}>
-                    {feedback.status}
-                  </Badge>
-                </td>
-                <td className="px-3 py-2 text-sm text-muted-foreground">
+      <DashboardDataTable>
+        <colgroup>
+          <col className="w-[24%]" />
+          <col className="w-[38%]" />
+          <col className="w-[20%]" />
+          <col className="w-[10%]" />
+          <col className="w-[8%]" />
+        </colgroup>
+        <thead>
+          <tr className="border-b bg-muted/50">
+            <th className={dashboardThClass}>Contact</th>
+            <th className={dashboardThClass}>Question</th>
+            <th className={dashboardThClass}>Submitted</th>
+            <th className={dashboardThClass}>Status</th>
+            <th className={`${dashboardThClass} text-right`}> </th>
+          </tr>
+        </thead>
+        <tbody>
+          {feedbacks.map((feedback) => (
+            <tr
+              key={feedback.id}
+              className="border-b transition-colors hover:bg-muted/50"
+            >
+              <td className={dashboardTdClass}>
+                <DashboardTruncate title={feedback.name}>
+                  <span className="font-medium">{feedback.name}</span>
+                </DashboardTruncate>
+                {feedback.email ? (
+                  <DashboardTruncate title={feedback.email}>
+                    <span className="text-muted-foreground">{feedback.email}</span>
+                  </DashboardTruncate>
+                ) : null}
+              </td>
+              <td className={`${dashboardTdClass} text-muted-foreground`}>
+                <DashboardTruncate title={feedback.question}>
+                  {truncateFeedbackText(feedback.question, 80)}
+                </DashboardTruncate>
+              </td>
+              <td className={`${dashboardTdClass} text-muted-foreground`}>
+                <DashboardTruncate title={formatFeedbackDate(feedback.created_at)}>
                   {formatFeedbackDate(feedback.created_at)}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onView(feedback)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </DashboardTruncate>
+              </td>
+              <td className={dashboardTdClass}>
+                <Badge variant={statusBadgeVariant(feedback.status)}>
+                  {feedback.status}
+                </Badge>
+              </td>
+              <td className={dashboardTdClass}>
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 shrink-0 p-0"
+                    onClick={() => onView(feedback)}
+                    aria-label={`View feedback ${feedback.id}`}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </DashboardDataTable>
 
       {remainingMessage ? (
         <p className="text-xs text-muted-foreground">{remainingMessage}</p>

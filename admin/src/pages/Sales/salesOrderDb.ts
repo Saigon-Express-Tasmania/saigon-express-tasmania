@@ -7,6 +7,7 @@ import type {
   SalesOrderItemForm,
   SalesOrderItemRow,
   SalesOrderPaymentForm,
+  SalesOrderRow,
 } from './salesOrderShared';
 
 export const ORDER_HEADER_COLUMNS =
@@ -43,6 +44,33 @@ export function formatTargetDateDisplay(iso: string | null | undefined): string 
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   return date.toLocaleString();
+}
+
+export type DraftStalePeriod = '24h' | '48h' | '72h' | '1w' | '1m';
+
+export const DRAFT_STALE_PERIOD_OPTIONS: {
+  value: DraftStalePeriod;
+  label: string;
+  ms: number;
+}[] = [
+  { value: '24h', label: '24 hours', ms: 24 * 60 * 60 * 1000 },
+  { value: '48h', label: '48 hours', ms: 48 * 60 * 60 * 1000 },
+  { value: '72h', label: '72 hours', ms: 72 * 60 * 60 * 1000 },
+  { value: '1w', label: '1 week', ms: 7 * 24 * 60 * 60 * 1000 },
+  { value: '1m', label: '1 month', ms: 30 * 24 * 60 * 60 * 1000 },
+];
+
+export function isDraftOrderStale(
+  updatedAt: string | null | undefined,
+  period: DraftStalePeriod,
+  now = Date.now(),
+): boolean {
+  if (!updatedAt) return false;
+  const option = DRAFT_STALE_PERIOD_OPTIONS.find((entry) => entry.value === period);
+  if (!option) return false;
+  const touchedAt = new Date(updatedAt).getTime();
+  if (Number.isNaN(touchedAt)) return false;
+  return now - touchedAt >= option.ms;
 }
 
 export function mapDbItemToForm(row: SalesOrderItemRow): SalesOrderItemForm {
@@ -195,4 +223,60 @@ export async function saveOrderPayment(
 
   const { error } = await supabase.from('order_payments').insert(payload);
   if (error) throw error;
+}
+
+export const SALES_ORDERS_PER_PAGE_OPTIONS = [10, 25, 50, 100] as const;
+
+function applySalesOrdersSearchFilter<T extends { or: (filters: string) => T }>(
+  query: T,
+  search: string,
+): T {
+  const term = search.trim();
+  if (!term) return query;
+
+  const escaped = term.replace(/[%_]/g, '\\$&');
+  if (/^\d+$/.test(term)) {
+    return query.or(
+      `id.eq.${term},customer_name.ilike.%${escaped}%,customer_email.ilike.%${escaped}%,customer_phone.ilike.%${escaped}%`,
+    );
+  }
+
+  return query.or(
+    `customer_name.ilike.%${escaped}%,customer_email.ilike.%${escaped}%,customer_phone.ilike.%${escaped}%`,
+  );
+}
+
+export async function fetchSalesOrdersPage(input: {
+  orderType: OrderType;
+  isTesting: boolean;
+  page: number;
+  perPage: number;
+  search?: string;
+}): Promise<{ rows: SalesOrderRow[]; totalCount: number }> {
+  const { orderType, isTesting, page, perPage, search = '' } = input;
+  const from = (page - 1) * perPage;
+  const to = from + perPage - 1;
+
+  let query = supabase
+    .from('orders')
+    .select(ORDER_HEADER_COLUMNS, { count: 'exact' })
+    .eq('order_type', orderType)
+    .eq('is_testing', isTesting)
+    .order('id', { ascending: false });
+
+  query = applySalesOrdersSearchFilter(query, search);
+
+  const { data, error, count } = await query.range(from, to);
+  if (error) throw error;
+
+  const rows = (data ?? []) as SalesOrderRow[];
+  const paymentMap = await fetchPaymentStatusByOrderIds(rows.map((row) => row.id));
+
+  return {
+    rows: rows.map((row) => ({
+      ...row,
+      payment_status: paymentMap.get(row.id) ?? 'unpaid',
+    })),
+    totalCount: count ?? 0,
+  };
 }

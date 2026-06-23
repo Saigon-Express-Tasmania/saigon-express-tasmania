@@ -1,5 +1,18 @@
 import { DashboardLayout } from '@/components/layout';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
+import { Pagination } from '@/components/ui/pagination';
+import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
 import {
   Card,
   CardContent,
@@ -12,8 +25,8 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { fetchCommerceTaxSettings } from '@/lib/commerce-tax';
 import { useSalesOrderMode } from '@/contexts/SalesOrderModeContext';
-import { Loader2, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SalesOrderDeleteDialog } from './SalesOrderDeleteDialog';
@@ -22,8 +35,9 @@ import { SalesOrderFulfillmentDialog } from './SalesOrderFulfillmentDialog';
 import { SalesOrdersTable } from './SalesOrdersTable';
 import { serializeB2BForDb } from './salesOrderB2b';
 import {
-  fetchPaymentStatusByOrderIds,
+  fetchSalesOrdersPage,
   replaceOrderItems,
+  SALES_ORDERS_PER_PAGE_OPTIONS,
   saveOrderPayment,
 } from './salesOrderDb';
 import {
@@ -33,7 +47,6 @@ import {
   parsePaymentTerms,
   syncTotalsFromItems,
   validateOrderItems,
-  SALES_ORDER_COLUMNS,
   type SalesOrderForm,
   type SalesOrderRow,
   type SalesOrdersDataset,
@@ -59,7 +72,12 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
   const [orders, setOrders] = useState<SalesOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const debouncedSearchRef = useRef<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
@@ -78,38 +96,54 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
 
   const taxMode = useMemo(() => ({ isGstInclusive }), [isGstInclusive]);
 
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalRecords / perPage)),
+    [totalRecords, perPage],
+  );
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = searchInput.trim();
+      if (debouncedSearchRef.current === next) return;
+      debouncedSearchRef.current = next;
+      setSearch(next);
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [searchInput]);
+
   const loadOrders = useCallback(async () => {
     if (!orderType) return;
 
     try {
       setError(null);
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('orders')
-        .select(SALES_ORDER_COLUMNS)
-        .eq('order_type', orderType)
-        .eq('is_testing', dataset.isTestingFilter)
-        .order('id', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      const rows = (data ?? []) as SalesOrderRow[];
-      const paymentMap = await fetchPaymentStatusByOrderIds(rows.map((row) => row.id));
-      setOrders(
-        rows.map((row) => ({
-          ...row,
-          payment_status: paymentMap.get(row.id) ?? 'unpaid',
-        })),
-      );
+      const { rows, totalCount } = await fetchSalesOrdersPage({
+        orderType,
+        isTesting: dataset.isTestingFilter,
+        page,
+        perPage,
+        search,
+      });
+      setOrders(rows);
+      setTotalRecords(totalCount);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : `Failed to load ${dataset.entityName}s.`;
       setError(message);
       setOrders([]);
+      setTotalRecords(0);
     } finally {
       setLoading(false);
     }
-  }, [dataset.entityName, dataset.isTestingFilter, orderType]);
+  }, [
+    dataset.entityName,
+    dataset.isTestingFilter,
+    orderType,
+    page,
+    perPage,
+    search,
+  ]);
 
   const {
     saving: actionSaving,
@@ -121,6 +155,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
     handleFulfillCancel,
     handleFulfillSaveDetails,
     handleDelete,
+    handleBulkDelete,
   } = useSalesOrderRowActions({
     dataset,
     orderType: orderType ?? 'pickup',
@@ -129,6 +164,7 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
   });
 
   const saving = formSaving || actionSaving;
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (isAdmin && orderType) {
@@ -138,18 +174,26 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
     }
   }, [isAdmin, loadOrders, orderType]);
 
-  const filteredOrders = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return orders;
-    return orders.filter((order) => {
-      return (
-        String(order.id).includes(term) ||
-        order.customer_name.toLowerCase().includes(term) ||
-        order.customer_email.toLowerCase().includes(term) ||
-        order.customer_phone.toLowerCase().includes(term)
-      );
-    });
-  }, [orders, search]);
+  useEffect(() => {
+    if (!loading && totalRecords > 0 && orders.length === 0 && page > 1) {
+      setPage((current) => current - 1);
+    }
+  }, [loading, orders.length, page, totalRecords]);
+
+  const {
+    selectedIds,
+    selectedCount,
+    selectAllRef,
+    allFilteredSelected,
+    toggleSelected,
+    toggleSelectAllFiltered,
+    clearSelection,
+  } = useBulkRowSelection(orders);
+
+  const onPerPageChange = (nextPerPage: number) => {
+    setPerPage(nextPerPage);
+    setPage(1);
+  };
 
   const openCreate = () => {
     setEditingOrderId(null);
@@ -363,10 +407,16 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
               <CardTitle>{tableTitle}</CardTitle>
               <CardDescription>{dataset.tableDescription}</CardDescription>
             </div>
-            <Button onClick={openCreate} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              {dataset.addButtonLabel}
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshTableButton
+                onClick={() => void loadOrders()}
+                disabled={loading}
+              />
+              <Button onClick={openCreate} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                {dataset.addButtonLabel}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
@@ -375,29 +425,60 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
               </div>
             )}
 
-            <Input
-              placeholder="Search by ID, customer, email or phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                placeholder="Search by ID, customer, email or phone..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="max-w-sm"
+              />
+              {selectedCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0 self-end sm:self-auto"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  Archive {selectedCount} {selectedCount === 1 ? 'item' : 'items'}
+                </Button>
+              ) : null}
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : filteredOrders.length === 0 ? (
+            ) : totalRecords === 0 ? (
               <p className="text-sm text-muted-foreground">{dataset.emptyMessage}</p>
             ) : (
-              <SalesOrdersTable
-                orders={filteredOrders}
-                orderType={orderType ?? undefined}
-                saving={saving}
-                onView={handleView}
-                onEdit={(order) => void openEditDialog(order)}
-                onFulfill={setFulfillTarget}
-                onDelete={setDeleteTarget}
-              />
+              <div className="space-y-4">
+                <SalesOrdersTable
+                  orders={orders}
+                  orderType={orderType ?? undefined}
+                  saving={saving}
+                  onView={handleView}
+                  onEdit={(order) => void openEditDialog(order)}
+                  onFulfill={setFulfillTarget}
+                  onDelete={setDeleteTarget}
+                  selectedIds={selectedIds}
+                  selectAllRef={selectAllRef}
+                  allFilteredSelected={allFilteredSelected}
+                  onToggleSelected={toggleSelected}
+                  onToggleSelectAll={toggleSelectAllFiltered}
+                />
+                <Pagination
+                  totalRecords={totalRecords}
+                  page={page}
+                  perPage={perPage}
+                  totalPages={totalPages}
+                  perPageOptions={[...SALES_ORDERS_PER_PAGE_OPTIONS]}
+                  onPageChange={setPage}
+                  onPerPageChange={onPerPageChange}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -433,6 +514,45 @@ export function SalesOrdersManager({ dataset }: SalesOrdersManagerProps) {
         onCancelOrder={handleFulfillCancel}
         onSaveDetails={(orderId, details) => void handleFulfillSaveDetails(orderId, details)}
       />
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Archive {selectedCount}{' '}
+              {selectedCount === 1 ? dataset.entityName : `${dataset.entityName}s`}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This moves {selectedCount}{' '}
+              {selectedCount === 1 ? dataset.entityName : `${dataset.entityName}s`} to
+              archived orders and removes them from the active list. Line items and
+              payment history stay linked by order ID.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void (async () => {
+                  const ok = await handleBulkDelete([...selectedIds]);
+                  if (ok) {
+                    clearSelection();
+                    setBulkDeleteOpen(false);
+                  }
+                })();
+              }}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

@@ -1,5 +1,6 @@
 import { handleCors, jsonResponse } from "../_shared/cors.ts";
 import { sendContactNotifyEmail } from "../_shared/contact-notify-email.ts";
+import { sendWholesaleInquiryNotifyEmail } from "../_shared/wholesale-inquiry-notify-email.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
 
 type SubmitFranchiseInterestInput = {
@@ -19,12 +20,22 @@ type SubmitFranchiseInterestInput = {
   p_guest_count?: number | null;
 };
 
-type SubmitFranchiseInterestResult = {
+type SubmitWholesaleInquiryInput = {
+  p_business_name?: string | null;
+  p_contact_name?: string | null;
+  p_email?: string | null;
+  p_phone?: string | null;
+  p_business_type?: string | null;
+  p_estimated_weekly_volume?: string | null;
+  p_message?: string | null;
+};
+
+type SubmitInterestResult = {
   id: number;
   submitted: boolean;
 };
 
-function parseSubmitInput(body: unknown): SubmitFranchiseInterestInput {
+function parseSubmitFranchiseInput(body: unknown): SubmitFranchiseInterestInput {
   if (!body || typeof body !== "object") {
     throw new Error("Invalid request body");
   }
@@ -64,6 +75,98 @@ function parseSubmitInput(body: unknown): SubmitFranchiseInterestInput {
   };
 }
 
+function parseSubmitWholesaleInput(body: unknown): SubmitWholesaleInquiryInput {
+  if (!body || typeof body !== "object") {
+    throw new Error("Invalid request body");
+  }
+
+  const data = body as Record<string, unknown>;
+
+  return {
+    p_business_name: data.p_business_name != null
+      ? String(data.p_business_name)
+      : null,
+    p_contact_name: data.p_contact_name != null
+      ? String(data.p_contact_name)
+      : null,
+    p_email: data.p_email != null ? String(data.p_email) : null,
+    p_phone: data.p_phone != null ? String(data.p_phone) : null,
+    p_business_type: data.p_business_type != null
+      ? String(data.p_business_type)
+      : null,
+    p_estimated_weekly_volume: data.p_estimated_weekly_volume != null
+      ? String(data.p_estimated_weekly_volume)
+      : null,
+    p_message: data.p_message != null ? String(data.p_message) : null,
+  };
+}
+
+function isWholesaleInquiryRequest(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const data = body as Record<string, unknown>;
+  return data.action === "wholesale_inquiry";
+}
+
+async function submitFranchiseInterest(
+  input: SubmitFranchiseInterestInput,
+): Promise<SubmitInterestResult | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.rpc(
+    "submit_franchise_interest",
+    input,
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  const result = data as SubmitInterestResult | null;
+  const interestId = result?.id;
+
+  if (interestId != null) {
+    try {
+      await sendContactNotifyEmail(interestId);
+    } catch (err) {
+      console.error(
+        `[franchise-interest] Failed to send contact notify for #${interestId}:`,
+        err,
+      );
+    }
+  }
+
+  return result;
+}
+
+async function submitWholesaleInquiry(
+  input: SubmitWholesaleInquiryInput,
+): Promise<SubmitInterestResult | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.rpc(
+    "submit_wholesale_inquiry",
+    input,
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  const result = data as SubmitInterestResult | null;
+  const inquiryId = result?.id;
+
+  if (inquiryId != null) {
+    try {
+      await sendWholesaleInquiryNotifyEmail(inquiryId);
+    } catch (err) {
+      console.error(
+        `[franchise-interest] Failed to send wholesale inquiry notify for #${inquiryId}:`,
+        err,
+      );
+    }
+  }
+
+  return result;
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -73,31 +176,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const input = parseSubmitInput(await req.json());
-    const supabase = createServiceClient();
-
-    const { data, error } = await supabase.rpc(
-      "submit_franchise_interest",
-      input,
-    );
-
-    if (error) {
-      throw error;
-    }
-
-    const result = data as SubmitFranchiseInterestResult | null;
-    const interestId = result?.id;
-
-    if (interestId != null) {
-      try {
-        await sendContactNotifyEmail(interestId);
-      } catch (err) {
-        console.error(
-          `[franchise-interest] Failed to send contact notify for #${interestId}:`,
-          err,
-        );
-      }
-    }
+    const body = await req.json();
+    const result = isWholesaleInquiryRequest(body)
+      ? await submitWholesaleInquiry(parseSubmitWholesaleInput(body))
+      : await submitFranchiseInterest(parseSubmitFranchiseInput(body));
 
     return jsonResponse(result ?? { submitted: true });
   } catch (err) {

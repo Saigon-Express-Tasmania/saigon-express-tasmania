@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import {
   Card,
   CardContent,
@@ -331,10 +332,16 @@ export function Promotions() {
                 Manage promo cards shown on the public website.
               </CardDescription>
             </div>
-            <Button onClick={() => void openCreate()} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add promotion
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshTableButton
+                onClick={() => void loadPromotions()}
+                disabled={loading}
+              />
+              <Button onClick={() => void openCreate()} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add promotion
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (

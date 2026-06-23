@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import {
   Card,
   CardContent,
@@ -280,6 +281,10 @@ export function LocalizationPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <RefreshTableButton
+                    onClick={() => void loadTranslations()}
+                    disabled={loading}
+                  />
                   <Button
                     onClick={addRow}
                     disabled={loading}

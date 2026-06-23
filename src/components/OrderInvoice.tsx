@@ -12,6 +12,7 @@ import {
 } from "@/lib/supabase/order-tracking";
 import AppImage from "@/components/AppImage";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
+import type { InvoiceContactDefaults } from "@/lib/order-invoice";
 import type { StoreLocation } from "@/types";
 import { useTranslations } from "next-intl";
 
@@ -19,6 +20,7 @@ type OrderInvoiceProps = {
   order: TrackedOrder;
   pickupStore?: StoreLocation | null;
   invoiceCreatorStore?: StoreLocation | null;
+  contactDefaults: InvoiceContactDefaults;
   statusLabel: string;
 };
 
@@ -56,11 +58,13 @@ export default function OrderInvoice({
   order,
   pickupStore = null,
   invoiceCreatorStore = null,
+  contactDefaults,
 }: OrderInvoiceProps) {
   const t = useTranslations("OrderTrackingDetails.invoice");
   const model = buildOrderInvoiceViewModel(order, {
     pickupStore,
     invoiceCreatorStore,
+    contactDefaults,
   });
   const { company } = model;
   const totalDiscount = getInvoiceTotalDiscount(order);

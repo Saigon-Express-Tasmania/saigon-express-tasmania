@@ -10,7 +10,8 @@ create type public.franchise_interest_status as enum (
 create type public.franchise_interest_type as enum (
   'franchise',
   'consultation',
-  'catering_enquiry'
+  'catering_enquiry',
+  'wholesale_enquiry'
 );
 
 create table public.franchise_interests (
@@ -28,6 +29,8 @@ create table public.franchise_interests (
   preferred_time text,
   event_date date,
   guest_count integer,
+  business_type text,
+  estimated_weekly_volume text,
   message text,
   status public.franchise_interest_status not null default 'pending',
   created_at timestamptz not null default now(),
@@ -62,13 +65,20 @@ create table public.franchise_interests (
   constraint franchise_interests_guest_count_range check (
     guest_count is null or guest_count between 1 and 10000
   ),
+  constraint franchise_interests_business_type_length check (
+    business_type is null or char_length(trim(business_type)) between 1 and 128
+  ),
+  constraint franchise_interests_estimated_weekly_volume_length check (
+    estimated_weekly_volume is null
+    or char_length(trim(estimated_weekly_volume)) between 1 and 128
+  ),
   constraint franchise_interests_message_length check (
     message is null or char_length(trim(message)) between 1 and 4000
   )
 );
 
 comment on table public.franchise_interests is
-  'Public interest submissions: franchise, consultation, and catering enquiry forms.';
+  'Public interest submissions: franchise, consultation, catering enquiry, and wholesale partnership forms.';
 comment on column public.franchise_interests.interest_type is
   'Submission type: franchise interest, consultation booking, or catering enquiry.';
 comment on column public.franchise_interests.full_name is 'Applicant full name.';
@@ -84,6 +94,10 @@ comment on column public.franchise_interests.preferred_date is 'Preferred consul
 comment on column public.franchise_interests.preferred_time is 'Preferred consultation time window.';
 comment on column public.franchise_interests.event_date is 'Catering event date.';
 comment on column public.franchise_interests.guest_count is 'Expected catering guest count.';
+comment on column public.franchise_interests.business_type is
+  'Selected business type (wholesale partnership enquiry).';
+comment on column public.franchise_interests.estimated_weekly_volume is
+  'Estimated weekly order volume bracket (wholesale partnership enquiry).';
 comment on column public.franchise_interests.message is 'Freeform message.';
 comment on column public.franchise_interests.status is 'Admin review status.';
 
@@ -239,5 +253,75 @@ comment on function public.submit_franchise_interest(
 
 grant execute on function public.submit_franchise_interest(
   text, text, text, text, text, text, text, text, date, text, text, text, date, integer
+) to anon, authenticated;
+
+create or replace function public.submit_wholesale_inquiry(
+  p_business_name text,
+  p_contact_name text,
+  p_email text,
+  p_phone text default null,
+  p_business_type text default null,
+  p_estimated_weekly_volume text default null,
+  p_message text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_business_name text := nullif(trim(p_business_name), '');
+  v_contact_name text := nullif(trim(p_contact_name), '');
+  v_email text := nullif(trim(p_email), '');
+  v_phone text := nullif(trim(p_phone), '');
+  v_business_type text := nullif(trim(p_business_type), '');
+  v_estimated_weekly_volume text := nullif(trim(p_estimated_weekly_volume), '');
+  v_message text := nullif(trim(p_message), '');
+  v_id bigint;
+begin
+  if v_business_name is null or v_contact_name is null or v_email is null then
+    raise exception 'invalid request' using errcode = '22023';
+  end if;
+
+  if v_email !~* '^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$' then
+    raise exception 'invalid request' using errcode = '22023';
+  end if;
+
+  insert into public.franchise_interests (
+    interest_type,
+    full_name,
+    email,
+    phone,
+    business_name,
+    business_type,
+    estimated_weekly_volume,
+    message
+  )
+  values (
+    'wholesale_enquiry'::public.franchise_interest_type,
+    v_contact_name,
+    v_email,
+    v_phone,
+    v_business_name,
+    v_business_type,
+    v_estimated_weekly_volume,
+    v_message
+  )
+  returning id into v_id;
+
+  return jsonb_build_object(
+    'id', v_id,
+    'submitted', true
+  );
+end;
+$$;
+
+comment on function public.submit_wholesale_inquiry(
+  text, text, text, text, text, text, text
+) is
+  'Inserts a wholesale partnership enquiry into franchise_interests.';
+
+grant execute on function public.submit_wholesale_inquiry(
+  text, text, text, text, text, text, text
 ) to anon, authenticated;
 

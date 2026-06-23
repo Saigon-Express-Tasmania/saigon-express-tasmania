@@ -11,12 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useSiteSetting } from "@/contexts/SiteContentContext";
+import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { formatInvoiceNumber } from "@/lib/order-invoice";
 import type { TrackedOrder } from "@/lib/supabase/order-tracking";
 import type { StoreLocation } from "@/types";
 import { Printer } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 
 type OrderInvoiceDialogProps = {
   open: boolean;
@@ -37,6 +39,12 @@ export default function OrderInvoiceDialog({
 }: OrderInvoiceDialogProps) {
   const t = useTranslations("OrderTrackingDetails.invoice");
   const printSourceRef = useRef<HTMLDivElement>(null);
+  const contactPhone = useFormattedContactPhone();
+  const contactEmail = useSiteSetting("contact_us_email")?.trim() ?? "";
+  const contactDefaults = useMemo(
+    () => ({ phone: contactPhone?.display ?? "", email: contactEmail }),
+    [contactPhone, contactEmail],
+  );
   const invoiceNumber =
     order.invoice_number?.trim() ||
     formatInvoiceNumber(order.id, order.created_at);
@@ -137,6 +145,7 @@ ${source.innerHTML}
               order={order}
               pickupStore={pickupStore}
               invoiceCreatorStore={invoiceCreatorStore}
+              contactDefaults={contactDefaults}
               statusLabel={statusLabel}
             />
           </div>
@@ -167,6 +176,7 @@ ${source.innerHTML}
             order={order}
             pickupStore={pickupStore}
             invoiceCreatorStore={invoiceCreatorStore}
+            contactDefaults={contactDefaults}
           />
         </div>
       ) : null}

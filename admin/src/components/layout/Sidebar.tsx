@@ -77,7 +77,7 @@ const navItems: NavItem[] = [
   },
   {
     title: "Archived Orders",
-    href: "/sales/archived-orders/wholesale",
+    href: "/sales/archived-orders/catering",
     icon: Archive,
     group: "Catering",
     isOrderPage: true,
@@ -105,10 +105,17 @@ const navItems: NavItem[] = [
   },
   {
     title: "Archived Orders",
-    href: "/sales/archived-orders/catering",
+    href: "/sales/archived-orders/wholesale",
     icon: Archive,
     group: "Wholesale",
     isOrderPage: true,
+  },
+  {
+    title: "Enquiries",
+    href: "/wholesale_enquiries",
+    icon: MessageSquare,
+    group: "Wholesale",
+    isOrderPage: false,
   },
   {
     title: "Franchise Interests",

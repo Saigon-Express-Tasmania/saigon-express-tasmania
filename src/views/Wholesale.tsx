@@ -1,12 +1,12 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "@/components/link";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
-import { trpc } from "@/lib/trpc";
+import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
 import type { WholesalePricingTier, WholesaleProduct } from "@/types";
 import {
@@ -24,6 +24,9 @@ import {
   Users,
   Phone,
 } from "lucide-react";
+
+const WHOLESALE_INQUIRY_LAST_SUBMIT_KEY = "wholesale_inquiry_last_submit_at";
+const WHOLESALE_INQUIRY_SUBMIT_COOLDOWN_MS = 60 * 1000;
 
 const ICON_MAP: Record<string, React.ElementType> = {
   TrendingDown,
@@ -72,6 +75,8 @@ export default function Wholesale({
   const splitImage = imageUrls[1] ?? imageUrls[0] ?? null;
 
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [form, setForm] = useState({
     businessName: "",
     contactName: "",
@@ -82,26 +87,74 @@ export default function Wholesale({
     message: "",
   });
 
-  const submitInquiry = trpc.public.submitPartnerInquiry.useMutation({
-    onSuccess: () => setSubmitted(true),
-    onError: () => toast.error(t("partnerForm.messages.error")),
-  });
+  useEffect(() => {
+    const updateCooldown = () => {
+      const lastSubmitAt = Number(
+        window.localStorage.getItem(WHOLESALE_INQUIRY_LAST_SUBMIT_KEY) ?? "0",
+      );
+      const remainingMs =
+        lastSubmitAt + WHOLESALE_INQUIRY_SUBMIT_COOLDOWN_MS - Date.now();
+      setCooldownSeconds(
+        remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0,
+      );
+    };
 
-  const handleSubmit = (e: React.FormEvent) => {
+    updateCooldown();
+    const timerId = window.setInterval(updateCooldown, 1000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  const cooldownLabel = `${Math.floor(cooldownSeconds / 60)}:${String(
+    cooldownSeconds % 60,
+  ).padStart(2, "0")}`;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.businessName || !form.contactName || !form.email) {
       toast.error(t("partnerForm.messages.validation"));
       return;
     }
-    submitInquiry.mutate({
-      businessName: form.businessName,
-      contactName: form.contactName,
-      email: form.email,
-      phone: form.phone || undefined,
-      businessType: form.businessType || undefined,
-      estimatedWeeklyVolume: form.estimatedWeeklyVolume || undefined,
-      message: form.message || undefined,
-    });
+
+    if (cooldownSeconds > 0) {
+      toast.error(t("partnerForm.messages.rateLimit", { time: cooldownLabel }));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await invokeEdgeFunction<{ id: number; submitted: boolean }>(
+        "franchise-interest",
+        {
+          body: {
+            action: "wholesale_inquiry",
+            p_business_name: form.businessName,
+            p_contact_name: form.contactName,
+            p_email: form.email,
+            p_phone: form.phone || null,
+            p_business_type: form.businessType || null,
+            p_estimated_weekly_volume: form.estimatedWeeklyVolume || null,
+            p_message: form.message || null,
+          },
+        },
+      );
+
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      window.localStorage.setItem(
+        WHOLESALE_INQUIRY_LAST_SUBMIT_KEY,
+        String(Date.now()),
+      );
+      setCooldownSeconds(
+        Math.ceil(WHOLESALE_INQUIRY_SUBMIT_COOLDOWN_MS / 1000),
+      );
+      setSubmitted(true);
+    } catch {
+      toast.error(t("partnerForm.messages.error"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -483,13 +536,20 @@ export default function Wholesale({
                   </div>
                   <button
                     type="submit"
-                    disabled={submitInquiry.isPending}
+                    disabled={isSubmitting || cooldownSeconds > 0}
                     className="w-full bg-brand-red text-white py-4 font-semibold text-sm hover:bg-brand-red/90 transition-colors disabled:opacity-50"
                   >
-                    {submitInquiry.isPending
+                    {isSubmitting
                       ? t("partnerForm.submit.pending")
                       : t("partnerForm.submit.default")}
                   </button>
+                  {cooldownSeconds > 0 ? (
+                    <p className="text-xs font-semibold text-brand-red text-center">
+                      {t("partnerForm.messages.cooldownWait", {
+                        time: cooldownLabel,
+                      })}
+                    </p>
+                  ) : null}
                 </form>
               )}
             </div>

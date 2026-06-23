@@ -1,14 +1,11 @@
 'use client';
 
 import { PendingCateringOrdersList } from '@/components/catering-orders/PendingCateringOrdersList';
-import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  DashboardSectionCard,
+  DashboardViewAllLink,
+} from '@/components/dashboard/DashboardSectionCard';
+import { DashboardRefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   DASHBOARD_PENDING_CATERING_ORDERS_LIMIT,
@@ -16,6 +13,7 @@ import {
   type PendingCateringOrder,
 } from '@/lib/pending-catering-orders';
 import { salesPagePath } from '@/pages/Sales/orderType';
+import { Gift } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -60,30 +58,33 @@ export function PendingCateringOrders() {
   }
 
   return (
-    <Card className="overflow-visible">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-        <div>
-          <CardTitle>Pending catering orders</CardTitle>
-          <CardDescription>
-            New catering orders awaiting review and quote.
-          </CardDescription>
+    <DashboardSectionCard
+      title="Pending catering orders"
+      description="New catering orders awaiting review and quote."
+      icon={Gift}
+      accent="amber"
+      action={
+        <div className="flex items-center gap-2">
+          <DashboardRefreshTableButton
+            onClick={() => void loadPending()}
+            disabled={loading || profileLoading}
+          />
+          {!loading && totalCount > 0 ? (
+            <DashboardViewAllLink>
+              <Link to={salesPagePath('orders', 'catering')}>View all</Link>
+            </DashboardViewAllLink>
+          ) : null}
         </div>
-        {!loading && totalCount > 0 ? (
-          <Button asChild variant="outline" size="sm">
-            <Link to={salesPagePath('orders', 'catering')}>View all</Link>
-          </Button>
-        ) : null}
-      </CardHeader>
-      <CardContent>
-        <PendingCateringOrdersList
-          orders={orders}
-          totalCount={totalCount}
-          limit={DASHBOARD_PENDING_CATERING_ORDERS_LIMIT}
-          loading={loading || profileLoading}
-          skeletonCount={3}
-          emptyMessage="No pending catering orders."
-        />
-      </CardContent>
-    </Card>
+      }
+    >
+      <PendingCateringOrdersList
+        orders={orders}
+        totalCount={totalCount}
+        limit={DASHBOARD_PENDING_CATERING_ORDERS_LIMIT}
+        loading={loading || profileLoading}
+        skeletonCount={3}
+        emptyMessage="No pending catering orders."
+      />
+    </DashboardSectionCard>
   );
 }

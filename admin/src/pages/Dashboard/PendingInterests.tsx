@@ -2,14 +2,11 @@
 
 import { FranchiseInterestViewDialog } from '@/components/interests/FranchiseInterestViewDialog';
 import { PendingFranchiseInterestsList } from '@/components/interests/PendingFranchiseInterestsList';
-import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  DashboardSectionCard,
+  DashboardViewAllLink,
+} from '@/components/dashboard/DashboardSectionCard';
+import { DashboardRefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   DASHBOARD_PENDING_FRANCHISE_INTERESTS_LIMIT,
@@ -18,6 +15,7 @@ import {
   type InterestStatus,
   type PendingFranchiseInterest,
 } from '@/lib/pending-franchise-interests';
+import { Building2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -93,33 +91,36 @@ export function PendingInterests() {
   }
 
   return (
-    <>
-      <Card className="overflow-visible">
-        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-          <div>
-            <CardTitle>Pending franchise interests</CardTitle>
-            <CardDescription>
-              Franchise enquiries awaiting review and follow-up.
-            </CardDescription>
+    <div className="h-full">
+      <DashboardSectionCard
+        title="Pending franchise interests"
+        description="Franchise enquiries awaiting review and follow-up."
+        icon={Building2}
+        accent="rose"
+        action={
+          <div className="flex items-center gap-2">
+            <DashboardRefreshTableButton
+              onClick={() => void loadPending()}
+              disabled={loading || profileLoading}
+            />
+            {!loading && totalCount > 0 ? (
+              <DashboardViewAllLink>
+                <Link to="/interests/franchise">View all</Link>
+              </DashboardViewAllLink>
+            ) : null}
           </div>
-          {!loading && totalCount > 0 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link to="/interests/franchise">View all</Link>
-            </Button>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          <PendingFranchiseInterestsList
-            interests={interests}
-            totalCount={totalCount}
-            limit={DASHBOARD_PENDING_FRANCHISE_INTERESTS_LIMIT}
-            loading={loading || profileLoading}
-            onView={setViewTarget}
-            skeletonCount={3}
-            emptyMessage="No pending franchise interest submissions."
-          />
-        </CardContent>
-      </Card>
+        }
+      >
+        <PendingFranchiseInterestsList
+          interests={interests}
+          totalCount={totalCount}
+          limit={DASHBOARD_PENDING_FRANCHISE_INTERESTS_LIMIT}
+          loading={loading || profileLoading}
+          onView={setViewTarget}
+          skeletonCount={3}
+          emptyMessage="No pending franchise interest submissions."
+        />
+      </DashboardSectionCard>
 
       <FranchiseInterestViewDialog
         interest={viewTarget}
@@ -130,6 +131,6 @@ export function PendingInterests() {
           void handleStatusChange(interest, status)
         }
       />
-    </>
+    </div>
   );
 }

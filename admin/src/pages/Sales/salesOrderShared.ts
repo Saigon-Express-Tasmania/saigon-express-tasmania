@@ -184,7 +184,6 @@ export type SalesOrdersDataset = {
   emptyMessage: string;
   formIdPrefix: string;
   defaultPaymentMode: 'test' | 'live' | null;
-  archiveOnDelete: boolean;
 };
 
 export const SALES_ORDER_COLUMNS = ORDER_HEADER_COLUMNS;
@@ -249,7 +248,6 @@ export const LIVE_ORDERS_DATASET: SalesOrdersDataset = {
   emptyMessage: 'No orders found.',
   formIdPrefix: 'order',
   defaultPaymentMode: null,
-  archiveOnDelete: true,
 };
 
 export const TEST_ORDERS_DATASET: SalesOrdersDataset = {
@@ -263,7 +261,6 @@ export const TEST_ORDERS_DATASET: SalesOrdersDataset = {
   emptyMessage: 'No test orders found.',
   formIdPrefix: 'test-order',
   defaultPaymentMode: 'test',
-  archiveOnDelete: false,
 };
 
 export function emptyPaymentForm(

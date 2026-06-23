@@ -4,6 +4,7 @@ import {
   INVOICE_COMPANY,
   type InvoiceAddressBlock,
   type InvoiceCompanyInfo,
+  type InvoiceContactDefaults,
 } from "@/lib/order-invoice";
 import {
   formatTrackedDateLong,
@@ -34,22 +35,23 @@ export function getInvoicePaymentNoteKey(
 }
 
 export function resolveInvoiceCompanyInfo(
+  contactDefaults: InvoiceContactDefaults,
   invoiceCreatorStore?: StoreLocation | null,
 ): InvoiceCompanyInfo {
   if (invoiceCreatorStore) {
     return {
       name: invoiceCreatorStore.name,
       lines: invoiceCreatorStore.address.split(",").filter(Boolean) as string[],
-      phone: invoiceCreatorStore.phone?.trim() || INVOICE_COMPANY.phone,
-      email: invoiceCreatorStore.email?.trim() || INVOICE_COMPANY.email,
+      phone: invoiceCreatorStore.phone?.trim() || contactDefaults.phone,
+      email: invoiceCreatorStore.email?.trim() || contactDefaults.email,
     };
   }
 
   return {
     name: INVOICE_COMPANY.name,
     lines: [INVOICE_COMPANY.address, INVOICE_COMPANY.locality],
-    phone: INVOICE_COMPANY.phone,
-    email: INVOICE_COMPANY.email,
+    phone: contactDefaults.phone,
+    email: contactDefaults.email,
   };
 }
 
@@ -156,15 +158,17 @@ export type OrderInvoiceViewModel = {
 export type OrderInvoiceStoreContext = {
   pickupStore?: StoreLocation | null;
   invoiceCreatorStore?: StoreLocation | null;
+  contactDefaults: InvoiceContactDefaults;
 };
 
 export function buildOrderInvoiceViewModel(
   order: TrackedOrder,
-  stores: OrderInvoiceStoreContext = {},
+  stores: OrderInvoiceStoreContext,
 ): OrderInvoiceViewModel {
   const paymentTerms = order.b2b.billingAddress?.payment_terms;
   const isPickup = isPickupFulfillment(order);
-  const { pickupStore = null, invoiceCreatorStore = null } = stores;
+  const { pickupStore = null, invoiceCreatorStore = null, contactDefaults } =
+    stores;
 
   return {
     invoiceNumber:
@@ -173,7 +177,7 @@ export function buildOrderInvoiceViewModel(
     orderReference: formatTrackedOrderId(order.id),
     issueDate: formatTrackedDateLong(order.created_at),
     dueDate: formatInvoiceDueDate(order.created_at, paymentTerms),
-    company: resolveInvoiceCompanyInfo(invoiceCreatorStore),
+    company: resolveInvoiceCompanyInfo(contactDefaults, invoiceCreatorStore),
     billing: resolveInvoiceBillingBlock(order),
     shipping: resolveInvoiceShippingBlock(order, pickupStore, isPickup),
     hasCatchWeight: order.items.some((item) => item.is_catch_weight),

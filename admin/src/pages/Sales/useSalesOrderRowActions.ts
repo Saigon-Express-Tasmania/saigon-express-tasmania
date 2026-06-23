@@ -211,41 +211,54 @@ export function useSalesOrderRowActions({
     if (!deleteTarget) return;
     setSaving(true);
     try {
-      if (dataset.archiveOnDelete) {
-        const { error: archiveDeleteError } = await supabase.rpc('archive_and_delete_order', {
-          p_order_id: deleteTarget.id,
-          p_archived_reason: 'Deleted from admin sales page',
-        });
-        if (archiveDeleteError) throw archiveDeleteError;
-        toast.success(`${dataset.entityNameTitle} archived and deleted.`);
-      } else {
-        const { error: deleteError } = await supabase
-          .from('orders')
-          .delete()
-          .eq('id', deleteTarget.id)
-          .eq('is_testing', dataset.isTestingFilter);
-        if (deleteError) throw deleteError;
-        toast.success(`${dataset.entityNameTitle} deleted.`);
-      }
+      const { error: archiveError } = await supabase.rpc('archive_and_delete_order', {
+        p_order_id: deleteTarget.id,
+        p_archived_reason: 'Archived from admin sales page',
+      });
+      if (archiveError) throw archiveError;
+      toast.success(`${dataset.entityNameTitle} archived.`);
       setDeleteTarget(null);
       await onAfterChange?.();
       return true;
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : `Failed to delete ${dataset.entityName}.`,
+        err instanceof Error ? err.message : `Failed to archive ${dataset.entityName}.`,
       );
       return false;
     } finally {
       setSaving(false);
     }
-  }, [
-    dataset.archiveOnDelete,
-    dataset.entityName,
-    dataset.entityNameTitle,
-    dataset.isTestingFilter,
-    deleteTarget,
-    onAfterChange,
-  ]);
+  }, [dataset.entityName, dataset.entityNameTitle, deleteTarget, onAfterChange]);
+
+  const handleBulkDelete = useCallback(
+    async (ids: number[]) => {
+      if (ids.length === 0) return false;
+
+      setSaving(true);
+      try {
+        for (const id of ids) {
+          const { error: archiveError } = await supabase.rpc('archive_and_delete_order', {
+            p_order_id: id,
+            p_archived_reason: 'Archived from admin sales page',
+          });
+          if (archiveError) throw archiveError;
+        }
+        toast.success(
+          `Archived ${ids.length} ${ids.length === 1 ? dataset.entityName : `${dataset.entityName}s`}.`,
+        );
+        await onAfterChange?.();
+        return true;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : `Failed to archive ${dataset.entityName}s.`,
+        );
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [dataset.entityName, onAfterChange],
+  );
 
   const enrichOrderWithPaymentStatus = useCallback(async (order: SalesOrderRow) => {
     const paymentMap = await fetchPaymentStatusByOrderIds([order.id]);
@@ -265,6 +278,7 @@ export function useSalesOrderRowActions({
     handleFulfillCancel,
     handleFulfillSaveDetails,
     handleDelete,
+    handleBulkDelete,
     enrichOrderWithPaymentStatus,
   };
 }

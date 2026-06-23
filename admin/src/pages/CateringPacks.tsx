@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
+import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
 import {
   Card,
   CardContent,
@@ -270,6 +272,7 @@ export function CateringPacks() {
     useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<CateringPackRow | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('id');
@@ -362,6 +365,17 @@ export function CateringPacks() {
       return a[sortColumn].localeCompare(b[sortColumn]) * direction;
     });
   }, [packs, search, categoryFilter, sortColumn, sortDirection]);
+
+  const {
+    selectedIds,
+    selectedCount,
+    selectAllRef,
+    allFilteredSelected,
+    toggleSelected,
+    toggleSelectAllFiltered,
+    clearSelection,
+    removeFromSelection,
+  } = useBulkRowSelection(filteredPacks);
 
   const openCreate = async () => {
     try {
@@ -651,11 +665,40 @@ export function CateringPacks() {
 
       if (deleteError) throw deleteError;
       toast.success('Catering item deleted.');
+      removeFromSelection(deleteTarget.id);
       setDeleteTarget(null);
       await loadCateringPacks();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to delete catering item.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setSaving(true);
+    try {
+      const { error: deleteError } = await supabase
+        .from('products')
+        .delete()
+        .in('id', ids)
+        .eq('product_type', 'catering');
+
+      if (deleteError) throw deleteError;
+      toast.success(
+        `Deleted ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}.`,
+      );
+      clearSelection();
+      setBulkDeleteOpen(false);
+      await loadCateringPacks();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to delete catering items.',
       );
     } finally {
       setSaving(false);
@@ -726,10 +769,16 @@ export function CateringPacks() {
                 page.
               </CardDescription>
             </div>
-            <Button onClick={() => void openCreate()} disabled={loading}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add item
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshTableButton
+                onClick={() => void loadCateringPacks()}
+                disabled={loading}
+              />
+              <Button onClick={() => void openCreate()} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add item
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
@@ -738,34 +787,49 @@ export function CateringPacks() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <Input
-                placeholder="Search name, category, tag, note..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="max-w-sm"
-              />
-              <div className="flex items-center gap-2">
-                <Label htmlFor="pack-category-filter" className="whitespace-nowrap">
-                  Category
-                </Label>
-                <Select
-                  value={categoryFilter}
-                  onValueChange={(value) => setCategoryFilter(value)}
-                >
-                  <SelectTrigger id="pack-category-filter" className="w-56">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {categoryOptions.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <Input
+                  placeholder="Search name, category, tag, note..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="max-w-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="pack-category-filter" className="whitespace-nowrap">
+                    Category
+                  </Label>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={(value) => setCategoryFilter(value)}
+                  >
+                    <SelectTrigger id="pack-category-filter" className="w-56">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      {categoryOptions.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              {selectedCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0 self-end sm:self-auto"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  Delete {selectedCount} {selectedCount === 1 ? 'item' : 'items'}
+                </Button>
+              ) : null}
             </div>
 
             {loading ? (
@@ -781,6 +845,17 @@ export function CateringPacks() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-10 px-4 py-3">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input"
+                          checked={allFilteredSelected}
+                          disabled={saving || filteredPacks.length === 0}
+                          aria-label="Select all visible catering items"
+                          onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
+                        />
+                      </th>
                       <SortableHeader
                         label="ID"
                         column="id"
@@ -826,8 +901,20 @@ export function CateringPacks() {
                     {filteredPacks.map((pack) => (
                       <tr
                         key={pack.id}
-                        className="border-b transition-colors hover:bg-muted/50"
+                        className={`border-b transition-colors hover:bg-muted/50 ${
+                          selectedIds.has(pack.id) ? 'bg-muted/30' : ''
+                        }`}
                       >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-input"
+                            checked={selectedIds.has(pack.id)}
+                            disabled={saving}
+                            aria-label={`Select catering item ${pack.name}`}
+                            onChange={(e) => toggleSelected(pack.id, e.target.checked)}
+                          />
+                        </td>
                         <td className="px-4 py-3 font-mono text-sm">{pack.id}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {pack.category}
@@ -1238,6 +1325,36 @@ export function CateringPacks() {
               onClick={(e) => {
                 e.preventDefault();
                 void handleDelete();
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedCount} catering {selectedCount === 1 ? 'item' : 'items'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {selectedCount} catering{' '}
+              {selectedCount === 1 ? 'item' : 'items'}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleBulkDelete();
               }}
             >
               Delete

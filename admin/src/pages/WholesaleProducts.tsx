@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
 import {
   Card,
   CardContent,
@@ -222,6 +223,7 @@ export function WholesaleProducts() {
   const [deleteTarget, setDeleteTarget] = useState<WholesaleProductRow | null>(
     null,
   );
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
@@ -354,6 +356,17 @@ export function WholesaleProducts() {
       );
     });
   }, [products, search, categoryFilter]);
+
+  const {
+    selectedIds,
+    selectedCount,
+    selectAllRef,
+    allFilteredSelected,
+    toggleSelected,
+    toggleSelectAllFiltered,
+    clearSelection,
+    removeFromSelection,
+  } = useBulkRowSelection(filteredProducts);
 
   const openCreate = async () => {
     try {
@@ -545,6 +558,7 @@ export function WholesaleProducts() {
 
       if (deleteError) throw deleteError;
       toast.success('Wholesale product deleted.');
+      removeFromSelection(deleteTarget.id);
       setDeleteTarget(null);
       await loadProducts();
     } catch (err) {
@@ -552,6 +566,36 @@ export function WholesaleProducts() {
         err instanceof Error
           ? err.message
           : 'Failed to delete wholesale product.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setSaving(true);
+    try {
+      const { error: deleteError } = await supabase
+        .from('products')
+        .delete()
+        .in('id', ids)
+        .eq('product_type', 'wholesale');
+
+      if (deleteError) throw deleteError;
+      toast.success(
+        `Deleted ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}.`,
+      );
+      clearSelection();
+      setBulkDeleteOpen(false);
+      await loadProducts();
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to delete wholesale products.',
       );
     } finally {
       setSaving(false);
@@ -628,34 +672,49 @@ export function WholesaleProducts() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Input
-                placeholder="Search by name, SKU, description or category…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="max-w-sm"
-              />
-              <div className="flex items-center gap-2">
-                <Label htmlFor="wp-category-filter" className="whitespace-nowrap">
-                  Category
-                </Label>
-                <Select
-                  value={categoryFilter}
-                  onValueChange={(value) => setCategoryFilter(value)}
-                >
-                  <SelectTrigger id="wp-category-filter" className="w-44">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <Input
+                  placeholder="Search by name, SKU, description or category…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="max-w-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="wp-category-filter" className="whitespace-nowrap">
+                    Category
+                  </Label>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={(value) => setCategoryFilter(value)}
+                  >
+                    <SelectTrigger id="wp-category-filter" className="w-44">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              {selectedCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0 self-end sm:self-auto"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  Delete {selectedCount} {selectedCount === 1 ? 'item' : 'items'}
+                </Button>
+              ) : null}
             </div>
 
             {loading ? (
@@ -671,6 +730,17 @@ export function WholesaleProducts() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-10 px-4 py-3">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input"
+                          checked={allFilteredSelected}
+                          disabled={saving || filteredProducts.length === 0}
+                          aria-label="Select all visible wholesale products"
+                          onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         ID
                       </th>
@@ -718,8 +788,20 @@ export function WholesaleProducts() {
                       return (
                       <tr
                         key={p.id}
-                        className="border-b transition-colors hover:bg-muted/50"
+                        className={`border-b transition-colors hover:bg-muted/50 ${
+                          selectedIds.has(p.id) ? 'bg-muted/30' : ''
+                        }`}
                       >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-input"
+                            checked={selectedIds.has(p.id)}
+                            disabled={saving}
+                            aria-label={`Select wholesale product ${p.name}`}
+                            onChange={(e) => toggleSelected(p.id, e.target.checked)}
+                          />
+                        </td>
                         <td className="px-4 py-3 font-mono text-sm">{p.id}</td>
                         <td className="px-4 py-3 text-sm font-medium">
                           <div className="flex items-center gap-2.5">
@@ -1067,6 +1149,37 @@ export function WholesaleProducts() {
               onClick={(e) => {
                 e.preventDefault();
                 void handleDelete();
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedCount} wholesale{' '}
+              {selectedCount === 1 ? 'product' : 'products'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {selectedCount} wholesale{' '}
+              {selectedCount === 1 ? 'product' : 'products'}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleBulkDelete();
               }}
             >
               Delete

@@ -209,7 +209,7 @@ export function SalesOrderDetailsPage() {
                   size="sm"
                   onClick={() => void enrichOrderWithPaymentStatus(order).then(setDeleteTarget)}
                   disabled={saving || loading}
-                  aria-label={`Delete order ${order.id}`}
+                  aria-label={`Archive order ${order.id}`}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>

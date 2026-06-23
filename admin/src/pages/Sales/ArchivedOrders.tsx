@@ -1,6 +1,18 @@
 import { DashboardLayout } from '@/components/layout';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { RefreshTableButton } from '@/components/ui/refresh-table-button';
+import { Pagination } from '@/components/ui/pagination';
 import {
   Card,
   CardContent,
@@ -25,10 +37,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useTablePagination } from '@/hooks/useTablePagination';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { fetchCommerceTaxSettings } from '@/lib/commerce-tax';
-import { Loader2, Pencil } from 'lucide-react';
+import { Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -172,6 +186,8 @@ export function ArchivedOrders() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ArchivedOrderForm | null>(null);
   const [isGstInclusive, setIsGstInclusive] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<ArchivedOrderRow | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   useEffect(() => {
     void fetchCommerceTaxSettings()
@@ -229,6 +245,28 @@ export function ArchivedOrders() {
       );
     });
   }, [rows, search]);
+
+  const {
+    paginatedItems: paginatedRows,
+    page,
+    perPage,
+    totalPages,
+    totalRecords,
+    perPageOptions,
+    setPage,
+    onPerPageChange,
+  } = useTablePagination(filteredRows, search);
+
+  const {
+    selectedIds,
+    selectedCount,
+    selectAllRef,
+    allFilteredSelected,
+    toggleSelected,
+    toggleSelectAllFiltered,
+    clearSelection,
+    removeFromSelection,
+  } = useBulkRowSelection(filteredRows);
 
   const openEdit = async (row: ArchivedOrderRow) => {
     setSaving(true);
@@ -325,6 +363,59 @@ export function ArchivedOrders() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget || !orderType) return;
+
+    setSaving(true);
+    try {
+      const { error: deleteError } = await supabase
+        .from('archived_orders')
+        .delete()
+        .eq('id', deleteTarget.id)
+        .eq('order_type', orderType);
+      if (deleteError) throw deleteError;
+      toast.success('Archived order permanently deleted.');
+      removeFromSelection(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadRows();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to delete archived order.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!orderType) return;
+
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setSaving(true);
+    try {
+      const { error: deleteError } = await supabase
+        .from('archived_orders')
+        .delete()
+        .in('id', ids)
+        .eq('order_type', orderType);
+      if (deleteError) throw deleteError;
+      toast.success(
+        `Permanently deleted ${ids.length} archived ${ids.length === 1 ? 'order' : 'orders'}.`,
+      );
+      clearSelection();
+      setBulkDeleteOpen(false);
+      await loadRows();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to delete archived orders.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (redirectTo) return <Navigate to={redirectTo} replace />;
 
   if (profileLoading) {
@@ -354,13 +445,17 @@ export function ArchivedOrders() {
     <DashboardLayout title={pageTitle}>
       <div className="space-y-6">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
               <CardTitle>{tableTitle}</CardTitle>
               <CardDescription>
                 Historical order headers. Line items remain in shared order_items by preserved ID.
               </CardDescription>
             </div>
+            <RefreshTableButton
+              onClick={() => void loadRows()}
+              disabled={loading}
+            />
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
@@ -368,12 +463,29 @@ export function ArchivedOrders() {
                 {error}
               </div>
             )}
-            <Input
-              placeholder="Search by order ID, customer, email or phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <Input
+                  placeholder="Search by order ID, customer, email or phone..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              {selectedCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0 self-end sm:self-auto"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  Delete {selectedCount} {selectedCount === 1 ? 'item' : 'items'}
+                </Button>
+              ) : null}
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -382,12 +494,25 @@ export function ArchivedOrders() {
             ) : filteredRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No archived orders found.</p>
             ) : (
+              <div className="space-y-4">
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-10 px-4 py-3">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input"
+                          checked={allFilteredSelected}
+                          disabled={saving || filteredRows.length === 0}
+                          aria-label="Select all visible archived orders"
+                          onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Order ID</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Order date</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Target date</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Total</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
@@ -396,12 +521,30 @@ export function ArchivedOrders() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row) => (
-                      <tr key={row.id} className="border-b transition-colors hover:bg-muted/50">
+                    {paginatedRows.map((row) => (
+                      <tr
+                        key={row.id}
+                        className={`border-b transition-colors hover:bg-muted/50 ${
+                          selectedIds.has(row.id) ? 'bg-muted/30' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-input"
+                            checked={selectedIds.has(row.id)}
+                            disabled={saving}
+                            aria-label={`Select archived order ${row.id}`}
+                            onChange={(e) => toggleSelected(row.id, e.target.checked)}
+                          />
+                        </td>
                         <td className="px-4 py-3 font-mono text-sm">{row.id}</td>
                         <td className="px-4 py-3 text-sm">
                           <p className="font-medium">{row.customer_name}</p>
                           <p className="text-muted-foreground">{row.customer_email}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {formatTargetDateDisplay(row.created_at)}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {formatTargetDateDisplay(row.requested_target_date)}
@@ -432,12 +575,31 @@ export function ArchivedOrders() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDeleteTarget(row)}
+                              disabled={saving}
+                              aria-label={`Delete archived order ${row.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <Pagination
+                totalRecords={totalRecords}
+                page={page}
+                perPage={perPage}
+                totalPages={totalPages}
+                perPageOptions={perPageOptions}
+                onPageChange={setPage}
+                onPerPageChange={onPerPageChange}
+              />
               </div>
             )}
           </CardContent>
@@ -753,6 +915,67 @@ export function ArchivedOrders() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete archived order permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes archived order <strong>#{deleteTarget?.id}</strong> from{' '}
+              <code>archived_orders</code>. Line items in shared tables are not removed. This
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDelete();
+              }}
+            >
+              Delete permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedCount} archived {selectedCount === 1 ? 'order' : 'orders'}{' '}
+              permanently?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {selectedCount} archived{' '}
+              {selectedCount === 1 ? 'order' : 'orders'} from <code>archived_orders</code>. Line
+              items in shared tables are not removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleBulkDelete();
+              }}
+            >
+              Delete permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

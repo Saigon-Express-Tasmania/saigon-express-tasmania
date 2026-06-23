@@ -2,14 +2,11 @@
 
 import { FeedbackViewDialog } from '@/components/feedbacks/FeedbackViewDialog';
 import { PendingFeedbacksList } from '@/components/feedbacks/PendingFeedbacksList';
-import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  DashboardSectionCard,
+  DashboardViewAllLink,
+} from '@/components/dashboard/DashboardSectionCard';
+import { DashboardRefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   DASHBOARD_PENDING_FEEDBACKS_LIMIT,
@@ -17,6 +14,7 @@ import {
   updateFeedbackStatus,
 } from '@/lib/feedbacks';
 import type { Feedback, FeedbackStatus } from '@/types/Feedback';
+import { MessageSquare } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -91,33 +89,36 @@ export function PendingFeedbacks() {
   }
 
   return (
-    <>
-      <Card className="overflow-visible">
-        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-          <div>
-            <CardTitle>Unresolved feedback</CardTitle>
-            <CardDescription>
-              FAQ submissions that still need review or resolution.
-            </CardDescription>
+    <div className="h-full">
+      <DashboardSectionCard
+        title="Unresolved feedback"
+        description="FAQ submissions that still need review or resolution."
+        icon={MessageSquare}
+        accent="violet"
+        action={
+          <div className="flex items-center gap-2">
+            <DashboardRefreshTableButton
+              onClick={() => void loadPending()}
+              disabled={loading || profileLoading}
+            />
+            {!loading && totalCount > 0 ? (
+              <DashboardViewAllLink>
+                <Link to="/feedbacks">View all</Link>
+              </DashboardViewAllLink>
+            ) : null}
           </div>
-          {!loading && totalCount > 0 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link to="/feedbacks">View all</Link>
-            </Button>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          <PendingFeedbacksList
-            feedbacks={feedbacks}
-            totalCount={totalCount}
-            limit={DASHBOARD_PENDING_FEEDBACKS_LIMIT}
-            loading={loading || profileLoading}
-            onView={setViewTarget}
-            skeletonCount={3}
-            emptyMessage="No unresolved feedback submissions."
-          />
-        </CardContent>
-      </Card>
+        }
+      >
+        <PendingFeedbacksList
+          feedbacks={feedbacks}
+          totalCount={totalCount}
+          limit={DASHBOARD_PENDING_FEEDBACKS_LIMIT}
+          loading={loading || profileLoading}
+          onView={setViewTarget}
+          skeletonCount={3}
+          emptyMessage="No unresolved feedback submissions."
+        />
+      </DashboardSectionCard>
 
       <FeedbackViewDialog
         feedback={viewTarget}
@@ -128,6 +129,6 @@ export function PendingFeedbacks() {
           void handleStatusChange(feedback, status)
         }
       />
-    </>
+    </div>
   );
 }

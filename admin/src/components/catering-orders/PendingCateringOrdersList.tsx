@@ -1,5 +1,10 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DashboardDataTable,
+  DashboardTruncate,
+  dashboardTdClass,
+  dashboardThClass,
+} from '@/components/dashboard/DashboardDataTable';
 import {
   formatPendingCateringOrderDate,
   formatPendingCateringOrderTotal,
@@ -22,35 +27,28 @@ export type PendingCateringOrdersListProps = {
 
 function PendingCateringOrdersTableSkeleton({ rows }: { rows: number }) {
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            {['ID', 'Customer', 'Submitted', 'Event date', 'Total', 'Status', ''].map(
-              (label) => (
-                <th
-                  key={label || 'actions'}
-                  className="px-3 py-2 text-left text-sm font-semibold"
-                >
-                  {label}
-                </th>
-              ),
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: rows }, (_, index) => (
-            <tr key={index} className="border-b">
-              {Array.from({ length: 7 }, (_, cellIndex) => (
-                <td key={cellIndex} className="px-3 py-2">
-                  <div className="h-4 animate-pulse rounded bg-muted" />
-                </td>
-              ))}
-            </tr>
+    <DashboardDataTable>
+      <thead>
+        <tr className="border-b bg-muted/50">
+          {['Customer', 'Event', 'Total', ''].map((label) => (
+            <th key={label || 'actions'} className={dashboardThClass}>
+              {label}
+            </th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: rows }, (_, index) => (
+          <tr key={index} className="border-b">
+            {Array.from({ length: 4 }, (_, cellIndex) => (
+              <td key={cellIndex} className={dashboardTdClass}>
+                <div className="h-4 animate-pulse rounded bg-muted" />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </DashboardDataTable>
   );
 }
 
@@ -87,59 +85,71 @@ export function PendingCateringOrdersList({
         <p className="text-xs text-muted-foreground">{summaryMessage}</p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="px-3 py-2 text-left text-sm font-semibold">ID</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Customer</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Submitted</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Event date</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Total</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Status</th>
-              <th className="px-3 py-2 text-right text-sm font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr
-                key={order.id}
-                className="border-b transition-colors hover:bg-muted/50"
-              >
-                <td className="px-3 py-2 font-mono text-sm">{order.id}</td>
-                <td className="px-3 py-2 text-sm">
-                  <p className="font-medium">{order.customer_name}</p>
-                  <p className="text-muted-foreground">{order.customer_email}</p>
-                </td>
-                <td className="px-3 py-2 text-sm text-muted-foreground">
-                  {formatPendingCateringOrderDate(order.created_at)}
-                </td>
-                <td className="px-3 py-2 text-sm text-muted-foreground">
+      <DashboardDataTable>
+        <colgroup>
+          <col className="w-[46%]" />
+          <col className="w-[24%]" />
+          <col className="w-[18%]" />
+          <col className="w-[12%]" />
+        </colgroup>
+        <thead>
+          <tr className="border-b bg-muted/50">
+            <th className={dashboardThClass}>Customer</th>
+            <th className={dashboardThClass}>Event</th>
+            <th className={dashboardThClass}>Total</th>
+            <th className={`${dashboardThClass} text-right`}> </th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr
+              key={order.id}
+              className="border-b transition-colors hover:bg-muted/50"
+            >
+              <td className={dashboardTdClass}>
+                <DashboardTruncate title={order.customer_name}>
+                  <span className="font-medium">{order.customer_name}</span>
+                </DashboardTruncate>
+                <DashboardTruncate title={order.customer_email}>
+                  <span className="text-muted-foreground">{order.customer_email}</span>
+                </DashboardTruncate>
+                <DashboardTruncate title={formatPendingCateringOrderDate(order.created_at)}>
+                  <span className="text-[11px] text-muted-foreground">
+                    Submitted {formatPendingCateringOrderDate(order.created_at)}
+                  </span>
+                </DashboardTruncate>
+              </td>
+              <td className={`${dashboardTdClass} text-muted-foreground`}>
+                <DashboardTruncate
+                  title={formatTargetDateDisplay(order.requested_target_date)}
+                >
                   {formatTargetDateDisplay(order.requested_target_date)}
-                </td>
-                <td className="px-3 py-2 text-sm tabular-nums">
-                  {formatPendingCateringOrderTotal(order.grand_total)}
-                </td>
-                <td className="px-3 py-2">
-                  <Badge variant="outline">{order.status}</Badge>
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex justify-end">
-                    <Button asChild variant="outline" size="sm">
-                      <Link
-                        to={salesOrderDetailsLink('live', 'catering', order.id)}
-                        aria-label={`View catering order ${order.id}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </DashboardTruncate>
+              </td>
+              <td className={`${dashboardTdClass} tabular-nums`}>
+                {formatPendingCateringOrderTotal(order.grand_total)}
+              </td>
+              <td className={dashboardTdClass}>
+                <div className="flex justify-end">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 shrink-0 p-0"
+                  >
+                    <Link
+                      to={salesOrderDetailsLink('live', 'catering', order.id)}
+                      aria-label={`View catering order ${order.id}`}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </DashboardDataTable>
 
       {remainingMessage ? (
         <p className="text-xs text-muted-foreground">{remainingMessage}</p>
