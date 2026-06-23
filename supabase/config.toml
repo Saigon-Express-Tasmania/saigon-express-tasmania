@@ -408,6 +408,9 @@ verify_jwt = false
 [functions.franchise-interest]
 verify_jwt = false
 
+[functions.job-application]
+verify_jwt = false
+
 [functions.catering-order]
 verify_jwt = false
 

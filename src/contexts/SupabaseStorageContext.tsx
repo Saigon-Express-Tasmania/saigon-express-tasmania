@@ -17,6 +17,8 @@ export type UploadMediaOptions = {
   folder?: string;
   fileName?: string;
   upsert?: boolean;
+  /** Upload to `job-applications/guest/{guestId}/` without requiring sign-in */
+  guestId?: string;
 };
 
 export type UploadMediaResult = {
@@ -72,18 +74,28 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
 
   const uploadMedia = useCallback(
     async (file: File, options?: UploadMediaOptions) => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-      if (!user) throw new Error("You must be signed in to upload files.");
-
-      const folder = options?.folder ?? "media";
+      const guestId = options?.guestId?.trim();
       const ext = extensionFromFile(file);
-      const fileName = options?.fileName ?? `${Date.now()}.${ext}`;
-      const path = `${folder}/${user.id}/${fileName}`;
+      const safeOriginalName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const fileName = options?.fileName ??
+        (safeOriginalName ? `${Date.now()}-${safeOriginalName}` : `${Date.now()}.${ext}`);
+
+      let path: string;
+
+      if (guestId) {
+        path = `job-applications/guest/${guestId}/${fileName}`;
+      } else {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+        if (!user) throw new Error("You must be signed in to upload files.");
+
+        const folder = options?.folder ?? "media";
+        path = `${folder}/${user.id}/${fileName}`;
+      }
 
       setIsUploading(true);
       try {

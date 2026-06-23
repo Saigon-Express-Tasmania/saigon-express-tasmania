@@ -216,23 +216,24 @@ export default function Jobs({ jobs }: { jobs: Job[] }) {
 
                       {/* Apply CTA */}
                       <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
-                        {contactEmail ? (
-                          <a
-                            href={`mailto:${contactEmail}?subject=${encodeURIComponent(
-                              t("emailSubject", { jobTitle: job.title }),
-                            )}&body=${t("emailBody", { jobTitle: encodeURIComponent(job.title) })}`}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors text-sm"
-                          >
-                            <Mail className="w-4 h-4" />
-                            {t("applyButton")}
-                          </a>
-                        ) : null}
+                        <a
+                          href={`?job=${job.id}#apply`}
+                          className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors text-sm"
+                        >
+                          <Mail className="w-4 h-4" />
+                          {t("applyButton")}
+                        </a>
                         {contactEmail ? (
                           <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-4 py-2.5">
                             {t("applyFootnote")}{" "}
-                            <strong className="text-foreground ml-1">
+                            <a
+                              href={`mailto:${contactEmail}?subject=${encodeURIComponent(
+                                t("emailSubject", { jobTitle: job.title }),
+                              )}&body=${t("emailBody", { jobTitle: encodeURIComponent(job.title) })}`}
+                              className="font-semibold text-foreground hover:text-primary"
+                            >
                               {contactEmail}
-                            </strong>
+                            </a>
                           </span>
                         ) : null}
                       </div>

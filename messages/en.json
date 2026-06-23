@@ -646,6 +646,71 @@
       "emailBtn": "Email Your Application",
       "smsLabel": "SMS enquiries: {phone}",
       "equalOpportunity": "Saigon Express Tasmania is an equal opportunity employer. We welcome applications from people of all backgrounds, including First Nations peoples, people with disability, and those from culturally and linguistically diverse communities."
+    },
+    "applicationForm": {
+      "tag": "APPLY ONLINE",
+      "title": "Submit Your Application",
+      "description": "Complete the three-step form below. We will review your application and get back to you within a few business days.",
+      "progressLabel": "Application progress",
+      "stepLabel": "Step {step}",
+      "steps": {
+        "personalDetails": "Personal Details",
+        "additionalQuestions": "Additional Questions",
+        "reviewSubmit": "Review and Submit"
+      },
+      "highlights": {
+        "step1": "Tell us about yourself and upload your resume or cover letter.",
+        "step2": "Answer a few quick screening questions about availability.",
+        "step3": "Review your details and submit your application."
+      },
+      "fields": {
+        "role": "Role",
+        "selectRole": "Select a role",
+        "selectPlaceholder": "Select an option",
+        "firstName": "First name",
+        "middleNames": "Middle name/s",
+        "lastName": "Last name",
+        "email": "Email",
+        "phone": "Phone",
+        "resume": "Resume",
+        "coverLetter": "Cover letter",
+        "optional": "(optional)",
+        "fileHint": "{maxSize} max | Image, PDF, or Word doc",
+        "viewFile": "View uploaded file",
+        "removeFile": "Remove file",
+        "terms": "I agree to the collection and use of my personal information for recruitment purposes.",
+        "dateOfBirth": "Date of birth",
+        "canWorkWeekends": "Can you work weekends?",
+        "commuteUnder20Minutes": "Will your commute be 20 minutes or less?",
+        "workAvailability": "Work availability",
+        "candidateMessage": "Anything else you'd like to add?",
+        "candidateMessagePlaceholder": "Optional message for the hiring team",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "reviewNote": "This application will be submitted for {jobTitle}.",
+      "actions": {
+        "back": "Back",
+        "next": "Next",
+        "submit": "Submit application",
+        "submitting": "Submitting...",
+        "submitCooldown": "Wait {time}"
+      },
+      "success": {
+        "title": "Application received",
+        "desc": "Thank you for applying. Our team will review your application and contact you if your experience is a good fit."
+      },
+      "messages": {
+        "validation": "Please complete all required fields.",
+        "selectRole": "Please select the role you are applying for.",
+        "termsRequired": "Please agree to the terms before continuing.",
+        "invalidFileType": "Only images, PDF, or Word documents are allowed.",
+        "fileTooLarge": "Each file must be 5 MB or smaller.",
+        "uploadFailed": "Could not upload the file. Please try again.",
+        "rateLimit": "Please wait {time} before submitting again.",
+        "cooldownWait": "Please wait {time} before submitting again.",
+        "error": "Something went wrong. Please try again."
+      }
     }
   },
   "Catering": {

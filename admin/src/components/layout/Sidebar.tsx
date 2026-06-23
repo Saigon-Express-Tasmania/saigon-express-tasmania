@@ -142,6 +142,12 @@ const navItems: NavItem[] = [
     group: "Contact",
   },
   {
+    title: "Job Applications",
+    href: "/job-applications",
+    icon: UserRoundSearch,
+    group: "Contact",
+  },
+  {
     title: "Categories",
     href: "/categories",
     icon: Tags,

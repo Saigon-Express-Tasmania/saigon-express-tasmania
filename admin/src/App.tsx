@@ -30,6 +30,7 @@ import { LocalizationPage } from './pages/LocalizationPage';
 import { UserProfile } from './pages/UserProfile';
 import { Partners } from './pages/Partners';
 import { FranchiseInterests } from './pages/FranchiseInterests';
+import JobApplications from './pages/JobApplications';
 
 export function App() {
   const { user, isLoading } = useSupabaseAuth();
@@ -97,6 +98,8 @@ export function App() {
             <Route path="/sales/archived-orders/:orderType" element={<ArchivedOrders />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/job-applications/:applicationId" element={<JobApplications />} />
+            <Route path="/job-applications" element={<JobApplications />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/sign-in"

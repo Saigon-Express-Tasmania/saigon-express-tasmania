@@ -6,6 +6,7 @@ import { PendingFeedbacks } from '@/pages/Dashboard/PendingFeedbacks';
 import { PendingInterests } from '@/pages/Dashboard/PendingInterests';
 import { PendingWholesaleEnquiries } from '@/pages/Dashboard/PendingWholesaleEnquiries';
 import { PendingWholesaleMembers } from '@/pages/Dashboard/PendingWholesaleMembers';
+import { RecentJobApplications } from '@/pages/Dashboard/RecentJobApplications';
 import { ReadyOrders } from '@/pages/Dashboard/ReadyOrders';
 import { Sparkles } from 'lucide-react';
 
@@ -45,6 +46,10 @@ export function Dashboard() {
 
         <div className="h-full min-w-0">
           <PendingInterests />
+        </div>
+
+        <div className="h-full min-w-0">
+          <RecentJobApplications />
         </div>
 
         <div className="h-full min-w-0">

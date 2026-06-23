@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import Jobs from "@/components/Jobs";
+import JobApplicationForm from "@/components/JobApplicationForm";
 
 interface JobItem {
   id: number;
@@ -118,6 +119,7 @@ export default function Careers() {
       {/* Extracted Interactive Jobs Component seamlessly reading the raw array values */}
       <Jobs jobs={jobs} />
 
+      
       {/* CTA — dark section */}
       <section className="py-20 bg-[#1A1A1A] text-white">
         <div className="container text-center">
@@ -135,7 +137,7 @@ export default function Careers() {
           <p className="text-white/60 text-lg max-w-xl mx-auto mb-10">
             {t("cta.description")}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          {/* <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             {contactEmail ? (
               <a
                 href={`mailto:${contactEmail}?subject=Job Application — Saigon Express Tasmania`}
@@ -154,12 +156,17 @@ export default function Careers() {
                 </div>
               </div>
             ) : null}
-          </div>
-          <p className="text-white/35 text-xs mt-8 max-w-lg mx-auto">
-            {t("cta.equalOpportunity")}
-          </p>
+          </div> */}
         </div>
       </section>
+
+      <JobApplicationForm
+        jobs={jobs.map((job) => ({
+          id: job.id,
+          title: job.title,
+          location: job.location,
+        }))}
+      />
     </div>
   );
 }

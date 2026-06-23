@@ -639,6 +639,71 @@
       "emailBtn": "Gửi Hồ Sơ Qua Email",
       "smsLabel": "Mọi thắc mắc qua SMS: {phone}",
       "equalOpportunity": "Saigon Express Tasmania là một đơn vị tuyển dụng công bằng. Chúng tôi hoan nghênh hồ sơ từ ứng viên thuộc mọi hoàn cảnh, bao gồm cả người bản địa First Nations, người khuyết tật, và những người đến từ các cộng đồng đa dạng văn hóa và ngôn ngữ."
+    },
+    "applicationForm": {
+      "tag": "ỨNG TUYỂN TRỰC TUYẾN",
+      "title": "Gửi Hồ Sơ Ứng Tuyển",
+      "description": "Hoàn thành biểu mẫu ba bước bên dưới. Chúng tôi sẽ xem xét hồ sơ và liên hệ lại trong vài ngày làm việc.",
+      "progressLabel": "Tiến trình ứng tuyển",
+      "stepLabel": "Bước {step}",
+      "steps": {
+        "personalDetails": "Thông Tin Cá Nhân",
+        "additionalQuestions": "Câu Hỏi Bổ Sung",
+        "reviewSubmit": "Xem Lại & Gửi"
+      },
+      "highlights": {
+        "step1": "Cho chúng tôi biết về bạn và tải lên CV hoặc thư xin việc.",
+        "step2": "Trả lời một vài câu hỏi sàng lọc nhanh về thời gian làm việc.",
+        "step3": "Xem lại thông tin và gửi hồ sơ ứng tuyển."
+      },
+      "fields": {
+        "role": "Vị trí",
+        "selectRole": "Chọn vị trí",
+        "selectPlaceholder": "Chọn một lựa chọn",
+        "firstName": "Tên",
+        "middleNames": "Tên đệm",
+        "lastName": "Họ",
+        "email": "Email",
+        "phone": "Số điện thoại",
+        "resume": "CV",
+        "coverLetter": "Thư xin việc",
+        "optional": "(không bắt buộc)",
+        "fileHint": "Tối đa {maxSize} | Ảnh, PDF hoặc Word",
+        "viewFile": "Xem tệp đã tải lên",
+        "removeFile": "Xóa tệp",
+        "terms": "Tôi đồng ý với việc thu thập và sử dụng thông tin cá nhân của mình cho mục đích tuyển dụng.",
+        "dateOfBirth": "Ngày sinh",
+        "canWorkWeekends": "Bạn có thể làm việc cuối tuần không?",
+        "commuteUnder20Minutes": "Thời gian di chuyển đến nơi làm việc có dưới 20 phút không?",
+        "workAvailability": "Thời gian làm việc",
+        "candidateMessage": "Bạn còn muốn chia sẻ thêm điều gì không?",
+        "candidateMessagePlaceholder": "Tin nhắn tùy chọn gửi đội tuyển dụng",
+        "yes": "Có",
+        "no": "Không"
+      },
+      "reviewNote": "Hồ sơ này sẽ được gửi cho vị trí {jobTitle}.",
+      "actions": {
+        "back": "Quay lại",
+        "next": "Tiếp theo",
+        "submit": "Gửi hồ sơ",
+        "submitting": "Đang gửi...",
+        "submitCooldown": "Đợi {time}"
+      },
+      "success": {
+        "title": "Đã nhận hồ sơ",
+        "desc": "Cảm ơn bạn đã ứng tuyển. Đội ngũ của chúng tôi sẽ xem xét hồ sơ và liên hệ nếu kinh nghiệm của bạn phù hợp."
+      },
+      "messages": {
+        "validation": "Vui lòng điền đầy đủ các trường bắt buộc.",
+        "selectRole": "Vui lòng chọn vị trí bạn muốn ứng tuyển.",
+        "termsRequired": "Vui lòng đồng ý với điều khoản trước khi tiếp tục.",
+        "invalidFileType": "Chỉ cho phép ảnh, PDF hoặc tài liệu Word.",
+        "fileTooLarge": "Mỗi tệp phải nhỏ hơn hoặc bằng 5 MB.",
+        "uploadFailed": "Không thể tải tệp lên. Vui lòng thử lại.",
+        "rateLimit": "Vui lòng đợi {time} trước khi gửi lại.",
+        "cooldownWait": "Vui lòng đợi {time} trước khi gửi lại.",
+        "error": "Đã xảy ra lỗi. Vui lòng thử lại."
+      }
     }
   },
   "Catering": {
