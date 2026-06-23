@@ -32,6 +32,14 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { fetchSettings, saveSettings } from '@/lib/settings';
+import { SelfDeliveryFeeCard } from './SelfDeliveryFeeCard';
+import {
+  DEFAULT_SELF_DELIVERY_FEE,
+  parseSelfDeliveryFee,
+  SELF_DELIVERY_FEE_KEY,
+  serializeSelfDeliveryFee,
+  type SelfDeliveryFee,
+} from './selfDeliveryFee';
 import { revalidateFrontendCache } from './tools';
 import type { SettingRow, SettingsTableUiState } from './types';
 
@@ -59,11 +67,42 @@ function getSettingValue(
   return value ? value : undefined;
 }
 
+function isSelfDeliveryFeeKey(key: string): boolean {
+  return key.trim().toLowerCase() === SELF_DELIVERY_FEE_KEY;
+}
+
+function splitSelfDeliveryFee(rows: SettingRow[]): {
+  tableRows: SettingRow[];
+  selfDeliveryFee: SelfDeliveryFee;
+} {
+  const feeRow = rows.find((row) => isSelfDeliveryFeeKey(row.key));
+  return {
+    tableRows: rows.filter((row) => !isSelfDeliveryFeeKey(row.key)),
+    selfDeliveryFee: parseSelfDeliveryFee(feeRow?.value),
+  };
+}
+
+function mergeSelfDeliveryFee(
+  tableRows: SettingRow[],
+  selfDeliveryFee: SelfDeliveryFee,
+): SettingRow[] {
+  return [
+    ...tableRows.filter((row) => !isSelfDeliveryFeeKey(row.key)),
+    {
+      key: SELF_DELIVERY_FEE_KEY,
+      value: serializeSelfDeliveryFee(selfDeliveryFee),
+    },
+  ];
+}
+
 export function Settings() {
   const hotTableRef = useRef<HTMLDivElement | null>(null);
   const hotInstanceRef = useRef<Handsontable | null>(null);
 
   const [settings, setSettings] = useState<SettingRow[]>([]);
+  const [selfDeliveryFee, setSelfDeliveryFee] = useState<SelfDeliveryFee>(
+    DEFAULT_SELF_DELIVERY_FEE,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isRunningTool, setIsRunningTool] = useState(false);
@@ -88,14 +127,18 @@ export function Settings() {
 
     try {
       const loadedSettings = await fetchSettings();
+      const { tableRows, selfDeliveryFee: loadedSelfDeliveryFee } =
+        splitSelfDeliveryFee(loadedSettings);
       setTableUpdateTimestamp(Date.now());
-      setSettings(loadedSettings);
+      setSettings(tableRows);
+      setSelfDeliveryFee(loadedSelfDeliveryFee);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load settings.';
       setError(message);
       setTableUpdateTimestamp(Date.now());
       setSettings([]);
+      setSelfDeliveryFee(DEFAULT_SELF_DELIVERY_FEE);
     } finally {
       setIsLoading(false);
     }
@@ -162,9 +205,15 @@ export function Settings() {
     setIsSaving(true);
     setError(null);
     try {
-      const savedSettings = getSettingsFromTable();
+      const savedSettings = mergeSelfDeliveryFee(
+        getSettingsFromTable(),
+        selfDeliveryFee,
+      );
       await saveSettings(savedSettings);
-      setSettings(savedSettings);
+      const { tableRows, selfDeliveryFee: savedSelfDeliveryFee } =
+        splitSelfDeliveryFee(savedSettings);
+      setSettings(tableRows);
+      setSelfDeliveryFee(savedSelfDeliveryFee);
       toast.success('Settings saved.');
     } catch (err) {
       const message =
@@ -205,7 +254,7 @@ export function Settings() {
 
   return (
     <DashboardLayout title="Settings">
-      <div className="flex flex-col gap-6 h-full">
+      <div className="flex flex-col gap-6 h-full pb-64">
         {error && (
           <div className="rounded-md bg-destructive/10 p-4 flex items-start gap-3 flex-shrink-0">
             <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
@@ -303,6 +352,12 @@ export function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        <SelfDeliveryFeeCard
+          value={selfDeliveryFee}
+          onChange={setSelfDeliveryFee}
+          disabled={isLoading || isSaving}
+        />
       </div>
     </DashboardLayout>
   );

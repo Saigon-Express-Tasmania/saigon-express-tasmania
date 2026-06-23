@@ -8,7 +8,10 @@ import {
   fetchCommerceTaxSettings,
   type CommerceTaxSettings,
 } from "./commerce-tax-settings.ts";
-import { resolveWholesaleShippingFee } from "./wholesale-freight.ts";
+import {
+  assertCateringShippingFeeMatches,
+  resolveCateringShippingFee,
+} from "./self-delivery-fee-settings.ts";
 import {
   createStripeClient,
   type StripePaymentMode,
@@ -1532,18 +1535,21 @@ export async function createOrderCheckoutSession(
       qty: item.qty,
       unitPriceExGst: item.unitPrice,
     }));
-    const shippingFee = await resolveWholesaleShippingFee(supabase, input);
-
-    const clientShippingFee = input.financialDetails?.shipping_fee;
-    if (
-      input.fulfillmentType !== "pick_up" &&
-      clientShippingFee != null &&
-      Math.abs(clientShippingFee - shippingFee) > 0.01
-    ) {
-      throw new Error(
-        "The shipping quote has changed. Please recalculate shipping and try again.",
+    let shippingFee = 0;
+    if (input.fulfillmentType !== "pick_up") {
+      if (!input.shippingAddress) {
+        throw new Error("Shipping address is required to quote delivery");
+      }
+      shippingFee = await resolveCateringShippingFee(
+        supabase,
+        input.shippingAddress.city,
+        input.shippingAddress.postal_code,
       );
     }
+    assertCateringShippingFeeMatches(
+      input.financialDetails?.shipping_fee ?? 0,
+      shippingFee,
+    );
 
     const wholesaleTotals = computeWholesaleTierDiscountTotals(
       pricingLines,

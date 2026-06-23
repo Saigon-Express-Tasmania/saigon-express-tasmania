@@ -4,7 +4,10 @@ import {
   type CommerceTaxSettings,
   type GstPricingLine,
 } from "@/lib/gst";
+import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
+import { resolveSelfDeliveryShippingFee } from "@/lib/delivery-cities";
 import { getWholesaleContactName, WHOLESALE_DEFAULT_COUNTRY } from "@/lib/wholesale-b2b-order";
+import type { DeliveryCity } from "@/types";
 import type { UserProfile } from "@/types/UserProfile";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
 import {
@@ -18,6 +21,41 @@ function trimmedOrEmpty(value: string | null | undefined): string {
 }
 
 export type CateringPricingLine = GstPricingLine;
+
+export type CateringOrderTotalsOptions = {
+  tax?: CommerceTaxSettings;
+  deliveryCities?: DeliveryCity[];
+  selfDeliveryFee?: SelfDeliveryFee;
+};
+
+function isCommerceTaxSettings(
+  options: CommerceTaxSettings | CateringOrderTotalsOptions,
+): options is CommerceTaxSettings {
+  return "isGstInclusive" in options && "gstTaxRate" in options;
+}
+
+function normalizeTotalsOptions(
+  options?: CommerceTaxSettings | CateringOrderTotalsOptions,
+): CateringOrderTotalsOptions {
+  if (!options) return {};
+  if (isCommerceTaxSettings(options)) {
+    return { tax: options };
+  }
+  return options;
+}
+
+export function resolveCateringShippingFee(
+  form: Pick<CateringOrderReviewForm, "shipping_city" | "shipping_postal_code">,
+  deliveryCities: DeliveryCity[],
+  selfDeliveryFee: SelfDeliveryFee,
+): number {
+  return resolveSelfDeliveryShippingFee(
+    form.shipping_city,
+    form.shipping_postal_code,
+    deliveryCities,
+    selfDeliveryFee,
+  );
+}
 
 function toPricingLines(items: CateringCartItem[]): CateringPricingLine[] {
   return cartItemsToGstPricingLines(items);
@@ -88,14 +126,20 @@ export function buildCateringOrderTotals(
 export function withCateringOrderTotals(
   form: CateringOrderReviewForm,
   items: CateringCartItem[],
-  tax?: CommerceTaxSettings,
+  options?: CommerceTaxSettings | CateringOrderTotalsOptions,
 ): CateringOrderReviewForm {
+  const { tax, deliveryCities, selfDeliveryFee } = normalizeTotalsOptions(options);
+  const shippingFee =
+    deliveryCities && selfDeliveryFee
+      ? resolveCateringShippingFee(form, deliveryCities, selfDeliveryFee)
+      : form.shipping_fee;
+
   return {
     ...form,
     ...buildCateringOrderTotals(toPricingLines(items), {
       couponDiscount: form.coupon_discount,
       wholesaleDiscount: form.wholesale_discount,
-      shippingFee: form.shipping_fee,
+      shippingFee,
       isGstInclusive: tax?.isGstInclusive,
       gstTaxRate: tax?.gstTaxRate,
     }),

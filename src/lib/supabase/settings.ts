@@ -5,6 +5,13 @@ import {
   SHORT_REVALIDATE_SECONDS,
 } from "@/config";
 import { parseGstTaxRate, parseIsGstInclusive, resolveCommerceTaxSettings } from "@/lib/gst";
+import {
+  parseSelfDeliveryFee,
+  parseSelfDeliveryOrigin,
+  SELF_DELIVERY_FEE_KEY,
+  SELF_DELIVERY_ORIGIN_KEY,
+  type SelfDeliveryFee,
+} from "@/lib/self-delivery-fee";
 import { createServerSupabaseClient } from "./server";
 
 const CACHE_TAG = CACHE_TAGS.settings;
@@ -48,6 +55,16 @@ export function getGstTaxRate(settings: Record<string, string>): number {
 
 export function getIsGstInclusive(settings: Record<string, string>): boolean {
   return parseIsGstInclusive(settings.is_gst_inclusive);
+}
+
+export async function getSelfDeliveryFee(): Promise<SelfDeliveryFee> {
+  const settings = await getSettings();
+  return parseSelfDeliveryFee(settings[SELF_DELIVERY_FEE_KEY]);
+}
+
+export async function getSelfDeliveryOrigin(): Promise<string> {
+  const settings = await getSettings();
+  return parseSelfDeliveryOrigin(settings[SELF_DELIVERY_ORIGIN_KEY]);
 }
 
 export { resolveCommerceTaxSettings };

@@ -5,6 +5,7 @@ import type {
   FeaturedReviewRow,
   JobListingRow,
   PromotionRow,
+  DeliveryCityRow,
   StoreLocationRow,
 } from "@/types";
 
@@ -65,6 +66,20 @@ export async function fetchStoreLocationRows(): Promise<StoreLocationRow[]> {
   }
 
   return (data ?? []) as StoreLocationRow[];
+}
+
+export async function fetchDeliveryCityRows(): Promise<DeliveryCityRow[]> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("delivery_cities")
+    .select("id, name, postal_code, my_distance")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(`delivery_cities: ${error.message}`);
+  }
+
+  return (data ?? []) as DeliveryCityRow[];
 }
 
 export async function fetchPromotionRows(): Promise<PromotionRow[]> {

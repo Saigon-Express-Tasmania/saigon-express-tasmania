@@ -1,4 +1,4 @@
-import { withCateringOrderTotals } from "@/lib/catering-order-review";
+import { withCateringOrderTotals, type CateringOrderTotalsOptions } from "@/lib/catering-order-review";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
 
@@ -99,10 +99,12 @@ export function hydrateCateringOrderReview(
   cartItemsSignature: string,
   items: CateringCartItem[],
   tax?: import("@/lib/gst").CommerceTaxSettings,
+  totalsOptions?: CateringOrderTotalsOptions,
 ): CateringOrderReviewForm {
+  const options: CateringOrderTotalsOptions = totalsOptions ?? { tax };
   const draft = readCateringOrderReviewDraft();
   if (!draft || draft.cartItemsSignature !== cartItemsSignature) {
-    return withCateringOrderTotals(base, items, tax);
+    return withCateringOrderTotals(base, items, options);
   }
 
   const isMemberBase = Boolean(base.customer_email.trim());
@@ -120,6 +122,6 @@ export function hydrateCateringOrderReview(
         : {}),
     },
     items,
-    tax,
+    options,
   );
 }

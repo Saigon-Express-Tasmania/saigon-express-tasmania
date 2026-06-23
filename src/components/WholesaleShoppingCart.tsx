@@ -24,8 +24,9 @@ import {
 import { computeWholesaleTierDiscount } from "@/lib/wholesale-tier-discount";
 import { useCommerceTax } from "@/contexts/CommerceTaxContext";
 import { formatGstRateLabel } from "@/lib/gst";
+import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
 import { formatTierDiscountValue } from "@/types";
-import type { StoreLocation, WholesaleOrderReviewForm } from "@/types";
+import type { DeliveryCity, StoreLocation, WholesaleOrderReviewForm } from "@/types";
 import {
   ChevronRight,
   CreditCard,
@@ -326,8 +327,14 @@ function WholesaleCartItemQtyControl({
 
 export default function WholesaleShoppingCart({
   storeLocations,
+  deliveryCities,
+  selfDeliveryFee,
+  selfDeliveryOrigin,
 }: {
   storeLocations: StoreLocation[];
+  deliveryCities: DeliveryCity[];
+  selfDeliveryFee: SelfDeliveryFee;
+  selfDeliveryOrigin: string;
 }) {
   const commerceTax = useCommerceTax();
   const { isGstInclusive, gstTaxRate } = commerceTax;
@@ -704,6 +711,9 @@ export default function WholesaleShoppingCart({
             cartSubtotalExGst={cartTotal}
             pricingTiers={pricingTiers}
             storeLocations={storeLocations}
+            deliveryCities={deliveryCities}
+            selfDeliveryFee={selfDeliveryFee}
+            selfDeliveryOrigin={selfDeliveryOrigin}
             profile={profile}
             review={orderReview}
             onReviewChange={setOrderReview}

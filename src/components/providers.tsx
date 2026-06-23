@@ -20,21 +20,28 @@ import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import { SupabaseStorageProvider } from "@/contexts/SupabaseStorageContext";
 import { setClientStoreLocations } from "@/lib/supabase/store-locations-client";
+import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
 import type { WholesaleCartConfig } from "@/lib/wholesale-page";
-import type { SiteContentSnapshot, StoreLocation } from "@/types";
+import type { DeliveryCity, SiteContentSnapshot, StoreLocation } from "@/types";
 
 interface ProvidersProps {
   children: React.ReactNode;
   siteContent: SiteContentSnapshot;
   storeLocations: StoreLocation[];
+  deliveryCities: DeliveryCity[];
   wholesaleCartConfig: WholesaleCartConfig;
+  selfDeliveryFee: SelfDeliveryFee;
+  selfDeliveryOrigin: string;
 }
 
 export function Providers({
   children,
   siteContent,
   storeLocations,
+  deliveryCities,
   wholesaleCartConfig,
+  selfDeliveryFee,
+  selfDeliveryOrigin,
 }: ProvidersProps) {
   setClientStoreLocations(storeLocations);
 
@@ -65,10 +72,17 @@ export function Providers({
                         <ClientOnly>
                           <WholesaleShoppingCart
                             storeLocations={storeLocations}
+                            deliveryCities={deliveryCities}
+                            selfDeliveryFee={selfDeliveryFee}
+                            selfDeliveryOrigin={selfDeliveryOrigin}
                           />
                         </ClientOnly>
                         <ClientOnly>
-                          <CateringShoppingCart />
+                          <CateringShoppingCart
+                            deliveryCities={deliveryCities}
+                            selfDeliveryFee={selfDeliveryFee}
+                            selfDeliveryOrigin={selfDeliveryOrigin}
+                          />
                         </ClientOnly>
                         <ClientOnly>
                           <CateringGuestLastOrderPanel />

@@ -402,9 +402,6 @@ verify_jwt = false
 [functions.admin-partner]
 verify_jwt = false
 
-[functions.shipping-quotes]
-verify_jwt = false
-
 [functions.franchise-interest]
 verify_jwt = false
 

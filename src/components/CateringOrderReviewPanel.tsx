@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { DayPicker } from "react-day-picker";
+import DeliveryCitySelect from "@/components/DeliveryCitySelect";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
 import { withCateringOrderTotals } from "@/lib/catering-order-review";
+import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
 import { useCommerceTax } from "@/contexts/CommerceTaxContext";
 import { formatGstRateLabel } from "@/lib/gst";
 import { AUSTRALIAN_STATES, WHOLESALE_DEFAULT_COUNTRY } from "@/lib/wholesale-b2b-order";
@@ -28,6 +30,7 @@ import {
   writeCateringOrderReviewDraft,
 } from "@/lib/catering-order-review-storage";
 import { cn } from "@/lib/utils";
+import type { DeliveryCity } from "@/types";
 import type { UserProfile } from "@/types/UserProfile";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
 import {
@@ -189,6 +192,9 @@ type CateringOrderReviewPanelProps = {
   items: CateringCartItem[];
   review: CateringOrderReviewForm;
   profile: UserProfile | null;
+  deliveryCities: DeliveryCity[];
+  selfDeliveryFee: SelfDeliveryFee;
+  selfDeliveryOrigin: string;
   onReviewChange: (next: CateringOrderReviewForm) => void;
   onBack: () => void;
   onConfirm: () => void;
@@ -199,6 +205,9 @@ export default function CateringOrderReviewPanel({
   items,
   review,
   profile,
+  deliveryCities,
+  selfDeliveryFee,
+  selfDeliveryOrigin,
   onReviewChange,
   onBack,
   onConfirm,
@@ -207,9 +216,17 @@ export default function CateringOrderReviewPanel({
   const commerceTax = useCommerceTax();
   const { isGstInclusive, gstTaxRate } = commerceTax;
   const gstRateLabel = formatGstRateLabel(gstTaxRate);
+  const totalsOptions = useMemo(
+    () => ({
+      tax: commerceTax,
+      deliveryCities,
+      selfDeliveryFee,
+    }),
+    [commerceTax, deliveryCities, selfDeliveryFee],
+  );
   const totalsReview = useMemo(
-    () => withCateringOrderTotals(review, items, commerceTax),
-    [review, items, commerceTax],
+    () => withCateringOrderTotals(review, items, totalsOptions),
+    [review, items, totalsOptions],
   );
   const couponDiscount = totalsReview.coupon_discount ?? 0;
   const totalDiscount =
@@ -224,7 +241,7 @@ export default function CateringOrderReviewPanel({
           shipping_country: WHOLESALE_DEFAULT_COUNTRY,
         },
         items,
-        commerceTax,
+        totalsOptions,
       ),
     );
   };
@@ -270,7 +287,7 @@ export default function CateringOrderReviewPanel({
       next.shipping_state !== review.shipping_state;
 
     if (changed) {
-      onReviewChange(withCateringOrderTotals(next, items));
+      onReviewChange(withCateringOrderTotals(next, items, totalsOptions));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- profile backfill only
   }, [profile]);
@@ -395,13 +412,20 @@ export default function CateringOrderReviewPanel({
                 />
               </Field>
             </div>
-            <Field label="City">
-              <input
-                className={fieldClass}
-                value={review.shipping_city}
-                onChange={(event) => patch({ shipping_city: event.target.value })}
-              />
-            </Field>
+            <DeliveryCitySelect
+              label="City / postal code"
+              cities={deliveryCities}
+              deliveryOrigin={selfDeliveryOrigin}
+              cityName={review.shipping_city}
+              postalCode={review.shipping_postal_code}
+              onChange={({ name, postalCode }) =>
+                patch({
+                  shipping_city: name,
+                  shipping_postal_code: postalCode,
+                })
+              }
+              triggerClassName="focus:ring-emerald-400/40"
+            />
             <ReviewSelect
               label="State"
               value={review.shipping_state}
@@ -413,15 +437,6 @@ export default function CateringOrderReviewPanel({
                 label: state.label,
               }))}
             />
-            <Field label="Postal code">
-              <input
-                className={fieldClass}
-                value={review.shipping_postal_code}
-                onChange={(event) =>
-                  patch({ shipping_postal_code: event.target.value })
-                }
-              />
-            </Field>
           </div>
         </section>
 
@@ -491,8 +506,12 @@ export default function CateringOrderReviewPanel({
             ) : null}
             <div className="flex justify-between text-white/60">
               <span>Delivery</span>
-              <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
-                Waiting for quotation...
+              <span className="tabular-nums text-white">
+                {totalsReview.shipping_fee > 0
+                  ? `$${totalsReview.shipping_fee.toFixed(2)}`
+                  : review.shipping_city.trim() && review.shipping_postal_code.trim()
+                    ? "Distance unavailable"
+                    : "Select delivery city"}
               </span>
             </div>
             <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">

@@ -31,6 +31,8 @@ import {
 } from "@/lib/catering-order-rate-limit";
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
+import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
+import type { DeliveryCity } from "@/types";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
 import type { UserProfileSelfUpdate } from "@/types/UserProfile";
 import { useRouter } from "next/navigation";
@@ -63,7 +65,15 @@ const panelMotion = {
   transition: { duration: CART_ANIMATION_DURATION, ease: "easeOut" as const },
 };
 
-export default function CateringShoppingCart() {
+export default function CateringShoppingCart({
+  deliveryCities,
+  selfDeliveryFee,
+  selfDeliveryOrigin,
+}: {
+  deliveryCities: DeliveryCity[];
+  selfDeliveryFee: SelfDeliveryFee;
+  selfDeliveryOrigin: string;
+}) {
   const router = useRouter();
   const commerceTax = useCommerceTax();
   const { profile, user, session, updateOwnProfile } = useSupabase();
@@ -90,6 +100,15 @@ export default function CateringShoppingCart() {
   const sortedCart = useMemo(
     () => [...cart].sort((a, b) => b.addedAt - a.addedAt),
     [cart],
+  );
+
+  const totalsOptions = useMemo(
+    () => ({
+      tax: commerceTax,
+      deliveryCities,
+      selfDeliveryFee,
+    }),
+    [commerceTax, deliveryCities, selfDeliveryFee],
   );
 
   const cartItemsSignature = useMemo(
@@ -157,7 +176,7 @@ export default function CateringShoppingCart() {
     if (orderReview) {
       const draft = readCateringOrderReviewDraft();
       if (!draft || draft.cartItemsSignature === cartItemsSignature) {
-        setOrderReview(withCateringOrderTotals(orderReview, sortedCart, commerceTax));
+        setOrderReview(withCateringOrderTotals(orderReview, sortedCart, totalsOptions));
         setCartView("review");
         return;
       }
@@ -187,6 +206,7 @@ export default function CateringShoppingCart() {
           cartItemsSignature,
           sortedCart,
           commerceTax,
+          totalsOptions,
         ),
       );
     } else {
@@ -196,6 +216,7 @@ export default function CateringShoppingCart() {
           cartItemsSignature,
           sortedCart,
           commerceTax,
+          totalsOptions,
         ),
       );
     }
@@ -220,7 +241,7 @@ export default function CateringShoppingCart() {
     const reviewForPlacement = withCateringOrderTotals(
       orderReview,
       sortedCart,
-      commerceTax,
+      totalsOptions,
     );
     const validationError = validateCateringOrderReview(reviewForPlacement);
     if (validationError) {
@@ -404,6 +425,9 @@ export default function CateringShoppingCart() {
                   items={sortedCart}
                   review={orderReview}
                   profile={profile}
+                  deliveryCities={deliveryCities}
+                  selfDeliveryFee={selfDeliveryFee}
+                  selfDeliveryOrigin={selfDeliveryOrigin}
                   onReviewChange={setOrderReview}
                   onBack={() => setCartView("cart")}
                   onConfirm={() => void handlePlaceOrder()}

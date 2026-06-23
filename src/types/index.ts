@@ -38,6 +38,8 @@ export {
 } from "./MenuItem";
 export type { StoreLocation, StoreLocationRow } from "./StoreLocation";
 export { mapStoreLocationRow } from "./StoreLocation";
+export type { DeliveryCity, DeliveryCityRow } from "./DeliveryCity";
+export { mapDeliveryCityRow } from "./DeliveryCity";
 export type {
   WholesaleImageUrls,
   WholesaleProduct,

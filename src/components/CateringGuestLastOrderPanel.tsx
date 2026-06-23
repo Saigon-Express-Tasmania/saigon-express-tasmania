@@ -52,10 +52,7 @@ const panelMotion = {
 function formatDeliveryTotal(
   status: string,
   shippingFee: number,
-): string {
-  if (status === "pending") {
-    return "Waiting quotation...";
-  }
+): string {  
   return formatTrackedCurrency(shippingFee);
 }
 

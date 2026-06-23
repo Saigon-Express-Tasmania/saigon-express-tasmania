@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { DayPicker } from "react-day-picker";
+import DeliveryCitySelect from "@/components/DeliveryCitySelect";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { WholesaleCartItem } from "@/contexts/WholesaleCartContext";
 import { useCommerceTax } from "@/contexts/CommerceTaxContext";
@@ -31,12 +32,11 @@ import {
   WHOLESALE_PAYMENT_TERMS_OPTIONS,
   hasWholesalePickupStoreSelected,
 } from "@/lib/wholesale-b2b-order";
+import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
 import {
-  fetchWholesaleFreightQuote,
-  formatShippingQuoteError,
-  prepareWholesaleFreightQuoteContext,
-  readWholesaleFreightQuoteTotal,
-} from "@/lib/wholesale-freight";
+  findDeliveryCity,
+  resolveSelfDeliveryShippingFee,
+} from "@/lib/delivery-cities";
 import {
   buildWholesaleCartItemsSignature,
   extractPersistableReviewFields,
@@ -50,7 +50,7 @@ import type {
   AustralianStateCode,
   WholesaleOrderReviewForm,
 } from "@/types/WholesaleB2BOrder";
-import type { StoreLocation, WholesalePricingTier } from "@/types";
+import type { DeliveryCity, StoreLocation, WholesalePricingTier } from "@/types";
 import {
   ArrowLeft,
   CalendarIcon,
@@ -331,16 +331,22 @@ function withDeliveryFee(
   };
 }
 
-type DeliveryQuoteStatus =
-  | "pickup"
-  | "incomplete_address"
-  | "no_shipping_origin"
-  | "no_shippable_items"
-  | "pending"
-  | "cached"
-  | "ready"
-  | "loading"
-  | "error";
+type DeliveryQuoteStatus = "pickup" | "incomplete_address" | "ready";
+
+function resolveWholesaleDeliveryFee(
+  review: WholesaleOrderReviewForm,
+  deliveryCities: DeliveryCity[],
+  selfDeliveryFee: SelfDeliveryFee,
+  isPickupOrder: boolean,
+): number {
+  if (isPickupOrder) return 0;
+  return resolveSelfDeliveryShippingFee(
+    review.shipping_city,
+    review.shipping_postal_code,
+    deliveryCities,
+    selfDeliveryFee,
+  );
+}
 
 function trimmedOrNull(value: string | null | undefined): string | null {
   const next = String(value ?? "").trim();
@@ -352,6 +358,9 @@ export default function WholesaleOrderReviewPanel({
   cartSubtotalExGst,
   pricingTiers,
   storeLocations,
+  deliveryCities,
+  selfDeliveryFee,
+  selfDeliveryOrigin,
   profile,
   review,
   onReviewChange,
@@ -363,6 +372,9 @@ export default function WholesaleOrderReviewPanel({
   cartSubtotalExGst: number;
   pricingTiers: WholesalePricingTier[];
   storeLocations: StoreLocation[];
+  deliveryCities: DeliveryCity[];
+  selfDeliveryFee: SelfDeliveryFee;
+  selfDeliveryOrigin: string;
   profile: UserProfile | null;
   review: WholesaleOrderReviewForm;
   onReviewChange: (next: WholesaleOrderReviewForm) => void;
@@ -382,9 +394,6 @@ export default function WholesaleOrderReviewPanel({
   });
   const [deliveryQuoteStatus, setDeliveryQuoteStatus] =
     useState<DeliveryQuoteStatus>("pickup");
-  const [deliveryError, setDeliveryError] = useState<string | null>(null);
-  const quoteContextRequestIdRef = useRef(0);
-  const quoteCalculateRequestIdRef = useRef(0);
   const totalsSectionRef = useRef<HTMLElement>(null);
   const isPickup = review.requested_fulfillment_method === "pick_up";
   const cartItemsSignature = useMemo(
@@ -500,167 +509,69 @@ export default function WholesaleOrderReviewPanel({
       next.billing_state !== review.billing_state;
 
     if (changed) {
+      const shippingFee = resolveWholesaleDeliveryFee(
+        next,
+        deliveryCities,
+        selfDeliveryFee,
+        isPickup,
+      );
       onReviewChange(
-        withDeliveryFee(next, pricingLines, pricingTiers, review.shipping_fee, commerceTax),
+        withDeliveryFee(next, pricingLines, pricingTiers, shippingFee, commerceTax),
       );
     }
-  }, [profile, pricingLines, pricingTiers, review, onReviewChange]);
+  }, [
+    profile,
+    pricingLines,
+    pricingTiers,
+    review,
+    onReviewChange,
+    deliveryCities,
+    selfDeliveryFee,
+    isPickup,
+    commerceTax,
+  ]);
 
   useEffect(() => {
     if (isPickup) {
       setDeliveryQuoteStatus("pickup");
-      setDeliveryError(null);
       onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
       return;
     }
 
-    const requestId = ++quoteContextRequestIdRef.current;
-    setDeliveryError(null);
+    const hasDeliveryCity =
+      review.shipping_city.trim().length > 0 &&
+      review.shipping_postal_code.trim().length > 0;
 
-    void (async () => {
-      try {
-        const context = await prepareWholesaleFreightQuoteContext(
-          items,
-          storeLocations,
-          review,
-          cartSubtotalExGst,
-        );
-        if (requestId !== quoteContextRequestIdRef.current) return;
+    if (!hasDeliveryCity) {
+      setDeliveryQuoteStatus("incomplete_address");
+      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
+      return;
+    }
 
-        if (context.status === "incomplete_address") {
-          setDeliveryQuoteStatus("incomplete_address");
-          onReviewChange(
-            withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax),
-          );
-          return;
-        }
-
-        if (context.status === "no_shipping_origin") {
-          setDeliveryQuoteStatus("no_shipping_origin");
-          onReviewChange(
-            withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax),
-          );
-          return;
-        }
-
-        if (context.status === "no_shippable_items") {
-          setDeliveryQuoteStatus("no_shippable_items");
-          onReviewChange(
-            withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax),
-          );
-          return;
-        }
-
-        const cachedTotal = readWholesaleFreightQuoteTotal(context.payloadHash);
-        if (cachedTotal != null) {
-          setDeliveryQuoteStatus("cached");
-          onReviewChange(
-            withDeliveryFee(
-              review,
-              pricingLines,
-              pricingTiers,
-              Number(cachedTotal.toFixed(2)),
-              commerceTax,
-            ),
-          );
-          return;
-        }
-
-        setDeliveryQuoteStatus("pending");
-        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
-      } catch (err) {
-        if (requestId !== quoteContextRequestIdRef.current) return;
-        setDeliveryQuoteStatus("error");
-        setDeliveryError(
-          formatShippingQuoteError(
-            err instanceof Error
-              ? err.message
-              : "Unable to prepare shipping quote",
-          ),
-        );
-        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh cache lookup when shipping inputs change
+    const shippingFee = resolveWholesaleDeliveryFee(
+      review,
+      deliveryCities,
+      selfDeliveryFee,
+      false,
+    );
+    setDeliveryQuoteStatus("ready");
+    onReviewChange(
+      withDeliveryFee(review, pricingLines, pricingTiers, shippingFee, commerceTax),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recalculate when delivery inputs change
   }, [
     isPickup,
     cartItemsSignature,
-    cartSubtotalExGst,
     pricingTiers,
     review.shipping_postal_code,
     review.shipping_city,
-    review.shipping_dba_name,
     review.requested_fulfillment_method,
-    storeLocations,
+    deliveryCities,
+    selfDeliveryFee,
   ]);
 
-  const handleCalculateShippingQuote = async () => {
-    totalsSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-
-    const requestId = ++quoteCalculateRequestIdRef.current;
-    setDeliveryQuoteStatus("loading");
-    setDeliveryError(null);
-
-    try {
-      const context = await prepareWholesaleFreightQuoteContext(
-        items,
-        storeLocations,
-        review,
-        cartSubtotalExGst,
-      );
-      if (requestId !== quoteCalculateRequestIdRef.current) return;
-
-      if (context.status !== "quotable") {
-        setDeliveryQuoteStatus(context.status);
-        onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
-        return;
-      }
-
-      const { total } = await fetchWholesaleFreightQuote(
-        context.payload,
-        context.payloadHash,
-      );
-      if (requestId !== quoteCalculateRequestIdRef.current) return;
-
-      setDeliveryQuoteStatus("ready");
-      onReviewChange(
-        withDeliveryFee(
-          review,
-          pricingLines,
-          pricingTiers,
-          Number(total.toFixed(2)),
-          commerceTax,
-        ),
-      );
-    } catch (err) {
-      if (requestId !== quoteCalculateRequestIdRef.current) return;
-      setDeliveryQuoteStatus("error");
-      setDeliveryError(
-        formatShippingQuoteError(
-          err instanceof Error
-            ? err.message
-            : "Failed to calculate shipping quote",
-        ),
-      );
-      onReviewChange(withDeliveryFee(review, pricingLines, pricingTiers, 0, commerceTax));
-    }
-  };
-
   const handlePrimaryAction = () => {
-    if (isPickup) {
-      onConfirm();
-      return;
-    }
-
-    if (deliveryQuoteStatus === "cached" || deliveryQuoteStatus === "ready") {
-      onConfirm();
-      return;
-    }
-
-    void handleCalculateShippingQuote();
+    onConfirm();
   };
 
   useEffect(() => {
@@ -679,44 +590,27 @@ export default function WholesaleOrderReviewPanel({
     !pickupStores.some(
       (store) => store.id === review.requested_pick_up_store_id,
     );
-  const needsDeliveryQuote = !isPickup;
-  const shippingQuoteReady =
-    deliveryQuoteStatus === "cached" || deliveryQuoteStatus === "ready";
-  const canCalculateShippingQuote =
-    needsDeliveryQuote &&
-    (deliveryQuoteStatus === "pending" || deliveryQuoteStatus === "error");
+  const deliveryAddressComplete =
+    review.shipping_city.trim().length > 0 &&
+    review.shipping_postal_code.trim().length > 0;
+  const matchedDeliveryCity = useMemo(
+    () =>
+      findDeliveryCity(
+        deliveryCities,
+        review.shipping_city,
+        review.shipping_postal_code,
+      ),
+    [deliveryCities, review.shipping_city, review.shipping_postal_code],
+  );
+  const hasDeliveryDistance =
+    matchedDeliveryCity?.distanceKm != null &&
+    Number.isFinite(matchedDeliveryCity.distanceKm);
   const canConfirmCheckout = isPickup
     ? !pickupStoreMissing && !pickupStoreInvalid
-    : shippingQuoteReady;
+    : deliveryAddressComplete;
   const primaryButtonDisabled =
     isCheckingOut ||
-    deliveryQuoteStatus === "loading" ||
-    (isPickup
-      ? pickupStoreMissing || pickupStoreInvalid
-      : !canConfirmCheckout && !canCalculateShippingQuote);
-
-  const deliveryLineMessage = (() => {
-    if (isPickup) return null;
-    switch (deliveryQuoteStatus) {
-      case "incomplete_address":
-        return "Complete shipping address";
-      case "no_shipping_origin":
-        return "Shipping origin unavailable";
-      case "no_shippable_items":
-        return "No shippable items in cart";
-      case "pending":
-        return "To be calculated";
-      case "loading":
-        return null;
-      case "error":
-        return "Unavailable";
-      case "cached":
-      case "ready":
-        return null;
-      default:
-        return null;
-    }
-  })();
+    (isPickup ? pickupStoreMissing || pickupStoreInvalid : !deliveryAddressComplete);
 
   const footerHelperMessage = (() => {
     if (pickupStoreMissing) {
@@ -724,22 +618,7 @@ export default function WholesaleOrderReviewPanel({
     }
     if (isPickup) return null;
     if (deliveryQuoteStatus === "incomplete_address") {
-      return "Complete your shipping address to request a shipping quote.";
-    }
-    if (deliveryQuoteStatus === "no_shipping_origin") {
-      return "A shipping origin is not configured. Please contact us to complete this order.";
-    }
-    if (deliveryQuoteStatus === "no_shippable_items") {
-      return "This order has no shippable items. Delivery cannot be quoted.";
-    }
-    if (deliveryQuoteStatus === "loading") {
-      return "Calculating shipping quote…";
-    }
-    if (deliveryQuoteStatus === "error") {
-      return (
-        deliveryError ??
-        "Shipping quote could not be calculated. Please review your shipping address and try again."
-      );
+      return "Select a delivery city and postal code to calculate delivery.";
     }
     return null;
   })();
@@ -922,15 +801,21 @@ export default function WholesaleOrderReviewPanel({
                         />
                       </Field>
                     </div>
-                    <Field label="City">
-                      <input
-                        className={fieldClass}
-                        value={review.shipping_city}
-                        onChange={(e) =>
-                          patchShipping({ shipping_city: e.target.value })
-                        }
-                      />
-                    </Field>
+                    <DeliveryCitySelect
+                      label="City / postal code"
+                      cities={deliveryCities}
+                      deliveryOrigin={selfDeliveryOrigin}
+                      cityName={review.shipping_city}
+                      postalCode={review.shipping_postal_code}
+                      onChange={({ name, postalCode }) =>
+                        patchShipping({
+                          shipping_city: name,
+                          shipping_postal_code: postalCode,
+                        })
+                      }
+                      triggerClassName="focus:ring-primary/40"
+                      accentClassName="text-primary"
+                    />
                     <ReviewSelect
                       label="State"
                       value={review.shipping_state}
@@ -944,15 +829,6 @@ export default function WholesaleOrderReviewPanel({
                         label: state.label,
                       }))}
                     />
-                    <Field label="Postal code">
-                      <input
-                        className={fieldClass}
-                        value={review.shipping_postal_code}
-                        onChange={(e) =>
-                          patchShipping({ shipping_postal_code: e.target.value })
-                        }
-                      />
-                    </Field>
                     <Field label="Preferred delivery window">
                       <input
                         className={fieldClass}
@@ -1190,33 +1066,16 @@ export default function WholesaleOrderReviewPanel({
             {!isPickup ? (
               <div className="flex justify-between text-white/60">
                 <span>Delivery</span>
-                {deliveryQuoteStatus === "loading" ? (
-                  <span className="inline-flex items-center gap-2 tabular-nums text-white/70">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Calculating…
-                  </span>
-                ) : shippingQuoteReady ? (
-                  <span className="tabular-nums text-white">
-                    ${review.shipping_fee.toFixed(2)}
-                  </span>
-                ) : deliveryLineMessage ? (
-                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
-                    {deliveryLineMessage}
-                  </span>
-                ) : (
-                  <span className="text-right text-xs font-medium text-white/45 max-w-[55%]">
-                    To be calculated
-                  </span>
-                )}
+                <span className="tabular-nums text-white">
+                  {review.shipping_fee > 0
+                    ? `$${review.shipping_fee.toFixed(2)}`
+                    : deliveryAddressComplete
+                      ? hasDeliveryDistance
+                        ? "$0.00"
+                        : "Distance unavailable"
+                      : "Select delivery city"}
+                </span>
               </div>
-            ) : null}
-            {!isPickup && deliveryQuoteStatus === "pending" ? (
-              <p className="text-xs text-white/40">
-                Shipping will be recalculated when you request a quote.
-              </p>
-            ) : null}
-            {!isPickup && deliveryQuoteStatus === "error" && deliveryError ? (
-              <p className="text-xs text-amber-200/90">{deliveryError}</p>
             ) : null}
             {!isGstInclusive ? (
               <div className="flex justify-between text-white/60">
@@ -1250,13 +1109,6 @@ export default function WholesaleOrderReviewPanel({
       </div>
 
       <div className="border-t border-white/10 px-6 py-5">
-        {needsDeliveryQuote &&
-        !shippingQuoteReady &&
-        canCalculateShippingQuote ? (
-          <p className="mb-3 text-center text-xs text-white/45">
-            A shipping quote is required before you can proceed to checkout.
-          </p>
-        ) : null}
         <button
           type="button"
           onClick={handlePrimaryAction}
@@ -1268,23 +1120,12 @@ export default function WholesaleOrderReviewPanel({
               <Loader2 className="h-4 w-4 animate-spin" />
               Processing…
             </>
-          ) : isPickup ? (
-            <>
-              <CreditCard className="h-4 w-4" />
-              Pay ${review.grand_total.toFixed(2)} with Card
-            </>
-          ) : shippingQuoteReady ? (
-            <>
-              <CreditCard className="h-4 w-4" />
-              Proceed to Checkout · Pay ${review.grand_total.toFixed(2)}
-            </>
-          ) : deliveryQuoteStatus === "loading" ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Calculating Shipping Quote…
-            </>
           ) : (
-            <>Calculate Shipping Quote</>
+            <>
+              <CreditCard className="h-4 w-4" />
+              {isPickup ? "Pay" : "Proceed to Checkout · Pay"} $
+              {review.grand_total.toFixed(2)}
+            </>
           )}
         </button>
         {footerHelperMessage ? (

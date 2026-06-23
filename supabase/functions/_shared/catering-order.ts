@@ -8,6 +8,10 @@ import {
   fetchCommerceTaxSettings,
   type CommerceTaxSettings,
 } from "./commerce-tax-settings.ts";
+import {
+  assertCateringShippingFeeMatches,
+  resolveCateringShippingFee,
+} from "./self-delivery-fee-settings.ts";
 
 const ORDER_TOKEN_LENGTH = 12;
 const CROCKFORD_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -263,6 +267,18 @@ export async function validateCateringOrderInput(
   }
   if (!customerPhone) throw new Error("Please enter your phone number");
 
+  const shippingAddress = parseShippingAddress(data.shippingAddress);
+  const financialDetails = parseFinancialDetails(data.financialDetails, commerceTax);
+  const expectedShippingFee = await resolveCateringShippingFee(
+    supabase,
+    shippingAddress.city,
+    shippingAddress.postal_code,
+  );
+  assertCateringShippingFeeMatches(
+    financialDetails.shipping_fee ?? 0,
+    expectedShippingFee,
+  );
+
   return {
     mode,
     customerAccount,
@@ -272,8 +288,8 @@ export async function validateCateringOrderInput(
     fulfillmentType,
     eventDate,
     notes: notes || undefined,
-    financialDetails: parseFinancialDetails(data.financialDetails, commerceTax),
-    shippingAddress: parseShippingAddress(data.shippingAddress),
+    financialDetails,
+    shippingAddress,
     items: parseItems(data.items),
   };
 }
