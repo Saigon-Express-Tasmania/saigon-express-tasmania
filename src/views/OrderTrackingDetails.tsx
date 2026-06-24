@@ -9,8 +9,8 @@ import MemberHeader, {
 } from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
-  MEMBER_PORTAL_BOX_SURFACE,
-  MEMBER_PORTAL_ROUNDED_PANEL_CLASS,
+  MEMBER_PORTAL_LIGHT_BOX_SURFACE,
+  MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS,
 } from "@/lib/member-portal-surfaces";
 import { useSupabase } from "@/hooks/useSupabase";
 import { buildCateringPaymentFinancialDetails } from "@/lib/catering-order-review";
@@ -75,11 +75,11 @@ function statusBadgeClass(status: OrderStatus): string {
     case "ready_to_pickup":
     case "packed":
     case "ready":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
     case "cancelled":
-      return "border-white/20 bg-white/5 text-white/45";
+      return "border-gray-300 bg-gray-50 text-gray-500";
     default:
-      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+      return "border-amber-500/30 bg-amber-500/10 text-amber-700";
   }
 }
 
@@ -93,11 +93,11 @@ function statusLabel(
 function timelineStepClass(state: "completed" | "in_progress" | "upcoming"): string {
   switch (state) {
     case "completed":
-      return "border-emerald-900/60 bg-emerald-950/40";
+      return "border-emerald-200 bg-emerald-50";
     case "in_progress":
-      return "border-blue-500/60 bg-slate-900 shadow-[0_0_10px_rgba(77,166,255,0.2)]";
+      return "border-blue-300 bg-blue-50 shadow-sm";
     default:
-      return `border-white/10 ${MEMBER_PORTAL_BOX_SURFACE}`;
+      return `border-gray-200 ${MEMBER_PORTAL_LIGHT_BOX_SURFACE}`;
   }
 }
 
@@ -372,28 +372,29 @@ export default function OrderTrackingDetails({
   }, [lastOrdersPage, canViewWholesaleOrders, canViewCateringOrders]);
 
   return (
-    <MemberPortalBackground className="pb-8">
+    <MemberPortalBackground variant="light" className="pb-8">
       {isPaying ? (
         <div
-          className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-black/55 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-black/30 backdrop-blur-[2px]"
           aria-busy="true"
           aria-live="polite"
           role="alertdialog"
           aria-label={t("preparingPayment")}
         >
-          <div className="mx-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/90 px-6 py-4 shadow-2xl">
-            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-400" />
-            <p className="text-sm font-semibold text-white">{t("preparingPayment")}</p>
+          <div className="mx-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-6 py-4 shadow-2xl">
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-600" />
+            <p className="text-sm font-semibold text-gray-900">{t("preparingPayment")}</p>
           </div>
         </div>
       ) : null}
       <MemberHeader
         member={member}
         onLogout={() => void handleLogout()}
+        theme="light"
       />
 
       <div className="container max-w-[1400px] py-5">
-        <div className={`mb-8 flex overflow-hidden ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}>
+        <div className={`mb-8 flex overflow-hidden ${MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS}`}>
           <div className="flex w-10 shrink-0 items-center justify-center self-stretch text-primary sm:pl-5">
             <ClipboardList className="h-5 w-5" />
           </div>
@@ -430,7 +431,7 @@ export default function OrderTrackingDetails({
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-medium">{t("timeline.title")}</h2>
             {expectedDelivery ? (
-              <p className="text-sm text-zinc-300">
+              <p className="text-sm text-gray-700">
                 {t("timeline.expectedDelivery", { window: expectedDelivery })}
               </p>
             ) : null}
@@ -440,10 +441,10 @@ export default function OrderTrackingDetails({
             <div
               className={`mb-4 rounded-lg border px-4 py-3 text-sm leading-relaxed ${
                 statusNoticeIsUrgent
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-100"
+                  ? "border-amber-200 bg-amber-50 text-amber-800"
                   : order.status === "completed"
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
-                    : "border-sky-500/40 bg-sky-500/10 text-sky-100"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-sky-200 bg-sky-50 text-sky-800"
               }`}
               role="status"
             >
@@ -458,7 +459,7 @@ export default function OrderTrackingDetails({
           ) : null}
 
           {isCateringOrder && order.status === "awaiting_payment" ? (
-            <div className="mb-4 space-y-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
+            <div className="mb-4 space-y-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
               <p>{t("catering.awaitingPaymentNotice")}</p>
               <dl className="space-y-1 text-sm">
                 <div className="flex items-center justify-between gap-4">
@@ -479,7 +480,7 @@ export default function OrderTrackingDetails({
                     {formatTrackedCurrency(paymentTotals.shipping_fee)}
                   </dd>
                 </div>
-                <div className="flex items-center justify-between gap-4 border-t border-white/15 pt-2 font-semibold text-white">
+                <div className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 font-semibold text-gray-900">
                   <dt>{t("invoice.grandTotal")}</dt>
                   <dd className="tabular-nums">
                     {formatTrackedCurrency(paymentTotals.grand_total_inc_gst)}
@@ -508,7 +509,7 @@ export default function OrderTrackingDetails({
           ) : null}
 
           <div className="relative">
-            <div className="absolute left-0 right-0 top-1/2 hidden h-0.5 -translate-y-1/2 bg-zinc-800 lg:block" />
+            <div className="absolute left-0 right-0 top-1/2 hidden h-0.5 -translate-y-1/2 bg-gray-100 lg:block" />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {timeline.map((step, index) => {
                 const Icon = timelineIconForStep(step.key);
@@ -520,10 +521,10 @@ export default function OrderTrackingDetails({
                     <Icon
                       className={`mt-0.5 h-5 w-5 shrink-0 ${
                         step.state === "in_progress"
-                          ? "text-blue-400"
+                          ? "text-blue-600"
                           : step.state === "completed"
-                            ? "text-emerald-400"
-                            : "text-zinc-500"
+                            ? "text-emerald-600"
+                            : "text-gray-500"
                       }`}
                     />
                     <div className="min-w-0 flex-1">
@@ -531,7 +532,7 @@ export default function OrderTrackingDetails({
                         {index + 1}. {step.label}
                       </div>
                       {step.dateLabel ? (
-                        <div className="mt-0.5 text-[11px] text-zinc-500">
+                        <div className="mt-0.5 text-[11px] text-gray-500">
                           {step.dateLabel}
                         </div>
                       ) : null}
@@ -548,7 +549,7 @@ export default function OrderTrackingDetails({
                       </div>
                     </div>
                     {step.state === "completed" ? (
-                      <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                      <Check className="h-4 w-4 shrink-0 text-emerald-600" />
                     ) : null}
                   </div>
                 );
@@ -560,8 +561,8 @@ export default function OrderTrackingDetails({
         <div className="flex flex-col gap-6 xl:flex-row xl:gap-8">
           <section className="flex-1">
             <h2 className="mb-4 text-lg font-medium">{t("deliveryMap.title")}</h2>
-            <div className={`overflow-hidden ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}>
-              <div className="relative h-[250px] border-b border-white/10 bg-black/60">
+            <div className={`overflow-hidden ${MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS}`}>
+              <div className="relative h-[250px] border-b border-gray-200 bg-gray-100">
                 {mapEmbedUrl ? (
                   <iframe
                     title={mapEmbedTitle}
@@ -573,7 +574,7 @@ export default function OrderTrackingDetails({
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center px-4 text-center">
-                    <span className="text-sm text-white/30">
+                    <span className="text-sm text-gray-400">
                       {t("deliveryMap.placeholder")}
                     </span>
                   </div>
@@ -591,8 +592,8 @@ export default function OrderTrackingDetails({
                   </div>
                   {isPickup ? (
                     pickupStore ? (
-                      <div className="text-[13px] leading-relaxed text-zinc-400">
-                        <div className="font-medium text-zinc-300">
+                      <div className="text-[13px] leading-relaxed text-gray-600">
+                        <div className="font-medium text-gray-700">
                           {pickupStore.name}
                         </div>
                         <div>{pickupStore.address}</div>                        
@@ -601,15 +602,15 @@ export default function OrderTrackingDetails({
                         ) : null}                                                
                       </div>
                     ) : (
-                      <div className="flex items-start gap-2 text-[13px] text-zinc-400">
+                      <div className="flex items-start gap-2 text-[13px] text-gray-600">
                         <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
                         <span>{order.pickup_time || t("deliveryMap.noAddress")}</span>
                       </div>
                     )
                   ) : deliveryLines.length > 0 ? (
-                    <div className="text-[13px] leading-relaxed text-zinc-400">
+                    <div className="text-[13px] leading-relaxed text-gray-600">
                       {order.b2b.shippingAddress?.dba_name ? (
-                        <div className="font-medium text-zinc-300">
+                        <div className="font-medium text-gray-700">
                           {order.b2b.shippingAddress.dba_name}
                         </div>
                       ) : null}
@@ -621,7 +622,7 @@ export default function OrderTrackingDetails({
                       ) : null}
                     </div>
                   ) : (
-                    <div className="flex items-start gap-2 text-[13px] text-zinc-400">
+                    <div className="flex items-start gap-2 text-[13px] text-gray-600">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
                       <span>{order.pickup_time || t("deliveryMap.noAddress")}</span>
                     </div>
@@ -632,9 +633,9 @@ export default function OrderTrackingDetails({
                     <div className="mb-1 text-[13px] font-bold">
                       {t("deliveryMap.billingTitle")}
                     </div>
-                    <div className="text-[13px] leading-relaxed text-zinc-400">
+                    <div className="text-[13px] leading-relaxed text-gray-600">
                       {order.b2b.billingAddress?.legal_name ? (
-                        <div className="font-medium text-zinc-300">
+                        <div className="font-medium text-gray-700">
                           {order.b2b.billingAddress.legal_name}
                         </div>
                       ) : null}
@@ -650,12 +651,12 @@ export default function OrderTrackingDetails({
 
           <section className="flex flex-[1.2] flex-col">
             <h2 className="mb-4 text-lg font-medium">{t("items.title")}</h2>
-            <div className={`flex flex-1 flex-col justify-between p-5 ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}>
+            <div className={`flex flex-1 flex-col justify-between p-5 ${MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS}`}>
               <div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
                     <thead>
-                      <tr className="border-b border-zinc-700 text-zinc-500">
+                      <tr className="border-b border-gray-200 text-gray-500">
                         <th className="pb-2.5 font-normal">{t("items.sku")}</th>
                         <th className="pb-2.5 font-normal">{t("items.name")}</th>
                         <th className="pb-2.5 font-normal">{t("items.qty")}</th>
@@ -667,12 +668,12 @@ export default function OrderTrackingDetails({
                       {order.items.map((item) => (
                         <tr
                           key={item.id}
-                          className="border-b border-zinc-800 last:border-0"
+                          className="border-b border-gray-200 last:border-0"
                         >
                           <td className="py-4">{item.sku || item.menu_item_id}</td>
                           <td className="py-4">
                             <div className="flex items-center gap-3">
-                              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/10">
+                              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100">
                                 {item.imageUrl ? (
                                   <AppImage
                                     src={item.imageUrl}
@@ -682,14 +683,14 @@ export default function OrderTrackingDetails({
                                   />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center text-base opacity-60">
-                                    <Package className="h-4 w-4 text-zinc-500" />
+                                    <Package className="h-4 w-4 text-gray-500" />
                                   </div>
                                 )}
                               </div>
                               <span className="min-w-0">{item.item_name}</span>
                             </div>
                           </td>
-                          <td className="py-4 text-zinc-300">{item.qty}</td>
+                          <td className="py-4 text-gray-700">{item.qty}</td>
                           <td className="py-4">
                             {formatTrackedCurrency(item.unit_price)}
                           </td>
@@ -702,7 +703,7 @@ export default function OrderTrackingDetails({
                   </table>
                 </div>
 
-                <div className="mt-6 border-t border-zinc-800 pt-5">
+                <div className="mt-6 border-t border-gray-200 pt-5">
                   <div className="ml-auto w-full max-w-sm">
                     <h3 className="mb-3 text-lg font-medium">
                       {t("items.totalsTitle")}
@@ -716,7 +717,7 @@ export default function OrderTrackingDetails({
                         <FinancialSummaryRow
                           label={t("invoice.totalDiscount")}
                           value={`−${formatTrackedCurrency(totalDiscount)}`}
-                          valueClassName="text-emerald-400"
+                          valueClassName="text-emerald-600"
                         />
                       ) : null}
                       <FinancialSummaryRow
@@ -763,7 +764,7 @@ export default function OrderTrackingDetails({
         <div className="mt-8 flex justify-flex-start">
           <Link
             href={backHref}
-            className={`inline-flex items-center justify-center rounded-lg border border-white/20 px-5 py-2.5 text-sm font-medium text-zinc-100 shadow-sm transition-colors hover:border-white/35 hover:bg-white/10 bg-white/10 backdrop-blur-sm`}
+            className={`inline-flex items-center justify-center rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 shadow-sm transition-colors hover:border-gray-400 hover:bg-gray-100 bg-gray-100 backdrop-blur-sm`}
           >
             {canViewWholesaleOrders || canViewCateringOrders
               ? t("backToOrders")
@@ -778,7 +779,7 @@ export default function OrderTrackingDetails({
 function SummaryField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="mb-1 text-xs text-zinc-500">{label}</div>
+      <div className="mb-1 text-xs text-gray-500">{label}</div>
       <div className="text-base font-medium">{value}</div>
     </div>
   );
@@ -787,7 +788,7 @@ function SummaryField({ label, value }: { label: string; value: string }) {
 function FinancialSummaryRow({
   label,
   value,
-  valueClassName = "text-zinc-100",
+  valueClassName = "text-gray-900",
   emphasize = false,
 }: {
   label: string;
@@ -798,14 +799,14 @@ function FinancialSummaryRow({
   return (
     <div
       className={`flex items-center justify-between gap-4 ${
-        emphasize ? "border-t border-zinc-700 pt-2" : ""
+        emphasize ? "border-t border-gray-200 pt-2" : ""
       }`}
     >
-      <dt className={emphasize ? "font-semibold text-lg text-zinc-200" : "text-zinc-500"}>
+      <dt className={emphasize ? "font-semibold text-lg text-gray-800" : "text-gray-500"}>
         {label}
       </dt>
       <dd
-        className={`tabular-nums ${emphasize ? "text-base font-bold text-zinc-200" : `font-medium ${valueClassName}`}`}
+        className={`tabular-nums ${emphasize ? "text-base font-bold text-gray-800" : `font-medium ${valueClassName}`}`}
       >
         {value}
       </dd>
@@ -833,10 +834,10 @@ function TimelineStateBadge({
 
   const className =
     state === "completed"
-      ? "bg-emerald-500/10 text-emerald-400"
+      ? "bg-emerald-500/10 text-emerald-600"
       : state === "in_progress"
-        ? "bg-amber-500/10 text-amber-300"
-        : "bg-zinc-800 text-zinc-500";
+        ? "bg-amber-500/10 text-amber-700"
+        : "bg-gray-100 text-gray-500";
 
   return (
     <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] ${className}`}>
@@ -860,10 +861,10 @@ function ActionButton({
 }) {
   const className =
     variant === "primary"
-      ? "border-red-900 bg-red-950 text-red-400 hover:bg-red-900/80"
+      ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
       : variant === "secondary"
-        ? "border-red-900/60 bg-red-950/40 text-red-300 hover:bg-red-950/70"
-      : "border-zinc-700/60 bg-zinc-800/40 text-zinc-300 hover:bg-zinc-800/70";
+        ? "border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+      : "border-gray-200/60 bg-gray-100/40 text-gray-700 hover:bg-gray-100/70";
 
   if (href && !disabled) {
     return (

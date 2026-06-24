@@ -13,8 +13,8 @@ import MemberHeader, {
 } from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
-  MEMBER_PORTAL_BOX_SURFACE,
-  MEMBER_PORTAL_ROUNDED_PANEL_CLASS,
+  MEMBER_PORTAL_LIGHT_BOX_SURFACE,
+  MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS,
 } from "@/lib/member-portal-surfaces";
 import { useSupabase } from "@/hooks/useSupabase";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
@@ -74,7 +74,7 @@ export default function OrderTrackingFront() {
         title: t("footer.helpCenter.title"),
         description: t("footer.helpCenter.description"),
         icon: HelpCircle,
-        iconWrapClassName: "bg-emerald-950 text-emerald-400",
+        iconWrapClassName: "bg-emerald-50 text-emerald-600",
         iconClassName: "h-4 w-4",
       },
       {
@@ -82,7 +82,7 @@ export default function OrderTrackingFront() {
         title: t("footer.services.title"),
         description: t("footer.services.description"),
         icon: Headphones,
-        iconWrapClassName: "bg-amber-950 text-amber-400",
+        iconWrapClassName: "bg-amber-50 text-amber-600",
         iconClassName: "h-4 w-4",
       },
       {
@@ -90,7 +90,7 @@ export default function OrderTrackingFront() {
         title: t("footer.contact.title"),
         description: t("footer.contact.description"),
         icon: Phone,
-        iconWrapClassName: "bg-rose-950 text-rose-400",
+        iconWrapClassName: "bg-rose-50 text-rose-600",
         iconClassName: "h-4 w-4",
       },
       {
@@ -98,7 +98,7 @@ export default function OrderTrackingFront() {
         title: t("footer.about.title"),
         description: t("footer.about.description"),
         icon: MessageCircle,
-        iconWrapClassName: "bg-violet-950 text-violet-400",
+        iconWrapClassName: "bg-violet-50 text-violet-600",
         iconClassName: "h-4 w-4",
       },
     ],
@@ -128,31 +128,34 @@ export default function OrderTrackingFront() {
   };
 
   return (
-    <MemberPortalBackground>
+    <MemberPortalBackground variant="light">
       <MemberHeader
         member={member}
         onLogout={() => void handleLogout()}
+        theme="light"
       />
 
       <main className="flex min-h-[calc(100vh-16rem)] items-start justify-center px-4 pb-12 pt-16 sm:px-6 sm:pt-20">
-        <div className={`w-full max-w-[650px] px-6 py-8 shadow-2xl shadow-black/40 sm:px-12 sm:py-10 ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}>
-          <h1 className="text-center text-2xl font-semibold text-zinc-100 sm:text-[28px]">
+        <div
+          className={`w-full max-w-[650px] px-6 py-8 shadow-lg shadow-gray-200/80 sm:px-12 sm:py-10 ${MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS}`}
+        >
+          <h1 className="text-center text-2xl font-semibold text-gray-900 sm:text-[28px]">
             {t("title")}
           </h1>
-          <p className="mt-2.5 text-center text-sm text-zinc-400">
+          <p className="mt-2.5 text-center text-sm text-gray-600">
             {t("description")}
           </p>
 
           <form onSubmit={handleSubmit} className="mt-10">
             <div className="mb-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:gap-4">
               <div
-                className="flex items-center justify-center text-cyan-400 sm:text-[28px]"
+                className="flex items-center justify-center text-cyan-600 sm:text-[28px]"
                 aria-hidden
               >
-                <KeyRound className="h-7 w-7 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] sm:h-8 sm:w-8" />
+                <KeyRound className="h-7 w-7 sm:h-8 sm:w-8" />
               </div>
 
-              <div className="flex-1 rounded-lg shadow-[0_0_12px_rgba(34,211,238,0.25)]">
+              <div className="flex-1 rounded-lg shadow-sm">
                 <label htmlFor="tracking-token" className="sr-only">
                   {t("inputLabel")}
                 </label>
@@ -164,7 +167,7 @@ export default function OrderTrackingFront() {
                   placeholder={t("inputPlaceholder")}
                   autoComplete="off"
                   spellCheck={false}
-                  className={`w-full rounded-lg border border-cyan-400 px-4 py-4 font-mono text-[15px] uppercase tracking-[0.2em] text-zinc-100 outline-none placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-500 focus:ring-2 focus:ring-cyan-400/30 ${MEMBER_PORTAL_BOX_SURFACE}`}
+                  className={`w-full rounded-lg border border-cyan-500 bg-white px-4 py-4 font-mono text-[15px] uppercase tracking-[0.2em] text-gray-900 outline-none placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus:ring-2 focus:ring-cyan-500/30 ${MEMBER_PORTAL_LIGHT_BOX_SURFACE}`}
                 />
               </div>
             </div>
@@ -172,16 +175,16 @@ export default function OrderTrackingFront() {
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-5">
               <button
                 type="submit"
-                className="w-full max-w-none rounded-lg bg-rose-700 px-6 py-4 text-sm font-bold text-white transition-colors hover:bg-rose-600 sm:max-w-[240px]"
+                className="w-full max-w-none rounded-lg bg-primary px-6 py-4 text-sm font-bold text-white transition-colors hover:bg-primary/90 sm:max-w-[240px]"
               >
                 {t("submit")}
               </button>
 
               <div className="flex-1 sm:pt-1">
-                <h2 className="text-xs font-bold text-zinc-100">
+                <h2 className="text-xs font-bold text-gray-900">
                   {t("tokenHelp.title")}
                 </h2>
-                <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
                   {t("tokenHelp.description")}
                 </p>
               </div>
@@ -197,7 +200,7 @@ export default function OrderTrackingFront() {
             <Link
               key={card.href}
               href={card.href}
-              className={`flex w-full max-w-[220px] gap-4 p-5 transition-colors hover:border-white/20 ${MEMBER_PORTAL_ROUNDED_PANEL_CLASS}`}
+              className={`flex w-full max-w-[220px] gap-4 p-5 transition-colors hover:border-gray-300 ${MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS}`}
             >
               <div
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${card.iconWrapClassName}`}
@@ -205,10 +208,10 @@ export default function OrderTrackingFront() {
                 <Icon className={card.iconClassName} />
               </div>
               <div className="min-w-0">
-                <h3 className="text-[15px] font-medium text-zinc-100">
+                <h3 className="text-[15px] font-medium text-gray-900">
                   {card.title}
                 </h3>
-                <p className="mt-1 text-[13px] text-zinc-500">
+                <p className="mt-1 text-[13px] text-gray-500">
                   {card.description}
                 </p>
               </div>

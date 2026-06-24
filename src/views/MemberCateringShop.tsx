@@ -8,8 +8,8 @@ import CateringTierSelect from "@/components/CateringTierSelect";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
-  MEMBER_PORTAL_BANNER_CLASS,
-  MEMBER_PORTAL_CARD_HOVER_CLASS,
+  MEMBER_PORTAL_LIGHT_BANNER_CLASS,
+  MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS,
 } from "@/lib/member-portal-surfaces";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -51,7 +51,7 @@ function PackOrderButton({
 
   if (unitPrice == null) {
     return (
-      <p className="text-xs text-white/45">
+      <p className="text-xs text-gray-500">
         Contact us for pricing on this item.
       </p>
     );
@@ -140,27 +140,34 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
 
   if (isLoading || !isSignedIn || !me) {
     return (
-      <MemberPortalBackground className="flex items-center justify-center">
-        <p className="text-sm text-white/50">Loading catering shop…</p>
+      <MemberPortalBackground
+        variant="light"
+        className="flex items-center justify-center"
+      >
+        <p className="text-sm text-gray-500">Loading catering shop…</p>
       </MemberPortalBackground>
     );
   }
 
   return (
-    <MemberPortalBackground>
-      <MemberHeader member={me} onLogout={() => void handleLogout()} />
+    <MemberPortalBackground variant="light">
+      <MemberHeader
+        member={me}
+        onLogout={() => void handleLogout()}
+        theme="light"
+      />
 
-      <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
+      <div className={`py-6 ${MEMBER_PORTAL_LIGHT_BANNER_CLASS}`}>
         <div className="container">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-400/30 bg-green-400/20">
-              <UtensilsCrossed className="h-6 w-6 text-green-400" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-600/30 bg-green-50">
+              <UtensilsCrossed className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <h1 className="font-serif text-2xl font-bold text-white">
+              <h1 className="font-serif text-2xl font-bold text-gray-900">
                 Catering Shop
               </h1>
-              <p className="text-sm text-white/45">
+              <p className="text-sm text-gray-500">
                 Welcome, {me.contactName} · {me.businessName}
               </p>
             </div>
@@ -174,24 +181,24 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">
               {t("packs.label")}
             </p>
-            <h2 className="font-serif text-3xl text-white md:text-4xl">
+            <h2 className="font-serif text-3xl text-gray-900 md:text-4xl">
               {t("packs.title")}
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-sm text-white/55">
+            <p className="mx-auto mt-3 max-w-xl text-sm text-gray-600">
               {t("packs.description")}
             </p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
             {featuredPacks.length === 0 ? (
-              <div className="py-8 text-center text-sm text-white/45 md:col-span-2">
+              <div className="py-8 text-center text-sm text-gray-500 md:col-span-2">
                 {t("packs.empty")}
               </div>
             ) : (
               featuredPacks.map((pack) => (
                 <article
                   key={pack.id}
-                  className={`${MEMBER_PORTAL_CARD_HOVER_CLASS} flex h-full flex-col`}
+                  className={`${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} flex h-full flex-col`}
                 >
                   <div className="relative aspect-[16/7] overflow-hidden">
                     <AppImage
@@ -211,7 +218,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                   </div>
                   <div className="flex flex-1 flex-col p-6">
                     <div className="mb-3 flex items-start justify-between gap-4">
-                      <h3 className="font-serif text-2xl text-white">{pack.name}</h3>
+                      <h3 className="font-serif text-2xl text-gray-900">{pack.name}</h3>
                       <div className="shrink-0 text-right">
                         {pack.price ? (
                           <div className="text-sm font-bold text-primary">
@@ -219,21 +226,21 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                           </div>
                         ) : null}
                         {pack.serves ? (
-                          <div className="mt-0.5 flex items-center justify-end gap-1 text-xs text-white/40">
+                          <div className="mt-0.5 flex items-center justify-end gap-1 text-xs text-gray-500">
                             <Users className="h-3 w-3" />
                             {t("packs.serves", { serves: pack.serves })}
                           </div>
                         ) : null}
                       </div>
                     </div>
-                    <p className="mb-4 text-sm leading-relaxed text-white/60">
+                    <p className="mb-4 text-sm leading-relaxed text-gray-600">
                       {pack.description}
                     </p>
                     <ul className="mb-5 space-y-1.5">
                       {pack.includes.map((inc, index) => (
                         <li
                           key={index}
-                          className="flex items-center gap-2 text-sm text-white/70"
+                          className="flex items-center gap-2 text-sm text-gray-700"
                         >
                           <CheckCircle className="h-3.5 w-3.5 shrink-0 text-primary" />
                           {inc}
@@ -259,22 +266,22 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">
               {t("menu.label")}
             </p>
-            <h2 className="font-serif text-3xl text-white md:text-4xl">
+            <h2 className="font-serif text-3xl text-gray-900 md:text-4xl">
               {t("menu.title")}
             </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm text-white/55">
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-600">
               {t("menu.description")}
             </p>
           </div>
 
           {menuGroups.length === 0 ? (
-            <div className="py-6 text-center text-sm text-white/45">
+            <div className="py-6 text-center text-sm text-gray-500">
               {t("menu.empty")}
             </div>
           ) : (
             menuGroups.map((group, groupIndex) => (
               <div key={group.category}>
-                <h3 className="mb-6 border-b border-white/10 pb-2 font-serif text-2xl text-white">
+                <h3 className="mb-6 border-b border-gray-200 pb-2 font-serif text-2xl text-gray-900">
                   {group.category}
                 </h3>
                 <div
@@ -289,7 +296,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                     return (
                       <article
                         key={item.id}
-                        className={`${MEMBER_PORTAL_CARD_HOVER_CLASS} group flex h-full flex-col`}
+                        className={`${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} group flex h-full flex-col`}
                       >
                         <div className="relative aspect-square overflow-hidden">
                           <AppImage
@@ -305,7 +312,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                           ) : null}
                         </div>
                         <div className="flex flex-1 flex-col p-5">
-                          <h4 className="mb-1 font-serif text-xl text-white">
+                          <h4 className="mb-1 font-serif text-xl text-gray-900">
                             {item.name}
                           </h4>
                           {item.serves ? (
@@ -315,7 +322,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                             </p>
                           ) : null}
                           {item.note ? (
-                            <p className="mb-2 text-xs italic text-white/50">
+                            <p className="mb-2 text-xs italic text-gray-500">
                               {item.note}
                             </p>
                           ) : null}
@@ -324,7 +331,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                               {item.includes.map((inc, index) => (
                                 <li
                                   key={index}
-                                  className="flex items-start gap-1.5 text-xs text-white/65"
+                                  className="flex items-start gap-1.5 text-xs text-gray-600"
                                 >
                                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
                                   {inc}
@@ -345,7 +352,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                                   }))
                                 }
                                 label={t("menu.sizeLabel")}
-                                variant="dark"
+                                variant="light"
                               />
                             ) : null}
                             <PackOrderButton
@@ -363,12 +370,12 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
             ))
           )}
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center">
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
               {t("menu.proteinLabel")}
             </p>
-            <p className="text-sm text-white/80">{t("menu.proteinList")}</p>
-            <p className="mt-2 text-xs text-white/50">{t("menu.proteinNote")}</p>
+            <p className="text-sm text-gray-700">{t("menu.proteinList")}</p>
+            <p className="mt-2 text-xs text-gray-500">{t("menu.proteinNote")}</p>
           </div>
         </section>
       </div>

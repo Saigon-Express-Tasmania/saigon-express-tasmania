@@ -15,9 +15,10 @@ import Link from "@/components/link";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
-  MEMBER_PORTAL_BANNER_CLASS,
-  MEMBER_PORTAL_BOX_SURFACE,
-  MEMBER_PORTAL_PANEL_CLASS,
+  MEMBER_PORTAL_LIGHT_BANNER_CLASS,
+  MEMBER_PORTAL_LIGHT_BOX_SURFACE,
+  MEMBER_PORTAL_LIGHT_FILTER_INPUT_CLASS,
+  MEMBER_PORTAL_LIGHT_PANEL_CLASS,
 } from "@/lib/member-portal-surfaces";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -85,12 +86,12 @@ function getMemberId(profile: UserProfile): string {
 
 function statusBadgeClass(status: WholesaleOrderStatus): string {
   if (orderStatusIsPositive(status)) {
-    return "bg-emerald-500/15 text-emerald-300 before:bg-emerald-300";
+    return "bg-emerald-50 text-emerald-700 before:bg-emerald-600";
   }
   if (status === "cancelled") {
-    return "bg-white/10 text-white/45 before:bg-white/45";
+    return "bg-gray-100 text-gray-500 before:bg-white/45";
   }
-  return "bg-amber-500/15 text-amber-200 before:bg-amber-200";
+  return "bg-amber-50 text-amber-700 before:bg-amber-600";
 }
 
 type StatusBadgeProps = {
@@ -135,7 +136,7 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
         type="button"
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/5 text-white/50 transition-colors hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Previous page"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -144,7 +145,7 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
         item === "ellipsis" ? (
           <span
             key={`ellipsis-${index}`}
-            className="px-1 text-sm text-white/35"
+            className="px-1 text-sm text-gray-400"
           >
             …
           </span>
@@ -155,8 +156,8 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
             onClick={() => onPageChange(item)}
             className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-sm transition-colors ${
               item === page
-                ? "border-white bg-white text-black"
-                : "border-white/15 bg-white/5 text-white/50 hover:border-white/30 hover:text-white"
+                ? "border-primary bg-primary text-white"
+                : "border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400 hover:text-gray-900"
             }`}
           >
             {item}
@@ -167,7 +168,7 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
         type="button"
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages}
-        className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/5 text-white/50 transition-colors hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next page"
       >
         <ChevronRight className="h-4 w-4" />
@@ -253,25 +254,25 @@ function OrderRow({
   };
 
   return (
-    <article className={`overflow-hidden lg:rounded-xl ${MEMBER_PORTAL_PANEL_CLASS} rounded-lg`}>
+    <article className={`overflow-hidden lg:rounded-xl ${MEMBER_PORTAL_LIGHT_PANEL_CLASS} rounded-lg`}>
       <button
         type="button"
         onClick={onToggle}
-        className={`w-full text-left transition-colors hover:bg-white/[0.03] lg:grid lg:grid-cols-[1.2fr_1.2fr_0.8fr_0.9fr_1.3fr_0.7fr_0.9fr_1fr] lg:items-center lg:gap-4 lg:border-b lg:border-white/10 lg:px-5 lg:py-4 ${
-          trackingUrl ? "" : "border-b border-white/10"
+        className={`w-full text-left transition-colors hover:bg-gray-50 lg:grid lg:grid-cols-[1.2fr_1.2fr_0.8fr_0.9fr_1.3fr_0.7fr_0.9fr_1fr] lg:items-center lg:gap-4 lg:border-b lg:border-gray-200 lg:px-5 lg:py-4 ${
+          trackingUrl ? "" : "border-b border-gray-200"
         }`}
       >
         <div className="space-y-1 px-3 py-2.5 lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <ChevronDown
-                className={`h-3.5 w-3.5 shrink-0 text-white/40 transition-transform ${expanded ? "rotate-180" : ""}`}
+                className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
               />
-              <span className="truncate text-sm font-semibold text-white">
+              <span className="truncate text-sm font-semibold text-gray-900">
                 {formatWholesaleOrderId(order.id)}
               </span>
               {hasB2B ? (
-                <span className="shrink-0 rounded border border-white/10 bg-white/5 px-1 py-px text-[9px] font-medium uppercase tracking-wide text-white/40">
+                <span className="shrink-0 rounded border border-gray-200 bg-gray-50 px-1 py-px text-[9px] font-medium uppercase tracking-wide text-gray-500">
                   B2B
                 </span>
               ) : null}
@@ -280,20 +281,20 @@ function OrderRow({
               <span
                 className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   orderStatusIsPositive(order.status)
-                    ? "bg-emerald-500/15 text-emerald-300"
+                    ? "bg-emerald-50 text-emerald-700"
                     : order.status === "cancelled"
-                      ? "bg-white/10 text-white/45"
-                      : "bg-amber-500/15 text-amber-200"
+                      ? "bg-gray-100 text-gray-500"
+                      : "bg-amber-50 text-amber-700"
                 }`}
               >
                 {trackingLabel ?? getOrderStatusLabel(order.status)}
               </span>
-              <span className="text-sm font-bold tabular-nums text-white">
+              <span className="text-sm font-bold tabular-nums text-gray-900">
                 ${order.grand_total.toFixed(2)}
               </span>
             </div>
           </div>
-          <div className="flex items-center justify-between gap-2 pl-5 text-[11px] text-white/45">
+          <div className="flex items-center justify-between gap-2 pl-5 text-[11px] text-gray-500">
             <span>{formatOrderDateShort(order.created_at)}</span>
             <span className="tabular-nums">
               {itemCount} {itemCount === 1 ? "item" : "items"}
@@ -301,21 +302,21 @@ function OrderRow({
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 font-medium text-white lg:flex">
+        <div className="hidden items-center gap-2 font-medium text-gray-900 lg:flex">
           <ChevronDown
-            className={`h-4 w-4 shrink-0 text-white/40 transition-transform ${expanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
           />
           <span>{formatWholesaleOrderId(order.id)}</span>
           {hasB2B ? (
-            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/40">
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
               B2B
             </span>
           ) : null}
         </div>
-        <div className="hidden text-sm text-white/70 lg:block">
+        <div className="hidden text-sm text-gray-600 lg:block">
           {formatOrderDate(order.created_at)}
         </div>
-        <div className="hidden text-sm text-white/70 lg:block">
+        <div className="hidden text-sm text-gray-600 lg:block">
           {getOrderTypeLabel(order.order_type)}
         </div>
         <div className="hidden lg:block">
@@ -324,12 +325,12 @@ function OrderRow({
         <div className="hidden min-w-0 text-sm lg:block">
           {trackingLabel ? (
             <div>
-              <span className="text-emerald-300">{trackingLabel}</span>
+              <span className="text-emerald-700">{trackingLabel}</span>
               {trackingUrl ? (
                 <Link
                   href={trackingUrl}
                   onClick={(event) => event.stopPropagation()}
-                  className="mt-1 flex items-center gap-1 text-xs text-white/45 underline underline-offset-2 hover:text-white/70"
+                  className="mt-1 flex items-center gap-1 text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700"
                 >
                   Track order
                   <ExternalLink className="h-3 w-3" />
@@ -337,11 +338,11 @@ function OrderRow({
               ) : null}
             </div>
           ) : (
-            <span className="text-white/35">—</span>
+            <span className="text-gray-400">—</span>
           )}
         </div>
-        <div className="hidden text-sm text-white/70 lg:block">{itemCount}</div>
-        <div className="hidden text-sm font-semibold text-white lg:block">
+        <div className="hidden text-sm text-gray-600 lg:block">{itemCount}</div>
+        <div className="hidden text-sm font-semibold text-gray-900 lg:block">
           ${order.grand_total.toFixed(2)}
         </div>
         <div className="hidden lg:block">
@@ -354,13 +355,13 @@ function OrderRow({
               Track Order
             </Link>
           ) : (
-            <span className="text-xs text-white/30">—</span>
+            <span className="text-xs text-gray-400">—</span>
           )}
         </div>
       </button>
 
       {trackingUrl ? (
-        <div className="flex justify-end border-b border-white/10 px-3 py-1.5 lg:hidden">
+        <div className="flex justify-end border-b border-gray-200 px-3 py-1.5 lg:hidden">
           <Link
             href={trackingUrl}
             className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-3 text-[11px] font-semibold text-primary transition-colors hover:border-primary/45 hover:bg-primary/15 active:bg-primary/20"
@@ -372,8 +373,8 @@ function OrderRow({
       ) : null}
 
       {expanded ? (
-        <div className={`px-3 py-2 lg:px-5 lg:py-3 ${MEMBER_PORTAL_BOX_SURFACE}`}>
-          <div className="mb-2 hidden grid-cols-[2.5fr_0.7fr_0.8fr_1fr] gap-4 border-b border-white/10 px-2 pb-2 text-xs font-medium uppercase tracking-wide text-white/40 lg:grid">
+        <div className={`px-3 py-2 lg:px-5 lg:py-3 ${MEMBER_PORTAL_LIGHT_BOX_SURFACE}`}>
+          <div className="mb-2 hidden grid-cols-[2.5fr_0.7fr_0.8fr_1fr] gap-4 border-b border-gray-200 px-2 pb-2 text-xs font-medium uppercase tracking-wide text-gray-500 lg:grid">
             <div className="pl-10">Items</div>
             <div>Quantity</div>
             <div>Unit price</div>
@@ -393,10 +394,10 @@ function OrderRow({
               return (
                 <div
                   key={item.id}
-                  className="border-b border-white/5 py-2 last:border-b-0 lg:grid lg:grid-cols-[2.5fr_0.7fr_0.8fr_1fr] lg:items-center lg:gap-4 lg:py-3"
+                  className="border-b border-gray-100 py-2 last:border-b-0 lg:grid lg:grid-cols-[2.5fr_0.7fr_0.8fr_1fr] lg:items-center lg:gap-4 lg:py-3"
                 >
                   <div className="flex items-center gap-2.5 lg:gap-3 lg:pl-2">
-                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/10 lg:h-12 lg:w-12 lg:rounded-lg">
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100 lg:h-12 lg:w-12 lg:rounded-lg">
                       {imageUrl ? (
                         <AppImage
                           src={imageUrl}
@@ -411,10 +412,10 @@ function OrderRow({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="truncate text-sm text-white">
+                      <h4 className="truncate text-sm text-gray-900">
                         {item.item_name}
                       </h4>
-                      <p className="text-[11px] text-white/40 lg:text-xs">
+                      <p className="text-[11px] text-gray-500 lg:text-xs">
                         <span className="lg:hidden">
                           {item.qty} × ${item.unit_price.toFixed(2)} ·{" "}
                         </span>
@@ -436,8 +437,8 @@ function OrderRow({
                       Reorder
                     </button>
                   </div>
-                  <div className="hidden text-sm text-white lg:block">{item.qty}</div>
-                  <div className="hidden text-sm text-white lg:block">
+                  <div className="hidden text-sm text-gray-800 lg:block">{item.qty}</div>
+                  <div className="hidden text-sm text-gray-800 lg:block">
                     ${item.unit_price.toFixed(2)}
                   </div>
                   <div className="hidden lg:block">
@@ -462,9 +463,9 @@ function OrderRow({
           </div>
 
           {hasB2B ? (
-            <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2 lg:mt-4 lg:pt-4">
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-200 pt-2 lg:mt-4 lg:pt-4">
               {b2bSummary ? (
-                <p className="hidden min-w-0 truncate text-xs text-white/50 lg:block">
+                <p className="hidden min-w-0 truncate text-xs text-gray-500 lg:block">
                   {b2bSummary}
                 </p>
               ) : (
@@ -685,21 +686,25 @@ export default function WholesaleOrders({
   };
 
   return (
-    <MemberPortalBackground>
-      <MemberHeader member={me} onLogout={() => void handleLogout()} />
+    <MemberPortalBackground variant="light">
+      <MemberHeader
+        member={me}
+        onLogout={() => void handleLogout()}
+        theme="light"
+      />
 
-      <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
+      <div className={`py-6 ${MEMBER_PORTAL_LIGHT_BANNER_CLASS}`}>
         <div className="container">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
               <ClipboardList className="h-6 w-6 text-primary" />
             </div>
             {me ? (
               <div>
-                <h1 className="font-serif text-2xl font-bold text-white">
+                <h1 className="font-serif text-2xl font-bold text-gray-900">
                   Order History
                 </h1>
-                <p className="text-sm text-white/45">
+                <p className="text-sm text-gray-500">
                   Welcome back, {me.contactName} | Email: {profile?.email}
                 </p>
               </div>
@@ -717,14 +722,14 @@ export default function WholesaleOrders({
             aria-expanded={mobileFiltersOpen}
             aria-controls="wholesale-order-filters"
           >
-            <h2 className="text-lg font-medium text-white">Filter orders</h2>
+            <h2 className="text-lg font-medium text-gray-900">Filter orders</h2>
             {activeFilterCount > 0 ? (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold tabular-nums text-white">
                 {activeFilterCount}
               </span>
             ) : null}
             <ChevronDown
-              className={`ml-auto h-5 w-5 shrink-0 text-white/50 transition-transform lg:hidden ${
+              className={`ml-auto h-5 w-5 shrink-0 text-gray-500 transition-transform lg:hidden ${
                 mobileFiltersOpen ? "rotate-180" : ""
               }`}
             />
@@ -738,28 +743,28 @@ export default function WholesaleOrders({
           } lg:flex lg:flex-row lg:flex-wrap lg:items-center`}
         >
           <div className="relative w-full flex-1 lg:max-w-xs">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search orders or products…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-xl border border-white/15 bg-white/8 py-3 pl-11 pr-4 text-sm text-white placeholder-white/25 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           <input
             type="date"
             value={dateFrom}
             onChange={(event) => setDateFrom(event.target.value)}
-            className="w-full rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
             aria-label="From date"
           />
-          <span className="hidden text-white/35 lg:inline">–</span>
+          <span className="hidden text-gray-400 lg:inline">–</span>
           <input
             type="date"
             value={dateTo}
             onChange={(event) => setDateTo(event.target.value)}
-            className="w-full rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
             aria-label="To date"
           />
           <div className="relative w-full lg:w-auto lg:min-w-[180px]">
@@ -768,16 +773,16 @@ export default function WholesaleOrders({
               onChange={(event) =>
                 setStatusFilter(event.target.value as WholesaleOrderStatusFilter)
               }
-              className="w-full cursor-pointer appearance-none rounded-xl border border-white/15 bg-white/8 py-3 pl-4 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-gray-300 bg-white py-3 pl-4 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               {ORDER_STATUS_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-neutral-900">
+                <option key={option.value} value={option.value} className="bg-white">
                   {option.label}
                 </option>
               ))}
             </select>
             <ChevronDown
-              className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45"
+              className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
               aria-hidden
             />
           </div>
@@ -785,7 +790,7 @@ export default function WholesaleOrders({
             <button
               type="button"
               onClick={clearFilters}
-              className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:border-white/25 hover:text-white lg:w-auto ${MEMBER_PORTAL_BOX_SURFACE}`}
+              className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-900 lg:w-auto ${MEMBER_PORTAL_LIGHT_BOX_SURFACE}`}
             >
               <X className="h-4 w-4" />
               Clear filters
@@ -793,7 +798,7 @@ export default function WholesaleOrders({
           ) : null}
         </div>
 
-        <div className={`hidden rounded-xl px-5 py-4 text-xs font-medium uppercase tracking-wide text-white/40 lg:grid lg:grid-cols-[1.2fr_1.2fr_0.8fr_0.9fr_1.3fr_0.7fr_0.9fr_1fr] lg:gap-4 ${MEMBER_PORTAL_BOX_SURFACE}`}>
+        <div className={`hidden rounded-xl px-5 py-4 text-xs font-medium uppercase tracking-wide text-gray-500 lg:grid lg:grid-cols-[1.2fr_1.2fr_0.8fr_0.9fr_1.3fr_0.7fr_0.9fr_1fr] lg:gap-4 ${MEMBER_PORTAL_LIGHT_BOX_SURFACE}`}>
           <div>Order ID</div>
           <div>Date</div>
           <div>Order type</div>
@@ -805,19 +810,19 @@ export default function WholesaleOrders({
         </div>
 
         {loadingOrders ? (
-          <div className="flex items-center justify-center py-24 text-white/40">
+          <div className="flex items-center justify-center py-24 text-gray-500">
             <Loader2 className="mr-3 h-6 w-6 animate-spin" />
             Loading orders…
           </div>
         ) : loadError ? (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-6 text-center text-sm text-red-200">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-6 text-center text-sm text-red-700">
             {loadError}
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="py-20 text-center text-white/30">
+          <div className="py-20 text-center text-gray-400">
             <Package className="mx-auto mb-4 h-12 w-12 opacity-30" />
             <p className="font-medium">No orders found</p>
-            <p className="mt-2 text-sm text-white/25">
+            <p className="mt-2 text-sm text-gray-400">
               {search.trim()
                 ? "Try adjusting your search or filters."
                 : "Your wholesale orders will appear here after checkout."}
@@ -840,7 +845,7 @@ export default function WholesaleOrders({
 
         {!loadingOrders && !loadError && totalCount > 0 ? (
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-            <p className="text-sm text-white/40">
+            <p className="text-sm text-gray-500">
               Showing {(page - 1) * WHOLESALE_ORDERS_PAGE_SIZE + 1}–
               {Math.min(page * WHOLESALE_ORDERS_PAGE_SIZE, totalCount)} of{" "}
               {totalCount} orders

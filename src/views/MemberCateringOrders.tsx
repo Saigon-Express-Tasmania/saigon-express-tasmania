@@ -6,9 +6,10 @@ import Link from "@/components/link";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
-  MEMBER_PORTAL_BANNER_CLASS,
-  MEMBER_PORTAL_BOX_SURFACE,
-  MEMBER_PORTAL_PANEL_CLASS,
+  MEMBER_PORTAL_LIGHT_BANNER_CLASS,
+  MEMBER_PORTAL_LIGHT_BOX_SURFACE,
+  MEMBER_PORTAL_LIGHT_FILTER_INPUT_CLASS,
+  MEMBER_PORTAL_LIGHT_PANEL_CLASS,
 } from "@/lib/member-portal-surfaces";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -102,18 +103,18 @@ function buildCateringPaymentFinancialDetails(order: WholesaleOrder) {
 
 function statusBadgeClass(status: WholesaleOrderStatus): string {
   if (orderStatusIsPositive(status)) {
-    return "bg-emerald-500/15 text-emerald-300 before:bg-emerald-300";
+    return "bg-emerald-50 text-emerald-700 before:bg-emerald-600";
   }
   if (status === "cancelled") {
-    return "bg-white/10 text-white/45 before:bg-white/45";
+    return "bg-gray-100 text-gray-500 before:bg-white/45";
   }
   if (status === "pending") {
-    return "bg-white/10 text-white/45 before:bg-white/45";
+    return "bg-gray-100 text-gray-500 before:bg-white/45";
   }
   if (status === "awaiting_payment") {
-    return "bg-yellow-500/15 text-yellow-300 before:bg-yellow-300";
+    return "bg-yellow-50 text-yellow-700 before:bg-yellow-600";
   }
-  return "bg-amber-500/15 text-amber-200 before:bg-amber-200";
+  return "bg-amber-50 text-amber-700 before:bg-amber-600";
 }
 
 function Pagination({
@@ -142,7 +143,7 @@ function Pagination({
         type="button"
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/5 text-white/50 transition-colors hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Previous page"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -151,7 +152,7 @@ function Pagination({
         item === "ellipsis" ? (
           <span
             key={`ellipsis-${index}`}
-            className="px-1 text-sm text-white/35"
+            className="px-1 text-sm text-gray-400"
           >
             …
           </span>
@@ -162,8 +163,8 @@ function Pagination({
             onClick={() => onPageChange(item)}
             className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-sm transition-colors ${
               item === page
-                ? "border-white bg-white text-black"
-                : "border-white/15 bg-white/5 text-white/50 hover:border-white/30 hover:text-white"
+                ? "border-primary bg-primary text-white"
+                : "border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400 hover:text-gray-900"
             }`}
           >
             {item}
@@ -174,7 +175,7 @@ function Pagination({
         type="button"
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages}
-        className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/5 text-white/50 transition-colors hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next page"
       >
         <ChevronRight className="h-4 w-4" />
@@ -217,7 +218,7 @@ function OrderRow({
     order.status === "awaiting_payment"
       ? "ring-2 ring-amber-400/70"
       : order.status === "pending"
-        ? "ring-2 ring-white/35"
+        ? "ring-2 ring-gray-300"
         : needsAttention
           ? "ring-1 ring-amber-400/35"
           : "";
@@ -235,24 +236,24 @@ function OrderRow({
 
   return (
     <article
-      className={`overflow-hidden lg:rounded-xl ${MEMBER_PORTAL_PANEL_CLASS} rounded-lg ${
+      className={`overflow-hidden lg:rounded-xl ${MEMBER_PORTAL_LIGHT_PANEL_CLASS} rounded-lg ${
         attentionBorderClass
       }`}
     >
       <button
         type="button"
         onClick={onToggle}
-        className={`w-full text-left transition-colors hover:bg-white/[0.03] lg:grid lg:grid-cols-[1.1fr_1fr_0.9fr_0.8fr_1fr_1fr] lg:items-center lg:gap-4 lg:border-b lg:border-white/10 lg:px-5 lg:py-4 ${
-          trackingUrl ? "" : "border-b border-white/10"
+        className={`w-full text-left transition-colors hover:bg-gray-50 lg:grid lg:grid-cols-[1.1fr_1fr_0.9fr_0.8fr_1fr_1fr] lg:items-center lg:gap-4 lg:border-b lg:border-gray-200 lg:px-5 lg:py-4 ${
+          trackingUrl ? "" : "border-b border-gray-200"
         }`}
       >
         <div className="space-y-1 px-3 py-2.5 lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <ChevronDown
-                className={`h-5 w-5 shrink-0 text-white transition-transform ${isExpanded ? "rotate-180" : ""} ${isAlwaysExpanded ? "opacity-50" : ""}`}
+                className={`h-5 w-5 shrink-0 text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""} ${isAlwaysExpanded ? "opacity-50" : ""}`}
               />
-              <span className="truncate text-sm font-semibold text-white">
+              <span className="truncate text-sm font-semibold text-gray-900">
                 {formatWholesaleOrderId(order.id)}
               </span>
             </div>
@@ -260,20 +261,20 @@ function OrderRow({
               <span
                 className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   orderStatusIsPositive(order.status)
-                    ? "bg-emerald-500/15 text-emerald-300"
+                    ? "bg-emerald-50 text-emerald-700"
                     : order.status === "cancelled"
-                      ? "bg-white/10 text-white/45"
-                      : "bg-amber-500/15 text-amber-200"
+                      ? "bg-gray-100 text-gray-500"
+                      : "bg-amber-50 text-amber-700"
                 }`}
               >
                 {trackingLabel ?? statusLabel}
               </span>
-              <span className="text-sm font-bold tabular-nums text-white">
+              <span className="text-sm font-bold tabular-nums text-gray-900">
                 ${order.grand_total.toFixed(2)}
               </span>
             </div>
           </div>
-          <div className="flex items-center justify-between gap-2 pl-5 text-[11px] text-white/45">
+          <div className="flex items-center justify-between gap-2 pl-5 text-[11px] text-gray-500">
             <span>{formatOrderDateShort(order.created_at)}</span>
             <span className="tabular-nums">
               {itemCount} {itemCount === 1 ? "item" : "items"}
@@ -281,13 +282,13 @@ function OrderRow({
           </div>
         </div>
 
-        <div className="hidden text-sm font-semibold text-white lg:flex gap-2">
+        <div className="hidden text-sm font-semibold text-gray-900 lg:flex gap-2">
           <ChevronDown
-            className={`h-5 w-5 shrink-0 text-white transition-transform ${isExpanded ? "rotate-180" : ""} ${isAlwaysExpanded ? "opacity-50" : ""}`}
+            className={`h-5 w-5 shrink-0 text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""} ${isAlwaysExpanded ? "opacity-50" : ""}`}
           />
           <span>{formatWholesaleOrderId(order.id)}</span>
         </div>
-        <div className="hidden text-sm text-white/55 lg:block">
+        <div className="hidden text-sm text-gray-600 lg:block">
           {formatOrderDateShort(order.created_at)}
         </div>
         <div className="hidden lg:block">
@@ -297,10 +298,10 @@ function OrderRow({
             {statusLabel}
           </span>
         </div>
-        <div className="hidden text-sm tabular-nums text-white/55 lg:block">
+        <div className="hidden text-sm tabular-nums text-gray-600 lg:block">
           {itemCount}
         </div>
-        <div className="hidden text-sm font-bold tabular-nums text-white lg:block">
+        <div className="hidden text-sm font-bold tabular-nums text-gray-900 lg:block">
           ${order.grand_total.toFixed(2)}
         </div>
         <div className="hidden lg:flex justify-end">
@@ -308,33 +309,33 @@ function OrderRow({
             <Link
               href={trackingUrl}
               onClick={(event) => event.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-primary transition-colors hover:border-primary/50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-medium text-primary transition-colors hover:border-primary/50"
             >
               Track order <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           ) : (
-            <span className="text-xs text-white/30">—</span>
+            <span className="text-xs text-gray-400">—</span>
           )}
         </div>
       </button>
 
       {isExpanded ? (
-        <div className="border-t border-white/10 px-4 py-4 lg:px-5">
+        <div className="border-t border-gray-200 px-4 py-4 lg:px-5">
           <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <p className="text-xs uppercase tracking-wide text-white/40">
+              <p className="text-xs uppercase tracking-wide text-gray-500">
                 Placed
               </p>
-              <p className="text-white/80">
+              <p className="text-gray-700">
                 {formatOrderDate(order.created_at)}
               </p>
             </div>
             {order.requested_target_date ? (
               <div>
-                <p className="text-xs uppercase tracking-wide text-white/40">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
                   Event date
                 </p>
-                <p className="text-white/80">
+                <p className="text-gray-700">
                   {formatRequestedTargetDate(order.requested_target_date)}
                 </p>
               </div>
@@ -344,11 +345,11 @@ function OrderRow({
             {order.items.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="min-w-0 truncate text-white/80">
+                    <span className="min-w-0 truncate text-gray-700">
                       {item.qty}× {item.item_name}
                     </span>
                   </TooltipTrigger>
@@ -358,25 +359,25 @@ function OrderRow({
                     </div>
                   </TooltipContent>
                 </Tooltip>
-                <span className="shrink-0 font-semibold tabular-nums text-white">
+                <span className="shrink-0 font-semibold tabular-nums text-gray-900">
                   ${item.line_total.toFixed(2)}
                 </span>
               </li>
             ))}
           </ul>
           {order.status === "pending" ? (
-            <p className="mt-4 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90">
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
               Our team is preparing your quotation. You will be able to pay once
               your order is marked ready to pay.
             </p>
           ) : order.status === "awaiting_payment" ? (
-            <div className="mt-4 space-y-3 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-3">
-              <p className="text-sm text-emerald-100/90">
+            <div className="mt-4 space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
+              <p className="text-sm text-emerald-800">
                 Your quotation is ready. Review the totals below and proceed to
                 payment.
               </p>
               <div className="space-y-1 text-sm">
-                <div className="flex items-center justify-between text-white/80">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>Subtotal (ex GST)</span>
                   <span className="tabular-nums">
                     ${paymentTotals.subtotal_ex_gst.toFixed(2)}
@@ -384,7 +385,7 @@ function OrderRow({
                 </div>
                 {paymentTotals.coupon_discount > 0 ||
                 paymentTotals.wholesale_discount > 0 ? (
-                  <div className="flex items-center justify-between text-emerald-100/90">
+                  <div className="flex items-center justify-between text-emerald-700">
                     <span>Discount</span>
                     <span className="tabular-nums">
                       -$
@@ -395,19 +396,19 @@ function OrderRow({
                     </span>
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between text-white/80">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>GST</span>
                   <span className="tabular-nums">
                     ${paymentTotals.gst_total.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-white/80">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>Delivery</span>
                   <span className="tabular-nums">
                     ${paymentTotals.shipping_fee.toFixed(2)}
                   </span>
                 </div>
-                <div className="mt-2 flex items-center justify-between border-t border-white/20 pt-2 font-semibold text-white">
+                <div className="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 font-semibold text-gray-900">
                   <span>Grand total (inc GST)</span>
                   <span className="tabular-nums">
                     ${paymentTotals.grand_total_inc_gst.toFixed(2)}
@@ -424,7 +425,7 @@ function OrderRow({
               <div className="lg:hidden">
                 <Link
                   href={trackingUrl}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-primary transition-colors hover:border-primary/50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-medium text-primary transition-colors hover:border-primary/50"
                 >
                   Track order <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -436,7 +437,7 @@ function OrderRow({
                 <button
                   type="button"
                   aria-label="Shipping address"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-50 text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-100 hover:text-gray-900"
                 >
                   <MapPin className="h-4 w-4" />
                 </button>
@@ -456,7 +457,7 @@ function OrderRow({
                 <button
                   type="button"
                   aria-label="Billing address"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-50 text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-100 hover:text-gray-900"
                 >
                   <FileText className="h-4 w-4" />
                 </button>
@@ -477,7 +478,7 @@ function OrderRow({
                   <button
                     type="button"
                     aria-label="Financial details"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-50 text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-100 hover:text-gray-900"
                   >
                     <ReceiptText className="h-4 w-4" />
                   </button>
@@ -509,7 +510,7 @@ function OrderRow({
                   <button
                     type="button"
                     aria-label="Event date"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-50 text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-100 hover:text-gray-900"
                   >
                     <CalendarDays className="h-4 w-4" />
                   </button>
@@ -528,7 +529,7 @@ function OrderRow({
                 type="button"
                 onClick={() => onCancel(order)}
                 disabled={paying}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 transition-colors hover:border-red-400/50 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:border-red-400/50 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Cancel order
@@ -854,43 +855,50 @@ export default function MemberCateringOrders() {
 
   if (isLoading || !isSignedIn || !me) {
     return (
-      <MemberPortalBackground className="flex items-center justify-center">
-        <p className="text-sm text-white/50">Loading catering orders…</p>
+      <MemberPortalBackground
+        variant="light"
+        className="flex items-center justify-center"
+      >
+        <p className="text-sm text-gray-500">Loading catering orders…</p>
       </MemberPortalBackground>
     );
   }
 
   return (
-    <MemberPortalBackground>
+    <MemberPortalBackground variant="light">
       {payingOrderId != null ? (
         <div
-          className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-black/55 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-black/30 backdrop-blur-[2px]"
           aria-busy="true"
           aria-live="polite"
           role="alertdialog"
           aria-label="Preparing payment"
         >
-          <div className="mx-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/90 px-6 py-4 shadow-2xl">
-            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-400" />
-            <p className="text-sm font-semibold text-white">
+          <div className="mx-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-6 py-4 shadow-2xl">
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-600" />
+            <p className="text-sm font-semibold text-gray-900">
               Preparing secure payment…
             </p>
           </div>
         </div>
       ) : null}
-      <MemberHeader member={me} onLogout={() => void handleLogout()} />
+      <MemberHeader
+        member={me}
+        onLogout={() => void handleLogout()}
+        theme="light"
+      />
 
-      <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
+      <div className={`py-6 ${MEMBER_PORTAL_LIGHT_BANNER_CLASS}`}>
         <div className="container">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-600/40 bg-green-400/20">
-              <ClipboardList className="h-6 w-6 text-green-400" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-600/30 bg-green-50">
+              <ClipboardList className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <h1 className="font-serif text-2xl font-bold text-white">
+              <h1 className="font-serif text-2xl font-bold text-gray-900">
                 Catering Orders
               </h1>
-              <p className="text-sm text-white/45">
+              <p className="text-sm text-gray-500">
                 Welcome back, {me.contactName}
               </p>
             </div>
@@ -907,11 +915,11 @@ export default function MemberCateringOrders() {
             aria-expanded={mobileFiltersOpen}
           >
             <ChevronDown
-              className={`ml-auto h-5 w-5 shrink-0 text-white/50 transition-transform lg:hidden ${
+              className={`ml-auto h-5 w-5 shrink-0 text-gray-500 transition-transform lg:hidden ${
                 mobileFiltersOpen ? "rotate-180" : ""
               }`}
             />
-            <h2 className="text-lg font-medium text-white">Filter orders</h2>
+            <h2 className="text-lg font-medium text-gray-900">Filter orders</h2>
             {activeFilterCount > 0 ? (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold tabular-nums text-white">
                 {activeFilterCount}
@@ -926,28 +934,28 @@ export default function MemberCateringOrders() {
           } lg:flex lg:flex-row lg:flex-wrap lg:items-center`}
         >
           <div className="relative w-full flex-1 lg:max-w-xs">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search orders or items…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-xl border border-white/15 bg-white/8 py-3 pl-11 pr-4 text-sm text-white placeholder-white/25 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           <input
             type="date"
             value={dateFrom}
             onChange={(event) => setDateFrom(event.target.value)}
-            className="w-full rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
             aria-label="From date"
           />
-          <span className="hidden text-white/35 lg:inline">–</span>
+          <span className="hidden text-gray-400 lg:inline">–</span>
           <input
             type="date"
             value={dateTo}
             onChange={(event) => setDateTo(event.target.value)}
-            className="w-full rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40 lg:w-auto"
             aria-label="To date"
           />
           <div className="relative w-full lg:w-auto lg:min-w-[180px]">
@@ -958,20 +966,20 @@ export default function MemberCateringOrders() {
                   event.target.value as WholesaleOrderStatusFilter,
                 )
               }
-              className="w-full cursor-pointer appearance-none rounded-xl border border-white/15 bg-white/8 py-3 pl-4 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-gray-300 bg-white py-3 pl-4 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               {ORDER_STATUS_FILTER_OPTIONS.map((option) => (
                 <option
                   key={option.value}
                   value={option.value}
-                  className="bg-neutral-900"
+                  className="bg-white"
                 >
                   {option.label}
                 </option>
               ))}
             </select>
             <ChevronDown
-              className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45"
+              className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
               aria-hidden
             />
           </div>
@@ -979,7 +987,7 @@ export default function MemberCateringOrders() {
             <button
               type="button"
               onClick={clearFilters}
-              className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:border-white/25 hover:text-white lg:w-auto ${MEMBER_PORTAL_BOX_SURFACE}`}
+              className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-900 lg:w-auto ${MEMBER_PORTAL_LIGHT_BOX_SURFACE}`}
             >
               <X className="h-4 w-4" />
               Clear filters
@@ -988,19 +996,19 @@ export default function MemberCateringOrders() {
         </div>
 
         {loadingOrders ? (
-          <div className="flex items-center justify-center py-24 text-white/40">
+          <div className="flex items-center justify-center py-24 text-gray-500">
             <Loader2 className="mr-3 h-6 w-6 animate-spin" />
             Loading orders…
           </div>
         ) : loadError ? (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-6 text-center text-sm text-red-200">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-6 text-center text-sm text-red-700">
             {loadError}
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="py-20 text-center text-white/30">
+          <div className="py-20 text-center text-gray-400">
             <Package className="mx-auto mb-4 h-12 w-12 opacity-30" />
             <p className="font-medium">No catering orders found</p>
-            <p className="mt-2 text-sm text-white/25">
+            <p className="mt-2 text-sm text-gray-400">
               {search.trim()
                 ? "Try adjusting your search or filters."
                 : "Your catering orders will appear here after you place an order."}
@@ -1038,7 +1046,7 @@ export default function MemberCateringOrders() {
 
         {!loadingOrders && !loadError && totalCount > 0 ? (
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-            <p className="text-sm text-white/40">
+            <p className="text-sm text-gray-500">
               Showing {(page - 1) * WHOLESALE_ORDERS_PAGE_SIZE + 1}–
               {Math.min(page * WHOLESALE_ORDERS_PAGE_SIZE, totalCount)} of{" "}
               {totalCount} orders

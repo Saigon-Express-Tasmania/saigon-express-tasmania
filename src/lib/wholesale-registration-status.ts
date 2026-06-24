@@ -20,7 +20,7 @@ export const WHOLESALE_REGISTRATION_MESSAGES = {
   pending_email_confirmation:
     "Registration submitted! Check your email to confirm your address, then sign in. Portal access requires administrator approval (typically 1–2 business days).",
   pending_approval_banner:
-    "Your registration is pending administrator approval. You can sign in, but wholesale portal features are not available yet.",
+    "Your registration is pending administrator approval. You can sign in, but portal features are not available yet.",
 } as const;
 
 export function isWholesaleMemberConfirmed(

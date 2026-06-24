@@ -6,8 +6,9 @@ import AppImage from "@/components/AppImage";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
-  MEMBER_PORTAL_BANNER_CLASS,
-  MEMBER_PORTAL_CARD_HOVER_CLASS,
+  MEMBER_PORTAL_LIGHT_BANNER_CLASS,
+  MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS,
+  MEMBER_PORTAL_LIGHT_FILTER_INPUT_CLASS,
 } from "@/lib/member-portal-surfaces";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useWholesaleInventory } from "@/contexts/WholesaleInventoryContext";
@@ -224,22 +225,26 @@ export default function WholesaleShop({
   };
 
   return (
-    <MemberPortalBackground>
-      <MemberHeader member={me} onLogout={() => void handleLogout()} />
+    <MemberPortalBackground variant="light">
+      <MemberHeader
+        member={me}
+        onLogout={() => void handleLogout()}
+        theme="light"
+      />
 
       {/* Welcome banner */}
-      <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
+      <div className={`py-6 ${MEMBER_PORTAL_LIGHT_BANNER_CLASS}`}>
         <div className="container">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
               <Building2 className="w-6 h-6 text-primary" />
             </div>
             {me ? (
               <div>
-                <h1 className="font-serif text-2xl font-bold text-white">
+                <h1 className="font-serif text-2xl font-bold text-gray-900">
                   Welcome, {me.contactName}
                 </h1>
-                <p className="text-white/45 text-sm">
+                <p className="text-gray-500 text-sm">
                   {me.businessName}
                 </p>
               </div>
@@ -252,13 +257,13 @@ export default function WholesaleShop({
       <div className="container py-8">
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/8 border border-white/15 text-white placeholder-white/25 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+              className={`${MEMBER_PORTAL_LIGHT_FILTER_INPUT_CLASS} pl-11 pr-4 py-3`}
             />
           </div>
         </div>
@@ -269,8 +274,8 @@ export default function WholesaleShop({
             onClick={() => setSelectedCategory(ALL_CATEGORY)}
             className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
               selectedCategory === ALL_CATEGORY
-                ? "bg-white text-black border-white"
-                : "border-white/20 text-white/50 hover:border-white/50 hover:text-white"
+                ? "bg-primary text-white border-primary"
+                : "border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-900"
             }`}
           >
             {ALL_CATEGORY}
@@ -282,8 +287,8 @@ export default function WholesaleShop({
               onClick={() => setSelectedCategory(category.name)}
               className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
                 selectedCategory === category.name
-                  ? "bg-white text-black border-white"
-                  : "border-white/20 text-white/50 hover:border-white/50 hover:text-white"
+                  ? "bg-primary text-white border-primary"
+                  : "border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-900"
               }`}
             >
               {category.name}
@@ -311,7 +316,7 @@ export default function WholesaleShop({
             return (
               <div
                 key={product.id}
-                className={`group ${MEMBER_PORTAL_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
+                className={`group ${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
               >
                 <div className="relative h-44 overflow-hidden">
                   {product.imageUrl ? (
@@ -349,26 +354,26 @@ export default function WholesaleShop({
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-white text-sm mb-1.5 leading-snug">
+                  <h3 className="font-semibold text-gray-900 text-sm mb-1.5 leading-snug">
                     {product.name}
                   </h3>
-                  <p className="text-xs text-white/40 mb-3 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-gray-500 mb-3 leading-relaxed line-clamp-2">
                     {product.description}
                   </p>
 
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <div className="text-lg font-bold text-white">
+                      <div className="text-lg font-bold text-gray-900">
                         ${Number(product.priceExGst).toFixed(2)}
                       </div>
-                      <div className="text-xs text-white/35">
+                      <div className="text-xs text-gray-400">
                         per {product.unit} ex GST
                       </div>
                       {product.effectiveRemaining > 0 ? (
-                        <div className="text-[11px] text-white/40 mt-1 leading-snug">
+                        <div className="text-[11px] text-gray-500 mt-1 leading-snug">
                           {product.effectiveRemaining} left today
                           {customerLimitIsTighter ? (
-                            <span className="text-amber-200/90">
+                            <span className="text-amber-700">
                               {" - your limit: "}
                               {product.customerRemaining}
                             </span>
@@ -403,7 +408,7 @@ export default function WholesaleShop({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-white/30">
+          <div className="text-center py-20 text-gray-400">
             <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p className="font-medium">No products found</p>
           </div>

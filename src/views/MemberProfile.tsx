@@ -9,8 +9,10 @@ import WholesaleFormSelect, {
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
-  MEMBER_PORTAL_BANNER_CLASS,
-  MEMBER_PORTAL_PANEL_CLASS,
+  MEMBER_PORTAL_LIGHT_BANNER_CLASS,
+  MEMBER_PORTAL_LIGHT_INPUT_CLASS,
+  MEMBER_PORTAL_LIGHT_LABEL_CLASS,
+  MEMBER_PORTAL_LIGHT_PANEL_CLASS,
 } from "@/lib/member-portal-surfaces";
 import MemberPrivilegeBadges from "@/components/MemberPrivilegeBadges";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -69,10 +71,9 @@ type ProfileFormState = {
   billing_country: string;
 };
 
-const INPUT_CLASS =
-  "w-full rounded-lg border border-white/15 bg-white/8 px-3 py-2.5 text-sm text-white placeholder-white/25 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50";
+const INPUT_CLASS = MEMBER_PORTAL_LIGHT_INPUT_CLASS;
 
-const LABEL_CLASS = "text-xs font-medium text-white/80";
+const LABEL_CLASS = MEMBER_PORTAL_LIGHT_LABEL_CLASS;
 
 function getContactName(profile: UserProfile): string {
   if (profile.business_name?.trim()) return profile.business_name.trim();
@@ -393,7 +394,10 @@ export default function MemberProfile() {
 
   if (isLoading || !isSignedIn || !profile || !form || !me) {
     return (
-      <MemberPortalBackground className="flex items-center justify-center">
+      <MemberPortalBackground
+        variant="light"
+        className="flex items-center justify-center"
+      >
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </MemberPortalBackground>
     );
@@ -402,19 +406,23 @@ export default function MemberProfile() {
   const displayName = getContactName(profile);
 
   return (
-    <MemberPortalBackground>
-      <MemberHeader member={me} onLogout={() => void handleLogout()} />
+    <MemberPortalBackground variant="light">
+      <MemberHeader
+        member={me}
+        onLogout={() => void handleLogout()}
+        theme="light"
+      />
 
       <form onSubmit={(event) => void handleSubmit(event)}>
-        <div className={`py-6 ${MEMBER_PORTAL_BANNER_CLASS}`}>
+        <div className={`py-6 ${MEMBER_PORTAL_LIGHT_BANNER_CLASS}`}>
           <div className="container">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
                   <User className="h-6 w-6 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="font-serif text-2xl font-bold text-white truncate">
+                  <h1 className="font-serif text-2xl font-bold text-gray-900 truncate">
                     {me.businessName}
                   </h1>
                   <MemberPrivilegeBadges privileges={authMetadata.privileges} />
@@ -439,10 +447,10 @@ export default function MemberProfile() {
         </div>
 
         <div className="container max-w-5xl py-8">
-          <section className={`mb-6 p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
+          <section className={`mb-6 p-6 ${MEMBER_PORTAL_LIGHT_PANEL_CLASS}`}>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
               <div className="mx-auto w-full max-w-xs shrink-0 text-center lg:mx-0 lg:w-auto">
-                <div className="relative mx-auto mb-3 flex h-50 w-50 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/20 p-1">
+                <div className="relative mx-auto mb-3 flex h-50 w-50 items-center justify-center overflow-hidden rounded-lg border border-primary/20 bg-primary/10 p-1">
                   {avatarPreviewUrl ? (
                     <AppImage
                       src={avatarPreviewUrl}
@@ -467,7 +475,7 @@ export default function MemberProfile() {
                     type="button"
                     onClick={() => avatarInputRef.current?.click()}
                     disabled={isUploading || isSaving}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Upload className="h-3.5 w-3.5" />
                     {avatarPreviewUrl ? "Replace" : "Upload"}
@@ -477,14 +485,14 @@ export default function MemberProfile() {
                       type="button"
                       onClick={() => void handleAvatarClear()}
                       disabled={isUploading || isSaving}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <X className="h-3.5 w-3.5" />
                       Remove
                     </button>
                   ) : null}
                 </div>
-                <p className="mt-2 text-xs text-white/35">
+                <p className="mt-2 text-xs text-gray-400">
                   JPEG, PNG, WebP or GIF.
                 </p>
                 <input
@@ -498,7 +506,7 @@ export default function MemberProfile() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <h2 className="mb-5 text-base font-semibold text-white">
+                <h2 className="mb-5 text-base font-semibold text-gray-900">
                   Personal Details
                 </h2>
                 <div className="mb-4 grid gap-4 sm:grid-cols-2">
@@ -545,7 +553,7 @@ export default function MemberProfile() {
                       onChange={(event) =>
                         handleFieldChange("date_of_birth", event.target.value)
                       }
-                      className={`${INPUT_CLASS} [color-scheme:dark]`}
+                      className={`${INPUT_CLASS}`}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -571,11 +579,11 @@ export default function MemberProfile() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
-              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
-                <h2 className="mb-1 text-base font-semibold text-white">
+              <section className={`p-6 ${MEMBER_PORTAL_LIGHT_PANEL_CLASS}`}>
+                <h2 className="mb-1 text-base font-semibold text-gray-900">
                   Personal Address
                 </h2>
-                <p className="mb-5 text-xs text-white/45">
+                <p className="mb-5 text-xs text-gray-500">
                   Your home or contact address, separate from business shipping
                   and billing.
                 </p>
@@ -693,11 +701,11 @@ export default function MemberProfile() {
                 </div>
               </section>
 
-              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
-                <h2 className="mb-1 text-base font-semibold text-white">
+              <section className={`p-6 ${MEMBER_PORTAL_LIGHT_PANEL_CLASS}`}>
+                <h2 className="mb-1 text-base font-semibold text-gray-900">
                   Shipping Address
                 </h2>
-                <p className="mb-5 text-xs text-white/45">
+                <p className="mb-5 text-xs text-gray-500">
                   Default delivery details for wholesale orders.
                 </p>
                 <div className="space-y-4">
@@ -827,8 +835,8 @@ export default function MemberProfile() {
             </div>
 
             <div className="space-y-6">
-              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
-                <h2 className="mb-5 text-base font-semibold text-white">
+              <section className={`p-6 ${MEMBER_PORTAL_LIGHT_PANEL_CLASS}`}>
+                <h2 className="mb-5 text-base font-semibold text-gray-900">
                   Business Information
                 </h2>
                 <div className="space-y-4">
@@ -881,11 +889,11 @@ export default function MemberProfile() {
                 </div>
               </section>
 
-              <section className={`p-6 ${MEMBER_PORTAL_PANEL_CLASS}`}>
-                <h2 className="mb-1 text-base font-semibold text-white">
+              <section className={`p-6 ${MEMBER_PORTAL_LIGHT_PANEL_CLASS}`}>
+                <h2 className="mb-1 text-base font-semibold text-gray-900">
                   Billing Address
                 </h2>
-                <p className="mb-5 text-xs text-white/45">
+                <p className="mb-5 text-xs text-gray-500">
                   Invoicing and tax details for wholesale orders.
                 </p>
                 <div className="space-y-4">
@@ -1025,7 +1033,7 @@ export default function MemberProfile() {
                   type="button"
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="rounded-xl border border-white/15 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Cancel
                 </button>
