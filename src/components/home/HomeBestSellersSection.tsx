@@ -47,7 +47,7 @@ export default async function HomeBestSellersSection() {
             <Link
               key={item.id}
               href="/menu"
-              className="group block bg-brand-cream rounded-sm overflow-hidden card-lift reveal"
+              className="group block bg-brand-cream rounded-sm overflow-hidden card-lift reveal flex flex-col"
               style={{ animationDelay: `${i * 0.08}s` }}
             >
               <div className="aspect-square overflow-hidden bg-gray-100">
@@ -58,7 +58,7 @@ export default async function HomeBestSellersSection() {
                   className="group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <div className="p-4">
+              <div className="flex flex-1 flex-col p-4">
                 <p className="text-xs font-semibold text-brand-red uppercase tracking-wider mb-1">
                   {item.category}
                 </p>
@@ -68,10 +68,10 @@ export default async function HomeBestSellersSection() {
                 <p className="text-sm text-brand-dark/60 line-clamp-2 mb-3">
                   {item.description}
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-brand-dark">
+                <div className="mt-auto ml-auto flex items-end justify-between pt-3">
+                  {/* <span className="font-bold text-brand-dark">
                     ${Number(item.price).toFixed(2)}
-                  </span>
+                  </span> */}
                   <span className="text-xs text-brand-red font-semibold">
                     {t("bestSellers.order")}
                   </span>

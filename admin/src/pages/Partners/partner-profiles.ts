@@ -1,4 +1,4 @@
-import { normalizePartnerPrivileges } from '@/lib/partner-privilege-form';
+import { normalizePartnerPrivileges } from './partner-privilege-form';
 import { invokeSendEmail } from '@/lib/send-email-api';
 import { fetchSettingsByKeys } from '@/lib/settings';
 import supabase from '@/lib/supabase/client';

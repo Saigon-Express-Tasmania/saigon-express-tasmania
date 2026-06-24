@@ -9,6 +9,8 @@ export type PendingFranchiseInterest = {
   phone: string | null;
   city: string | null;
   state: string;
+  business_name: string | null;
+  business_type: string | null;
   investment_budget: string | null;
   business_experience: string | null;
   message: string | null;
@@ -19,7 +21,7 @@ export type PendingFranchiseInterest = {
 export const DASHBOARD_PENDING_FRANCHISE_INTERESTS_LIMIT = 10;
 
 export const PENDING_FRANCHISE_INTEREST_SELECT =
-  'id, full_name, email, phone, city, state, investment_budget, business_experience, message, status, created_at';
+  'id, full_name, email, phone, city, state, business_name, business_type, investment_budget, business_experience, message, status, created_at';
 
 export function formatFranchiseInterestDate(value: string): string {
   return new Date(value).toLocaleString('en-AU', {

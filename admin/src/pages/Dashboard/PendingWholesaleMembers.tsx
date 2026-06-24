@@ -1,13 +1,13 @@
 'use client';
 
-import { PendingPartnersList } from '@/components/partners/PendingPartnersList';
+import { PendingPartnersList } from '@/pages/Partners/PendingPartnersList';
 import {
   DashboardSectionCard,
   DashboardViewAllLink,
 } from '@/components/dashboard/DashboardSectionCard';
 import { DashboardRefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { normalizePartnerPrivileges } from '@/lib/partner-privilege-form';
+import { normalizePartnerPrivileges } from '@/pages/Partners/partner-privilege-form';
 import { hasAnyPortalPartnerPrivilege } from '@/lib/privileges';
 import {
   confirmPartnerWithPrivileges,
@@ -15,7 +15,7 @@ import {
   fetchPendingPartners,
   partnerDisplayName,
   type PendingPartnerProfile,
-} from '@/lib/partner-profiles';
+} from '@/pages/Partners/partner-profiles';
 import type { BusinessType } from '@/types/UserProfile';
 import { UserRoundSearch } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';

@@ -43,6 +43,10 @@ create table public.user_profiles (
   billing_postal_code text,
   billing_country text,
 
+  -- franchise related fields
+  location_address text,
+  investment_amount text,
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint user_profiles_email_lowercase check (

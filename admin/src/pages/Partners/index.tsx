@@ -1,4 +1,10 @@
-import { PendingPartnersList } from '@/components/partners/PendingPartnersList';
+import { ApprovedFranchiseInterestsList } from './ApprovedFranchiseInterestsList';
+import { FranchiseAccountCreateDialog } from './FranchiseAccountCreateDialog';
+import {
+  deleteFranchiseInterest,
+  fetchApprovedFranchiseInterests,
+} from './approved-franchise-interests';
+import { PendingPartnersList } from './PendingPartnersList';
 import { DashboardLayout } from '@/components/layout';
 import {
   AlertDialog,
@@ -37,16 +43,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { createPartnerAccount, deletePartnerAccount } from '@/lib/partner-api';
+import { createPartnerAccount, deletePartnerAccount } from './partner-api';
 import {
   normalizePartnerPrivileges,
   PARTNER_PRIVILEGE_OPTIONS,
   togglePartnerPrivilege,
-} from '@/lib/partner-privilege-form';
+} from './partner-privilege-form';
 import {
   formatPortalPartnerPrivileges,
   hasAnyPortalPartnerPrivilege,
 } from '@/lib/privileges';
+import type { PendingFranchiseInterest } from '@/lib/pending-franchise-interests';
 import {
   confirmPartnerWithPrivileges,
   fetchConfirmedPartners,
@@ -55,7 +62,7 @@ import {
   formatPartnerDate,
   partnerDisplayName,
   type PendingPartnerProfile,
-} from '@/lib/partner-profiles';
+} from './partner-profiles';
 import { updateUserMetadata } from '@/lib/user-metadata';
 import supabase from '@/lib/supabase/client';
 import type {
@@ -206,18 +213,31 @@ export function Partners() {
 
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null);
 
+  const [approvedFranchiseInterests, setApprovedFranchiseInterests] = useState<
+    PendingFranchiseInterest[]
+  >([]);
+  const [createAccountTarget, setCreateAccountTarget] =
+    useState<PendingFranchiseInterest | null>(null);
+  const [franchiseInterestDeleteTarget, setFranchiseInterestDeleteTarget] =
+    useState<PendingFranchiseInterest | null>(null);
+  const [franchiseInterestActionId, setFranchiseInterestActionId] = useState<
+    number | null
+  >(null);
+
   const loadPartners = useCallback(async () => {
     setLoading(true);
     try {
-      const [pendingResult, confirmed] = await Promise.all([
+      const [pendingResult, confirmed, approvedInterests] = await Promise.all([
         fetchPendingPartners({
           limit: PARTNERS_PAGE_PENDING_LIMIT,
         }),
         fetchConfirmedPartners(),
+        fetchApprovedFranchiseInterests(),
       ]);
       setPendingPartners(pendingResult.items);
       setPendingTotalCount(pendingResult.totalCount);
       setConfirmedPartners(confirmed);
+      setApprovedFranchiseInterests(approvedInterests);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to load partners.',
@@ -383,6 +403,26 @@ export function Partners() {
     setConfirmPromptId((current) => (current === partnerId ? null : partnerId));
   };
 
+  const handleDeleteFranchiseInterest = async () => {
+    if (!franchiseInterestDeleteTarget) return;
+
+    setFranchiseInterestActionId(franchiseInterestDeleteTarget.id);
+    try {
+      await deleteFranchiseInterest(franchiseInterestDeleteTarget.id);
+      toast.success('Franchise interest deleted.');
+      setFranchiseInterestDeleteTarget(null);
+      await loadPartners();
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to delete franchise interest.',
+      );
+    } finally {
+      setFranchiseInterestActionId(null);
+    }
+  };
+
   return (
     <DashboardLayout title="Partners">
       <Card className="overflow-visible">
@@ -423,8 +463,6 @@ export function Partners() {
             <p className="text-muted-foreground">
               Administrator access is required to manage partners.
             </p>
-          ) : pendingTotalCount === 0 && confirmedPartners.length === 0 ? (
-            <p className="text-muted-foreground">No partners yet.</p>
           ) : (
             <div className="space-y-8">
               {pendingTotalCount > 0 ? (
@@ -444,6 +482,22 @@ export function Partners() {
                   onDelete={setDeleteTarget}
                 />
               ) : null}
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold">Approved franchise interests</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Approved franchise submissions ready for partner account creation.
+                  </p>
+                </div>
+                <ApprovedFranchiseInterestsList
+                  interests={approvedFranchiseInterests}
+                  loading={false}
+                  actionInProgressId={franchiseInterestActionId}
+                  onCreateAccount={setCreateAccountTarget}
+                  onDelete={setFranchiseInterestDeleteTarget}
+                />
+              </section>
 
               {confirmedPartners.length > 0 ? (
                 <section className="space-y-3">
@@ -852,6 +906,12 @@ export function Partners() {
         </DialogContent>
       </Dialog>
 
+      <FranchiseAccountCreateDialog
+        interest={createAccountTarget}
+        onClose={() => setCreateAccountTarget(null)}
+        onCompleted={loadPartners}
+      />
+
       <AlertDialog
         open={deleteTarget != null}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
@@ -876,6 +936,37 @@ export function Partners() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {saving ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={franchiseInterestDeleteTarget != null}
+        onOpenChange={(open) => !open && setFranchiseInterestDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete franchise interest?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the franchise interest submission for{' '}
+              <strong>{franchiseInterestDeleteTarget?.full_name}</strong>. This
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={franchiseInterestActionId != null}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteFranchiseInterest();
+              }}
+              disabled={franchiseInterestActionId != null}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {franchiseInterestActionId != null ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

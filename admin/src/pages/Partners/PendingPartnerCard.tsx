@@ -1,19 +1,19 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  defaultConfirmPrivileges,
-  PARTNER_PRIVILEGE_OPTIONS,
-  togglePartnerPrivilege,
-} from '@/lib/partner-privilege-form';
-import {
-  formatPartnerDate,
-  partnerDisplayName,
-} from '@/lib/partner-profiles';
-import type { PendingPartnerProfile } from '@/lib/partner-profiles';
 import type { BusinessType } from '@/types/UserProfile';
 import { CheckCircle2, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  defaultConfirmPrivileges,
+  PARTNER_PRIVILEGE_OPTIONS,
+  togglePartnerPrivilege,
+} from './partner-privilege-form';
+import {
+  formatPartnerDate,
+  partnerDisplayName,
+  type PendingPartnerProfile,
+} from './partner-profiles';
 
 const CONFIRM_POPOVER_WIDTH = 208;
 
@@ -190,13 +190,29 @@ export function PendingPartnerCard({
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${
+      className={`flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:gap-3 ${
         partner.email_verified
           ? ''
           : 'border-destructive/50 bg-destructive/10'
       }`}
     >
-      <div className="min-w-0 space-y-1">
+      {onDelete ? (
+        <div className="flex shrink-0">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 px-2"
+            onClick={() => {
+              onConfirmPromptClose();
+              onDelete(partner);
+            }}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
+      ) : null}
+      <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <p className="truncate text-sm font-medium">
             {partnerDisplayName(partner)}
@@ -229,7 +245,7 @@ export function PendingPartnerCard({
           ))}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap gap-1.5">
+      <div className="flex shrink-0 flex-wrap gap-1.5 sm:ml-auto">
         <div ref={anchorRef} className="relative">
           <Button
             type="button"
@@ -263,20 +279,6 @@ export function PendingPartnerCard({
             <Pencil className="size-3.5" />
           </Button>
         ) : null}
-        {onDelete ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 px-2"
-            onClick={() => {
-              onConfirmPromptClose();
-              onDelete(partner);
-            }}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
-        ) : null}
       </div>
     </div>
   );
@@ -284,7 +286,8 @@ export function PendingPartnerCard({
 
 export function PendingPartnerCardSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex animate-pulse flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
+      <div className="h-7 w-7 shrink-0 rounded bg-muted" />
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-center gap-2">
           <div className="h-4 w-36 rounded bg-muted" />
@@ -292,9 +295,8 @@ export function PendingPartnerCardSkeleton() {
         </div>
         <div className="h-3 w-full max-w-md rounded bg-muted" />
       </div>
-      <div className="flex gap-1.5">
+      <div className="flex shrink-0 gap-1.5 sm:ml-auto">
         <div className="h-7 w-20 rounded bg-muted" />
-        <div className="h-7 w-7 rounded bg-muted" />
         <div className="h-7 w-7 rounded bg-muted" />
       </div>
     </div>

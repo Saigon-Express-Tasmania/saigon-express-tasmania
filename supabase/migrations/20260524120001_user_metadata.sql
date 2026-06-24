@@ -171,6 +171,8 @@ $$;
 comment on function public.sync_auth_user_metadata(uuid) is
   'Writes user_role and privileges into auth.users raw_app_meta_data (App Metadata in dashboard).';
 
+grant execute on function public.sync_auth_user_metadata(uuid) to service_role;
+
 -- ---------------------------------------------------------------------------
 -- New auth user → default metadata row + JWT sync
 -- ---------------------------------------------------------------------------
@@ -217,6 +219,11 @@ create trigger on_auth_user_created_metadata
 -- ---------------------------------------------------------------------------
 -- Metadata change → auth JWT metadata
 -- ---------------------------------------------------------------------------
+-- Drop legacy triggers/functions from partial SQL editor applies.
+drop trigger if exists on_user_metadata_role_change on public.user_metadata;
+drop function if exists public.handle_user_metadata_role_change();
+drop function if exists public.sync_auth_user_role_metadata(uuid, public.user_role, boolean);
+
 create or replace function public.handle_user_metadata_auth_sync()
 returns trigger
 language plpgsql
@@ -330,8 +337,6 @@ grant execute on function public.user_has_privilege(public.business_type)
   to anon, authenticated, service_role;
 grant execute on function public.user_has_privileges(public.business_type[])
   to anon, authenticated, service_role;
-grant execute on function public.sync_auth_user_metadata(uuid)
-  to service_role;
 grant execute on function public.sync_user_auth_metadata(uuid)
   to authenticated, service_role;
 

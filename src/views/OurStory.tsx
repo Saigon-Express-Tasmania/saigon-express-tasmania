@@ -413,7 +413,7 @@ export default function OurStory() {
             <div className="relative">
               <div className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl">
                 <AppImage
-                  src="/manus-storage/dr_tien_ho_portrait_4d605389.png"
+                  src="/manus-storage/dr_tien_ho_portrait_4d605389.jpg"
                   alt={t("founder.heading")}
                   fill
                   className="object-cover"

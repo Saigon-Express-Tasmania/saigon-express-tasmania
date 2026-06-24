@@ -1,10 +1,12 @@
+import type { BusinessType } from '@/types/UserProfile';
 import {
   PendingPartnerCard,
   PendingPartnerCardSkeleton,
-} from '@/components/partners/PendingPartnerCard';
-import { pendingPartnersRemainingMessage } from '@/lib/partner-profiles';
-import type { PendingPartnerProfile } from '@/lib/partner-profiles';
-import type { BusinessType } from '@/types/UserProfile';
+} from './PendingPartnerCard';
+import {
+  pendingPartnersRemainingMessage,
+  type PendingPartnerProfile,
+} from './partner-profiles';
 
 export type PendingPartnersListProps = {
   partners: PendingPartnerProfile[];

@@ -77,6 +77,17 @@ function isAlreadyRegisteredError(error: unknown): boolean {
   );
 }
 
+async function confirmUserEmail(
+  service: ReturnType<typeof createServiceClient>,
+  userId: string,
+): Promise<void> {
+  const { error } = await service.auth.admin.updateUserById(userId, {
+    email_confirm: true,
+  });
+
+  if (error) throw error;
+}
+
 function parsePrivileges(value: unknown): BusinessType[] {
   if (!Array.isArray(value)) return ["personal"];
 
@@ -121,6 +132,345 @@ function parsePortalType(value: unknown): PortalType {
   const raw = nullableString(value);
   if (raw === "warehouse") return "warehouse";
   return "wholesale";
+}
+
+function mergePrivileges(current: BusinessType[], grant: BusinessType): BusinessType[] {
+  return [...new Set([...current, grant])].sort();
+}
+
+type FranchiseInterestRow = {
+  id: number;
+  interest_type: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  city: string | null;
+  state: string | null;
+  business_name: string | null;
+  business_type: string | null;
+  investment_budget: string | null;
+  business_experience: string | null;
+  status: string;
+};
+
+type FranchiseProfilePreview = {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  state: string | null;
+  business_name: string | null;
+  location_address: string | null;
+  investment_amount: string | null;
+  country: string;
+  user_role: PartnerProfileInput["user_role"];
+  privileges: BusinessType[];
+};
+
+type ExistingFranchiseUser = FranchiseProfilePreview & {
+  userId: string;
+  city: string | null;
+  business_category: string | null;
+};
+
+function formatFranchiseLocationAddress(
+  city: string | null,
+  state: string | null,
+): string | null {
+  const parts = [city, state].filter((value) => value && value.trim());
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+function mapFranchiseInterestToProfile(interest: FranchiseInterestRow): FranchiseProfilePreview {
+  const { first_name, last_name } = splitContactName(interest.full_name);
+
+  return {
+    email: interest.email.trim().toLowerCase(),
+    first_name,
+    last_name,
+    phone: nullableString(interest.phone),
+    state: nullableString(interest.state),
+    business_name: nullableString(interest.business_name),
+    location_address: formatFranchiseLocationAddress(
+      nullableString(interest.city),
+      nullableString(interest.state),
+    ),
+    investment_amount: nullableString(interest.investment_budget),
+    country: "AU",
+    user_role: "user",
+    privileges: ["personal", "franchise"],
+  };
+}
+
+function parseFranchiseInterestId(value: unknown): number {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("franchiseInterestId is required");
+  }
+  return id;
+}
+
+async function fetchApprovedFranchiseInterest(
+  service: ReturnType<typeof createServiceClient>,
+  franchiseInterestId: number,
+): Promise<FranchiseInterestRow> {
+  const { data, error } = await service
+    .from("franchise_interests")
+    .select(
+      "id, interest_type, full_name, email, phone, city, state, business_name, business_type, investment_budget, business_experience, status",
+    )
+    .eq("id", franchiseInterestId)
+    .eq("interest_type", "franchise")
+    .eq("status", "approved")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) {
+    throw new Error("Approved franchise interest not found");
+  }
+
+  return data as FranchiseInterestRow;
+}
+
+async function findUserByEmail(
+  service: ReturnType<typeof createServiceClient>,
+  email: string,
+): Promise<ExistingFranchiseUser | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data: profile, error: profileError } = await service
+    .from("user_profiles")
+    .select(
+      "id, email, first_name, last_name, phone, city, state, business_name, business_category, location_address, investment_amount",
+    )
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (profileError) throw profileError;
+  if (!profile) return null;
+
+  const { data: metadata, error: metadataError } = await service
+    .from("user_metadata")
+    .select("user_role, privileges")
+    .eq("id", profile.id)
+    .single();
+
+  if (metadataError) throw metadataError;
+
+  return {
+    userId: profile.id,
+    email: profile.email ?? normalizedEmail,
+    first_name: nullableString(profile.first_name),
+    last_name: nullableString(profile.last_name),
+    phone: nullableString(profile.phone),
+    state: nullableString(profile.state),
+    business_name: nullableString(profile.business_name),
+    location_address: nullableString(profile.location_address),
+    investment_amount: nullableString(profile.investment_amount),
+    country: "AU",
+    user_role: (metadata.user_role ?? "user") as PartnerProfileInput["user_role"],
+    privileges: parsePrivileges(metadata.privileges),
+    city: nullableString(profile.city),
+    business_category: nullableString(profile.business_category),
+  };
+}
+
+function coalesceFranchiseProfileUpdate(
+  existing: ExistingFranchiseUser,
+  fromInterest: FranchiseProfilePreview,
+): Record<string, string | null> {
+  return {
+    location_address: existing.location_address ?? fromInterest.location_address,
+    investment_amount: existing.investment_amount ?? fromInterest.investment_amount,
+  };
+}
+
+async function resolveFranchiseInterest(
+  service: ReturnType<typeof createServiceClient>,
+  franchiseInterestId: number,
+): Promise<void> {
+  const { data, error } = await service
+    .from("franchise_interests")
+    .update({ status: "resolved" })
+    .eq("id", franchiseInterestId)
+    .eq("interest_type", "franchise")
+    .eq("status", "approved")
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) {
+    throw new Error("Franchise interest is no longer approved");
+  }
+}
+
+async function handlePreviewFranchiseAccount(body: Record<string, unknown>) {
+  const franchiseInterestId = parseFranchiseInterestId(body.franchiseInterestId);
+  const service = createServiceClient();
+  const interest = await fetchApprovedFranchiseInterest(service, franchiseInterestId);
+  const preview = mapFranchiseInterestToProfile(interest);
+  const existingUser = await findUserByEmail(service, preview.email);
+  const alreadyHasFranchise = existingUser?.privileges.includes("franchise") ?? false;
+  const mergedPreview = existingUser
+    ? {
+        ...existingUser,
+        privileges: alreadyHasFranchise
+          ? existingUser.privileges
+          : mergePrivileges(existingUser.privileges, "franchise"),
+        location_address:
+          existingUser.location_address ?? preview.location_address,
+        investment_amount:
+          existingUser.investment_amount ?? preview.investment_amount,
+      }
+    : preview;
+
+  return {
+    franchiseInterestId,
+    emailExists: existingUser != null,
+    alreadyHasFranchise,
+    passwordRequired: existingUser == null,
+    preview: mergedPreview,
+    existingUser,
+  };
+}
+
+async function grantFranchisePrivilegeToExistingUser(
+  service: ReturnType<typeof createServiceClient>,
+  existingUser: ExistingFranchiseUser,
+  fromInterest: FranchiseProfilePreview,
+): Promise<string> {
+  const privileges = existingUser.privileges.includes("franchise")
+    ? existingUser.privileges
+    : mergePrivileges(existingUser.privileges, "franchise");
+
+  const { error: profileError } = await service
+    .from("user_profiles")
+    .update(coalesceFranchiseProfileUpdate(existingUser, fromInterest))
+    .eq("id", existingUser.userId);
+
+  if (profileError) throw profileError;
+
+  if (!existingUser.privileges.includes("franchise")) {
+    const { error: metadataError } = await service
+      .from("user_metadata")
+      .update({ privileges })
+      .eq("id", existingUser.userId);
+
+    if (metadataError) throw metadataError;
+
+    const { error: syncError } = await service.rpc("sync_auth_user_metadata", {
+      target_user_id: existingUser.userId,
+    });
+
+    if (syncError) throw syncError;
+  }
+
+  return existingUser.userId;
+}
+
+async function createFranchiseUserFromInterest(
+  service: ReturnType<typeof createServiceClient>,
+  preview: FranchiseProfilePreview,
+  password: string,
+): Promise<string> {
+  const { data: created, error: createError } = await service.auth.admin.createUser({
+    email: preview.email,
+    password,
+    email_confirm: true,
+    user_metadata: buildUserMetadata({
+      first_name: preview.first_name,
+      last_name: preview.last_name,
+      phone: preview.phone,
+      business_name: preview.business_name,
+      country: preview.country,
+    }),
+  });
+
+  if (createError) {
+    if (isAlreadyRegisteredError(createError)) {
+      throw new Error("An account with this email already exists.");
+    }
+    throw createError;
+  }
+
+  const userId = created.user?.id;
+  if (!userId) {
+    throw new Error("Failed to create auth user");
+  }
+
+  const { error: updateError } = await service
+    .from("user_profiles")
+    .update({
+      email: preview.email,
+      first_name: preview.first_name,
+      last_name: preview.last_name,
+      phone: preview.phone,
+      state: preview.state,
+      business_name: preview.business_name,
+      location_address: preview.location_address,
+      investment_amount: preview.investment_amount,
+      country: preview.country,
+    })
+    .eq("id", userId);
+
+  if (updateError) {
+    await service.auth.admin.deleteUser(userId);
+    throw updateError;
+  }
+
+  const { error: metadataError } = await service
+    .from("user_metadata")
+    .update({
+      user_role: "user",
+      privileges: ["personal", "franchise"],
+    })
+    .eq("id", userId);
+
+  if (metadataError) {
+    await service.auth.admin.deleteUser(userId);
+    throw metadataError;
+  }
+
+  const { error: syncError } = await service.rpc("sync_auth_user_metadata", {
+    target_user_id: userId,
+  });
+
+  if (syncError) {
+    await service.auth.admin.deleteUser(userId);
+    throw syncError;
+  }
+
+  return userId;
+}
+
+async function handleCompleteFranchiseAccount(body: Record<string, unknown>) {
+  const franchiseInterestId = parseFranchiseInterestId(body.franchiseInterestId);
+  const password = body.password != null ? String(body.password) : "";
+  const service = createServiceClient();
+  const interest = await fetchApprovedFranchiseInterest(service, franchiseInterestId);
+  const preview = mapFranchiseInterestToProfile(interest);
+  const existingUser = await findUserByEmail(service, preview.email);
+
+  let userId: string;
+  let created = false;
+
+  if (existingUser) {
+    userId = await grantFranchisePrivilegeToExistingUser(service, existingUser, preview);
+  } else {
+    if (password.length < 8) {
+      throw new Error("password must be at least 8 characters");
+    }
+    userId = await createFranchiseUserFromInterest(service, preview, password);
+    created = true;
+  }
+
+  await confirmUserEmail(service, userId);
+  await resolveFranchiseInterest(service, franchiseInterestId);
+
+  return {
+    userId,
+    created,
+    franchiseInterestId,
+  };
 }
 
 function parseMemberRegisterInput(data: Record<string, unknown>): MemberRegisterInput {
@@ -406,6 +756,16 @@ Deno.serve(async (req) => {
     if (!auth.ok) return auth.response;
 
     if (req.method === "POST") {
+      if (action === "preview-franchise-account") {
+        const result = await handlePreviewFranchiseAccount(body);
+        return jsonResponse(result);
+      }
+
+      if (action === "complete-franchise-account") {
+        const result = await handleCompleteFranchiseAccount(body);
+        return jsonResponse(result);
+      }
+
       const result = await handleCreate(body);
       return jsonResponse(result);
     }
@@ -418,7 +778,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request failed";
-    console.error("[admin-partner]", message);
+    console.error("[admin-partner]", message, error);
     return jsonResponse({ error: message }, 400);
   }
 });
