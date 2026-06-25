@@ -44,6 +44,7 @@ type FolderId =
   | "inbox"
   | "starred"
   | `category-${number}`
+  | `folder-${number}`
   | "sops"
   | "recipes"
   | "events"
@@ -62,12 +63,23 @@ function categoryFolderId(id: number): FolderId {
   return `category-${id}`;
 }
 
+function announcementFolderId(id: number): FolderId {
+  return `folder-${id}`;
+}
+
 function folderLabel(
   folder: FolderId,
   categories: TaxonomyCategory[],
+  announcementFolders: TaxonomyCategory[],
 ): string {
   if (folder === "inbox") return "All Announcements";
   if (folder === "starred") return "Starred";
+  if (folder.startsWith("folder-")) {
+    const folderId = Number.parseInt(folder.slice("folder-".length), 10);
+    return (
+      announcementFolders.find((row) => row.id === folderId)?.label ?? "Folder"
+    );
+  }
   if (folder.startsWith("category-")) {
     const categoryId = Number.parseInt(folder.slice("category-".length), 10);
     return (
@@ -145,15 +157,6 @@ type ResourceMessage = HubListItem & {
   folder: FolderId;
   tab: TabId;
 };
-
-const ANNOUNCEMENT_FILTERS: {
-  id: FolderId;
-  label: string;
-  count?: number;
-}[] = [
-  { id: "inbox", label: "All Announcements", count: 12 },
-  { id: "starred", label: "Starred" },
-];
 
 const READ_FILTER_OPTIONS: {
   id: ReadFilter;
@@ -320,6 +323,21 @@ function parseCategoryId(folder: FolderId): number | null {
   if (!folder.startsWith("category-")) return null;
   const id = Number.parseInt(folder.slice("category-".length), 10);
   return Number.isNaN(id) ? null : id;
+}
+
+function parseAnnouncementFolderId(folder: FolderId): number | null {
+  if (!folder.startsWith("folder-")) return null;
+  const id = Number.parseInt(folder.slice("folder-".length), 10);
+  return Number.isNaN(id) ? null : id;
+}
+
+function canOpenResourceFromFolder(folder: FolderId): boolean {
+  return (
+    folder === "starred" ||
+    folder === "inbox" ||
+    parseCategoryId(folder) != null ||
+    parseAnnouncementFolderId(folder) != null
+  );
 }
 
 function formatShortDate(iso: string | null): string {
@@ -547,6 +565,52 @@ function normalizeDocumentDetail(
   };
 }
 
+async function fetchAnnouncements(
+  folderId: number | null,
+): Promise<FranchiseDocumentRow[]> {
+  let query = supabase
+    .from("franchise_resources")
+    .select(
+      `
+      id,
+      title,
+      slug,
+      author_name,
+      summary,
+      description,
+      is_featured,
+      is_mandatory,
+      requires_acknowledgement,
+      published_at,
+      created_at,
+      member_state:franchise_resource_member_states (
+        status,
+        first_seen_at,
+        last_seen_at,
+        completed_at,
+        progress_percent,
+        acknowledged_at,
+        is_favourite
+      )
+    `,
+    )
+    .eq("type", "announcement")
+    .eq("is_published", true);
+
+  if (folderId != null) {
+    query = query.eq("category_id", folderId);
+  }
+
+  const { data, error } = await query.order("published_at", {
+    ascending: false,
+  });
+
+  if (error) throw error;
+  return (data ?? []).map((row) =>
+    normalizeDocumentRow(row as Record<string, unknown>),
+  );
+}
+
 async function fetchFavouriteResources(): Promise<FranchiseDocumentRow[]> {
   const { data, error } = await supabase
     .from("franchise_resources")
@@ -666,7 +730,7 @@ async function fetchFranchiseDocumentDetail(
     `,
     )
     .eq("id", resourceId)
-    .eq("type", "document")
+    .in("type", ["document", "announcement"])
     .eq("is_published", true)
     .single();
 
@@ -834,6 +898,15 @@ export default function FranchiseResourcesHub() {
   const [page, setPage] = useState(0);
   const [categories, setCategories] = useState<TaxonomyCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [announcementFolders, setAnnouncementFolders] = useState<TaxonomyCategory[]>(
+    [],
+  );
+  const [announcementFoldersLoading, setAnnouncementFoldersLoading] =
+    useState(false);
+  const [announcementCounts, setAnnouncementCounts] = useState<{
+    total: number;
+    byFolderId: Map<number, number>;
+  }>({ total: 0, byFolderId: new Map() });
   const [documents, setDocuments] = useState<FranchiseDocumentRow[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(
@@ -862,9 +935,17 @@ export default function FranchiseResourcesHub() {
     () => parseCategoryId(activeFolder),
     [activeFolder],
   );
+  const activeAnnouncementFolderId = useMemo(
+    () => parseAnnouncementFolderId(activeFolder),
+    [activeFolder],
+  );
+  const isAnnouncementInboxView = activeFolder === "inbox";
+  const isAnnouncementFolderView = activeAnnouncementFolderId != null;
+  const isAnnouncementView = isAnnouncementInboxView || isAnnouncementFolderView;
   const isCategoryView = activeCategoryId != null;
   const isStarredView = activeFolder === "starred";
-  const isDatabaseListView = isCategoryView || isStarredView;
+  const isDatabaseListView =
+    isCategoryView || isStarredView || isAnnouncementView;
 
   const me = useMemo(() => {
     if (!profile) return null;
@@ -898,7 +979,7 @@ export default function FranchiseResourcesHub() {
       return [...dbFavourites, ...mockFavourites];
     }
 
-    if (isCategoryView) {
+    if (isAnnouncementView || isCategoryView) {
       return documents.map(mapDocumentToListItem).filter(matchesSearch);
     }
 
@@ -909,6 +990,7 @@ export default function FranchiseResourcesHub() {
   }, [
     activeFolder,
     documents,
+    isAnnouncementView,
     isCategoryView,
     isStarredView,
     searchQuery,
@@ -944,7 +1026,11 @@ export default function FranchiseResourcesHub() {
     visibleMessages.length > 0 &&
     visibleMessages.every((message) => selectedIds.has(message.id));
 
-  const activeFolderLabel = folderLabel(activeFolder, categories);
+  const activeFolderLabel = folderLabel(
+    activeFolder,
+    categories,
+    announcementFolders,
+  );
 
   useEffect(() => {
     if (isLoading) return;
@@ -991,6 +1077,55 @@ export default function FranchiseResourcesHub() {
 
     void loadCategories();
 
+    async function loadAnnouncementFolders() {
+      setAnnouncementFoldersLoading(true);
+      try {
+        const [foldersResult, countsResult] = await Promise.all([
+          supabase
+            .from("franchise_resource_taxonomies")
+            .select("id, label, alias, icon, description, sort_order")
+            .eq("place", "announcement")
+            .eq("kind", "folder")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true })
+            .order("label", { ascending: true }),
+          supabase
+            .from("franchise_resources")
+            .select("category_id")
+            .eq("type", "announcement")
+            .eq("is_published", true),
+        ]);
+
+        if (cancelled) return;
+
+        if (foldersResult.error) throw foldersResult.error;
+        if (countsResult.error) throw countsResult.error;
+
+        setAnnouncementFolders((foldersResult.data ?? []) as TaxonomyCategory[]);
+
+        const byFolderId = new Map<number, number>();
+        let total = 0;
+        for (const row of countsResult.data ?? []) {
+          total += 1;
+          const categoryId = row.category_id as number | null;
+          if (categoryId == null) continue;
+          byFolderId.set(categoryId, (byFolderId.get(categoryId) ?? 0) + 1);
+        }
+        setAnnouncementCounts({ total, byFolderId });
+      } catch (err) {
+        if (cancelled) return;
+        toast.error(
+          err instanceof Error ? err.message : "Failed to load announcement folders.",
+        );
+        setAnnouncementFolders([]);
+        setAnnouncementCounts({ total: 0, byFolderId: new Map() });
+      } finally {
+        if (!cancelled) setAnnouncementFoldersLoading(false);
+      }
+    }
+
+    void loadAnnouncementFolders();
+
     return () => {
       cancelled = true;
     };
@@ -1004,6 +1139,21 @@ export default function FranchiseResourcesHub() {
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to load starred resources.",
+      );
+      setDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, []);
+
+  const loadAnnouncements = useCallback(async (folderId: number | null) => {
+    setDocumentsLoading(true);
+    try {
+      const rows = await fetchAnnouncements(folderId);
+      setDocuments(rows);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load announcements.",
       );
       setDocuments([]);
     } finally {
@@ -1034,6 +1184,16 @@ export default function FranchiseResourcesHub() {
       return;
     }
 
+    if (isAnnouncementInboxView) {
+      void loadAnnouncements(null);
+      return;
+    }
+
+    if (activeAnnouncementFolderId != null) {
+      void loadAnnouncements(activeAnnouncementFolderId);
+      return;
+    }
+
     if (activeCategoryId == null) {
       setDocuments([]);
       setDocumentsLoading(false);
@@ -1042,11 +1202,14 @@ export default function FranchiseResourcesHub() {
 
     void loadCategoryDocuments(activeCategoryId);
   }, [
+    activeAnnouncementFolderId,
     activeCategoryId,
     hasFranchise,
+    isAnnouncementInboxView,
     isLoading,
     isSignedIn,
     isStarredView,
+    loadAnnouncements,
     loadCategoryDocuments,
     loadStarredDocuments,
   ]);
@@ -1088,7 +1251,7 @@ export default function FranchiseResourcesHub() {
     async (resourceId: number, options?: { syncHash?: boolean }) => {
       const syncHash = options?.syncHash ?? true;
       const folder = activeFolderRef.current;
-      if (folder !== "starred" && parseCategoryId(folder) == null) return;
+      if (!canOpenResourceFromFolder(folder)) return;
 
       setSelectedDocumentId(resourceId);
       setSelectedDocumentLoading(true);
@@ -1170,8 +1333,7 @@ export default function FranchiseResourcesHub() {
 
     const { folder, documentId } = parseResourcesHubHash(window.location.hash);
     const canOpenDocument =
-      documentId != null &&
-      (folder?.startsWith("category-") || folder === "starred");
+      documentId != null && folder != null && canOpenResourceFromFolder(folder);
     if (!canOpenDocument) return;
     if (activeFolder !== folder) return;
     if (
@@ -1208,7 +1370,7 @@ export default function FranchiseResourcesHub() {
         return;
       }
 
-      if (!folder?.startsWith("category-") && folder !== "starred") return;
+      if (!folder || !canOpenResourceFromFolder(folder)) return;
 
       hashRestoreDocumentIdRef.current = null;
       void openDocument(documentId, { syncHash: false });
@@ -1750,15 +1912,40 @@ export default function FranchiseResourcesHub() {
             <div className="mb-6">
               <div className="label-badge mb-2.5">Announcements</div>
               <div className="flex flex-col gap-1.5">
-                {ANNOUNCEMENT_FILTERS.map((folder) => (
-                  <FolderButton
-                    key={folder.id}
-                    label={folder.label}
-                    count={folder.count}
-                    active={activeFolder === folder.id}
-                    onClick={() => selectFolder(folder.id)}
-                  />
-                ))}
+                {announcementFoldersLoading ? (
+                  <div className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading folders…
+                  </div>
+                ) : (
+                  <>
+                    <FolderButton
+                      label="All Announcements"
+                      count={announcementCounts.total}
+                      active={activeFolder === "inbox"}
+                      onClick={() => selectFolder("inbox")}
+                    />
+                    {announcementFolders.length === 0 ? (
+                      <p className="px-4 py-2 text-sm text-muted-foreground">
+                        No folders yet.
+                      </p>
+                    ) : (
+                      announcementFolders.map((folder) => (
+                        <FolderButton
+                          key={folder.id}
+                          label={folder.label}
+                          count={announcementCounts.byFolderId.get(folder.id) ?? 0}
+                          active={
+                            activeFolder === announcementFolderId(folder.id)
+                          }
+                          onClick={() =>
+                            selectFolder(announcementFolderId(folder.id))
+                          }
+                        />
+                      ))
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
@@ -1839,6 +2026,14 @@ export default function FranchiseResourcesHub() {
                     onClick={() => {
                       if (isStarredView) {
                         void loadStarredDocuments();
+                        return;
+                      }
+                      if (isAnnouncementInboxView) {
+                        void loadAnnouncements(null);
+                        return;
+                      }
+                      if (activeAnnouncementFolderId != null) {
+                        void loadAnnouncements(activeAnnouncementFolderId);
                         return;
                       }
                       if (activeCategoryId != null) {
@@ -1926,12 +2121,12 @@ export default function FranchiseResourcesHub() {
                     className="mb-3 inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:mb-5"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Back to documents
+                    Back to resources
                   </button>
                   {selectedDocumentLoading || !selectedDocument ? (
                     <div className="flex flex-1 flex-col items-center justify-center py-16 text-sm text-muted-foreground">
                       <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-                      Loading document…
+                      Loading resource…
                     </div>
                   ) : (
                     <FranchiseResourceContent
@@ -1959,7 +2154,11 @@ export default function FranchiseResourcesHub() {
               ) : documentsLoading && isDatabaseListView ? (
                 <div className="flex flex-col items-center justify-center px-6 py-16 text-center text-sm text-muted-foreground">
                   <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-                  {isStarredView ? "Loading starred resources…" : "Loading documents…"}
+                  {isStarredView
+                    ? "Loading starred resources…"
+                    : isAnnouncementView
+                      ? "Loading announcements…"
+                      : "Loading documents…"}
                 </div>
               ) : visibleMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center px-6 py-16 text-center text-sm text-muted-foreground">
@@ -1967,13 +2166,21 @@ export default function FranchiseResourcesHub() {
                   {searchFilteredMessages.length === 0
                     ? isStarredView
                       ? "No starred announcements or documents yet."
-                      : isCategoryView
-                        ? "No published documents in this category."
-                        : "No resources match your current filters."
+                      : isAnnouncementFolderView
+                        ? "No published announcements in this folder."
+                        : isAnnouncementInboxView
+                          ? "No published announcements yet."
+                          : isCategoryView
+                            ? "No published documents in this category."
+                            : "No resources match your current filters."
                     : readFilter === "read"
-                      ? "No read documents match your current filters."
+                      ? isAnnouncementView
+                        ? "No read announcements match your current filters."
+                        : "No read documents match your current filters."
                       : readFilter === "unread"
-                        ? "No unread documents match your current filters."
+                        ? isAnnouncementView
+                          ? "No unread announcements match your current filters."
+                          : "No unread documents match your current filters."
                         : "No resources match your current filters."}
                 </div>
               ) : (

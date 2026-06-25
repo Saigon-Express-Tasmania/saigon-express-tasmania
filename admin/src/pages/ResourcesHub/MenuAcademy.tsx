@@ -1,3 +1,6 @@
+import { MENU_ACADEMY_PAGE_CONFIG } from './franchiseResourceShared';
+import { FranchiseResourceAdminPage } from './FranchiseResourceAdminPage';
+
 export default function MenuAcademy() {
-  return <div>MenuAcademy</div>;
+  return <FranchiseResourceAdminPage config={MENU_ACADEMY_PAGE_CONFIG} />;
 }

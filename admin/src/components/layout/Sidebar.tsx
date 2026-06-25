@@ -4,6 +4,7 @@ import { useSalesOrderMode } from "@/contexts/SalesOrderModeContext";
 import { cn } from "@/lib/utils";
 import {
   Archive,
+  Bell,
   Briefcase,
   Building2,
   ChevronLeft,
@@ -37,10 +38,34 @@ import {
   Utensils,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 const SIDEBAR_COMPACT_KEY = "admin-sidebar-compact";
+const SIDEBAR_SCROLL_KEY = "admin-sidebar-scroll-top";
+
+let persistedSidebarScrollTop = 0;
+
+try {
+  const stored = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+  if (stored !== null) {
+    const parsed = Number.parseInt(stored, 10);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
+      persistedSidebarScrollTop = parsed;
+    }
+  }
+} catch {
+  // ignore storage errors
+}
+
+function persistSidebarScroll(scrollTop: number) {
+  persistedSidebarScrollTop = scrollTop;
+  try {
+    sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(scrollTop));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 interface NavItem {
   title: string;
@@ -200,6 +225,12 @@ const navItems: NavItem[] = [
     group: "Content",
   },
   {
+    title: "Announcements",
+    href: "/franchise/announcements",
+    icon: Bell,
+    group: "Franchise Resources",
+  },
+  {
     title: "Resources Hub",
     href: "/franchise/resources-hub",
     icon: Library,
@@ -312,6 +343,7 @@ function NavItemLink({
 export function Sidebar() {
   const { mode } = useSalesOrderMode();
   const testMode = mode === 'test';
+  const navRef = useRef<HTMLElement>(null);
   const [compact, setCompact] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_COMPACT_KEY) === "true";
@@ -334,6 +366,20 @@ export function Sidebar() {
     });
   };
 
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (nav) {
+      nav.scrollTop = persistedSidebarScrollTop;
+    }
+  }, []);
+
+  const handleNavScroll = () => {
+    const nav = navRef.current;
+    if (nav) {
+      persistSidebarScroll(nav.scrollTop);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -352,8 +398,10 @@ export function Sidebar() {
       )}
 
       <nav
+        ref={navRef}
+        onScroll={handleNavScroll}
         className={cn(
-          "flex-1 space-y-1 overflow-y-auto",
+          "flex-1 space-y-1 overflow-y-auto overflow-anchor-none",
           compact ? "p-2 pt-3" : "p-4",
         )}
       >

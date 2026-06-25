@@ -2,6 +2,7 @@ export type ResourcesHubFolderId =
   | "inbox"
   | "starred"
   | `category-${number}`
+  | `folder-${number}`
   | "sops"
   | "recipes"
   | "events"
@@ -37,6 +38,26 @@ export function parseResourcesHubHash(hash: string): ResourcesHubHashState {
     }
   }
 
+  const folderWithDocument = raw.match(/^folder-(\d+)\/document-(\d+)$/);
+  if (folderWithDocument) {
+    const folderId = Number.parseInt(folderWithDocument[1], 10);
+    const documentId = Number.parseInt(folderWithDocument[2], 10);
+    if (!Number.isNaN(folderId) && !Number.isNaN(documentId)) {
+      return {
+        folder: `folder-${folderId}`,
+        documentId,
+      };
+    }
+  }
+
+  const inboxWithDocument = raw.match(/^inbox\/document-(\d+)$/);
+  if (inboxWithDocument) {
+    const documentId = Number.parseInt(inboxWithDocument[1], 10);
+    if (!Number.isNaN(documentId)) {
+      return { folder: "inbox", documentId };
+    }
+  }
+
   const starredWithDocument = raw.match(/^starred\/document-(\d+)$/);
   if (starredWithDocument) {
     const documentId = Number.parseInt(starredWithDocument[1], 10);
@@ -50,6 +71,14 @@ export function parseResourcesHubHash(hash: string): ResourcesHubHashState {
     const categoryId = Number.parseInt(categoryOnly[1], 10);
     if (!Number.isNaN(categoryId)) {
       return { folder: `category-${categoryId}`, documentId: null };
+    }
+  }
+
+  const folderOnly = raw.match(/^folder-(\d+)$/);
+  if (folderOnly) {
+    const folderId = Number.parseInt(folderOnly[1], 10);
+    if (!Number.isNaN(folderId)) {
+      return { folder: `folder-${folderId}`, documentId: null };
     }
   }
 
@@ -67,7 +96,13 @@ export function buildResourcesHubHash(
   if (documentId != null && folder === "starred") {
     return `#starred/document-${documentId}`;
   }
+  if (documentId != null && folder === "inbox") {
+    return `#inbox/document-${documentId}`;
+  }
   if (documentId != null && folder.startsWith("category-")) {
+    return `#${folder}/document-${documentId}`;
+  }
+  if (documentId != null && folder.startsWith("folder-")) {
     return `#${folder}/document-${documentId}`;
   }
   return `#${folder}`;

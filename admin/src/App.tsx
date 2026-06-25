@@ -35,6 +35,7 @@ import { JobListings } from './pages/JobListings';
 import ResourcesHub from './pages/ResourcesHub/ResourcesHub';
 import Taxonomies from './pages/ResourcesHub/Taxonomies';
 import MenuAcademy from './pages/ResourcesHub/MenuAcademy';
+import Announcements from './pages/ResourcesHub/Announcements';
 
 export function App() {
   const { user, isLoading } = useSupabaseAuth();
@@ -108,6 +109,7 @@ export function App() {
             <Route path="/franchise/resources-hub" element={<ResourcesHub />} />
             <Route path="/franchise/menu-academy" element={<MenuAcademy />} />
             <Route path="/franchise/taxonomies" element={<Taxonomies />} />
+            <Route path="/franchise/announcements" element={<Announcements />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/sign-in"
