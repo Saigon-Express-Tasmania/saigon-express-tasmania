@@ -784,19 +784,42 @@ export function FranchiseResourceEditorDialog({
                     </ResourceFormField>
 
                     {isMenuAcademy ? (
-                      <ResourceFormField label="Published at" htmlFor={`${idPrefix}-published`}>
-                        <Input
-                          id={`${idPrefix}-published`}
-                          type="datetime-local"
-                          value={form.published_at}
-                          onChange={(e) =>
-                            setForm((current) => ({
-                              ...current,
-                              published_at: e.target.value,
-                            }))
-                          }
-                        />
-                      </ResourceFormField>
+                      <>
+                        <ResourceFormField label="Published at" htmlFor={`${idPrefix}-published`}>
+                          <Input
+                            id={`${idPrefix}-published`}
+                            type="datetime-local"
+                            value={form.published_at}
+                            onChange={(e) =>
+                              setForm((current) => ({
+                                ...current,
+                                published_at: e.target.value,
+                              }))
+                            }
+                          />
+                        </ResourceFormField>
+
+                        <ResourceFormField
+                          label="Course duration"
+                          htmlFor={`${idPrefix}-course-duration`}
+                          description="Expected training time in minutes"
+                        >
+                          <Input
+                            id={`${idPrefix}-course-duration`}
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={form.course_duration}
+                            onChange={(e) =>
+                              setForm((current) => ({
+                                ...current,
+                                course_duration: e.target.value,
+                              }))
+                            }
+                            placeholder="e.g. 30"
+                          />
+                        </ResourceFormField>
+                      </>
                     ) : null}
                   </>
                   ) : null}

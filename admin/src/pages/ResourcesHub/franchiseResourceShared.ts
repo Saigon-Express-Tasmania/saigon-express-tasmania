@@ -6,7 +6,7 @@ import {
 import { FileText, GraduationCap, Megaphone, type LucideIcon } from 'lucide-react';
 
 export const RESOURCE_COLUMNS =
-  'id, type, title, slug, category_id, course_id, period_id, author_name, icon, description, summary, content, content_format, attached_files, content_file, video_file, version, is_published, is_featured, is_mandatory, requires_acknowledgement, sort_order, tags, external_url, thumbnail_url, estimated_read_minutes, effective_from, effective_until, published_at, reference, created_at, updated_at';
+  'id, type, title, slug, category_id, course_id, period_id, author_name, icon, description, summary, content, content_format, attached_files, content_file, video_file, course_duration, version, is_published, is_featured, is_mandatory, requires_acknowledgement, sort_order, tags, external_url, thumbnail_url, estimated_read_minutes, effective_from, effective_until, published_at, reference, created_at, updated_at';
 
 export const CONTENT_AUTO_SAVE_MS = 3000;
 
@@ -47,6 +47,7 @@ export type FranchiseResourceRow = {
   attached_files: AttachedFile[];
   content_file: string | null;
   video_file: string | null;
+  course_duration: string | null;
   version: string | null;
   is_published: boolean;
   is_featured: boolean;
@@ -80,6 +81,7 @@ export type ResourceInput = {
   attached_files: AttachedFile[];
   content_file: string;
   video_file: string;
+  course_duration: string;
   version: string;
   is_published: boolean;
   is_featured: boolean;
@@ -316,6 +318,7 @@ export function emptyResourceInput(
     attached_files: [],
     content_file: '',
     video_file: '',
+    course_duration: '',
     version: '',
     is_published: resourceType === 'document',
     is_featured: false,
@@ -335,6 +338,10 @@ export function emptyResourceInput(
 
 export function slugify(text: string): string {
   return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
@@ -371,6 +378,34 @@ function parseTags(value: string): string[] {
 
 function formatTags(tags: string[]): string {
   return tags.join(', ');
+}
+
+function intervalToDurationMinutes(value: string | null): string {
+  if (!value?.trim()) return '';
+  const trimmed = value.trim();
+  const timeMatch = trimmed.match(/^(\d+):(\d{2}):(\d{2})/);
+  if (timeMatch) {
+    return String(
+      Number.parseInt(timeMatch[1], 10) * 60 +
+        Number.parseInt(timeMatch[2], 10),
+    );
+  }
+  const hoursMatch = trimmed.match(/(\d+)\s*hours?/i);
+  const minsMatch = trimmed.match(/(\d+)\s*mins?(?:utes?)?/i);
+  let total = 0;
+  if (hoursMatch) total += Number.parseInt(hoursMatch[1], 10) * 60;
+  if (minsMatch) total += Number.parseInt(minsMatch[1], 10);
+  return total > 0 ? String(total) : '';
+}
+
+function durationMinutesToInterval(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const totalMinutes = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(totalMinutes) || totalMinutes < 0) return null;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}:${String(minutes).padStart(2, '0')}:00`;
 }
 
 function normalizeAttachedFiles(value: unknown): AttachedFile[] {
@@ -420,6 +455,7 @@ export function normalizeResourceRow(
     attached_files: normalizeAttachedFiles(row.attached_files),
     content_file: (row.content_file as string | null) ?? null,
     video_file: (row.video_file as string | null) ?? null,
+    course_duration: (row.course_duration as string | null) ?? null,
     version: (row.version as string | null) ?? null,
     is_published: Boolean(row.is_published),
     is_featured: Boolean(row.is_featured),
@@ -461,6 +497,7 @@ export function rowToInput(row: FranchiseResourceRow): ResourceInput {
     attached_files: row.attached_files,
     content_file: row.content_file ?? '',
     video_file: row.video_file ?? '',
+    course_duration: intervalToDurationMinutes(row.course_duration),
     version: row.version ?? '',
     is_published: row.is_published,
     is_featured: row.is_featured,
@@ -522,6 +559,7 @@ export function buildResourcePayload(
     attached_files: form.attached_files,
     content_file: form.content_file.trim() || null,
     video_file: form.video_file.trim() || null,
+    course_duration: durationMinutesToInterval(form.course_duration),
     version: form.version.trim() || null,
     is_published: form.is_published,
     is_featured: form.is_featured,

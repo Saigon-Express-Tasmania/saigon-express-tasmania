@@ -134,6 +134,8 @@ export type FranchiseResourceContentProps = {
   className?: string;
   /** Hub embed: prioritises file viewer height on small screens. */
   layout?: "default" | "hub";
+  /** When false, skips the title/meta header (e.g. when shown in a sidebar). */
+  hideHeader?: boolean;
   /** Rendered to the right of the document title (hub actions). */
   titleAction?: ReactNode;
 };
@@ -142,6 +144,7 @@ export default function FranchiseResourceContent({
   resource,
   className,
   layout = "default",
+  hideHeader = false,
   titleAction,
 }: FranchiseResourceContentProps) {
   const isHubLayout = layout === "hub";
@@ -172,6 +175,7 @@ export default function FranchiseResourceContent({
           "shrink-0 space-y-3 border-b border-border sm:space-y-4",
           isHubLayout ? "pb-3 sm:pb-6" : "pb-6",
           isHubLayout && hasFilePreview && "max-sm:space-y-2 max-sm:pb-3",
+          hideHeader && "hidden",
         )}
       >
         <div className="flex items-start gap-3 sm:gap-4">

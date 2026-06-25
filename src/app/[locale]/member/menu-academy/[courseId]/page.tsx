@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { getFranchiseMenuAcademyCourse } from "@/lib/franchise-menu-academy-courses";
 import FranchiseMenuAcademyCourse from "@/views/FranchiseMenuAcademyCourse";
 
 type PageProps = {
@@ -10,9 +9,10 @@ export default async function LocaleMemberMenuAcademyCoursePage({
   params,
 }: PageProps) {
   const { courseId } = await params;
-  if (!getFranchiseMenuAcademyCourse(courseId)) {
+  const id = Number.parseInt(courseId, 10);
+  if (!Number.isInteger(id) || id <= 0) {
     notFound();
   }
 
-  return <FranchiseMenuAcademyCourse courseId={courseId} />;
+  return <FranchiseMenuAcademyCourse courseId={String(id)} />;
 }
