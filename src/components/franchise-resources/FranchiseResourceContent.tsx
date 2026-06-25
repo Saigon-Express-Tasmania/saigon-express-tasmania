@@ -13,6 +13,7 @@ import {
   FileText,
   Tag,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 
@@ -131,12 +132,20 @@ function AttachedFilesList({
 export type FranchiseResourceContentProps = {
   resource: FranchiseResourceContentData;
   className?: string;
+  /** Hub embed: prioritises file viewer height on small screens. */
+  layout?: "default" | "hub";
+  /** Rendered to the right of the document title (hub actions). */
+  titleAction?: ReactNode;
 };
 
 export default function FranchiseResourceContent({
   resource,
   className,
+  layout = "default",
+  titleAction,
 }: FranchiseResourceContentProps) {
+  const isHubLayout = layout === "hub";
+  const hasFilePreview = Boolean(resource.content_file?.trim());
   const attachedFiles = normalizeAttachedFiles(resource.attached_files);
   const publishedLabel = formatDisplayDate(
     resource.published_at ?? resource.created_at,
@@ -149,19 +158,53 @@ export default function FranchiseResourceContent({
   const tags = resource.tags?.filter((tag) => tag.trim()) ?? [];
 
   return (
-    <article className={cn("space-y-6", className)}>
-      <header className="space-y-4 border-b border-border pb-6">
-        <div className="flex items-start gap-4">
+    <article
+      className={cn(
+        "min-w-0",
+        isHubLayout
+          ? "flex min-h-0 flex-1 flex-col gap-4 sm:gap-6"
+          : "space-y-6",
+        className,
+      )}
+    >
+      <header
+        className={cn(
+          "shrink-0 space-y-3 border-b border-border sm:space-y-4",
+          isHubLayout ? "pb-3 sm:pb-6" : "pb-6",
+          isHubLayout && hasFilePreview && "max-sm:space-y-2 max-sm:pb-3",
+        )}
+      >
+        <div className="flex items-start gap-3 sm:gap-4">
           {resource.icon ? (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary/50 text-xl">
-              <CategoryIcon icon={resource.icon} className="h-6 w-6" />
+            <div
+              className={cn(
+                "flex shrink-0 items-center justify-center rounded-xl border border-border bg-secondary/50 text-xl",
+                isHubLayout ? "h-10 w-10 sm:h-12 sm:w-12" : "h-12 w-12",
+              )}
+            >
+              <CategoryIcon
+                icon={resource.icon}
+                className={isHubLayout ? "h-5 w-5 sm:h-6 sm:w-6" : "h-6 w-6"}
+              />
             </div>
           ) : null}
           <div className="min-w-0 flex-1">
-            <h1 className="font-serif text-2xl font-bold text-foreground sm:text-3xl">
-              {resource.title}
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex items-start justify-between gap-3">
+              <h1
+                className={cn(
+                  "min-w-0 font-serif font-bold text-foreground",
+                  isHubLayout
+                    ? "text-xl leading-tight sm:text-3xl"
+                    : "text-2xl sm:text-3xl",
+                )}
+              >
+                {resource.title}
+              </h1>
+              {titleAction ? (
+                <div className="shrink-0">{titleAction}</div>
+              ) : null}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:mt-2 sm:gap-x-4 sm:text-sm">
               {resource.author_name?.trim() ? (
                 <span>{resource.author_name.trim()}</span>
               ) : null}
@@ -195,7 +238,12 @@ export default function FranchiseResourceContent({
         ) : null}
 
         {resource.thumbnail_url?.trim() ? (
-          <div className="relative aspect-[21/9] overflow-hidden rounded-lg border border-border">
+          <div
+            className={cn(
+              "relative aspect-[21/9] overflow-hidden rounded-lg border border-border",
+              isHubLayout && hasFilePreview && "max-sm:aspect-[2/1]",
+            )}
+          >
             <AppImage
               src={resource.thumbnail_url.trim()}
               alt=""
@@ -206,11 +254,24 @@ export default function FranchiseResourceContent({
         ) : null}
 
         {summaryText ? (
-          <p className="text-base font-medium text-foreground">{summaryText}</p>
+          <p
+            className={cn(
+              "font-medium text-foreground",
+              isHubLayout ? "text-sm sm:text-base" : "text-base",
+            )}
+          >
+            {summaryText}
+          </p>
         ) : null}
 
         {descriptionText ? (
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p
+            className={cn(
+              "leading-relaxed text-muted-foreground",
+              isHubLayout && hasFilePreview && "max-sm:line-clamp-2 max-sm:text-xs",
+              !isHubLayout || !hasFilePreview ? "text-sm" : "text-sm sm:text-sm",
+            )}
+          >
             {descriptionText}
           </p>
         ) : null}
@@ -228,14 +289,31 @@ export default function FranchiseResourceContent({
         ) : null}
       </header>
 
+      {contentFileUrl ? (
+        <section
+          className={cn(
+            isHubLayout && "flex min-h-0 min-w-0 flex-1 flex-col",
+            isHubLayout &&
+              "max-xl:-mx-3 sm:max-xl:-mx-6",
+          )}
+        >
+          <FranchiseResourceContentFileViewer
+            url={contentFileUrl}
+            title={resource.title}
+            fillHeight={isHubLayout}
+            externalBottomBar={isHubLayout}
+          />
+        </section>
+      ) : null}
+
       {videoUrl ? (
-        <section>
+        <section className={cn(isHubLayout && "shrink-0")}>
           <ResourceVideoPlayer url={videoUrl} title={resource.title} />
         </section>
       ) : null}
 
       {contentText ? (
-        <section>
+        <section className={cn(isHubLayout && "shrink-0")}>
           <ResourceBodyContent
             content={contentText}
             contentFormat={resource.content_format ?? "html"}
@@ -243,16 +321,9 @@ export default function FranchiseResourceContent({
         </section>
       ) : null}
 
-      {contentFileUrl ? (
-        <section>
-          <FranchiseResourceContentFileViewer
-            url={contentFileUrl}
-            title={resource.title}
-          />
-        </section>
-      ) : null}
-
-      <AttachedFilesList files={attachedFiles} />
+      <div className={cn(isHubLayout && "shrink-0")}>
+        <AttachedFilesList files={attachedFiles} />
+      </div>
     </article>
   );
 }

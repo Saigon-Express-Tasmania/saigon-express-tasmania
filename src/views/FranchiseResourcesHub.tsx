@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import { MEMBER_PORTAL_LIGHT_BANNER_CLASS } from "@/lib/member-portal-surfaces";
+import { cn } from "@/lib/utils";
 import {
   parseResourcesHubHash,
   readResourcesHubHash,
@@ -25,10 +26,15 @@ import {
   RefreshCw,
   Search,
   Star,
+  X,
 } from "lucide-react";
 import FranchiseResourceContent from "@/components/franchise-resources/FranchiseResourceContent";
+import FranchiseResourceDocumentBottomBar from "@/components/franchise-resources/FranchiseResourceDocumentBottomBar";
+import { FranchiseResourceDocumentViewerProvider } from "@/components/franchise-resources/FranchiseResourceDocumentViewerContext";
 import {
+  getFileNameFromStoragePath,
   getResourcePreviewText,
+  isPaginatedDocumentStoragePath,
   normalizeAttachedFiles,
   type FranchiseResourceContentData,
 } from "@/types/franchise-resources";
@@ -71,6 +77,8 @@ function folderLabel(
   }
   return folder;
 }
+
+type ReadFilter = "all" | "read" | "unread";
 
 type TabId = "primary" | "updates" | "announcements";
 
@@ -147,14 +155,37 @@ const ANNOUNCEMENT_FILTERS: {
   { id: "starred", label: "Starred" },
 ];
 
-const TABS: {
-  id: TabId;
+const READ_FILTER_OPTIONS: {
+  id: ReadFilter;
   label: string;
-  badge?: string;
+  activeClass: string;
+  inactiveClass: string;
+  countClass: string;
 }[] = [
-  { id: "primary", label: "Primary" },
-  { id: "updates", label: "Updates", badge: "3 new" },
-  { id: "announcements", label: "Announcements" },
+  {
+    id: "all",
+    label: "All",
+    activeClass:
+      "bg-foreground text-background shadow-md shadow-foreground/15",
+    inactiveClass: "hover:bg-secondary hover:text-foreground",
+    countClass: "bg-background/20 text-inherit",
+  },
+  {
+    id: "read",
+    label: "Read",
+    activeClass:
+      "bg-accent text-accent-foreground shadow-md shadow-accent/25",
+    inactiveClass: "hover:bg-accent/15 hover:text-accent-foreground",
+    countClass: "bg-accent-foreground/15 text-inherit",
+  },
+  {
+    id: "unread",
+    label: "Unread",
+    activeClass:
+      "bg-primary text-primary-foreground shadow-md shadow-primary/25",
+    inactiveClass: "hover:bg-primary/10 hover:text-primary",
+    countClass: "bg-primary-foreground/20 text-inherit",
+  },
 ];
 
 const RESOURCE_MESSAGES: ResourceMessage[] = [
@@ -428,6 +459,57 @@ function CategoryButton({
   );
 }
 
+function ReadFilterToggle({
+  value,
+  onChange,
+  counts,
+}: {
+  value: ReadFilter;
+  onChange: (value: ReadFilter) => void;
+  counts: Record<ReadFilter, number>;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <span className="text-sm font-semibold text-foreground">Status</span>
+      <div
+        role="group"
+        aria-label="Filter by read status"
+        className="inline-flex rounded-xl border border-border bg-gradient-to-r from-secondary via-card to-primary/5 p-1 shadow-sm"
+      >
+        {READ_FILTER_OPTIONS.map((option) => {
+          const active = value === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(option.id)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
+                active
+                  ? option.activeClass
+                  : cn("text-muted-foreground", option.inactiveClass),
+              )}
+            >
+              {option.label}
+              <span
+                className={cn(
+                  "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold tabular-nums",
+                  active
+                    ? option.countClass
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {counts[option.id]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function matchesFolder(
   message: ResourceMessage,
   folder: FolderId,
@@ -463,6 +545,44 @@ function normalizeDocumentDetail(
         ? raw.estimated_read_minutes
         : null,
   };
+}
+
+async function fetchFavouriteResources(): Promise<FranchiseDocumentRow[]> {
+  const { data, error } = await supabase
+    .from("franchise_resources")
+    .select(
+      `
+      id,
+      title,
+      slug,
+      author_name,
+      summary,
+      description,
+      is_featured,
+      is_mandatory,
+      requires_acknowledgement,
+      published_at,
+      created_at,
+      member_state:franchise_resource_member_states!inner (
+        status,
+        first_seen_at,
+        last_seen_at,
+        completed_at,
+        progress_percent,
+        acknowledged_at,
+        is_favourite
+      )
+    `,
+    )
+    .in("type", ["announcement", "document"])
+    .eq("is_published", true)
+    .eq("member_state.is_favourite", true)
+    .order("published_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((row) =>
+    normalizeDocumentRow(row as Record<string, unknown>),
+  );
 }
 
 async function fetchCategoryDocuments(
@@ -597,6 +717,58 @@ async function markFranchiseResourceSeen(
   return "seen";
 }
 
+async function markFranchiseResourceUnread(
+  userId: string,
+  resourceId: number,
+  memberState: FranchiseResourceMemberState | null,
+): Promise<"unread" | "unchanged"> {
+  if (!memberState || memberState.status === "not_seen") {
+    return "unchanged";
+  }
+
+  const { error } = await supabase
+    .from("franchise_resource_member_states")
+    .update({ status: "not_seen" })
+    .eq("resource_id", resourceId)
+    .eq("user_id", userId);
+  if (error) throw error;
+  return "unread";
+}
+
+function applyMemberStateToDocument<T extends FranchiseDocumentRow>(
+  doc: T,
+  memberState: FranchiseResourceMemberState,
+): T {
+  return { ...doc, member_state: memberState };
+}
+
+function buildSeenMemberState(
+  memberState: FranchiseResourceMemberState | null,
+  now: string,
+): FranchiseResourceMemberState {
+  return {
+    ...(memberState ?? EMPTY_MEMBER_STATE),
+    status: "seen",
+    first_seen_at: memberState?.first_seen_at ?? now,
+    last_seen_at: now,
+    progress_percent: Math.max(memberState?.progress_percent ?? 0, 1),
+  };
+}
+
+function buildUnreadMemberState(
+  memberState: FranchiseResourceMemberState | null,
+): FranchiseResourceMemberState {
+  return {
+    ...(memberState ?? EMPTY_MEMBER_STATE),
+    status: "not_seen",
+    first_seen_at: null,
+    last_seen_at: null,
+    completed_at: null,
+    acknowledged_at: null,
+    progress_percent: 0,
+  };
+}
+
 async function flushFavouriteUpdates(
   userId: string,
   pending: Map<number, PendingFavouriteUpdate>,
@@ -654,7 +826,7 @@ export default function FranchiseResourcesHub() {
     useSupabase();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFolder, setActiveFolder] = useState<FolderId>("inbox");
-  const [activeTab, setActiveTab] = useState<TabId>("primary");
+  const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   const [starredIds, setStarredIds] = useState<Set<string>>(
     () => new Set(RESOURCE_MESSAGES.filter((m) => m.starred).map((m) => m.id)),
   );
@@ -670,6 +842,9 @@ export default function FranchiseResourcesHub() {
   const [selectedDocument, setSelectedDocument] =
     useState<FranchiseDocumentDetail | null>(null);
   const [selectedDocumentLoading, setSelectedDocumentLoading] = useState(false);
+  const [readStatusUpdating, setReadStatusUpdating] = useState(false);
+  const [bulkReadStatusUpdating, setBulkReadStatusUpdating] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const documentsRef = useRef(documents);
   documentsRef.current = documents;
@@ -688,6 +863,8 @@ export default function FranchiseResourcesHub() {
     [activeFolder],
   );
   const isCategoryView = activeCategoryId != null;
+  const isStarredView = activeFolder === "starred";
+  const isDatabaseListView = isCategoryView || isStarredView;
 
   const me = useMemo(() => {
     if (!profile) return null;
@@ -698,7 +875,7 @@ export default function FranchiseResourcesHub() {
     };
   }, [profile, authMetadata]);
 
-  const filteredMessages = useMemo((): HubListItem[] => {
+  const searchFilteredMessages = useMemo((): HubListItem[] => {
     const query = searchQuery.trim().toLowerCase();
 
     const matchesSearch = (item: HubListItem) => {
@@ -710,23 +887,52 @@ export default function FranchiseResourcesHub() {
       );
     };
 
+    if (isStarredView) {
+      const dbFavourites = documents
+        .filter((doc) => doc.member_state?.is_favourite)
+        .map(mapDocumentToListItem)
+        .filter(matchesSearch);
+      const mockFavourites = RESOURCE_MESSAGES.filter(
+        (message) => starredIds.has(message.id) || message.starred,
+      ).filter(matchesSearch);
+      return [...dbFavourites, ...mockFavourites];
+    }
+
     if (isCategoryView) {
       return documents.map(mapDocumentToListItem).filter(matchesSearch);
     }
 
     return RESOURCE_MESSAGES.filter((message) => {
       if (!matchesFolder(message, activeFolder, starredIds)) return false;
-      if (activeTab !== "primary" && message.tab !== activeTab) return false;
       return matchesSearch(message);
     });
   }, [
     activeFolder,
-    activeTab,
     documents,
     isCategoryView,
+    isStarredView,
     searchQuery,
     starredIds,
   ]);
+
+  const readFilterCounts = useMemo(
+    (): Record<ReadFilter, number> => ({
+      all: searchFilteredMessages.length,
+      read: searchFilteredMessages.filter((item) => !item.unread).length,
+      unread: searchFilteredMessages.filter((item) => item.unread).length,
+    }),
+    [searchFilteredMessages],
+  );
+
+  const filteredMessages = useMemo((): HubListItem[] => {
+    if (readFilter === "read") {
+      return searchFilteredMessages.filter((item) => !item.unread);
+    }
+    if (readFilter === "unread") {
+      return searchFilteredMessages.filter((item) => item.unread);
+    }
+    return searchFilteredMessages;
+  }, [readFilter, searchFilteredMessages]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMessages.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
@@ -790,6 +996,21 @@ export default function FranchiseResourcesHub() {
     };
   }, [isLoading, isSignedIn, hasFranchise]);
 
+  const loadStarredDocuments = useCallback(async () => {
+    setDocumentsLoading(true);
+    try {
+      const rows = await fetchFavouriteResources();
+      setDocuments(rows);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load starred resources.",
+      );
+      setDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, []);
+
   const loadCategoryDocuments = useCallback(async (categoryId: number) => {
     setDocumentsLoading(true);
     try {
@@ -808,6 +1029,11 @@ export default function FranchiseResourcesHub() {
   useEffect(() => {
     if (isLoading || !isSignedIn || !hasFranchise) return;
 
+    if (isStarredView) {
+      void loadStarredDocuments();
+      return;
+    }
+
     if (activeCategoryId == null) {
       setDocuments([]);
       setDocumentsLoading(false);
@@ -820,7 +1046,9 @@ export default function FranchiseResourcesHub() {
     hasFranchise,
     isLoading,
     isSignedIn,
+    isStarredView,
     loadCategoryDocuments,
+    loadStarredDocuments,
   ]);
 
   useEffect(() => {
@@ -838,7 +1066,7 @@ export default function FranchiseResourcesHub() {
 
   useEffect(() => {
     setPage(0);
-  }, [activeFolder, activeTab, searchQuery]);
+  }, [activeFolder, readFilter, searchQuery]);
 
   const selectFolder = useCallback((folder: FolderId) => {
     setActiveFolder(folder);
@@ -846,6 +1074,7 @@ export default function FranchiseResourcesHub() {
     setSelectedDocument(null);
     hashRestoreDocumentIdRef.current = null;
     updateResourcesHubHash(folder, null);
+    setMobileNavOpen(false);
   }, []);
 
   const closeSelectedDocument = useCallback(() => {
@@ -859,8 +1088,7 @@ export default function FranchiseResourcesHub() {
     async (resourceId: number, options?: { syncHash?: boolean }) => {
       const syncHash = options?.syncHash ?? true;
       const folder = activeFolderRef.current;
-      const categoryId = parseCategoryId(folder);
-      if (categoryId == null) return;
+      if (folder !== "starred" && parseCategoryId(folder) == null) return;
 
       setSelectedDocumentId(resourceId);
       setSelectedDocumentLoading(true);
@@ -941,7 +1169,10 @@ export default function FranchiseResourcesHub() {
     if (isLoading || !isSignedIn || !hasFranchise) return;
 
     const { folder, documentId } = parseResourcesHubHash(window.location.hash);
-    if (!folder?.startsWith("category-") || documentId == null) return;
+    const canOpenDocument =
+      documentId != null &&
+      (folder?.startsWith("category-") || folder === "starred");
+    if (!canOpenDocument) return;
     if (activeFolder !== folder) return;
     if (
       hashRestoreDocumentIdRef.current === documentId &&
@@ -977,7 +1208,7 @@ export default function FranchiseResourcesHub() {
         return;
       }
 
-      if (!folder?.startsWith("category-")) return;
+      if (!folder?.startsWith("category-") && folder !== "starred") return;
 
       hashRestoreDocumentIdRef.current = null;
       void openDocument(documentId, { syncHash: false });
@@ -1039,8 +1270,8 @@ export default function FranchiseResourcesHub() {
 
   const applyFavouriteOptimistic = useCallback(
     (resourceIds: number[], isFavourite: boolean) => {
-      setDocuments((current) =>
-        current.map((doc) => {
+      setDocuments((current) => {
+        const next = current.map((doc) => {
           if (!resourceIds.includes(doc.id)) return doc;
 
           const memberState = doc.member_state ?? {
@@ -1051,8 +1282,14 @@ export default function FranchiseResourcesHub() {
             ...doc,
             member_state: { ...memberState, is_favourite: isFavourite },
           };
-        }),
-      );
+        });
+
+        if (activeFolderRef.current === "starred" && !isFavourite) {
+          return next.filter((doc) => doc.member_state?.is_favourite ?? false);
+        }
+
+        return next;
+      });
 
       for (const resourceId of resourceIds) {
         const existing = pendingFavouritesRef.current.get(resourceId);
@@ -1078,8 +1315,198 @@ export default function FranchiseResourcesHub() {
     router.push("/member");
   };
 
+  const selectedDocumentUnread = useMemo(() => {
+    if (!selectedDocument) return false;
+    return isDocumentUnread(selectedDocument, selectedDocument.member_state);
+  }, [selectedDocument]);
+
+  const toggleDocumentReadStatus = useCallback(async () => {
+    const userId = userRef.current?.id;
+    const doc = selectedDocument;
+    if (!userId || !doc || readStatusUpdating) return;
+
+    const memberState = doc.member_state;
+    const unread = isDocumentUnread(doc, memberState);
+    setReadStatusUpdating(true);
+
+    try {
+      if (unread) {
+        const result = await markFranchiseResourceSeen(
+          userId,
+          doc.id,
+          memberState,
+        );
+        if (result === "seen") {
+          const nextState = buildSeenMemberState(
+            memberState,
+            new Date().toISOString(),
+          );
+          setSelectedDocument((current) =>
+            current?.id === doc.id
+              ? applyMemberStateToDocument(current, nextState)
+              : current,
+          );
+          setDocuments((current) =>
+            current.map((row) =>
+              row.id === doc.id
+                ? applyMemberStateToDocument(row, nextState)
+                : row,
+            ),
+          );
+        }
+      } else {
+        const result = await markFranchiseResourceUnread(
+          userId,
+          doc.id,
+          memberState,
+        );
+        if (result === "unread") {
+          const nextState = buildUnreadMemberState(memberState);
+          setSelectedDocument((current) =>
+            current?.id === doc.id
+              ? applyMemberStateToDocument(current, nextState)
+              : current,
+          );
+          setDocuments((current) =>
+            current.map((row) =>
+              row.id === doc.id
+                ? applyMemberStateToDocument(row, nextState)
+                : row,
+            ),
+          );
+        }
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update read status.",
+      );
+    } finally {
+      setReadStatusUpdating(false);
+    }
+  }, [readStatusUpdating, selectedDocument]);
+
+  const selectedResourceIds = useMemo(
+    () =>
+      Array.from(selectedIds)
+        .map((id) => Number.parseInt(id, 10))
+        .filter((id) => !Number.isNaN(id)),
+    [selectedIds],
+  );
+
+  const hasBulkSelection = selectedResourceIds.length > 0;
+
+  const applyBulkMemberStateUpdates = useCallback(
+    (updates: Map<number, FranchiseResourceMemberState>) => {
+      if (updates.size === 0) return;
+
+      setDocuments((current) =>
+        current.map((doc) => {
+          const nextState = updates.get(doc.id);
+          return nextState ? applyMemberStateToDocument(doc, nextState) : doc;
+        }),
+      );
+      setSelectedDocument((current) => {
+        if (!current) return current;
+        const nextState = updates.get(current.id);
+        return nextState ? applyMemberStateToDocument(current, nextState) : current;
+      });
+    },
+    [],
+  );
+
+  const bulkMarkAsRead = useCallback(async () => {
+    const userId = userRef.current?.id;
+    if (!userId || bulkReadStatusUpdating || selectedResourceIds.length === 0) {
+      return;
+    }
+
+    setBulkReadStatusUpdating(true);
+    try {
+      const now = new Date().toISOString();
+      const updates = new Map<number, FranchiseResourceMemberState>();
+
+      await Promise.all(
+        selectedResourceIds.map(async (resourceId) => {
+          const doc = documentsRef.current.find((row) => row.id === resourceId);
+          const memberState = doc?.member_state ?? null;
+          const result = await markFranchiseResourceSeen(
+            userId,
+            resourceId,
+            memberState,
+          );
+          if (result === "seen") {
+            updates.set(resourceId, buildSeenMemberState(memberState, now));
+          }
+        }),
+      );
+
+      applyBulkMemberStateUpdates(updates);
+      if (updates.size > 0) {
+        toast.success(
+          `Marked ${updates.size} document${updates.size === 1 ? "" : "s"} as read.`,
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to mark documents as read.",
+      );
+    } finally {
+      setBulkReadStatusUpdating(false);
+    }
+  }, [
+    applyBulkMemberStateUpdates,
+    bulkReadStatusUpdating,
+    selectedResourceIds,
+  ]);
+
+  const bulkMarkAsUnread = useCallback(async () => {
+    const userId = userRef.current?.id;
+    if (!userId || bulkReadStatusUpdating || selectedResourceIds.length === 0) {
+      return;
+    }
+
+    setBulkReadStatusUpdating(true);
+    try {
+      const updates = new Map<number, FranchiseResourceMemberState>();
+
+      await Promise.all(
+        selectedResourceIds.map(async (resourceId) => {
+          const doc = documentsRef.current.find((row) => row.id === resourceId);
+          const memberState = doc?.member_state ?? null;
+          const result = await markFranchiseResourceUnread(
+            userId,
+            resourceId,
+            memberState,
+          );
+          if (result === "unread") {
+            updates.set(resourceId, buildUnreadMemberState(memberState));
+          }
+        }),
+      );
+
+      applyBulkMemberStateUpdates(updates);
+      if (updates.size > 0) {
+        toast.success(
+          `Marked ${updates.size} document${updates.size === 1 ? "" : "s"} as unread.`,
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to mark documents as unread.",
+      );
+    } finally {
+      setBulkReadStatusUpdating(false);
+    }
+  }, [
+    applyBulkMemberStateUpdates,
+    bulkReadStatusUpdating,
+    selectedResourceIds,
+  ]);
+
   const toggleStar = (clickedId: string) => {
-    if (isCategoryView) {
+    if (isDatabaseListView) {
       const userId = userRef.current?.id;
       if (!userId) {
         toast.error("Sign in to save favourites.");
@@ -1092,7 +1519,19 @@ export default function FranchiseResourcesHub() {
         .map((id) => Number.parseInt(id, 10))
         .filter((id) => !Number.isNaN(id));
 
-      if (targetResourceIds.length === 0) return;
+      if (targetResourceIds.length === 0) {
+        if (!isStarredView) return;
+
+        setStarredIds((current) => {
+          const next = new Set(current);
+          for (const id of targetIds) {
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+          }
+          return next;
+        });
+        return;
+      }
 
       const allFavourited = targetResourceIds.every((resourceId) =>
         getDocumentFavourite(resourceId),
@@ -1128,6 +1567,33 @@ export default function FranchiseResourcesHub() {
     });
   };
 
+  const isDocumentView = selectedDocumentId != null && isDatabaseListView;
+
+  useEffect(() => {
+    if (isDocumentView) {
+      setMobileNavOpen(false);
+    }
+  }, [isDocumentView]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMobileNavOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [mobileNavOpen]);
+
   if (isLoading || !isSignedIn || !profile || !me || !hasFranchise) {
     return (
       <MemberPortalBackground
@@ -1140,14 +1606,15 @@ export default function FranchiseResourcesHub() {
   }
 
   return (
-    <MemberPortalBackground variant="light">
+    <FranchiseResourceDocumentViewerProvider>
+      <MemberPortalBackground variant="light">
       <MemberHeader
         member={me}
         onLogout={() => void handleLogout()}
         theme="light"
       />
 
-      <div className={`py-6 ${MEMBER_PORTAL_LIGHT_BANNER_CLASS}`}>
+      <div className={cn(`py-6 ${MEMBER_PORTAL_LIGHT_BANNER_CLASS}`, isDocumentView && "max-sm:hidden")}>
         <div className="container">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
@@ -1165,36 +1632,121 @@ export default function FranchiseResourcesHub() {
         </div>
       </div>
 
-      <div className="border-b border-border bg-card">
+      <div
+        className={cn(
+          `border-b border-border bg-card`,
+          isDocumentView && "max-sm:hidden",
+        )}
+      >
         <div className="container flex items-center justify-between py-4">
-          <div className="text-base text-muted-foreground">
-            <span>Resources</span>
-            <span className="mx-1.5 text-border">/</span>
-            <span className="font-semibold text-foreground">{activeFolderLabel}</span>
+          <div className="text-base">
+            {!isDocumentView ? (
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                className="group text-left transition-colors lg:hidden"
+                aria-expanded={mobileNavOpen}
+                aria-controls="resources-hub-sidebar"
+                aria-label="Open folders"
+              >
+                <span className="text-amber-600 underline underline-offset-2 group-hover:text-primary/80">
+                  Resources
+                </span>
+                <span className="mx-1.5 text-primary/40">/</span>
+                <span className="font-semibold text-primary underline underline-offset-2 group-hover:text-primary/80">
+                  {activeFolderLabel}
+                </span>
+              </button>
+            ) : null}
+            <div
+              className={cn(
+                "text-muted-foreground",
+                !isDocumentView && "max-lg:hidden",
+              )}
+            >
+              <span>Resources</span>
+              <span className="mx-1.5 text-border">/</span>
+              <span className="font-semibold text-foreground">
+                {activeFolderLabel}
+              </span>
+            </div>
           </div>
           <div className="flex gap-3">
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
               onClick={() => selectFolder("starred")}
-              className="flex h-9 w-9 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label="Starred announcements"
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+                isStarredView && "border-primary bg-primary/10 text-primary",
+              )}
+              aria-label="Starred resources"
+              aria-pressed={isStarredView}
             >
-              <Star className="h-4 w-4" />
+              <Star
+                className={cn("h-4 w-4", isStarredView && "fill-current")}
+              />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="container max-w-[1600px] py-5 pb-16">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <aside className="w-full shrink-0 lg:w-[250px]">
+      {!isDocumentView && !mobileNavOpen ? (
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen(true)}
+          className="fixed left-0 top-[calc(env(safe-area-inset-top)+9.25rem)] z-[45] flex h-14 w-10 items-center justify-center rounded-r-xl border border-l-0 border-primary/90 bg-primary pl-0.5 text-primary-foreground shadow-[4px_2px_16px_-4px_rgba(0,0,0,0.22)] transition-[width,background-color] hover:w-11 hover:bg-primary/90 lg:hidden"
+          aria-expanded={mobileNavOpen}
+          aria-controls="resources-hub-sidebar"
+          aria-label="Open folders"
+        >
+          <ChevronRight className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+        </button>
+      ) : null}
+
+      <div
+        className={cn(
+          "container max-w-[1600px] py-5",
+          isDocumentView
+            ? "pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:pb-28"
+            : "pb-16",
+          isDocumentView && "max-sm:py-3",
+        )}
+      >
+        <div className="relative flex flex-col gap-6 lg:flex-row">
+          {mobileNavOpen ? (
+            <button
+              type="button"
+              aria-label="Close folder navigation"
+              className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-[1px] transition-opacity lg:hidden"
+              onClick={() => setMobileNavOpen(false)}
+            />
+          ) : null}
+
+          <aside
+            id="resources-hub-sidebar"
+            className={cn(
+              "shrink-0 lg:relative lg:z-auto lg:block lg:w-[250px] lg:translate-x-0 lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none",
+              "max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:flex max-lg:w-[min(100%,280px)] max-lg:flex-col max-lg:overflow-y-auto max-lg:border-r max-lg:border-border max-lg:bg-card max-lg:p-4 max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-300 max-lg:ease-out",
+              mobileNavOpen
+                ? "max-lg:translate-x-0"
+                : "max-lg:pointer-events-none max-lg:-translate-x-full",
+              isDocumentView && "max-lg:hidden",
+            )}
+          >
+            <div className="mb-4 flex items-center justify-between border-b border-border pb-3 lg:hidden">
+              <span className="text-sm font-semibold text-foreground">
+                Folders
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Close folders"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
             <div className="mb-6">
               <div className="label-badge mb-2.5">Announcements</div>
               <div className="flex flex-col gap-1.5">
@@ -1236,7 +1788,8 @@ export default function FranchiseResourcesHub() {
             </div>
           </aside>
 
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col">
+            {!isDocumentView ? (
             <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex w-full max-w-md">
                 <input
@@ -1255,32 +1808,22 @@ export default function FranchiseResourcesHub() {
                 </button>
               </div>
 
-              <div className="text-sm text-muted-foreground">
-                <span className="mr-2.5 font-semibold text-foreground">View:</span>
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    disabled={isCategoryView}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`mr-2.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                      activeTab === tab.id
-                        ? "font-medium text-primary"
-                        : "hover:text-foreground"
-                    }`}
-                  >
-                    {tab.label}
-                    {tab.badge ? (
-                      <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                        {tab.badge}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
+              <ReadFilterToggle
+                value={readFilter}
+                onChange={setReadFilter}
+                counts={readFilterCounts}
+              />
             </div>
+            ) : null}
 
-            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+            <div
+              className={cn(
+                "overflow-hidden rounded-lg border border-border bg-card shadow-sm",
+                isDocumentView &&
+                  "flex min-h-0 flex-col max-sm:min-h-[calc(100dvh-9.5rem)] max-sm:max-h-[calc(100dvh-9.5rem)]",
+              )}
+            >
+              {!isDocumentView ? (
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <input
@@ -1292,8 +1835,12 @@ export default function FranchiseResourcesHub() {
                   />
                   <button
                     type="button"
-                    disabled={!isCategoryView || documentsLoading}
+                    disabled={!isDatabaseListView || documentsLoading}
                     onClick={() => {
+                      if (isStarredView) {
+                        void loadStarredDocuments();
+                        return;
+                      }
                       if (activeCategoryId != null) {
                         void loadCategoryDocuments(activeCategoryId);
                       }
@@ -1312,6 +1859,33 @@ export default function FranchiseResourcesHub() {
                   >
                     <MoreVertical className="h-4 w-4" />
                   </button>
+                  {hasBulkSelection && isDatabaseListView ? (
+                    <>
+                      <div
+                        className="h-4 w-px shrink-0 bg-border"
+                        aria-hidden
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void bulkMarkAsRead()}
+                        disabled={bulkReadStatusUpdating}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
+                      >
+                        {bulkReadStatusUpdating ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : null}
+                        Mark as Read
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void bulkMarkAsUnread()}
+                        disabled={bulkReadStatusUpdating}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
+                      >
+                        Mark as Unread
+                      </button>
+                    </>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1342,42 +1916,70 @@ export default function FranchiseResourcesHub() {
                   </button>
                 </div>
               </div>
+              ) : null}
 
-              {selectedDocumentId != null && isCategoryView ? (
-                <div className="px-4 py-5 sm:px-6 sm:py-6">
+              {isDocumentView ? (
+                <div className="flex min-h-0 flex-1 flex-col px-3 py-3 sm:px-6 sm:py-6">
                   <button
                     type="button"
                     onClick={closeSelectedDocument}
-                    className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    className="mb-3 inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:mb-5"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Back to documents
                   </button>
                   {selectedDocumentLoading || !selectedDocument ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-sm text-muted-foreground">
+                    <div className="flex flex-1 flex-col items-center justify-center py-16 text-sm text-muted-foreground">
                       <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
                       Loading document…
                     </div>
                   ) : (
-                    <FranchiseResourceContent resource={selectedDocument} />
+                    <FranchiseResourceContent
+                      resource={selectedDocument}
+                      layout="hub"
+                      className="min-h-0 flex-1"
+                      titleAction={
+                        <button
+                          type="button"
+                          onClick={() => void toggleDocumentReadStatus()}
+                          disabled={readStatusUpdating}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60 sm:px-3 sm:text-sm"
+                        >
+                          {readStatusUpdating ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : null}
+                          {selectedDocumentUnread
+                            ? "Mark as Read"
+                            : "Mark as Unread"}
+                        </button>
+                      }
+                    />
                   )}
                 </div>
-              ) : documentsLoading && isCategoryView ? (
+              ) : documentsLoading && isDatabaseListView ? (
                 <div className="flex flex-col items-center justify-center px-6 py-16 text-center text-sm text-muted-foreground">
                   <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-                  Loading documents…
+                  {isStarredView ? "Loading starred resources…" : "Loading documents…"}
                 </div>
               ) : visibleMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center px-6 py-16 text-center text-sm text-muted-foreground">
                   <FolderOpen className="mb-3 h-10 w-10 opacity-30" />
-                  {isCategoryView
-                    ? "No published documents in this category."
-                    : "No resources match your current filters."}
+                  {searchFilteredMessages.length === 0
+                    ? isStarredView
+                      ? "No starred announcements or documents yet."
+                      : isCategoryView
+                        ? "No published documents in this category."
+                        : "No resources match your current filters."
+                    : readFilter === "read"
+                      ? "No read documents match your current filters."
+                      : readFilter === "unread"
+                        ? "No unread documents match your current filters."
+                        : "No resources match your current filters."}
                 </div>
               ) : (
                 <div>
                   {visibleMessages.map((message) => {
-                    const isStarred = isCategoryView
+                    const isStarred = isDatabaseListView
                       ? message.starred ?? false
                       : starredIds.has(message.id) || message.starred;
                     const isSelected = selectedIds.has(message.id);
@@ -1387,7 +1989,7 @@ export default function FranchiseResourcesHub() {
                         role="button"
                         tabIndex={0}
                         onClick={() => {
-                          if (isCategoryView) {
+                          if (isDatabaseListView) {
                             const resourceId = Number.parseInt(message.id, 10);
                             if (!Number.isNaN(resourceId)) {
                               void openDocument(resourceId);
@@ -1399,7 +2001,7 @@ export default function FranchiseResourcesHub() {
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            if (isCategoryView) {
+                            if (isDatabaseListView) {
                               const resourceId = Number.parseInt(message.id, 10);
                               if (!Number.isNaN(resourceId)) {
                                 void openDocument(resourceId);
@@ -1488,6 +2090,23 @@ export default function FranchiseResourcesHub() {
           </div>
         </div>
       </div>
+
+      {isDocumentView && selectedDocument ? (
+        <FranchiseResourceDocumentBottomBar
+          documentTitle={selectedDocument.title}
+          contentFile={selectedDocument.content_file}
+          fileName={
+            selectedDocument.content_file?.trim()
+              ? getFileNameFromStoragePath(selectedDocument.content_file)
+              : null
+          }
+          showPagination={isPaginatedDocumentStoragePath(
+            selectedDocument.content_file ?? "",
+          )}
+          showZoom={Boolean(selectedDocument.content_file?.trim())}
+        />
+      ) : null}
     </MemberPortalBackground>
+    </FranchiseResourceDocumentViewerProvider>
   );
 }

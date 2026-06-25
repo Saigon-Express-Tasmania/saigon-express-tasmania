@@ -1,7 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useMemo } from "react";
 import { Download, FileText, Loader2 } from "lucide-react";
+import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
+import { resolveFranchiseResourceFileUrl } from "@/types/franchise-resources";
 
 const FranchiseResourcePdfViewer = dynamic(
   () => import("./FranchiseResourcePdfViewer"),
@@ -24,6 +27,19 @@ const FranchiseResourceDocxViewer = dynamic(
       <div className="flex items-center justify-center gap-2 rounded-lg border border-border py-12 text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
         Preparing document viewer…
+      </div>
+    ),
+  },
+);
+
+const FranchiseResourceXlsxViewer = dynamic(
+  () => import("./FranchiseResourceXlsxViewer"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-border py-12 text-sm text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Preparing spreadsheet viewer…
       </div>
     ),
   },
@@ -54,23 +70,71 @@ function isDocxUrl(url: string, mimeType?: string): boolean {
   return ext === "docx" || ext === "doc";
 }
 
+function isXlsxUrl(url: string, mimeType?: string): boolean {
+  const mime = mimeType?.toLowerCase() ?? "";
+  if (
+    mime.includes("spreadsheetml") ||
+    mime.includes("ms-excel") ||
+    mime.includes("excel")
+  ) {
+    return true;
+  }
+  const ext = getUrlExtension(url);
+  return ext === "xlsx" || ext === "xls" || ext === "xlsm";
+}
+
 type FranchiseResourceContentFileViewerProps = {
   url: string;
   title?: string;
   mimeType?: string;
+  fillHeight?: boolean;
+  externalBottomBar?: boolean;
 };
 
 export default function FranchiseResourceContentFileViewer({
   url,
   title = "Document",
   mimeType,
+  fillHeight = false,
+  externalBottomBar = false,
 }: FranchiseResourceContentFileViewerProps) {
-  if (isPdfUrl(url, mimeType)) {
-    return <FranchiseResourcePdfViewer url={url} title={title} />;
+  const { getPublicUrl } = useSupabaseStorage();
+  const resolvedUrl = useMemo(
+    () => resolveFranchiseResourceFileUrl(url, getPublicUrl),
+    [getPublicUrl, url],
+  );
+
+  if (isPdfUrl(resolvedUrl, mimeType)) {
+    return (
+      <FranchiseResourcePdfViewer
+        url={resolvedUrl}
+        title={title}
+        fillHeight={fillHeight}
+        externalBottomBar={externalBottomBar}
+      />
+    );
   }
 
-  if (isDocxUrl(url, mimeType)) {
-    return <FranchiseResourceDocxViewer url={url} title={title} />;
+  if (isDocxUrl(resolvedUrl, mimeType)) {
+    return (
+      <FranchiseResourceDocxViewer
+        url={resolvedUrl}
+        title={title}
+        fillHeight={fillHeight}
+        externalBottomBar={externalBottomBar}
+      />
+    );
+  }
+
+  if (isXlsxUrl(resolvedUrl, mimeType)) {
+    return (
+      <FranchiseResourceXlsxViewer
+        url={resolvedUrl}
+        title={title}
+        fillHeight={fillHeight}
+        externalBottomBar={externalBottomBar}
+      />
+    );
   }
 
   return (
@@ -80,7 +144,7 @@ export default function FranchiseResourceContentFileViewer({
         This file type cannot be previewed in the browser.
       </p>
       <a
-        href={url}
+        href={resolvedUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"

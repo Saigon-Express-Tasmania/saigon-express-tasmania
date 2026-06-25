@@ -61,15 +61,13 @@ export async function fetchUserAuthMetadata(
   userId: string,
   appMetadata?: Record<string, unknown>,
 ): Promise<UserAuthMetadataLoad> {
-  // Right after sign-in, auth.uid() can briefly be unset for PostgREST requests.
-  await supabase.auth.getSession();
-
+  // Retry without calling supabase.auth.getSession() — that deadlocks when this
+  // runs from inside an onAuthStateChange callback (auth-js exclusive lock).
   for (let attempt = 0; attempt < METADATA_FETCH_MAX_ATTEMPTS; attempt++) {
     if (attempt > 0) {
       await new Promise((resolve) => {
         setTimeout(resolve, METADATA_FETCH_RETRY_DELAY_MS * attempt);
       });
-      await supabase.auth.getSession();
     }
 
     const metadata = await fetchUserAuthMetadataFromDatabase(userId);

@@ -1,4 +1,5 @@
 import { BlogPostAssetReferencesPanel } from '@/components/BlogPostAssetReferencesPanel';
+import { FileDropzone } from '@/components/FileDropzone';
 import { HtmlRichTextEditor } from '@/components/HtmlRichTextEditor';
 import { ImageUpload } from '@/components/ImageUpload';
 import { DashboardLayout } from '@/components/layout';
@@ -15,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshTableButton } from '@/components/ui/refresh-table-button';
+import { Pagination } from '@/components/ui/pagination';
 import {
   Card,
   CardContent,
@@ -42,6 +44,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useTablePagination } from '@/hooks/useTablePagination';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
@@ -391,7 +394,7 @@ function normalizeResourceRow(row: Record<string, unknown>): FranchiseResourceRo
 function rowToInput(row: FranchiseResourceRow): ResourceInput {
   return {
     title: row.title,
-    slug: row.slug,
+    slug: slugify(row.title),
     category_id: row.category_id != null ? String(row.category_id) : '',
     course_id: row.course_id != null ? String(row.course_id) : '',
     period_id: row.period_id != null ? String(row.period_id) : '',
@@ -434,7 +437,7 @@ function parseOptionalId(value: string): number | null {
 }
 
 function canPersistResource(form: ResourceInput): boolean {
-  const slug = form.slug.trim();
+  const slug = slugify(form.title);
   return (
     Boolean(form.title.trim()) &&
     Boolean(slug) &&
@@ -451,7 +454,7 @@ function buildResourcePayload(form: ResourceInput) {
   return {
     type: RESOURCE_TYPE,
     title: form.title.trim(),
-    slug: form.slug.trim(),
+    slug: slugify(form.title),
     category_id: parseOptionalId(form.category_id),
     course_id: parseOptionalId(form.course_id),
     period_id: parseOptionalId(form.period_id),
@@ -643,13 +646,13 @@ export default function ResourcesHub() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('id');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ResourceInput>(emptyResourceInput());
-  const [slugTouched, setSlugTouched] = useState(false);
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(
     null,
   );
@@ -749,6 +752,15 @@ export default function ResourcesHub() {
   const filteredResources = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = resources.filter((row) => {
+      if (categoryFilter === 'none') {
+        if (row.category_id != null) return false;
+      } else if (categoryFilter !== 'all') {
+        const categoryId = Number.parseInt(categoryFilter, 10);
+        if (Number.isNaN(categoryId) || row.category_id !== categoryId) {
+          return false;
+        }
+      }
+
       if (!term) return true;
       return (
         row.title.toLowerCase().includes(term) ||
@@ -764,14 +776,24 @@ export default function ResourcesHub() {
       if (sortColumn === 'id') return (a.id - b.id) * direction;
       return a[sortColumn].localeCompare(b[sortColumn]) * direction;
     });
-  }, [resources, search, sortColumn, sortDirection]);
+  }, [categoryFilter, resources, search, sortColumn, sortDirection]);
+
+  const {
+    paginatedItems: paginatedResources,
+    page,
+    perPage,
+    totalPages,
+    totalRecords,
+    perPageOptions,
+    setPage,
+    onPerPageChange,
+  } = useTablePagination(filteredResources, `${search}|${categoryFilter}`);
 
   const openCreate = () => {
     clearContentAutoSaveTimer();
     lastSavedContentRef.current = null;
     editingIdRef.current = null;
     setEditingId(null);
-    setSlugTouched(false);
     setForm(emptyResourceInput());
     setThumbnailPreviewUrl(null);
     setEditorTab('main');
@@ -783,7 +805,6 @@ export default function ResourcesHub() {
     lastSavedContentRef.current = row.content ?? '';
     editingIdRef.current = row.id;
     setEditingId(row.id);
-    setSlugTouched(true);
     setForm(rowToInput(row));
     setThumbnailPreviewUrl(resolveImagePreview(row.thumbnail_url, getPublicUrl));
     setEditorTab('main');
@@ -794,14 +815,14 @@ export default function ResourcesHub() {
     setForm((current) => ({
       ...current,
       title,
-      slug: slugTouched ? current.slug : slugify(title),
+      slug: slugify(title),
     }));
   };
 
   const handleThumbnailUpload = async (fileInputs: File | File[]) => {
     const file = Array.isArray(fileInputs) ? fileInputs[0] : fileInputs;
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const slugPart = slugify(form.slug) || 'document';
+    const slugPart = slugify(form.title) || 'document';
     const fileName = `${slugPart}-thumbnail-${Date.now()}.${ext}`;
 
     try {
@@ -829,8 +850,7 @@ export default function ResourcesHub() {
   const handleContentFileUpload = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
     const derivedTitle = titleFromFileName(file.name);
-    const slugPart =
-      slugify(form.slug) || slugify(derivedTitle) || 'document';
+    const slugPart = slugify(form.title) || slugify(derivedTitle) || 'document';
     const fileName = `${slugPart}-content-${Date.now()}.${ext}`;
 
     try {
@@ -847,7 +867,7 @@ export default function ResourcesHub() {
           ...prev,
           content_file: publicUrl,
           title: derivedTitle,
-          slug: slugTouched ? prev.slug : slugify(derivedTitle),
+          slug: slugify(derivedTitle),
         };
       });
       toast.success('Document file uploaded.');
@@ -860,7 +880,7 @@ export default function ResourcesHub() {
 
   const handleAttachmentUpload = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-    const slugPart = slugify(form.slug) || 'document';
+    const slugPart = slugify(form.title) || 'document';
     const fileName = `${slugPart}-attachment-${Date.now()}.${ext}`;
 
     try {
@@ -940,7 +960,6 @@ export default function ResourcesHub() {
 
           editingIdRef.current = data.id;
           setEditingId(data.id);
-          setSlugTouched(true);
         } else {
           return;
         }
@@ -1010,7 +1029,6 @@ export default function ResourcesHub() {
 
         editingIdRef.current = data.id;
         setEditingId(data.id);
-        setSlugTouched(true);
       }
 
       lastSavedContentRef.current = content;
@@ -1051,11 +1069,12 @@ export default function ResourcesHub() {
       toast.error('Title is required.');
       return;
     }
-    if (!form.slug.trim()) {
-      toast.error('Slug is required.');
+    const slug = slugify(form.title);
+    if (!slug) {
+      toast.error('Slug could not be generated from the title.');
       return;
     }
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug.trim())) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
       toast.error('Slug must be lowercase kebab-case.');
       return;
     }
@@ -1174,12 +1193,36 @@ export default function ResourcesHub() {
               </div>
             )}
 
-            <Input
-              placeholder="Search documents…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <Input
+                placeholder="Search documents…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="document-category-filter" className="whitespace-nowrap">
+                  Category
+                </Label>
+                <Select
+                  value={categoryFilter}
+                  onValueChange={setCategoryFilter}
+                >
+                  <SelectTrigger id="document-category-filter" className="w-56">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    <SelectItem value="none">Uncategorized</SelectItem>
+                    {taxonomyByKind.category.map((category) => (
+                      <SelectItem key={category.id} value={String(category.id)}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -1187,9 +1230,12 @@ export default function ResourcesHub() {
               </div>
             ) : filteredResources.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No documents yet. Add one to get started.
+                {resources.length === 0
+                  ? 'No documents yet. Add one to get started.'
+                  : 'No documents match your search or category filter.'}
               </p>
             ) : (
+              <div className="space-y-4">
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full">
                   <thead>
@@ -1230,7 +1276,7 @@ export default function ResourcesHub() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredResources.map((row) => (
+                    {paginatedResources.map((row) => (
                       <tr
                         key={row.id}
                         className="border-b transition-colors hover:bg-muted/50"
@@ -1288,6 +1334,16 @@ export default function ResourcesHub() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <Pagination
+                totalRecords={totalRecords}
+                page={page}
+                perPage={perPage}
+                totalPages={totalPages}
+                perPageOptions={perPageOptions}
+                onPageChange={setPage}
+                onPerPageChange={onPerPageChange}
+              />
               </div>
             )}
           </CardContent>
@@ -1415,18 +1471,13 @@ export default function ResourcesHub() {
                     <ResourceFormField
                       label="Slug"
                       htmlFor="doc-slug"
-                      description="Lowercase URL segment, e.g. operation-manual-v1"
+                      description="Auto-generated from the title."
                     >
                       <Input
                         id="doc-slug"
-                        value={form.slug}
-                        onChange={(e) => {
-                          setSlugTouched(true);
-                          setForm((current) => ({
-                            ...current,
-                            slug: e.target.value,
-                          }));
-                        }}
+                        value={slugify(form.title)}
+                        readOnly
+                        className="bg-muted/50"
                         placeholder="operation-manual-v1"
                       />
                     </ResourceFormField>
@@ -1868,25 +1919,15 @@ export default function ResourcesHub() {
                       />
                     </ResourceFormField>
 
-                    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-200/80 bg-indigo-50/30 px-6 py-8 transition-colors hover:border-indigo-400/60 hover:bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/35">
-                      <Upload className="h-8 w-8 text-indigo-500/70" />
-                      <span className="text-sm font-medium">
-                        Upload primary document
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        PDF, DOCX, or other downloadable file
-                      </span>
-                      <Input
-                        type="file"
-                        disabled={saving || isUploading}
-                        className="sr-only"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) void handleContentFileUpload(file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
+                    <FileDropzone
+                      title="Upload primary document"
+                      description="PDF, DOCX, XLSX, or other downloadable file"
+                      icon={<Upload className="h-8 w-8 text-indigo-500/70" />}
+                      className="border-indigo-200/80 bg-indigo-50/30 hover:border-indigo-400/60 hover:bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/35"
+                      disabled={saving}
+                      isUploading={isUploading}
+                      onFileSelect={handleContentFileUpload}
+                    />
                   </div>
                 </ResourceFormSection>
 
@@ -1928,25 +1969,21 @@ export default function ResourcesHub() {
                       <div className="rounded-xl border-2 border-dashed border-teal-200/60 bg-teal-50/20 px-6 py-8 text-center dark:border-teal-900/40 dark:bg-teal-950/15">
                         <Paperclip className="mx-auto mb-2 h-6 w-6 text-teal-500/70" />
                         <p className="text-sm text-muted-foreground">
-                          No attachments yet.
+                          No attachments yet. Drag files into the upload area below.
                         </p>
                       </div>
                     )}
 
-                    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-teal-200/80 bg-teal-50/30 px-6 py-6 transition-colors hover:border-teal-400/60 hover:bg-teal-50/50 dark:border-teal-900/50 dark:bg-teal-950/20 dark:hover:bg-teal-950/35">
-                      <Upload className="h-6 w-6 text-teal-500/70" />
-                      <span className="text-sm font-medium">Add attachment</span>
-                      <Input
-                        type="file"
-                        disabled={saving || isUploading}
-                        className="sr-only"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) void handleAttachmentUpload(file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
+                    <FileDropzone
+                      title="Add attachment"
+                      description="Upload one or more supporting files"
+                      icon={<Upload className="h-6 w-6 text-teal-500/70" />}
+                      className="border-teal-200/80 bg-teal-50/30 py-6 hover:border-teal-400/60 hover:bg-teal-50/50 dark:border-teal-900/50 dark:bg-teal-950/20 dark:hover:bg-teal-950/35"
+                      disabled={saving}
+                      isUploading={isUploading}
+                      multiple
+                      onFileSelect={handleAttachmentUpload}
+                    />
                   </div>
                 </ResourceFormSection>
               </div>

@@ -142,6 +142,14 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    const runAfterAuthCallback = (task: () => Promise<void>) => {
+      window.setTimeout(() => {
+        void task().catch((error) => {
+          console.error("Error in deferred auth state handler:", error);
+        });
+      }, 0);
+    };
+
     const init = async () => {
       try {
         const {
@@ -171,16 +179,19 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (event === "TOKEN_REFRESHED") {
         setSession(newSession);
-        if (newSession?.user) {
+        if (!newSession?.user) return;
+
+        runAfterAuthCallback(async () => {
+          if (!mounted) return;
           try {
             await loadSignedInUser(newSession, { force: true });
           } catch (error) {
             console.error("Error reloading profile after token refresh:", error);
           }
-        }
+        });
         return;
       }
 
@@ -190,20 +201,23 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       }
 
       if (newSession?.user) {
-        if (mounted) setIsLoading(true);
-        try {
-          await loadSignedInUser(newSession);
+        runAfterAuthCallback(async () => {
           if (!mounted) return;
-          setSession(newSession);
-          setUser(newSession.user);
-        } catch (error) {
-          console.error("Error loading profile after auth change:", error);
-          clearSignedInUser();
-          setSession(null);
-          setUser(null);
-        } finally {
-          if (mounted) setIsLoading(false);
-        }
+          setIsLoading(true);
+          try {
+            await loadSignedInUser(newSession);
+            if (!mounted) return;
+            setSession(newSession);
+            setUser(newSession.user);
+          } catch (error) {
+            console.error("Error loading profile after auth change:", error);
+            clearSignedInUser();
+            setSession(null);
+            setUser(null);
+          } finally {
+            if (mounted) setIsLoading(false);
+          }
+        });
         return;
       }
 

@@ -60,3 +60,50 @@ export function getResourcePreviewText(
   if (descriptionText) return descriptionText;
   return "";
 }
+
+export function resolveFranchiseResourceFileUrl(
+  url: string,
+  getPublicUrl: (path: string) => string,
+): string {
+  const value = url.trim();
+  if (!value) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+  return getPublicUrl(value);
+}
+
+export function getFileNameFromStoragePath(path: string): string {
+  const clean = path.trim().split("?")[0] ?? "";
+  const segment = clean.split("/").filter(Boolean).pop() ?? "";
+  return segment || "Document";
+}
+
+export function isPdfStoragePath(path: string): boolean {
+  const clean = path.trim().split("?")[0] ?? "";
+  const dot = clean.lastIndexOf(".");
+  if (dot < 0) return false;
+  return clean.slice(dot + 1).toLowerCase() === "pdf";
+}
+
+export function isDocxStoragePath(path: string): boolean {
+  const clean = path.trim().split("?")[0] ?? "";
+  const dot = clean.lastIndexOf(".");
+  if (dot < 0) return false;
+  const ext = clean.slice(dot + 1).toLowerCase();
+  return ext === "docx" || ext === "doc";
+}
+
+export function isXlsxStoragePath(path: string): boolean {
+  const clean = path.trim().split("?")[0] ?? "";
+  const dot = clean.lastIndexOf(".");
+  if (dot < 0) return false;
+  const ext = clean.slice(dot + 1).toLowerCase();
+  return ext === "xlsx" || ext === "xls" || ext === "xlsm";
+}
+
+export function isPaginatedDocumentStoragePath(path: string): boolean {
+  return (
+    isPdfStoragePath(path) ||
+    isDocxStoragePath(path) ||
+    isXlsxStoragePath(path)
+  );
+}

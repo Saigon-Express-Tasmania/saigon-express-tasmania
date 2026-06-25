@@ -37,6 +37,14 @@ export function parseResourcesHubHash(hash: string): ResourcesHubHashState {
     }
   }
 
+  const starredWithDocument = raw.match(/^starred\/document-(\d+)$/);
+  if (starredWithDocument) {
+    const documentId = Number.parseInt(starredWithDocument[1], 10);
+    if (!Number.isNaN(documentId)) {
+      return { folder: "starred", documentId };
+    }
+  }
+
   const categoryOnly = raw.match(/^category-(\d+)$/);
   if (categoryOnly) {
     const categoryId = Number.parseInt(categoryOnly[1], 10);
@@ -56,6 +64,9 @@ export function buildResourcesHubHash(
   folder: ResourcesHubFolderId,
   documentId: number | null,
 ): string {
+  if (documentId != null && folder === "starred") {
+    return `#starred/document-${documentId}`;
+  }
   if (documentId != null && folder.startsWith("category-")) {
     return `#${folder}/document-${documentId}`;
   }

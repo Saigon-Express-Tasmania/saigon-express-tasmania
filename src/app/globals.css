@@ -257,6 +257,13 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  .scrollbar-hide-x {
+    overflow-x: auto;
+  }
+  .scrollbar-hide-x::-webkit-scrollbar:horizontal {
+    display: none;
+    height: 0;
+  }
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
