@@ -185,7 +185,7 @@ export function HtmlSplitEditor({
     let cleanup: (() => void) | undefined;
 
     const attachInspectListeners = (root: Element) => {
-      const onPointerOver = (event: PointerEvent) => {
+      const onPointerOver: EventListener = (event) => {
         if (!inspectModeRef.current) return;
         const marked = findMarkedElement(event.target);
         if (!marked) return;
@@ -197,24 +197,25 @@ export function HtmlSplitEditor({
         marked.classList.add('__html-inspect-hover');
       };
 
-      const onPointerOut = (event: PointerEvent) => {
+      const onPointerOut: EventListener = (event) => {
         if (!inspectModeRef.current) return;
-        const related = event.relatedTarget;
+        const related = (event as PointerEvent).relatedTarget;
         if (related instanceof Node && hoveredElRef.current?.contains(related)) {
           return;
         }
         clearHoverHighlight();
       };
 
-      const onPointerDown = (event: PointerEvent) => {
+      const onPointerDown: EventListener = (event) => {
         if (!inspectModeRef.current) return;
-        if (event.button !== 0) return;
+        const pointerEvent = event as PointerEvent;
+        if (pointerEvent.button !== 0) return;
 
-        const marked = findMarkedElement(event.target);
+        const marked = findMarkedElement(pointerEvent.target);
         if (!marked) return;
 
-        event.preventDefault();
-        event.stopPropagation();
+        pointerEvent.preventDefault();
+        pointerEvent.stopPropagation();
 
         const index = readInspectSourceOffset(marked);
         if (index === null) {
