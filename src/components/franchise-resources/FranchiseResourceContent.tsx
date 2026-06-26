@@ -3,8 +3,12 @@
 import AppImage from "@/components/AppImage";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import FranchiseResourceContentFileViewer from "@/components/franchise-resources/FranchiseResourceContentFileViewer";
+import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import type { FranchiseResourceContentData } from "@/types/franchise-resources";
-import { normalizeAttachedFiles } from "@/types/franchise-resources";
+import {
+  normalizeAttachedFiles,
+  resolveFranchiseResourceFileUrl,
+} from "@/types/franchise-resources";
 import { cn } from "@/lib/utils";
 import {
   Clock,
@@ -14,6 +18,7 @@ import {
   Tag,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useCallback, useMemo } from "react";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 
@@ -91,8 +96,10 @@ function ResourceVideoPlayer({ url, title }: { url: string; title: string }) {
 
 function AttachedFilesList({
   files,
+  resolveUrl,
 }: {
   files: ReturnType<typeof normalizeAttachedFiles>;
+  resolveUrl: (url: string) => string;
 }) {
   if (files.length === 0) return null;
 
@@ -105,10 +112,11 @@ function AttachedFilesList({
       <ul className="space-y-2">
         {files.map((file) => {
           const sizeLabel = formatFileSize(file.size_bytes);
+          const fileUrl = resolveUrl(file.url);
           return (
             <li key={`${file.url}-${file.name}`}>
               <a
-                href={file.url}
+                href={fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm transition-colors hover:bg-secondary/60"
@@ -147,6 +155,11 @@ export default function FranchiseResourceContent({
   hideHeader = false,
   titleAction,
 }: FranchiseResourceContentProps) {
+  const { getPublicUrl } = useSupabaseStorage();
+  const resolveUrl = useCallback(
+    (url: string) => resolveFranchiseResourceFileUrl(url, getPublicUrl),
+    [getPublicUrl],
+  );
   const isHubLayout = layout === "hub";
   const hasFilePreview = Boolean(resource.content_file?.trim());
   const attachedFiles = normalizeAttachedFiles(resource.attached_files);
@@ -154,8 +167,21 @@ export default function FranchiseResourceContent({
     resource.published_at ?? resource.created_at,
   );
   const contentText = resource.content?.trim() ?? "";
-  const videoUrl = resource.video_file?.trim() ?? "";
+  const videoUrl = useMemo(
+    () =>
+      resource.video_file?.trim()
+        ? resolveUrl(resource.video_file.trim())
+        : "",
+    [resource.video_file, resolveUrl],
+  );
   const contentFileUrl = resource.content_file?.trim() ?? "";
+  const thumbnailUrl = useMemo(
+    () =>
+      resource.thumbnail_url?.trim()
+        ? resolveUrl(resource.thumbnail_url.trim())
+        : "",
+    [resource.thumbnail_url, resolveUrl],
+  );
   const summaryText = resource.summary?.trim() ?? "";
   const descriptionText = resource.description?.trim() ?? "";
   const tags = resource.tags?.filter((tag) => tag.trim()) ?? [];
@@ -241,7 +267,7 @@ export default function FranchiseResourceContent({
           </div>
         ) : null}
 
-        {resource.thumbnail_url?.trim() ? (
+        {thumbnailUrl ? (
           <div
             className={cn(
               "relative aspect-[21/9] overflow-hidden rounded-lg border border-border",
@@ -249,7 +275,7 @@ export default function FranchiseResourceContent({
             )}
           >
             <AppImage
-              src={resource.thumbnail_url.trim()}
+              src={thumbnailUrl}
               alt=""
               fill
               className="object-cover"
@@ -326,7 +352,7 @@ export default function FranchiseResourceContent({
       ) : null}
 
       <div className={cn(isHubLayout && "shrink-0")}>
-        <AttachedFilesList files={attachedFiles} />
+        <AttachedFilesList files={attachedFiles} resolveUrl={resolveUrl} />
       </div>
     </article>
   );

@@ -25,6 +25,9 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
+      "@/components/franchise-resources/*": ["../src/components/franchise-resources/*"],
+      "@/types/franchise-resources": ["../src/types/franchise-resources.ts"],
+      "@/lib/franchise-resource-file-download": ["../src/lib/franchise-resource-file-download.ts"],
       "@/*": ["./src/*"]
     }
   },

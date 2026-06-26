@@ -36,7 +36,8 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   EMAIL_TEMPLATE_BATCH_MAX,
   invokeEmailTemplateEdge,
-  invokeEmailTemplateEdgeBatch,
+  invokeEmailTemplateEdgeBatched,
+  type EmailTemplateBatchProgress,
 } from '@/lib/email-template-api';
 import { extractTemplateVariables } from '@/lib/email-template-preview';
 import { formatHtmlFields } from '@/lib/format-html';
@@ -115,6 +116,8 @@ export function Emails() {
   const [dialogSyncing, setDialogSyncing] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [batchSyncing, setBatchSyncing] = useState(false);
+  const [batchSyncProgress, setBatchSyncProgress] =
+    useState<EmailTemplateBatchProgress | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -186,12 +189,6 @@ export function Emails() {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (checked) {
-        if (next.size >= EMAIL_TEMPLATE_BATCH_MAX) {
-          toast.error(
-            `You can select at most ${EMAIL_TEMPLATE_BATCH_MAX} templates per batch.`,
-          );
-          return prev;
-        }
         next.add(id);
       } else {
         next.delete(id);
@@ -205,15 +202,7 @@ export function Emails() {
       setSelectedIds(new Set());
       return;
     }
-    const ids = filteredTemplates
-      .slice(0, EMAIL_TEMPLATE_BATCH_MAX)
-      .map((t) => t.id);
-    if (filteredTemplates.length > EMAIL_TEMPLATE_BATCH_MAX) {
-      toast.message(
-        `Only the first ${EMAIL_TEMPLATE_BATCH_MAX} visible templates were selected (batch limit).`,
-      );
-    }
-    setSelectedIds(new Set(ids));
+    setSelectedIds(new Set(filteredTemplates.map((t) => t.id)));
   };
 
   const allFilteredSelected =
@@ -432,8 +421,18 @@ export function Emails() {
   const handleBatchSync = async () => {
     if (selectedCount === 0) return;
     setBatchSyncing(true);
+    setBatchSyncProgress({
+      processed: 0,
+      total: selectedCount,
+      batch: 1,
+      batchCount: Math.max(1, Math.ceil(selectedCount / EMAIL_TEMPLATE_BATCH_MAX)),
+    });
     try {
-      const result = await invokeEmailTemplateEdgeBatch('sync', selectedTemplates);
+      const result = await invokeEmailTemplateEdgeBatched(
+        'sync',
+        selectedTemplates,
+        setBatchSyncProgress,
+      );
       const succeeded = result.succeeded ?? 0;
       const failed = result.failed ?? 0;
 
@@ -457,6 +456,7 @@ export function Emails() {
       );
     } finally {
       setBatchSyncing(false);
+      setBatchSyncProgress(null);
     }
   };
 
@@ -518,9 +518,10 @@ export function Emails() {
               <CardTitle>Email templates</CardTitle>
               <CardDescription>
                 Store templates in Supabase, then sync to {EMAIL_TEMPLATE_PROVIDER}{' '}
-                individually or in batches (up to {EMAIL_TEMPLATE_BATCH_MAX} at a
-                time). Use <code className="text-xs">{'{{variable}}'}</code> in
-                subject and body; sync converts these to Brevo{' '}
+                individually or in bulk (processed in batches of{' '}
+                {EMAIL_TEMPLATE_BATCH_MAX}). Use{' '}
+                <code className="text-xs">{'{{variable}}'}</code> in subject and
+                body; sync converts these to Brevo{' '}
                 <code className="text-xs">{'{{params.variable}}'}</code>{' '}
                 placeholders.
               </CardDescription>
@@ -549,7 +550,7 @@ export function Emails() {
                   ) : (
                     <CloudUpload className="mr-2 h-4 w-4" />
                   )}
-                  Sync selected ({selectedCount}/{EMAIL_TEMPLATE_BATCH_MAX})
+                  Sync selected ({selectedCount})
                 </Button>
               )}
               <Button onClick={openCreate} disabled={loading}>
@@ -890,6 +891,45 @@ export function Emails() {
         onOpenChange={setSendDialogOpen}
         templates={templates}
       />
+
+      <Dialog open={batchSyncProgress !== null}>
+        <DialogContent
+          className="sm:max-w-sm"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          showCloseButton={false}
+        >
+          <DialogHeader>
+            <DialogTitle>Syncing templates</DialogTitle>
+            <DialogDescription>
+              {batchSyncProgress && (
+                <>
+                  Batch {batchSyncProgress.batch} of{' '}
+                  {batchSyncProgress.batchCount} —{' '}
+                  {batchSyncProgress.processed} of {batchSyncProgress.total}{' '}
+                  template{batchSyncProgress.total === 1 ? '' : 's'}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-primary transition-[width] duration-300"
+                style={{
+                  width: batchSyncProgress
+                    ? `${Math.round((batchSyncProgress.processed / batchSyncProgress.total) * 100)}%`
+                    : '0%',
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Syncing to {EMAIL_TEMPLATE_PROVIDER}…
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={unsavedConfirmOpen}

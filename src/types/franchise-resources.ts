@@ -61,13 +61,31 @@ export function getResourcePreviewText(
   return "";
 }
 
+/** Convert a Supabase signed object URL to the stable public object URL. */
+export function supabaseSignedUrlToPublicUrl(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed.includes("/object/sign/")) return null;
+  const withoutQuery = trimmed.split("?")[0] ?? trimmed;
+  return withoutQuery.replace("/object/sign/", "/object/public/");
+}
+
 export function resolveFranchiseResourceFileUrl(
   url: string,
   getPublicUrl: (path: string) => string,
 ): string {
   const value = url.trim();
   if (!value) return value;
-  if (/^https?:\/\//i.test(value)) return value;
+
+  const publicFromSigned = supabaseSignedUrlToPublicUrl(value);
+  if (publicFromSigned) return publicFromSigned;
+
+  if (/^https?:\/\//i.test(value)) {
+    if (value.includes("/object/public/")) {
+      return value.split("?")[0] ?? value;
+    }
+    return value;
+  }
+
   return getPublicUrl(value);
 }
 

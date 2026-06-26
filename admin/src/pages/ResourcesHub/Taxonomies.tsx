@@ -41,6 +41,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { slugify } from './franchiseResourceShared';
 import supabase from '@/lib/supabase/client';
 import {
   ArrowDown,
@@ -182,7 +183,6 @@ type TaxonomyRow = {
 type TaxonomyInput = {
   place: TaxonomyPlace;
   kind: TaxonomyKind;
-  alias: string;
   label: string;
   icon: string;
   image_url: string;
@@ -194,7 +194,6 @@ type TaxonomyInput = {
 const emptyTaxonomyInput = (): TaxonomyInput => ({
   place: 'document',
   kind: 'category',
-  alias: '',
   label: '',
   icon: '',
   image_url: '',
@@ -202,14 +201,6 @@ const emptyTaxonomyInput = (): TaxonomyInput => ({
   sort_order: '0',
   is_active: 'true',
 });
-
-function slugifyAlias(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 function resolveImagePreview(
   imageUrl: string | null | undefined,
@@ -424,7 +415,6 @@ export default function Taxonomies() {
     setForm({
       place: row.place,
       kind: row.kind,
-      alias: row.alias,
       label: row.label,
       icon: row.icon ?? '',
       image_url: row.image_url ?? '',
@@ -439,7 +429,7 @@ export default function Taxonomies() {
   const handleImageUpload = async (fileInputs: File | File[]) => {
     const file = Array.isArray(fileInputs) ? fileInputs[0] : fileInputs;
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const aliasPart = slugifyAlias(form.alias) || form.kind;
+    const aliasPart = slugify(form.label) || form.kind;
     const fileName = `${form.place}-${form.kind}-${aliasPart}-${Date.now()}.${ext}`;
 
     try {
@@ -465,11 +455,11 @@ export default function Taxonomies() {
   };
 
   const handleSave = async () => {
-    const alias = slugifyAlias(form.alias);
     const label = form.label.trim();
+    const alias = slugify(label);
 
     if (!alias) {
-      toast.error('Alias is required (lowercase letters, numbers, hyphens).');
+      toast.error('Label must produce a valid alias (letters and numbers).');
       return;
     }
     if (!label) {
@@ -819,6 +809,7 @@ export default function Taxonomies() {
             const PlaceIcon = placeStyle.icon;
             const kindStyle = KIND_META[form.kind];
             const KindIcon = kindStyle.icon;
+            const generatedAlias = slugify(form.label);
             return (
               <>
                 <div
@@ -855,8 +846,8 @@ export default function Taxonomies() {
                       {editing ? 'Edit taxonomy' : 'Add taxonomy'}
                     </DialogTitle>
                     <DialogDescription>
-                      Alias must be lowercase with hyphens. Each alias is unique
-                      within its kind.
+                      The alias slug is generated automatically from the label.
+                      Each alias is unique within its kind.
                     </DialogDescription>
                   </DialogHeader>
                 </div>
@@ -1009,43 +1000,35 @@ export default function Taxonomies() {
 
                     <TaxonomyFormSection
                       title="Labels"
-                      description="Human-readable name and machine alias used in filters."
+                      description="Human-readable name and auto-generated alias used in filters."
                       accentClass={kindStyle.sectionClass}
                     >
                       <div className={formGridClass}>
-                        <TaxonomyFormField label="Label" htmlFor="taxonomy-label">
+                        <TaxonomyFormField
+                          label="Label"
+                          htmlFor="taxonomy-label"
+                          className="md:col-span-2"
+                        >
                           <Input
                             id="taxonomy-label"
                             value={form.label}
                             onChange={(e) =>
                               setForm((f) => ({ ...f, label: e.target.value }))
                             }
-                            onBlur={() => {
-                              if (!form.alias.trim() && form.label.trim()) {
-                                setForm((f) => ({
-                                  ...f,
-                                  alias: slugifyAlias(f.label),
-                                }));
-                              }
-                            }}
                             placeholder="Q1 2025"
                           />
-                        </TaxonomyFormField>
-
-                        <TaxonomyFormField
-                          label="Alias"
-                          htmlFor="taxonomy-alias"
-                          description="Lowercase slug, unique within kind"
-                        >
-                          <Input
-                            id="taxonomy-alias"
-                            value={form.alias}
-                            onChange={(e) =>
-                              setForm((f) => ({ ...f, alias: e.target.value }))
-                            }
-                            placeholder="q1-2025"
-                            className="font-mono"
-                          />
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {generatedAlias ? (
+                              <>
+                                Alias:{' '}
+                                <span className="text-foreground/80">
+                                  {generatedAlias}
+                                </span>
+                              </>
+                            ) : (
+                              'Alias is generated from the label'
+                            )}
+                          </p>
                         </TaxonomyFormField>
 
                         <TaxonomyFormField

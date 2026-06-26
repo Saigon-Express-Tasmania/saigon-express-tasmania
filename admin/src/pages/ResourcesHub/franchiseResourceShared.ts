@@ -21,6 +21,7 @@ export type TaxonomyOption = {
   kind: 'folder' | 'category' | 'course' | 'period';
   label: string;
   alias: string;
+  created_at?: string;
 };
 
 export type AttachedFile = {
@@ -98,6 +99,8 @@ export type ResourceInput = {
   reference: BlogPostReference;
 };
 
+export type TaxonomyListKind = 'category' | 'course' | 'period';
+
 export type FranchiseResourcePageConfig = {
   resourceType: FranchiseResourceKind;
   taxonomyPlace: TaxonomyPlace;
@@ -105,6 +108,16 @@ export type FranchiseResourcePageConfig = {
   taxonomyKinds?: TaxonomyOption['kind'][];
   /** Taxonomy kind used for the list filter and editor folder/category field. */
   listFilterTaxonomyKind?: 'folder' | 'category';
+  /** Table columns for category, course, and period taxonomies. */
+  listTableTaxonomyColumns?: TaxonomyListKind[];
+  /** Toolbar filters for category, course, and period taxonomies. */
+  listTaxonomyFilters?: TaxonomyListKind[];
+  /** Taxonomy fields hidden in the editor classification section. */
+  hiddenEditorTaxonomyKinds?: TaxonomyListKind[];
+  /** Show thumbnail beside title in the admin list table. */
+  showTitleThumbnail?: boolean;
+  /** Show preview action to open course content in a dialog. */
+  enableContentPreview?: boolean;
   uploadFolder: string;
   labels: {
     singular: string;
@@ -142,6 +155,7 @@ export const DOCUMENT_PAGE_CONFIG: FranchiseResourcePageConfig = {
   resourceType: 'document',
   taxonomyPlace: 'document',
   taxonomyKinds: ['category'],
+  enableContentPreview: true,
   uploadFolder: 'franchise-documents',
   labels: {
     singular: 'Document',
@@ -184,6 +198,12 @@ export const DOCUMENT_PAGE_CONFIG: FranchiseResourcePageConfig = {
 export const MENU_ACADEMY_PAGE_CONFIG: FranchiseResourcePageConfig = {
   resourceType: 'menu_training',
   taxonomyPlace: 'academy',
+  taxonomyKinds: ['category', 'course', 'period'],
+  listTableTaxonomyColumns: ['course', 'period'],
+  listTaxonomyFilters: ['course', 'period'],
+  hiddenEditorTaxonomyKinds: ['category'],
+  showTitleThumbnail: true,
+  enableContentPreview: true,
   uploadFolder: 'franchise-menu-academy',
   labels: {
     singular: 'Menu Academy item',
@@ -199,7 +219,7 @@ export const MENU_ACADEMY_PAGE_CONFIG: FranchiseResourcePageConfig = {
     deleteTitle: 'Delete menu academy item?',
     searchPlaceholder: 'Search menu academy…',
     emptyAll: 'No menu academy items yet. Add one to get started.',
-    emptyFiltered: 'No items match your search or category filter.',
+    emptyFiltered: 'No items match your search or filters.',
     createdToast: 'Menu academy item created.',
     updatedToast: 'Menu academy item updated.',
     deletedToast: 'Menu academy item deleted.',
@@ -228,6 +248,7 @@ export const ANNOUNCEMENT_PAGE_CONFIG: FranchiseResourcePageConfig = {
   taxonomyPlace: 'announcement',
   taxonomyKinds: ['folder'],
   listFilterTaxonomyKind: 'folder',
+  enableContentPreview: true,
   uploadFolder: 'franchise-announcements',
   labels: {
     singular: 'Announcement',
@@ -318,9 +339,10 @@ export function emptyResourceInput(
     attached_files: [],
     content_file: '',
     video_file: '',
-    course_duration: '',
+    course_duration: resourceType === 'menu_training' ? '30' : '',
     version: '',
-    is_published: resourceType === 'document',
+    is_published:
+      resourceType === 'document' || resourceType === 'menu_training',
     is_featured: false,
     is_mandatory: false,
     requires_acknowledgement: false,
@@ -331,9 +353,26 @@ export function emptyResourceInput(
     estimated_read_minutes: '',
     effective_from: '',
     effective_until: '',
-    published_at: '',
+    published_at:
+      resourceType === 'menu_training'
+        ? toDatetimeLocalValue(new Date().toISOString())
+        : '',
     reference: emptyBlogPostReference(),
   };
+}
+
+export function defaultNewestPeriodId(periods: TaxonomyOption[]): string {
+  if (periods.length === 0) return '';
+
+  const newest = periods.reduce((latest, current) => {
+    if (latest.created_at && current.created_at) {
+      return current.created_at > latest.created_at ? current : latest;
+    }
+
+    return current.id > latest.id ? current : latest;
+  });
+
+  return String(newest.id);
 }
 
 export function slugify(text: string): string {

@@ -63,12 +63,12 @@ export function useFranchiseResourceEditor({
     }
   }, []);
 
-  const openCreate = useCallback(() => {
+  const openCreate = useCallback((defaults?: Partial<ResourceInput>) => {
     clearContentAutoSaveTimer();
     lastSavedContentRef.current = null;
     editingIdRef.current = null;
     setEditingId(null);
-    setForm(emptyResourceInput(resourceType));
+    setForm({ ...emptyResourceInput(resourceType), ...defaults });
     setThumbnailPreviewUrl(null);
     setEditorTab('main');
     setDialogOpen(true);
@@ -129,6 +129,14 @@ export function useFranchiseResourceEditor({
     setThumbnailPreviewUrl(null);
   }, []);
 
+  const handleThumbnailUrlChange = useCallback(
+    (url: string) => {
+      setForm((prev) => ({ ...prev, thumbnail_url: url }));
+      setThumbnailPreviewUrl(resolveImagePreview(url, getPublicUrl));
+    },
+    [getPublicUrl],
+  );
+
   const handleContentFileUpload = useCallback(
     async (file: File) => {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
@@ -167,7 +175,9 @@ export function useFranchiseResourceEditor({
   const handleVideoFileUpload = useCallback(
     async (file: File) => {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4';
-      const slugPart = slugify(form.title) || resourceType;
+      const derivedTitle = titleFromFileName(file.name);
+      const slugPart =
+        slugify(form.title) || slugify(derivedTitle) || resourceType;
       const fileName = `${slugPart}-video-${Date.now()}.${ext}`;
 
       try {
@@ -176,7 +186,17 @@ export function useFranchiseResourceEditor({
           fileName,
           upsert: true,
         });
-        setForm((prev) => ({ ...prev, video_file: publicUrl }));
+        setForm((prev) => {
+          if (resourceType !== 'menu_training' || prev.title.trim()) {
+            return { ...prev, video_file: publicUrl };
+          }
+          return {
+            ...prev,
+            video_file: publicUrl,
+            title: derivedTitle,
+            slug: slugify(derivedTitle),
+          };
+        });
         toast.success('Video uploaded.');
       } catch (err) {
         toast.error(
@@ -451,6 +471,7 @@ export function useFranchiseResourceEditor({
     handleTitleChange,
     handleThumbnailUpload,
     handleThumbnailClear,
+    handleThumbnailUrlChange,
     handleContentFileUpload,
     handleVideoFileUpload,
     handleAttachmentUpload,
@@ -471,7 +492,7 @@ export function useFranchiseResourceTaxonomies(
   const loadTaxonomies = useCallback(async () => {
     let query = supabase
       .from('franchise_resource_taxonomies')
-      .select('id, kind, label, alias')
+      .select('id, kind, label, alias, created_at')
       .eq('place', taxonomyPlace)
       .eq('is_active', true);
 

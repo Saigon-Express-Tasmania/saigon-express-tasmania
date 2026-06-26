@@ -9,9 +9,13 @@ import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import { supabase } from "@/lib/supabase/client";
 import { useSupabase } from "@/hooks/useSupabase";
+import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import { hasPrivilege } from "@/lib/privileges";
 import type { FranchiseResourceContentData } from "@/types/franchise-resources";
-import { normalizeAttachedFiles } from "@/types/franchise-resources";
+import {
+  normalizeAttachedFiles,
+  resolveFranchiseResourceFileUrl,
+} from "@/types/franchise-resources";
 import type { UserProfile } from "@/types";
 import {
   ArrowLeft,
@@ -438,6 +442,7 @@ export default function FranchiseMenuAcademyCourse({
   const router = useRouter();
   const { user, profile, authMetadata, isLoading, isSignedIn, signOut } =
     useSupabase();
+  const { getPublicUrl } = useSupabaseStorage();
 
   const hasFranchise = hasPrivilege(authMetadata.privileges, "franchise");
   const resourceId = Number.parseInt(courseId, 10);
@@ -679,7 +684,11 @@ export default function FranchiseMenuAcademyCourse({
     );
   }
 
-  const heroImage = course.thumbnail_url?.trim() || DEFAULT_COURSE_IMAGE;
+  const heroImage = useMemo(() => {
+    const thumbnail = course.thumbnail_url?.trim();
+    if (!thumbnail) return DEFAULT_COURSE_IMAGE;
+    return resolveFranchiseResourceFileUrl(thumbnail, getPublicUrl);
+  }, [course.thumbnail_url, getPublicUrl]);
   const heroGradient = CARD_GRADIENTS[course.id % CARD_GRADIENTS.length];
   const durationLabel = formatCourseDuration(course.course_duration);
   const memberState = course.member_state;

@@ -24,8 +24,32 @@
       body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
       @media only screen and (max-width: 620px) {
         .email-container { width: 100% !important; }
-        .stack-column { display: block !important; width: 100% !important; max-width: 100% !important; }
-        .mobile-padding { padding-left: 16px !important; padding-right: 16px !important; }
+        .stack-row,
+        .stack-row tr {
+          display: block !important;
+          width: 100% !important;
+        }
+        .stack-column {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+          box-sizing: border-box !important;
+        }
+        .stack-column-a {
+          padding: 0 0 12px 0 !important;
+        }
+        .stack-column-b {
+          padding: 0 0 16px 0 !important;
+        }
+        .stack-column-card,
+        .stack-column-card table {
+          height: auto !important;
+        }
+        .stack-column-card td {
+          height: auto !important;
+        }
+        .mobile-padding { padding-left: 2px !important; padding-right: 2px !important; }
       }
       </style>
     </head>
@@ -107,10 +131,10 @@
                 <td>
                   <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#ffffff;border:1px solid #e5e5e5;border-radius:12px;">
                     <tr>
-                      <td align="center" style="padding:24px 24px;">
+                      <td align="center" style="padding:4px;">
                         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:100%;">
-                          <tr>
-                            <td class="stack-column" width="50%" valign="top" height="1" style="padding:0 6px 16px 0;height:1px;">
+                          <tr class="stack-row">
+                            <td class="stack-column stack-column-a" width="50%" valign="top" height="1" style="padding:0 6px 16px 0;height:1px;">
                               <table class="stack-column-card" role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" height="100%" style="background-color:#f3edd9;border-radius:12px;height:100%;">
                                 <tr>
                                   <td valign="top" height="100%" style="padding:16px;height:100%;font-size:14px;line-height:22px;color:#333333;font-family:Helvetica,Arial,sans-serif;">
@@ -130,7 +154,7 @@
                                 </tr>
                               </table>
                             </td>
-                            <td class="stack-column" width="50%" valign="top" height="1" style="padding:0 0 16px 6px;height:1px;">
+                            <td class="stack-column stack-column-b" width="50%" valign="top" height="1" style="padding:0 0 16px 6px;height:1px;">
                               <table class="stack-column-card" role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" height="100%" style="background-color:#f3edd9;border-radius:12px;height:100%;">
                                 <tr>
                                   <td valign="top" height="100%" style="padding:16px;height:100%;font-size:14px;line-height:22px;color:#333333;font-family:Helvetica,Arial,sans-serif;">
@@ -196,12 +220,12 @@
                               </p>
                               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                                 <tr>
-                                  <td width="50%" valign="top" style="font-size:15px;line-height:23px;color:#111827;font-family:Helvetica,Arial,sans-serif;">
+                                  <td width="30%" valign="top" style="font-size:15px;line-height:23px;color:#111827;font-family:Helvetica,Arial,sans-serif;">
                                     <strong style="font-weight:bold;color:#222222;">
                                       Estimated totals:
                                     </strong>
                                   </td>
-                                  <td width="50%" align="right">
+                                  <td width="70%" align="right">
                                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                                       <tr>
                                         <td align="right" style="padding:0 12px 8px 0;font-size:15px;line-height:23px;color:#4b5563;font-family:Helvetica,Arial,sans-serif;">
@@ -257,7 +281,7 @@
                             <td colspan="2" align="center" style="padding:16px 0 8px 0;">
                               <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
-                                  <td align="center" bgcolor="#8a151b" style="border-radius:25px;background-color:#8a151b;">
+                                  <td align="center">
                                     <!--[if mso]>
                                   <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{adminOrderUrl}}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="50%" stroke="f" fillcolor="#8a151b">
                                     <w:anchorlock />

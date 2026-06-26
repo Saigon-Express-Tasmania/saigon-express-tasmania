@@ -69,6 +69,8 @@ const SECTION_ACCENTS = {
     'border-indigo-200/70 bg-gradient-to-br from-indigo-50/70 to-background dark:border-indigo-900/50 dark:from-indigo-950/25',
   attachments:
     'border-teal-200/70 bg-gradient-to-br from-teal-50/60 to-background dark:border-teal-900/50 dark:from-teal-950/25',
+  uploads:
+    'border-indigo-200/70 bg-gradient-to-br from-indigo-50/70 to-background dark:border-indigo-900/50 dark:from-indigo-950/25',
 } as const;
 
 type ToggleTone = 'published' | 'featured' | 'mandatory' | 'ack';
@@ -247,6 +249,56 @@ function ResourceToggleField({
   );
 }
 
+type MenuAcademyMainTabColumnProps = {
+  enabled: boolean;
+  placement: 'identity' | 'uploads' | 'sidebar';
+  children: ReactNode;
+};
+
+function MenuAcademyMainTabColumn({
+  enabled,
+  placement,
+  children,
+}: MenuAcademyMainTabColumnProps) {
+  if (!enabled) {
+    return <>{children}</>;
+  }
+
+  if (placement === 'identity') {
+    return (
+      <div className="min-w-0 xl:col-start-1 xl:row-start-1">{children}</div>
+    );
+  }
+
+  if (placement === 'uploads') {
+    return (
+      <div className="min-w-0 xl:col-start-1 xl:row-start-2">{children}</div>
+    );
+  }
+
+  return (
+    <div className="flex w-full flex-col gap-6 self-start xl:col-start-2 xl:row-span-2 xl:row-start-1">
+      {children}
+    </div>
+  );
+}
+
+type PublishingMetadataColumnProps = {
+  menuAcademy: boolean;
+  children: ReactNode;
+};
+
+function PublishingMetadataColumn({
+  menuAcademy,
+  children,
+}: PublishingMetadataColumnProps) {
+  if (menuAcademy) {
+    return <>{children}</>;
+  }
+
+  return <div className="flex flex-col gap-6">{children}</div>;
+}
+
 export type FranchiseResourceEditorDialogProps = {
   config: FranchiseResourcePageConfig;
   open: boolean;
@@ -269,6 +321,7 @@ export type FranchiseResourceEditorDialogProps = {
   onTitleChange: (title: string) => void;
   onThumbnailUpload: (file: File | File[]) => Promise<void>;
   onThumbnailClear: () => void;
+  onThumbnailUrlChange: (url: string) => void;
   onContentFileUpload: (file: File) => Promise<void>;
   onVideoFileUpload: (file: File) => Promise<void>;
   onAttachmentUpload: (file: File) => Promise<void>;
@@ -299,6 +352,7 @@ export function FranchiseResourceEditorDialog({
   onTitleChange,
   onThumbnailUpload,
   onThumbnailClear,
+  onThumbnailUrlChange,
   onContentFileUpload,
   onVideoFileUpload,
   onAttachmentUpload,
@@ -312,6 +366,10 @@ export function FranchiseResourceEditorDialog({
   const isDocument = resourceType === 'document';
   const isAnnouncement = resourceType === 'announcement';
   const isMenuAcademy = resourceType === 'menu_training';
+  const hiddenEditorTaxonomyKinds = useMemo(
+    () => new Set(config.hiddenEditorTaxonomyKinds ?? []),
+    [config.hiddenEditorTaxonomyKinds],
+  );
   const hideThumbnail = isDocument || isAnnouncement;
   const hideClassification = isDocument || isAnnouncement;
   const hidePublishing = isDocument || isAnnouncement;
@@ -415,6 +473,78 @@ export function FranchiseResourceEditorDialog({
           multiple
           onFileSelect={onAttachmentUpload}
         />
+      </div>
+    </ResourceFormSection>
+  );
+
+  const menuAcademyUploadsSection = (
+    <ResourceFormSection
+      title="Uploads"
+      description="Training video and primary downloadable file for this course."
+      accentClass={SECTION_ACCENTS.uploads}
+    >
+      <div className="grid gap-6">
+        <div className="grid gap-4">
+          <ResourceFormField
+            label="Training video"
+            htmlFor={`${idPrefix}-video-file`}
+            description="Set manually or upload a video below"
+          >
+            <Input
+              id={`${idPrefix}-video-file`}
+              value={form.video_file}
+              onChange={(e) =>
+                setForm((current) => ({
+                  ...current,
+                  video_file: e.target.value,
+                }))
+              }
+              className="font-mono text-sm"
+              placeholder="https://…"
+            />
+          </ResourceFormField>
+
+          <FileDropzone
+            title="Upload training video"
+            description="MP4, WebM, or other video format"
+            icon={<Upload className="h-8 w-8 text-violet-500/70" />}
+            className="border-violet-200/80 bg-violet-50/30 hover:border-violet-400/60 hover:bg-violet-50/50 dark:border-violet-900/50 dark:bg-violet-950/20 dark:hover:bg-violet-950/35"
+            disabled={saving}
+            isUploading={isUploading}
+            onFileSelect={onVideoFileUpload}
+          />
+        </div>
+
+        <div className="grid gap-4 border-t border-border/40 pt-4">
+          <ResourceFormField
+            label="Primary file"
+            htmlFor={`${idPrefix}-content-file`}
+            description="Set manually or upload a file below"
+          >
+            <Input
+              id={`${idPrefix}-content-file`}
+              value={form.content_file}
+              onChange={(e) =>
+                setForm((current) => ({
+                  ...current,
+                  content_file: e.target.value,
+                }))
+              }
+              className="font-mono text-sm"
+              placeholder="https://…"
+            />
+          </ResourceFormField>
+
+          <FileDropzone
+            title="Upload primary file"
+            description="PDF, DOCX, XLSX, or other downloadable file"
+            icon={<Upload className="h-8 w-8 text-indigo-500/70" />}
+            className="border-indigo-200/80 bg-indigo-50/30 hover:border-indigo-400/60 hover:bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/35"
+            disabled={saving}
+            isUploading={isUploading}
+            onFileSelect={onContentFileUpload}
+          />
+        </div>
       </div>
     </ResourceFormSection>
   );
@@ -631,14 +761,63 @@ export function FranchiseResourceEditorDialog({
           ) : null}
 
           <TabsContent value="main" className={tabPanelScrollClass}>
-            <div className="flex w-full flex-col gap-6 px-6 py-5">
+            <div
+              className={cn(
+                'w-full gap-6 px-6 py-5',
+                isMenuAcademy
+                  ? 'grid grid-cols-1 items-start gap-6 xl:grid-cols-2'
+                  : 'flex flex-col',
+              )}
+            >
+              <MenuAcademyMainTabColumn enabled={isMenuAcademy} placement="identity">
               <ResourceFormSection
                 title="Identity"
                 description="Core details shown in resource lists and detail pages."
                 accentClass={SECTION_ACCENTS.identity}
               >
                 <div className={formGridClass}>
-                  {!hideThumbnail ? (
+                  {!hideThumbnail && isMenuAcademy ? (
+                    <div className="grid gap-4 md:col-span-2 xl:col-span-3 md:grid-cols-2 md:items-stretch md:gap-x-4">
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <Label htmlFor={`${idPrefix}-thumbnail`}>Thumbnail</Label>
+                        <ImageUpload
+                          description="JPEG, PNG, WebP or GIF. Stored as public URL."
+                          value={thumbnailPreviewUrl ?? form.thumbnail_url ?? null}
+                          onFileSelect={onThumbnailUpload}
+                          onClear={form.thumbnail_url ? onThumbnailClear : undefined}
+                          isUploading={isUploading}
+                          disabled={saving}
+                          shape="square"
+                        />
+                        <Input
+                          id={`${idPrefix}-thumbnail-url`}
+                          value={form.thumbnail_url}
+                          onChange={(e) => onThumbnailUrlChange(e.target.value)}
+                          className="font-mono text-sm"
+                          placeholder="https://…"
+                          disabled={saving}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Or paste a public image URL
+                        </p>
+                      </div>
+                      <div className="flex min-h-0 min-w-0 flex-col gap-2">
+                        <Label htmlFor={`${idPrefix}-description`}>Description</Label>
+                        <Textarea
+                          id={`${idPrefix}-description`}
+                          value={form.description}
+                          onChange={(e) =>
+                            setForm((current) => ({
+                              ...current,
+                              description: e.target.value,
+                            }))
+                          }
+                          placeholder={`Brief overview of this ${labels.singular.toLowerCase()}…`}
+                          className="min-h-24 resize-none [field-sizing:fixed] md:min-h-0 md:flex-1"
+                        />
+                      </div>
+                    </div>
+                  ) : !hideThumbnail ? (
                     <ResourceFormField label="Thumbnail" className="md:col-span-2 xl:col-span-3">
                       <ImageUpload
                         description="JPEG, PNG, WebP or GIF. Stored as public URL."
@@ -656,7 +835,7 @@ export function FranchiseResourceEditorDialog({
                     label="Title"
                     htmlFor={`${idPrefix}-title`}
                     className={
-                      isDocument || isAnnouncement
+                      isDocument || isAnnouncement || isMenuAcademy
                         ? 'md:col-span-2 xl:col-span-3'
                         : undefined
                     }
@@ -768,62 +947,58 @@ export function FranchiseResourceEditorDialog({
                   ) : null}
 
                   {!isDocument && !isAnnouncement ? (
-                  <>
-                    <ResourceFormField label="Author" htmlFor={`${idPrefix}-author`}>
-                      <Input
-                        id={`${idPrefix}-author`}
-                        value={form.author_name}
-                        onChange={(e) =>
-                          setForm((current) => ({
-                            ...current,
-                            author_name: e.target.value,
-                          }))
-                        }
-                        placeholder="Franchise HQ"
-                      />
-                    </ResourceFormField>
+                    <div className="grid gap-4 md:col-span-2 xl:col-span-3 md:grid-cols-3">
+                      <ResourceFormField label="Author" htmlFor={`${idPrefix}-author`}>
+                        <Input
+                          id={`${idPrefix}-author`}
+                          value={form.author_name}
+                          onChange={(e) =>
+                            setForm((current) => ({
+                              ...current,
+                              author_name: e.target.value,
+                            }))
+                          }
+                          placeholder="Franchise HQ"
+                        />
+                      </ResourceFormField>
 
-                    {isMenuAcademy ? (
-                      <>
-                        <ResourceFormField label="Published at" htmlFor={`${idPrefix}-published`}>
-                          <Input
-                            id={`${idPrefix}-published`}
-                            type="datetime-local"
-                            value={form.published_at}
-                            onChange={(e) =>
-                              setForm((current) => ({
-                                ...current,
-                                published_at: e.target.value,
-                              }))
-                            }
-                          />
-                        </ResourceFormField>
+                      <ResourceFormField label="Published at" htmlFor={`${idPrefix}-published`}>
+                        <Input
+                          id={`${idPrefix}-published`}
+                          type="datetime-local"
+                          value={form.published_at}
+                          onChange={(e) =>
+                            setForm((current) => ({
+                              ...current,
+                              published_at: e.target.value,
+                            }))
+                          }
+                        />
+                      </ResourceFormField>
 
-                        <ResourceFormField
-                          label="Course duration"
-                          htmlFor={`${idPrefix}-course-duration`}
-                          description="Expected training time in minutes"
-                        >
-                          <Input
-                            id={`${idPrefix}-course-duration`}
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={form.course_duration}
-                            onChange={(e) =>
-                              setForm((current) => ({
-                                ...current,
-                                course_duration: e.target.value,
-                              }))
-                            }
-                            placeholder="e.g. 30"
-                          />
-                        </ResourceFormField>
-                      </>
-                    ) : null}
-                  </>
+                      <ResourceFormField
+                        label="Course duration"
+                        htmlFor={`${idPrefix}-course-duration`}
+                      >
+                        <Input
+                          id={`${idPrefix}-course-duration`}
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={form.course_duration}
+                          onChange={(e) =>
+                            setForm((current) => ({
+                              ...current,
+                              course_duration: e.target.value,
+                            }))
+                          }
+                          placeholder="e.g. 30"
+                        />
+                      </ResourceFormField>
+                    </div>
                   ) : null}
 
+                  {!isMenuAcademy ? (
                   <ResourceFormField
                     label="Description"
                     htmlFor={`${idPrefix}-description`}
@@ -842,6 +1017,7 @@ export function FranchiseResourceEditorDialog({
                       placeholder={`Brief overview of this ${labels.singular.toLowerCase()}…`}
                     />
                   </ResourceFormField>
+                  ) : null}
                 </div>
 
                 {isDocument ? (
@@ -907,6 +1083,7 @@ export function FranchiseResourceEditorDialog({
                   </div>
                 ) : null}
               </ResourceFormSection>
+              </MenuAcademyMainTabColumn>
 
               {isAnnouncement ? bodyAndReferencesSections : null}
 
@@ -968,15 +1145,34 @@ export function FranchiseResourceEditorDialog({
                 </ResourceFormSection>
               ) : null}
 
+              {isMenuAcademy ? (
+                <MenuAcademyMainTabColumn enabled placement="uploads">
+                  {menuAcademyUploadsSection}
+                </MenuAcademyMainTabColumn>
+              ) : null}
+
+              <MenuAcademyMainTabColumn enabled={isMenuAcademy} placement="sidebar">
               {!hideClassification ? (
               <ResourceFormSection
                 title="Classification"
-                description={`Organise ${labels.plural} by category, course, and period.`}
+                description={
+                  isMenuAcademy && hiddenEditorTaxonomyKinds.has('category')
+                    ? `Organise ${labels.plural} by course and period.`
+                    : `Organise ${labels.plural} by category, course, and period.`
+                }
                 accentClass={SECTION_ACCENTS.classification}
               >
                 {isMenuAcademy ? (
                   <div className="grid gap-4">
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div
+                      className={cn(
+                        'grid gap-4',
+                        hiddenEditorTaxonomyKinds.has('category')
+                          ? 'md:grid-cols-2'
+                          : 'md:grid-cols-3',
+                      )}
+                    >
+                      {!hiddenEditorTaxonomyKinds.has('category') ? (
                       <ResourceFormField label="Category">
                         <SearchableSelect
                           id={`${idPrefix}-category`}
@@ -992,7 +1188,9 @@ export function FranchiseResourceEditorDialog({
                           disabled={saving}
                         />
                       </ResourceFormField>
+                      ) : null}
 
+                      {!hiddenEditorTaxonomyKinds.has('course') ? (
                       <ResourceFormField label="Course">
                         <SearchableSelect
                           id={`${idPrefix}-course`}
@@ -1008,7 +1206,9 @@ export function FranchiseResourceEditorDialog({
                           disabled={saving}
                         />
                       </ResourceFormField>
+                      ) : null}
 
+                      {!hiddenEditorTaxonomyKinds.has('period') ? (
                       <ResourceFormField label="Period">
                         <SearchableSelect
                           id={`${idPrefix}-period`}
@@ -1024,6 +1224,7 @@ export function FranchiseResourceEditorDialog({
                           disabled={saving}
                         />
                       </ResourceFormField>
+                      ) : null}
                     </div>
 
                     <ResourceFormField
@@ -1040,68 +1241,6 @@ export function FranchiseResourceEditorDialog({
                         placeholder="manual, operations, safety"
                       />
                     </ResourceFormField>
-
-                    <div className="grid gap-4 border-t border-border/40 pt-4">
-                      <ResourceFormField
-                        label="Training video"
-                        htmlFor={`${idPrefix}-video-file`}
-                        description="Set manually or upload a video below"
-                      >
-                        <Input
-                          id={`${idPrefix}-video-file`}
-                          value={form.video_file}
-                          onChange={(e) =>
-                            setForm((current) => ({
-                              ...current,
-                              video_file: e.target.value,
-                            }))
-                          }
-                          className="font-mono text-sm"
-                          placeholder="https://…"
-                        />
-                      </ResourceFormField>
-
-                      <FileDropzone
-                        title="Upload training video"
-                        description="MP4, WebM, or other video format"
-                        icon={<Upload className="h-8 w-8 text-violet-500/70" />}
-                        className="border-violet-200/80 bg-violet-50/30 hover:border-violet-400/60 hover:bg-violet-50/50 dark:border-violet-900/50 dark:bg-violet-950/20 dark:hover:bg-violet-950/35"
-                        disabled={saving}
-                        isUploading={isUploading}
-                        onFileSelect={onVideoFileUpload}
-                      />
-                    </div>
-
-                    <div className="grid gap-4 border-t border-border/40 pt-4">
-                      <ResourceFormField
-                        label="Primary file"
-                        htmlFor={`${idPrefix}-content-file`}
-                        description="Set manually or upload a file below"
-                      >
-                        <Input
-                          id={`${idPrefix}-content-file`}
-                          value={form.content_file}
-                          onChange={(e) =>
-                            setForm((current) => ({
-                              ...current,
-                              content_file: e.target.value,
-                            }))
-                          }
-                          className="font-mono text-sm"
-                          placeholder="https://…"
-                        />
-                      </ResourceFormField>
-
-                      <FileDropzone
-                        title="Upload primary file"
-                        description="PDF, DOCX, XLSX, or other downloadable file"
-                        icon={<Upload className="h-8 w-8 text-indigo-500/70" />}
-                        className="border-indigo-200/80 bg-indigo-50/30 hover:border-indigo-400/60 hover:bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/35"
-                        disabled={saving}
-                        isUploading={isUploading}
-                        onFileSelect={onContentFileUpload}
-                      />
-                    </div>
                   </div>
                 ) : (
                 <div className={formGridClass}>
@@ -1191,6 +1330,7 @@ export function FranchiseResourceEditorDialog({
               </ResourceFormSection>
               ) : null}
 
+              <PublishingMetadataColumn menuAcademy={isMenuAcademy}>
               {!hidePublishing ? (
               <ResourceFormSection
                 title="Publishing"
@@ -1368,6 +1508,8 @@ export function FranchiseResourceEditorDialog({
                   </ResourceFormField>
                 </div>
               </ResourceFormSection>
+              </PublishingMetadataColumn>
+              </MenuAcademyMainTabColumn>
             </div>
           </TabsContent>
 

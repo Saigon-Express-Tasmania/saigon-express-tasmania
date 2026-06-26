@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import AppImage from "@/components/AppImage";
 import Link from "@/components/link";
@@ -9,8 +10,10 @@ import MemberPortalBackground from "@/components/MemberPortalBackground";
 import { MEMBER_PORTAL_LIGHT_BANNER_CLASS } from "@/lib/member-portal-surfaces";
 import { supabase } from "@/lib/supabase/client";
 import { useSupabase } from "@/hooks/useSupabase";
+import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import { hasPrivilege } from "@/lib/privileges";
 import type { UserProfile } from "@/types";
+import { resolveFranchiseResourceFileUrl } from "@/types/franchise-resources";
 import {
   Bell,
   BookOpen,
@@ -33,7 +36,7 @@ type CourseFilterId =
 
 type SortOption = "a-z" | "z-a" | "recent";
 
-type AcademyTaxonomyKind = "category" | "course" | "period";
+type AcademyTaxonomyKind = "course" | "period";
 
 type AcademyTaxonomy = {
   id: number;
@@ -66,6 +69,7 @@ type MenuAcademyListItem = {
   title: string;
   categoryLabel: string;
   image: string;
+  usesFallbackImage: boolean;
   gradient: string;
   duration: string | null;
   memberStatus: MemberResourceState["status"] | null;
@@ -80,8 +84,7 @@ const CARD_GRADIENTS = [
   "from-secondary to-card",
 ] as const;
 
-const DEFAULT_COURSE_IMAGE =
-  "/manus-storage/crispyroastporkbanhmi_ce355122.jpg";
+const DEFAULT_COURSE_IMAGE = "/images/rounded_logo_v2.png";
 
 type TaxonomyFilterSelection = {
   kind: AcademyTaxonomyKind;
@@ -93,17 +96,14 @@ const TAXONOMY_FILTER_GROUPS: {
   label: string;
   allLabel: string;
 }[] = [
-  { kind: "category", label: "Category", allLabel: "All categories" },
   { kind: "course", label: "Course", allLabel: "All courses" },
   { kind: "period", label: "Period", allLabel: "All periods" },
 ];
 
 function taxonomyFieldForKind(
   kind: AcademyTaxonomyKind,
-): "category_id" | "course_id" | "period_id" {
-  if (kind === "category") return "category_id";
-  if (kind === "course") return "course_id";
-  return "period_id";
+): "course_id" | "period_id" {
+  return kind === "course" ? "course_id" : "period_id";
 }
 
 function formatCourseDuration(value: string | null | undefined): string | null {
@@ -244,13 +244,23 @@ function CourseCardTile({ course }: { course: MenuAcademyListItem }) {
       <div
         className={`relative h-40 w-full overflow-hidden bg-gradient-to-b ${course.gradient}`}
       >
-        <AppImage
-          src={course.image}
-          alt=""
-          fill
-          className="object-cover"
-          aria-hidden
-        />
+        {course.usesFallbackImage ? (
+          <Image
+            src={DEFAULT_COURSE_IMAGE}
+            alt="Saigon Express"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            className="object-contain p-8"
+          />
+        ) : (
+          <AppImage
+            src={course.image}
+            alt=""
+            fill
+            className="object-cover"
+            aria-hidden
+          />
+        )}
       </div>
       <div className="flex flex-1 flex-col p-3">
         <p className="section-label mb-1 text-[11px]">
@@ -278,6 +288,7 @@ function CourseCardTile({ course }: { course: MenuAcademyListItem }) {
 export default function FranchiseMenuAcademy() {
   const router = useRouter();
   const { profile, authMetadata, isLoading, isSignedIn, signOut } = useSupabase();
+  const { getPublicUrl } = useSupabaseStorage();
 
   const [activeFilter, setActiveFilter] = useState<CourseFilterId>("all");
   const [selectedTaxonomyFilter, setSelectedTaxonomyFilter] =
@@ -307,7 +318,7 @@ export default function FranchiseMenuAcademy() {
           .from("franchise_resource_taxonomies")
           .select("id, kind, label, sort_order")
           .eq("place", "academy")
-          .in("kind", ["category", "course", "period"])
+          .in("kind", ["course", "period"])
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
           .order("label", { ascending: true }),
@@ -377,7 +388,6 @@ export default function FranchiseMenuAcademy() {
 
   const taxonomiesByKind = useMemo(
     () => ({
-      category: taxonomies.filter((row) => row.kind === "category"),
       course: taxonomies.filter((row) => row.kind === "course"),
       period: taxonomies.filter((row) => row.kind === "period"),
     }),
@@ -386,22 +396,11 @@ export default function FranchiseMenuAcademy() {
 
   const taxonomyCounts = useMemo(() => {
     const countById = (kind: AcademyTaxonomyKind, taxonomyId: number) => {
-      const field =
-        kind === "category"
-          ? "category_id"
-          : kind === "course"
-            ? "course_id"
-            : "period_id";
+      const field = taxonomyFieldForKind(kind);
       return resources.filter((row) => row[field] === taxonomyId).length;
     };
 
     return {
-      category: new Map(
-        taxonomiesByKind.category.map((row) => [
-          row.id,
-          countById("category", row.id),
-        ]),
-      ),
       course: new Map(
         taxonomiesByKind.course.map((row) => [
           row.id,
@@ -467,11 +466,12 @@ export default function FranchiseMenuAcademy() {
     const normalizedSearch = searchQuery.trim().toLowerCase();
     if (normalizedSearch) {
       rows = rows.filter((row) => {
-        const categoryLabel =
-          taxonomyLabelById.get(row.category_id ?? -1) ?? "";
+        const courseLabel = taxonomyLabelById.get(row.course_id ?? -1) ?? "";
+        const periodLabel = taxonomyLabelById.get(row.period_id ?? -1) ?? "";
         return (
           row.title.toLowerCase().includes(normalizedSearch) ||
-          categoryLabel.toLowerCase().includes(normalizedSearch)
+          courseLabel.toLowerCase().includes(normalizedSearch) ||
+          periodLabel.toLowerCase().includes(normalizedSearch)
         );
       });
     }
@@ -484,16 +484,23 @@ export default function FranchiseMenuAcademy() {
       return bTime - aTime;
     });
 
-    return rows.map((row, index) => ({
-      id: row.id,
-      title: row.title,
-      categoryLabel:
-        taxonomyLabelById.get(row.category_id ?? -1) ?? "Uncategorized",
-      image: row.thumbnail_url?.trim() || DEFAULT_COURSE_IMAGE,
-      gradient: CARD_GRADIENTS[index % CARD_GRADIENTS.length],
-      duration: formatCourseDuration(row.course_duration),
-      memberStatus: row.member_state?.status ?? null,
-    }));
+    return rows.map((row, index) => {
+      const thumbnail = row.thumbnail_url?.trim() || null;
+      const resolvedThumbnail = thumbnail
+        ? resolveFranchiseResourceFileUrl(thumbnail, getPublicUrl)
+        : null;
+      return {
+        id: row.id,
+        title: row.title,
+        categoryLabel:
+          taxonomyLabelById.get(row.course_id ?? -1) ?? "Uncategorized",
+        image: resolvedThumbnail ?? DEFAULT_COURSE_IMAGE,
+        usesFallbackImage: resolvedThumbnail == null,
+        gradient: CARD_GRADIENTS[index % CARD_GRADIENTS.length],
+        duration: formatCourseDuration(row.course_duration),
+        memberStatus: row.member_state?.status ?? null,
+      };
+    });
   }, [
     activeFilter,
     resources,
@@ -501,6 +508,7 @@ export default function FranchiseMenuAcademy() {
     selectedTaxonomyFilter,
     sortBy,
     taxonomyLabelById,
+    getPublicUrl,
   ]);
 
   const handleLogout = async () => {
@@ -556,15 +564,27 @@ export default function FranchiseMenuAcademy() {
           <div className="flex gap-3">
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              onClick={() => setActiveFilter("not_started")}
               aria-label="Notifications"
+              aria-pressed={activeFilter === "not_started"}
+              className={`flex h-9 w-9 items-center justify-center rounded border transition-colors ${
+                activeFilter === "not_started"
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
             >
               <Bell className="h-4 w-4" />
             </button>
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              onClick={() => setActiveFilter("mandatory")}
               aria-label="My learning"
+              aria-pressed={activeFilter === "mandatory"}
+              className={`flex h-9 w-9 items-center justify-center rounded border transition-colors ${
+                activeFilter === "mandatory"
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
             >
               <BookOpen className="h-4 w-4" />
             </button>

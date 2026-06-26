@@ -57,6 +57,9 @@ import {
   type ItemUom,
 } from '@/pages/Sales/salesOrderShared';
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   ImageIcon,
   Loader2,
   Pencil,
@@ -70,6 +73,43 @@ import { toast } from 'sonner';
 const WHOLESALE_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1448] as const;
 const WHOLESALE_BUSINESS_TIMEZONE = 'Australia/Hobart';
 const STOCK_REFILL_SYNC_DELAY_MS = 2000;
+
+type SortColumn = 'id' | 'name' | 'unit_price';
+type SortDirection = 'asc' | 'desc';
+
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+}) {
+  const isActive = sortColumn === column;
+  const Icon = isActive
+    ? sortDirection === 'asc'
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+
+  return (
+    <th className="px-4 py-3 text-left text-sm font-semibold">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-foreground/80"
+        onClick={() => onSort(column)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </th>
+  );
+}
 
 function getHobartTimeParts(date: Date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -226,6 +266,8 @@ export function WholesaleProducts() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('id');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const loadProducts = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -341,9 +383,18 @@ export function WholesaleProducts() {
     return Array.from(set).sort();
   }, [products]);
 
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection('asc');
+  };
+
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return products.filter((p) => {
+    const filtered = products.filter((p) => {
       if (categoryFilter !== 'all' && p.category !== categoryFilter) {
         return false;
       }
@@ -355,7 +406,18 @@ export function WholesaleProducts() {
         (p.sku ?? '').toLowerCase().includes(term)
       );
     });
-  }, [products, search, categoryFilter]);
+
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortColumn === 'id') {
+        return (a.id - b.id) * direction;
+      }
+      if (sortColumn === 'unit_price') {
+        return (Number(a.unit_price) - Number(b.unit_price)) * direction;
+      }
+      return a.name.localeCompare(b.name) * direction;
+    });
+  }, [products, search, categoryFilter, sortColumn, sortDirection]);
 
   const {
     selectedIds,
@@ -672,13 +734,13 @@ export function WholesaleProducts() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-row flex-wrap items-center gap-3">
                 <Input
                   placeholder="Search by name, SKU, description or category…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="max-w-sm"
+                  className="min-w-[12rem] flex-1 max-w-sm"
                 />
                 <div className="flex items-center gap-2">
                   <Label htmlFor="wp-category-filter" className="whitespace-nowrap">
@@ -741,12 +803,20 @@ export function WholesaleProducts() {
                           onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
                         />
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Name
-                      </th>
+                      <SortableHeader
+                        label="ID"
+                        column="id"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Name"
+                        column="name"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         SKU
                       </th>
@@ -759,9 +829,13 @@ export function WholesaleProducts() {
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         UOM
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Price
-                      </th>
+                      <SortableHeader
+                        label="Price"
+                        column="unit_price"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Daily global
                       </th>

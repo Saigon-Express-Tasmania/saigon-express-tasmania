@@ -80,6 +80,71 @@ export async function invokeEmailTemplateEdgeBatch(
   return response ?? { ok: true, processed: templates.length, succeeded: templates.length, failed: 0 };
 }
 
+export function chunkEmailTemplates<T>(
+  items: T[],
+  batchSize = EMAIL_TEMPLATE_BATCH_MAX,
+): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    chunks.push(items.slice(i, i + batchSize));
+  }
+  return chunks;
+}
+
+export type EmailTemplateBatchProgress = {
+  processed: number;
+  total: number;
+  batch: number;
+  batchCount: number;
+};
+
+export async function invokeEmailTemplateEdgeBatched(
+  action: EmailTemplateEdgeAction,
+  templates: EmailTemplate[],
+  onProgress?: (progress: EmailTemplateBatchProgress) => void,
+): Promise<EmailTemplateBatchResponse> {
+  if (templates.length === 0) {
+    throw new Error('Select at least one template.');
+  }
+
+  const chunks = chunkEmailTemplates(templates);
+  let succeeded = 0;
+  let failed = 0;
+  const results: EmailTemplateBatchItemResult[] = [];
+
+  for (let i = 0; i < chunks.length; i += 1) {
+    onProgress?.({
+      processed: i * EMAIL_TEMPLATE_BATCH_MAX,
+      total: templates.length,
+      batch: i + 1,
+      batchCount: chunks.length,
+    });
+
+    const result = await invokeEmailTemplateEdgeBatch(action, chunks[i]);
+    succeeded += result.succeeded ?? 0;
+    failed += result.failed ?? 0;
+    if (result.results) {
+      results.push(...result.results);
+    }
+
+    onProgress?.({
+      processed: Math.min((i + 1) * EMAIL_TEMPLATE_BATCH_MAX, templates.length),
+      total: templates.length,
+      batch: i + 1,
+      batchCount: chunks.length,
+    });
+  }
+
+  return {
+    ok: failed === 0,
+    action,
+    processed: templates.length,
+    succeeded,
+    failed,
+    results,
+  };
+}
+
 export async function invokeEmailTemplateEdge(
   action: EmailTemplateEdgeAction,
   template: EmailTemplate,

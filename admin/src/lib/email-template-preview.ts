@@ -157,6 +157,87 @@ export function parseEmailAddressList(raw: string): string[] {
     .filter(Boolean);
 }
 
+type EmailPreviewSrcDocOptions = {
+  inspectMode?: boolean;
+};
+
+/** Full HTML document for iframe preview at a fixed viewport width (mobile / desktop sim). */
+export function buildEmailPreviewSrcDoc(
+  bodyHtml: string,
+  viewportWidth: number,
+  options?: EmailPreviewSrcDocOptions,
+): string {
+  const inspectCss = options?.inspectMode
+    ? `
+    .html-preview-inspect,
+    .html-preview-inspect * {
+      cursor: crosshair !important;
+    }
+    .__html-inspect-hover {
+      outline: 2px solid rgb(59, 130, 246) !important;
+      outline-offset: 1px;
+    }
+    `
+    : '';
+
+  const bodyClass = options?.inspectMode ? ' class="html-preview-inspect"' : '';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=${viewportWidth}, initial-scale=1">
+<style>
+  html {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  body {
+    margin: 0;
+    padding: 16px;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    background: #ffffff;
+    color: #0a0a0a;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    box-sizing: border-box;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  img, video, svg, canvas, embed, object, iframe {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  td, th {
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  pre, code {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere;
+  }
+  a {
+    color: hsl(221.2 83.2% 53.3%);
+    word-break: break-word;
+  }
+  ${inspectCss}
+</style>
+</head>
+<body${bodyClass}>
+${bodyHtml}
+</body>
+</html>`;
+}
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateEmailAddressList(

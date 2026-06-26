@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTablePagination } from '@/hooks/useTablePagination';
+import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import {
@@ -37,6 +38,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   Loader2,
+  Eye,
   Pencil,
   Plus,
   Trash2,
@@ -44,13 +46,17 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { FranchiseResourceEditorDialog } from './FranchiseResourceEditorDialog';
+import { FranchiseResourcePreviewDialog } from './FranchiseResourcePreviewDialog';
 import {
+  defaultNewestPeriodId,
   normalizeResourceRow,
+  resolveImagePreview,
   RESOURCE_COLUMNS,
   type FranchiseResourcePageConfig,
   type FranchiseResourceRow,
   type SortColumn,
   type SortDirection,
+  type TaxonomyListKind,
 } from './franchiseResourceShared';
 import {
   useFranchiseResourceEditor,
@@ -95,13 +101,51 @@ type FranchiseResourceAdminPageProps = {
   config: FranchiseResourcePageConfig;
 };
 
+const TAXONOMY_KIND_LABELS: Record<TaxonomyListKind, string> = {
+  category: 'Category',
+  course: 'Course',
+  period: 'Period',
+};
+
+function taxonomyIdFieldForKind(
+  kind: TaxonomyListKind,
+): 'category_id' | 'course_id' | 'period_id' {
+  if (kind === 'category') return 'category_id';
+  if (kind === 'course') return 'course_id';
+  return 'period_id';
+}
+
+function matchesTaxonomyFilter(
+  row: FranchiseResourceRow,
+  kind: TaxonomyListKind,
+  filterValue: string,
+): boolean {
+  const field = taxonomyIdFieldForKind(kind);
+  const taxonomyId = row[field];
+  if (filterValue === 'none') return taxonomyId == null;
+  if (filterValue === 'all') return true;
+  const parsedId = Number.parseInt(filterValue, 10);
+  return !Number.isNaN(parsedId) && taxonomyId === parsedId;
+}
+
 export function FranchiseResourceAdminPage({
   config,
 }: FranchiseResourceAdminPageProps) {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = profile?.user_role === 'admin';
   const { labels, theme, resourceType, taxonomyPlace, taxonomyKinds } = config;
+  const listTaxonomyFilters = config.listTaxonomyFilters ?? [];
+  const listTableTaxonomyColumns =
+    config.listTableTaxonomyColumns ??
+    (config.listFilterTaxonomyKind === 'category' ? ['category' as const] : []);
+  const usesLegacyTaxonomyFilter =
+    listTaxonomyFilters.length === 0 &&
+    (config.listFilterTaxonomyKind === 'category' ||
+      config.listFilterTaxonomyKind === 'folder');
+  const showTitleThumbnail = config.showTitleThumbnail ?? false;
+  const enableContentPreview = config.enableContentPreview ?? false;
   const ListIcon = theme.icon;
+  const { getPublicUrl } = useSupabaseStorage();
 
   const [resources, setResources] = useState<FranchiseResourceRow[]>([]);
   const { taxonomies, loadTaxonomies } = useFranchiseResourceTaxonomies(
@@ -113,9 +157,19 @@ export function FranchiseResourceAdminPage({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [taxonomyFilters, setTaxonomyFilters] = useState<
+    Record<TaxonomyListKind, string>
+  >({
+    category: 'all',
+    course: 'all',
+    period: 'all',
+  });
   const [sortColumn, setSortColumn] = useState<SortColumn>('id');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [deleteTarget, setDeleteTarget] = useState<FranchiseResourceRow | null>(
+    null,
+  );
+  const [previewTarget, setPreviewTarget] = useState<FranchiseResourceRow | null>(
     null,
   );
 
@@ -175,6 +229,14 @@ export function FranchiseResourceAdminPage({
     };
   }, [taxonomies]);
 
+  const handleOpenCreate = useCallback(() => {
+    const defaults = config.taxonomyKinds?.includes('period')
+      ? { period_id: defaultNewestPeriodId(taxonomyByKind.period) }
+      : undefined;
+
+    editor.openCreate(defaults);
+  }, [config.taxonomyKinds, editor, taxonomyByKind.period]);
+
   const listFilterTaxonomyKind = config.listFilterTaxonomyKind ?? 'category';
   const listFilterTaxonomies = taxonomyByKind[listFilterTaxonomyKind];
   const listFilterLabel =
@@ -196,11 +258,25 @@ export function FranchiseResourceAdminPage({
   const filteredResources = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = resources.filter((row) => {
-      if (categoryFilter === 'none') {
-        if (row.category_id != null) return false;
-      } else if (categoryFilter !== 'all') {
-        const categoryId = Number.parseInt(categoryFilter, 10);
-        if (Number.isNaN(categoryId) || row.category_id !== categoryId) {
+      if (usesLegacyTaxonomyFilter) {
+        if (categoryFilter === 'none') {
+          if (row.category_id != null) return false;
+        } else if (categoryFilter !== 'all') {
+          const categoryId = Number.parseInt(categoryFilter, 10);
+          if (Number.isNaN(categoryId) || row.category_id !== categoryId) {
+            return false;
+          }
+        }
+      }
+
+      for (const kind of listTaxonomyFilters) {
+        if (
+          !matchesTaxonomyFilter(
+            row,
+            kind,
+            taxonomyFilters[kind] ?? 'all',
+          )
+        ) {
           return false;
         }
       }
@@ -220,7 +296,23 @@ export function FranchiseResourceAdminPage({
       if (sortColumn === 'id') return (a.id - b.id) * direction;
       return a[sortColumn].localeCompare(b[sortColumn]) * direction;
     });
-  }, [categoryFilter, resources, search, sortColumn, sortDirection]);
+  }, [
+    categoryFilter,
+    listTaxonomyFilters,
+    resources,
+    search,
+    sortColumn,
+    sortDirection,
+    taxonomyFilters,
+    usesLegacyTaxonomyFilter,
+  ]);
+
+  const paginationFilterKey = useMemo(() => {
+    const taxonomyKey = listTaxonomyFilters
+      .map((kind) => `${kind}:${taxonomyFilters[kind] ?? 'all'}`)
+      .join('|');
+    return `${search}|${categoryFilter}|${taxonomyKey}`;
+  }, [categoryFilter, listTaxonomyFilters, search, taxonomyFilters]);
 
   const {
     paginatedItems: paginatedResources,
@@ -231,7 +323,7 @@ export function FranchiseResourceAdminPage({
     perPageOptions,
     setPage,
     onPerPageChange,
-  } = useTablePagination(filteredResources, `${search}|${categoryFilter}`);
+  } = useTablePagination(filteredResources, paginationFilterKey);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -298,7 +390,7 @@ export function FranchiseResourceAdminPage({
                 onClick={() => void loadResources()}
                 disabled={loading}
               />
-              <Button onClick={editor.openCreate} disabled={loading}>
+              <Button onClick={handleOpenCreate} disabled={loading}>
                 <Plus className="mr-2 h-4 w-4" />
                 {labels.addButton}
               </Button>
@@ -318,25 +410,61 @@ export function FranchiseResourceAdminPage({
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-sm"
               />
-              <div className="flex items-center gap-2">
-                <Label htmlFor={filterId} className="whitespace-nowrap">
-                  {listFilterLabel}
-                </Label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger id={filterId} className="w-56">
-                    <SelectValue placeholder={`All ${listFilterLabel.toLowerCase()}s`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All {listFilterLabel.toLowerCase()}s</SelectItem>
-                    <SelectItem value="none">Uncategorized</SelectItem>
-                    {listFilterTaxonomies.map((taxonomy) => (
-                      <SelectItem key={taxonomy.id} value={String(taxonomy.id)}>
-                        {taxonomy.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {usesLegacyTaxonomyFilter ? (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={filterId} className="whitespace-nowrap">
+                    {listFilterLabel}
+                  </Label>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger id={filterId} className="w-56">
+                      <SelectValue placeholder={`All ${listFilterLabel.toLowerCase()}s`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All {listFilterLabel.toLowerCase()}s</SelectItem>
+                      <SelectItem value="none">Uncategorized</SelectItem>
+                      {listFilterTaxonomies.map((taxonomy) => (
+                        <SelectItem key={taxonomy.id} value={String(taxonomy.id)}>
+                          {taxonomy.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+              {listTaxonomyFilters.map((kind) => {
+                const filterKindId = `${resourceType}-${kind}-filter`;
+                const label = TAXONOMY_KIND_LABELS[kind];
+                const options = taxonomyByKind[kind];
+                return (
+                  <div key={kind} className="flex items-center gap-2">
+                    <Label htmlFor={filterKindId} className="whitespace-nowrap">
+                      {label}
+                    </Label>
+                    <Select
+                      value={taxonomyFilters[kind]}
+                      onValueChange={(value) =>
+                        setTaxonomyFilters((current) => ({
+                          ...current,
+                          [kind]: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id={filterKindId} className="w-56">
+                        <SelectValue placeholder={`All ${label.toLowerCase()}s`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All {label.toLowerCase()}s</SelectItem>
+                        <SelectItem value="none">Unassigned</SelectItem>
+                        {options.map((taxonomy) => (
+                          <SelectItem key={taxonomy.id} value={String(taxonomy.id)}>
+                            {taxonomy.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })}
             </div>
 
             {loading ? (
@@ -374,9 +502,19 @@ export function FranchiseResourceAdminPage({
                           sortDirection={sortDirection}
                           onSort={handleSort}
                         />
-                        <th className="px-4 py-3 text-left text-sm font-semibold">
-                          {listFilterLabel}
-                        </th>
+                        {usesLegacyTaxonomyFilter ? (
+                          <th className="px-4 py-3 text-left text-sm font-semibold">
+                            {listFilterLabel}
+                          </th>
+                        ) : null}
+                        {listTableTaxonomyColumns.map((kind) => (
+                          <th
+                            key={kind}
+                            className="px-4 py-3 text-left text-sm font-semibold"
+                          >
+                            {TAXONOMY_KIND_LABELS[kind]}
+                          </th>
+                        ))}
                         <th className="px-4 py-3 text-left text-sm font-semibold">
                           Published
                         </th>
@@ -389,7 +527,12 @@ export function FranchiseResourceAdminPage({
                       </tr>
                     </thead>
                     <tbody>
-                      {paginatedResources.map((row) => (
+                      {paginatedResources.map((row) => {
+                        const thumbnailUrl = showTitleThumbnail
+                          ? resolveImagePreview(row.thumbnail_url, getPublicUrl)
+                          : null;
+
+                        return (
                         <tr
                           key={row.id}
                           className="border-b transition-colors hover:bg-muted/50"
@@ -398,21 +541,59 @@ export function FranchiseResourceAdminPage({
                             {row.id}
                           </td>
                           <td className="px-4 py-3 text-sm font-medium">
-                            {row.title}
-                            {row.is_mandatory ? (
-                              <Badge variant="outline" className="ml-2 text-[10px]">
-                                Mandatory
-                              </Badge>
-                            ) : null}
+                            <div className="flex min-w-0 items-center gap-3">
+                              {showTitleThumbnail ? (
+                                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                                  {thumbnailUrl ? (
+                                    <img
+                                      src={thumbnailUrl}
+                                      alt=""
+                                      className="size-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex size-full items-center justify-center text-muted-foreground">
+                                      <ListIcon className="h-4 w-4" />
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                              <div className="min-w-0">
+                                <span className="line-clamp-2">{row.title}</span>
+                                {row.is_mandatory ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="mt-1 text-[10px]"
+                                  >
+                                    Mandatory
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                             {row.slug}
                           </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground">
-                            {row.category_id != null
-                              ? taxonomyLabelById.get(row.category_id) ?? row.category_id
-                              : '—'}
-                          </td>
+                          {usesLegacyTaxonomyFilter ? (
+                            <td className="px-4 py-3 text-sm text-muted-foreground">
+                              {row.category_id != null
+                                ? taxonomyLabelById.get(row.category_id) ??
+                                  row.category_id
+                                : '—'}
+                            </td>
+                          ) : null}
+                          {listTableTaxonomyColumns.map((kind) => {
+                            const taxonomyId = row[taxonomyIdFieldForKind(kind)];
+                            return (
+                              <td
+                                key={kind}
+                                className="px-4 py-3 text-sm text-muted-foreground"
+                              >
+                                {taxonomyId != null
+                                  ? taxonomyLabelById.get(taxonomyId) ?? taxonomyId
+                                  : '—'}
+                              </td>
+                            );
+                          })}
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {row.published_at
                               ? new Date(row.published_at).toLocaleString()
@@ -427,6 +608,16 @@ export function FranchiseResourceAdminPage({
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex justify-end gap-2">
+                              {enableContentPreview ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setPreviewTarget(row)}
+                                  aria-label={`Preview ${row.title}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              ) : null}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -444,7 +635,8 @@ export function FranchiseResourceAdminPage({
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -480,6 +672,7 @@ export function FranchiseResourceAdminPage({
         onTitleChange={editor.handleTitleChange}
         onThumbnailUpload={editor.handleThumbnailUpload}
         onThumbnailClear={editor.handleThumbnailClear}
+        onThumbnailUrlChange={editor.handleThumbnailUrlChange}
         onContentFileUpload={editor.handleContentFileUpload}
         onVideoFileUpload={editor.handleVideoFileUpload}
         onAttachmentUpload={editor.handleAttachmentUpload}
@@ -488,6 +681,14 @@ export function FranchiseResourceAdminPage({
         onAssetUploaded={editor.handleAssetUploaded}
         onReferenceChange={editor.handleReferenceChange}
         onSave={() => void editor.handleSave()}
+      />
+
+      <FranchiseResourcePreviewDialog
+        resource={previewTarget}
+        open={previewTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewTarget(null);
+        }}
       />
 
       <AlertDialog

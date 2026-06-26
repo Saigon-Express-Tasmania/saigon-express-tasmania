@@ -65,7 +65,16 @@ import {
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
-import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ImageIcon,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -86,6 +95,43 @@ import {
 const MENU_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1920] as const;
 const ADDITIONAL_IMAGE_SM = 256;
 const ADDITIONAL_IMAGE_LG = 1920;
+
+type SortColumn = 'id' | 'name' | 'price' | 'sort_order';
+type SortDirection = 'asc' | 'desc';
+
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+}) {
+  const isActive = sortColumn === column;
+  const Icon = isActive
+    ? sortDirection === 'asc'
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+
+  return (
+    <th className="px-4 py-3 text-left text-sm font-semibold">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-foreground/80"
+        onClick={() => onSort(column)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </th>
+  );
+}
 
 type MenuItemRow = {
   id: number;
@@ -172,6 +218,8 @@ export function Menu() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const loadItems = useCallback(async () => {
     try {
@@ -222,9 +270,18 @@ export function Menu() {
     return Array.from(set).sort();
   }, [items]);
 
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection('asc');
+  };
+
   const filteredItems = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return items.filter((item) => {
+    const filtered = items.filter((item) => {
       if (categoryFilter !== 'all' && item.category !== categoryFilter) {
         return false;
       }
@@ -235,7 +292,21 @@ export function Menu() {
         item.category.toLowerCase().includes(term)
       );
     });
-  }, [items, search, categoryFilter]);
+
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortColumn === 'id') {
+        return (a.id - b.id) * direction;
+      }
+      if (sortColumn === 'sort_order') {
+        return (a.sort_order - b.sort_order) * direction;
+      }
+      if (sortColumn === 'price') {
+        return (Number(a.price) - Number(b.price)) * direction;
+      }
+      return a.name.localeCompare(b.name) * direction;
+    });
+  }, [items, search, categoryFilter, sortColumn, sortDirection]);
 
   const {
     selectedIds,
@@ -683,30 +754,43 @@ export function Menu() {
                           onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
                         />
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Name
-                      </th>
+                      <SortableHeader
+                        label="ID"
+                        column="id"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Name"
+                        column="name"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Category
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Price
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Wholesale
-                      </th>
+                      <SortableHeader
+                        label="Price"
+                        column="price"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Popular
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Available
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Sort
-                      </th>
+                      <SortableHeader
+                        label="Sort"
+                        column="sort_order"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-right text-sm font-semibold">
                         Actions
                       </th>
@@ -759,11 +843,6 @@ export function Menu() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           ${Number(item.price).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {item.wholesale_price
-                            ? `$${Number(item.wholesale_price).toFixed(2)}`
-                            : '—'}
                         </td>
                         <td className="px-4 py-3">
                           <Badge

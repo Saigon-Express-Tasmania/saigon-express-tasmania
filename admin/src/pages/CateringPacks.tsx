@@ -787,13 +787,13 @@ export function CateringPacks() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-row flex-wrap items-center gap-3">
                 <Input
                   placeholder="Search name, category, tag, note..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="max-w-sm"
+                  className="min-w-[12rem] flex-1 max-w-sm"
                 />
                 <div className="flex items-center gap-2">
                   <Label htmlFor="pack-category-filter" className="whitespace-nowrap">
