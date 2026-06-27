@@ -81,11 +81,13 @@ export async function previewFranchiseAccount(
 export async function completeFranchiseAccount(input: {
   franchiseInterestId: number;
   password?: string;
+  privileges?: BusinessType[];
 }): Promise<{ userId: string; created: boolean }> {
   const result = await invokePartnerApi({
     action: 'complete-franchise-account',
     franchiseInterestId: input.franchiseInterestId,
     ...(input.password ? { password: input.password } : {}),
+    ...(input.privileges ? { privileges: input.privileges } : {}),
   });
 
   if (!result.userId) {

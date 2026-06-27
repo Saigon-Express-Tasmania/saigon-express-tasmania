@@ -138,6 +138,26 @@ function mergePrivileges(current: BusinessType[], grant: BusinessType): Business
   return [...new Set([...current, grant])].sort();
 }
 
+const DEFAULT_FRANCHISE_ACCOUNT_PRIVILEGES: BusinessType[] = [
+  "personal",
+  "wholesale",
+  "franchise",
+];
+
+function defaultFranchiseAccountPrivileges(existing: BusinessType[] = []): BusinessType[] {
+  const merged = [...new Set([...existing, ...DEFAULT_FRANCHISE_ACCOUNT_PRIVILEGES])];
+  return parsePrivileges(merged);
+}
+
+function userRoleFromPrivileges(
+  privileges: BusinessType[],
+  currentRole: PartnerProfileInput["user_role"] = "user",
+): PartnerProfileInput["user_role"] {
+  if (privileges.includes("wholesale") && currentRole === "user") return "partner";
+  if (!privileges.includes("wholesale") && currentRole === "partner") return "user";
+  return currentRole;
+}
+
 type FranchiseInterestRow = {
   id: number;
   interest_type: string;
@@ -197,8 +217,8 @@ function mapFranchiseInterestToProfile(interest: FranchiseInterestRow): Franchis
     ),
     investment_amount: nullableString(interest.investment_budget),
     country: "AU",
-    user_role: "user",
-    privileges: ["personal", "franchise"],
+    user_role: "partner",
+    privileges: DEFAULT_FRANCHISE_ACCOUNT_PRIVILEGES,
   };
 }
 
@@ -315,7 +335,13 @@ async function handlePreviewFranchiseAccount(body: Record<string, unknown>) {
         ...existingUser,
         privileges: alreadyHasFranchise
           ? existingUser.privileges
-          : mergePrivileges(existingUser.privileges, "franchise"),
+          : defaultFranchiseAccountPrivileges(existingUser.privileges),
+        user_role: userRoleFromPrivileges(
+          alreadyHasFranchise
+            ? existingUser.privileges
+            : defaultFranchiseAccountPrivileges(existingUser.privileges),
+          existingUser.user_role,
+        ),
         location_address:
           existingUser.location_address ?? preview.location_address,
         investment_amount:
@@ -337,10 +363,13 @@ async function grantFranchisePrivilegeToExistingUser(
   service: ReturnType<typeof createServiceClient>,
   existingUser: ExistingFranchiseUser,
   fromInterest: FranchiseProfilePreview,
+  privileges: BusinessType[],
 ): Promise<string> {
-  const privileges = existingUser.privileges.includes("franchise")
-    ? existingUser.privileges
-    : mergePrivileges(existingUser.privileges, "franchise");
+  const nextPrivileges = parsePrivileges(privileges);
+  const nextRole = userRoleFromPrivileges(nextPrivileges, existingUser.user_role);
+  const privilegesChanged =
+    nextPrivileges.join(",") !== existingUser.privileges.join(",") ||
+    nextRole !== existingUser.user_role;
 
   const { error: profileError } = await service
     .from("user_profiles")
@@ -349,10 +378,13 @@ async function grantFranchisePrivilegeToExistingUser(
 
   if (profileError) throw profileError;
 
-  if (!existingUser.privileges.includes("franchise")) {
+  if (privilegesChanged) {
     const { error: metadataError } = await service
       .from("user_metadata")
-      .update({ privileges })
+      .update({
+        privileges: nextPrivileges,
+        user_role: nextRole,
+      })
       .eq("id", existingUser.userId);
 
     if (metadataError) throw metadataError;
@@ -420,8 +452,8 @@ async function createFranchiseUserFromInterest(
   const { error: metadataError } = await service
     .from("user_metadata")
     .update({
-      user_role: "user",
-      privileges: ["personal", "franchise"],
+      user_role: userRoleFromPrivileges(preview.privileges),
+      privileges: preview.privileges,
     })
     .eq("id", userId);
 
@@ -445,21 +477,40 @@ async function createFranchiseUserFromInterest(
 async function handleCompleteFranchiseAccount(body: Record<string, unknown>) {
   const franchiseInterestId = parseFranchiseInterestId(body.franchiseInterestId);
   const password = body.password != null ? String(body.password) : "";
+  const requestedPrivileges = body.privileges != null
+    ? parsePrivileges(body.privileges)
+    : null;
   const service = createServiceClient();
   const interest = await fetchApprovedFranchiseInterest(service, franchiseInterestId);
   const preview = mapFranchiseInterestToProfile(interest);
   const existingUser = await findUserByEmail(service, preview.email);
+  const accountPrivileges = existingUser
+    ? (requestedPrivileges ?? defaultFranchiseAccountPrivileges(existingUser.privileges))
+    : (requestedPrivileges ?? preview.privileges);
 
   let userId: string;
   let created = false;
 
   if (existingUser) {
-    userId = await grantFranchisePrivilegeToExistingUser(service, existingUser, preview);
+    userId = await grantFranchisePrivilegeToExistingUser(
+      service,
+      existingUser,
+      preview,
+      accountPrivileges,
+    );
   } else {
     if (password.length < 8) {
       throw new Error("password must be at least 8 characters");
     }
-    userId = await createFranchiseUserFromInterest(service, preview, password);
+    userId = await createFranchiseUserFromInterest(
+      service,
+      {
+        ...preview,
+        privileges: accountPrivileges,
+        user_role: userRoleFromPrivileges(accountPrivileges),
+      },
+      password,
+    );
     created = true;
   }
 

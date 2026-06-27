@@ -134,6 +134,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
       productName: pack.name,
       variantLabel: tier?.size ?? null,
       unitPrice,
+      catalogUnitPrice: pack.catalogUnitPrice,
       imageUrl: pack.img,
     });
   };

@@ -22,16 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import BillingLocationFields from "@/components/BillingLocationFields";
 import {
-  AUSTRALIAN_STATES,
   billingFromShippingForm,
   buildWholesaleOrderTotals,
+  getDeliveryAustralianStateOptions,
   isBillingSameAsShippingForm,
   WHOLESALE_DEFAULT_COUNTRY,
   WHOLESALE_FULFILLMENT_OPTIONS,
   WHOLESALE_PAYMENT_TERMS_OPTIONS,
   hasWholesalePickupStoreSelected,
 } from "@/lib/wholesale-b2b-order";
+import { billingCountryPatch } from "@/lib/billing-address";
 import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
 import {
   findDeliveryCity,
@@ -50,6 +52,7 @@ import type {
   AustralianStateCode,
   WholesaleOrderReviewForm,
 } from "@/types/WholesaleB2BOrder";
+import { DEFAULT_AUSTRALIAN_STATE_CODE } from "@/types/WholesaleB2BOrder";
 import type { DeliveryCity, StoreLocation, WholesalePricingTier } from "@/types";
 import {
   ArrowLeft,
@@ -484,9 +487,11 @@ export default function WholesaleOrderReviewPanel({
         ? review.billing_tax_id
         : (trimmedOrNull(profile.billing_tax_id) ?? review.billing_tax_id),
       shipping_state:
-        review.shipping_state ||
-        (profile.shipping_state as AustralianStateCode | null) ||
-        review.shipping_state,
+        getDeliveryAustralianStateOptions().some(
+          (option) => option.value === review.shipping_state,
+        )
+          ? review.shipping_state
+          : DEFAULT_AUSTRALIAN_STATE_CODE,
       billing_state:
         review.billing_state ||
         (profile.billing_state as AustralianStateCode | null) ||
@@ -628,7 +633,6 @@ export default function WholesaleOrderReviewPanel({
   ): Partial<WholesaleOrderReviewForm> => ({
     ...next,
     shipping_country: WHOLESALE_DEFAULT_COUNTRY,
-    billing_country: WHOLESALE_DEFAULT_COUNTRY,
   });
 
   const patch = (next: Partial<WholesaleOrderReviewForm>) => {
@@ -636,7 +640,11 @@ export default function WholesaleOrderReviewPanel({
   };
 
   const patchShipping = (next: Partial<WholesaleOrderReviewForm>) => {
-    const merged = { ...review, ...withAustralia(next) };
+    const merged = {
+      ...review,
+      ...withAustralia(next),
+      shipping_state: DEFAULT_AUSTRALIAN_STATE_CODE,
+    };
     onReviewChange(
       billingSameAsShipping ? billingFromShippingForm(merged) : merged,
     );
@@ -824,10 +832,7 @@ export default function WholesaleOrderReviewPanel({
                           shipping_state: value as AustralianStateCode,
                         })
                       }
-                      options={AUSTRALIAN_STATES.filter((state) => state.active).map((state) => ({
-                        value: state.value,
-                        label: state.label,
-                      }))}
+                      options={getDeliveryAustralianStateOptions()}
                     />
                     <Field label="Preferred delivery window">
                       <input
@@ -950,16 +955,17 @@ export default function WholesaleOrderReviewPanel({
                     onChange={(e) => patch({ billing_city: e.target.value })}
                   />
                 </Field>
-                <ReviewSelect
-                  label="State"
-                  value={review.billing_state}
-                  onValueChange={(value) =>
-                    patch({ billing_state: value as AustralianStateCode })
+                <BillingLocationFields
+                  variant="primary"
+                  country={review.billing_country}
+                  state={review.billing_state}
+                  onCountryChange={(country) =>
+                    patch(
+                      billingCountryPatch(country, review.billing_state),
+                    )
                   }
-                  options={AUSTRALIAN_STATES.map((state) => ({
-                    value: state.value,
-                    label: state.label,
-                  }))}
+                  onStateChange={(state) => patch({ billing_state: state })}
+                  disabled={isCheckingOut}
                 />
                 <Field label="Postal code">
                   <input

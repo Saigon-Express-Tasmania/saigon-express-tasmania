@@ -8,4 +8,5 @@ export type SiteCategory = {
   addon: string[];
   style: string | null;
   icon: string | null;
+  customizationIds: number[];
 };

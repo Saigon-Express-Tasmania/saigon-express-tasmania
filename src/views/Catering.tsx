@@ -1,9 +1,13 @@
 "use client";
 
+import Link from "@/components/link";
+import CateringPackOrderButton from "@/components/CateringPackOrderButton";
+import CateringProductHtml from "@/components/CateringProductHtml";
 import AppImage from "@/components/AppImage";
 import CateringTierSelect from "@/components/CateringTierSelect";
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { toast } from "sonner";
 import {
@@ -14,7 +18,6 @@ import {
   ChevronRight,
   MapPin,
   Phone,
-  Plus,
 } from "lucide-react";
 import {
   FEATURED_CATERING_PACK_CATEGORY,
@@ -28,7 +31,54 @@ import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { shouldBlockGuestCateringCart } from "@/lib/guest-catering-order-session";
 import { useSupabase } from "@/hooks/useSupabase";
-import { parseCateringPrice } from "@/lib/catering-price";
+import {
+  formatCateringPackCardPriceLabel,
+  parseCateringPrice,
+} from "@/lib/catering-price";
+import { cateringItemDetailPath } from "@/lib/catering-item-routes";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type CateringMenuGroup = {
+  category: string;
+  items: CateringPack[];
+  sortOrder: number;
+};
+
+function buildCateringMenuGroups(packs: CateringPack[]): CateringMenuGroup[] {
+  const groups = packs
+    .filter(
+      (pack) =>
+        pack.isAvailable && pack.category !== FEATURED_CATERING_PACK_CATEGORY,
+    )
+    .reduce<CateringMenuGroup[]>((acc, item) => {
+      const existing = acc.find((group) => group.category === item.category);
+      if (existing) {
+        existing.items.push(item);
+        existing.sortOrder = Math.min(existing.sortOrder, item.sortOrder);
+      } else {
+        acc.push({
+          category: item.category,
+          items: [item],
+          sortOrder: item.sortOrder,
+        });
+      }
+      return acc;
+    }, []);
+
+  return groups
+    .filter((group) => group.items.length > 0)
+    .sort(
+      (a, b) =>
+        a.sortOrder - b.sortOrder || a.category.localeCompare(b.category),
+    );
+}
 
 type CateringProps = {
   packs: CateringPack[];
@@ -58,34 +108,29 @@ function PackOrderButton({
   orderLabel: string;
   quoteLabel: string;
 }) {
-  const unitPrice =
-    selectedTier != null
-      ? parseCateringPrice(selectedTier.price)
-      : parseCateringPrice(pack.price);
-
-  if (unitPrice == null) {
-    return (
-      <p className="text-xs text-brand-dark/45">{quoteLabel}</p>
-    );
-  }
-
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      className="inline-flex w-full items-center justify-center gap-2 bg-brand-red px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-red/90"
-    >
-      <Plus size={14} />
-      {orderLabel}
-    </button>
+    <CateringPackOrderButton
+      pack={pack}
+      selectedTier={selectedTier}
+      onAdd={onAdd}
+      orderLabel={orderLabel}
+      quoteLabel={quoteLabel}
+    />
   );
 }
 
 const CATERING_ENQUIRY_SUBMIT_COOLDOWN_MS = 2 * 60 * 1000;
 const CATERING_ENQUIRY_LAST_SUBMIT_KEY = "catering_enquiry_last_submit_at";
+const SHOW_CATERING_PACKS_SECTION = false;
 
 export default function Catering({ packs }: CateringProps) {
   const t = useTranslations("Catering");
+  const locale = useLocale();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const allLabel = t("menu.allCategory");
+  const urlCategory = searchParams.get("category");
   const contactPhone = useFormattedContactPhone();
   const contactEmail = useSiteSetting("contact_us_email")?.trim();
   const { isSignedIn } = useSupabase();
@@ -109,10 +154,74 @@ export default function Catering({ packs }: CateringProps) {
     guestCount: "",
     message: "",
   });
+  const [activeCategory, setActiveCategory] = useState(urlCategory || allLabel);
+
+  const availablePacks = useMemo(
+    () => packs.filter((pack) => pack.isAvailable),
+    [packs],
+  );
+
+  const featuredPacks = useMemo(
+    () =>
+      availablePacks.filter(
+        (pack) => pack.category === FEATURED_CATERING_PACK_CATEGORY,
+      ),
+    [availablePacks],
+  );
+
+  const menuGroups = useMemo(
+    () => buildCateringMenuGroups(availablePacks),
+    [availablePacks],
+  );
+
+  const categories = useMemo(
+    () => [allLabel, ...menuGroups.map((group) => group.category)],
+    [allLabel, menuGroups],
+  );
+
+  const visibleMenuGroups = useMemo(() => {
+    if (activeCategory === allLabel) return menuGroups;
+    return menuGroups.filter((group) => group.category === activeCategory);
+  }, [activeCategory, allLabel, menuGroups]);
+
+  const handleCategoryClick = useCallback(
+    (cat: string) => {
+      setActiveCategory(cat);
+
+      const params = new URLSearchParams(searchParams.toString());
+      if (cat === allLabel) {
+        params.delete("category");
+      } else {
+        params.set("category", cat);
+      }
+
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router, allLabel],
+  );
+
+  const categoryButtonClass = (cat: string) =>
+    `shrink-0 px-4 py-2 text-sm font-semibold transition-colors border ${
+      activeCategory === cat
+        ? "bg-brand-red text-white border-brand-red"
+        : "bg-transparent text-brand-dark/60 border-gray-200 hover:border-brand-red/40 hover:text-brand-dark"
+    }`;
 
   // Load configuration arrays from translation files
   const whyUsList: WhyUsItem[] = t.raw("whyUs.items");
   const statsList: StatItem[] = t.raw("stats");
+
+  useEffect(() => {
+    if (!urlCategory) {
+      setActiveCategory(allLabel);
+      return;
+    }
+
+    const matchedCategory = menuGroups.find(
+      (group) => group.category === urlCategory,
+    );
+    setActiveCategory(matchedCategory ? urlCategory : allLabel);
+  }, [urlCategory, menuGroups, allLabel]);
 
   useEffect(() => {
     if (!guestOrderBlocksCart) {
@@ -191,6 +300,7 @@ export default function Catering({ packs }: CateringProps) {
       productName: pack.name,
       variantLabel: tier?.size ?? null,
       unitPrice,
+      catalogUnitPrice: pack.catalogUnitPrice,
       imageUrl: pack.img,
     });
   };
@@ -262,27 +372,6 @@ export default function Catering({ packs }: CateringProps) {
     }
   };
 
-  const featuredPacks = packs.filter(
-    (pack) => pack.category === FEATURED_CATERING_PACK_CATEGORY,
-  );
-
-  const menuGroups = packs
-    .filter((pack) => pack.category !== FEATURED_CATERING_PACK_CATEGORY)
-    .reduce<Array<{ category: string; items: CateringPack[] }>>(
-      (groups, item) => {
-        const existingGroup = groups.find(
-          (group) => group.category === item.category,
-        );
-        if (existingGroup) {
-          existingGroup.items.push(item);
-        } else {
-          groups.push({ category: item.category, items: [item] });
-        }
-        return groups;
-      },
-      [],
-    );
-
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
@@ -301,12 +390,14 @@ export default function Catering({ packs }: CateringProps) {
             {t("hero.description")}
           </p>
           <div className="flex flex-wrap gap-3">
-            <a
-              href="#catering-packs"
-              className="bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors inline-flex items-center gap-2"
-            >
-              {t("hero.ctaPacks")} <ChevronRight size={15} />
-            </a>
+            {SHOW_CATERING_PACKS_SECTION ? (
+              <a
+                href="#catering-packs"
+                className="bg-brand-red text-white px-6 py-3 font-semibold text-sm hover:bg-brand-red/90 transition-colors inline-flex items-center gap-2"
+              >
+                {t("hero.ctaPacks")} <ChevronRight size={15} />
+              </a>
+            ) : null}
             <a
               href="#catering-menu"
               className="bg-white/10 border border-white/40 text-white px-6 py-3 font-semibold text-sm hover:bg-white/20 transition-colors inline-flex items-center gap-2"
@@ -368,7 +459,8 @@ export default function Catering({ packs }: CateringProps) {
         </div>
       </section>
 
-      {/* Catering packs */}
+      {/* Catering packs — set SHOW_CATERING_PACKS_SECTION to re-enable */}
+      {SHOW_CATERING_PACKS_SECTION ? (
       <section id="catering-packs" className="py-16 bg-brand-cream">
         <div className="max-w-[1280px] mx-auto px-6">
           {guestOrderBlocksCart && resolveOrderWarning ? (
@@ -464,10 +556,22 @@ export default function Catering({ packs }: CateringProps) {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* Catering Menu */}
       <section id="catering-menu" className="py-16 bg-white">
         <div className="max-w-[1280px] mx-auto px-6">
+          {!SHOW_CATERING_PACKS_SECTION &&
+          guestOrderBlocksCart &&
+          resolveOrderWarning ? (
+            <div
+              id="catering-resolve-order-warning"
+              role="alert"
+              className="mb-8 rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950"
+            >
+              {t("guestOrder.resolveFirst")}
+            </div>
+          ) : null}
           <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-red mb-3">
               {t("menu.label")}
@@ -489,12 +593,72 @@ export default function Catering({ packs }: CateringProps) {
             </p>
           </div>
 
+          {menuGroups.length > 0 ? (
+            <div
+              id="catering-categories"
+              className="sticky top-16 z-40 mb-10 -mx-6 border-y border-gray-100 bg-white px-6 py-3 md:mx-0 md:rounded-lg md:border md:shadow-sm"
+            >
+              <div className="md:hidden">
+                <Label
+                  htmlFor="catering-category-select"
+                  className="mb-2 block text-xs font-bold uppercase tracking-wider text-brand-dark/60"
+                >
+                  {t("menu.categories.label")}
+                </Label>
+                <Select
+                  value={activeCategory}
+                  onValueChange={handleCategoryClick}
+                >
+                  <SelectTrigger
+                    id="catering-category-select"
+                    className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-semibold text-brand-dark shadow-sm hover:border-brand-red/30 focus-visible:border-brand-red focus-visible:ring-brand-red/20 [&>svg]:text-brand-red/70"
+                    iconClassName="text-brand-red/70"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    sideOffset={6}
+                    className="max-h-[min(24rem,70vh)] border-gray-200 shadow-xl"
+                  >
+                    {categories.map((cat) => (
+                      <SelectItem
+                        key={cat}
+                        value={cat}
+                        className="rounded-lg px-3 py-3 data-[highlighted]:bg-brand-red/5 data-[state=checked]:bg-brand-red data-[state=checked]:text-white"
+                      >
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="hidden flex-wrap gap-2 md:flex">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => handleCategoryClick(cat)}
+                    className={categoryButtonClass(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {menuGroups.length === 0 ? (
             <div className="text-center text-sm text-brand-dark/55 py-6">
               {t("menu.empty")}
             </div>
+          ) : visibleMenuGroups.length === 0 ? (
+            <div className="text-center text-sm text-brand-dark/55 py-6">
+              {t("menu.emptyCategory")}
+            </div>
           ) : (
-            menuGroups.map((group, groupIndex) => (
+            visibleMenuGroups.map((group, groupIndex) => (
               <div key={group.category} id={stringToSlug(group.category)}>
                 <div className="mb-4">
                   <h3 className="font-serif text-brand-dark text-2xl mb-6 pb-2 border-b border-brand-cream">
@@ -502,7 +666,7 @@ export default function Catering({ packs }: CateringProps) {
                   </h3>
                 </div>
                 <div
-                  className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${groupIndex === menuGroups.length - 1 ? "mb-10" : "mb-12"}`}
+                  className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${groupIndex === visibleMenuGroups.length - 1 ? "mb-10" : "mb-12"}`}
                 >
                   {group.items.map((item) => {
                     const selectedTierIndex = tierSelection[item.id] ?? 0;
@@ -512,39 +676,56 @@ export default function Catering({ packs }: CateringProps) {
                         selectedTier?.price ?? item.price ?? item.prices[0]?.price,
                       ) != null;
 
+                    const cardPriceLabel = formatCateringPackCardPriceLabel(
+                      item.price,
+                      item.prices.map((tier) => tier.price),
+                    );
+
                     return (
                     <div
                       key={item.id}
                       className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full"
                     >
-                      <div className="relative aspect-square overflow-hidden">
-                        <AppImage
-                          src={item.img ?? "/placeholder.svg"}
-                          alt={item.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        {item.price && (
-                          <div className="absolute top-3 right-3 bg-brand-red text-white text-sm font-bold px-3 py-1">
-                            {item.price}
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-5 flex flex-col flex-1">
-                        <h4 className="font-serif text-brand-dark text-xl mb-1">
-                          {item.name}
-                        </h4>
+                      <Link
+                        href={cateringItemDetailPath(item, locale)}
+                        className="block"
+                      >
+                        <div className="relative aspect-square overflow-hidden">
+                          <AppImage
+                            src={item.img ?? "/placeholder.svg"}
+                            alt={item.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          {cardPriceLabel ? (
+                            <div
+                              className={`absolute top-3 right-3 max-w-[calc(100%-1.5rem)] bg-brand-red px-2.5 py-1 text-right font-bold text-white ${
+                                item.prices.length > 1 ? "text-xs" : "text-sm"
+                              }`}
+                            >
+                              {cardPriceLabel}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="p-5 pb-0">
+                          <h4 className="font-serif text-brand-dark text-xl mb-1 group-hover:text-brand-red transition-colors">
+                            {item.name}
+                          </h4>
+                        </div>
+                      </Link>
+                      <div className="p-5 pt-2 flex flex-col flex-1">
                         {item.serves && (
                           <p className="text-xs text-brand-red font-semibold mb-3 flex items-center gap-1">
                             <Users size={11} />{" "}
                             {t("menu.caters", { serves: item.serves })}
                           </p>
                         )}
-                        {item.note && (
-                          <p className="text-xs text-brand-dark/50 italic mb-2">
-                            {item.note}
-                          </p>
-                        )}
+                        {item.note ? (
+                          <CateringProductHtml
+                            html={item.note}
+                            className="mb-2 text-xs italic text-brand-dark/50"
+                          />
+                        ) : null}
                         {item.includes.length > 0 && (
                           <ul className="space-y-1 mb-4">
                             {item.includes.map((inc, j) => (

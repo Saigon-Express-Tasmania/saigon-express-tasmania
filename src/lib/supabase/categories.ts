@@ -15,6 +15,7 @@ type CategoryRow = {
   addon: string[] | null;
   style: string | null;
   icon: string | null;
+  customization_ids: number[] | null;
 };
 
 function mapCategoryRow(row: CategoryRow): SiteCategory {
@@ -30,6 +31,9 @@ function mapCategoryRow(row: CategoryRow): SiteCategory {
       : [],
     style: row.style ?? null,
     icon: row.icon ?? null,
+    customizationIds: Array.isArray(row.customization_ids)
+      ? row.customization_ids.map((id) => Number(id))
+      : [],
   };
 }
 
@@ -38,7 +42,7 @@ async function loadCategories(): Promise<SiteCategory[]> {
   const { data, error } = await supabase
     .from("categories")
     .select(
-      'id, kind, alias, name, description, "imageUrl", addon, style, icon',
+      'id, kind, alias, name, description, "imageUrl", addon, style, icon, customization_ids',
     )
     .order("id", { ascending: true });
 

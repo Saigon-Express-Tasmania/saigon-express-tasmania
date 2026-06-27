@@ -391,6 +391,11 @@
       "description": "Tất cả các hộp tiệc đều được chuẩn bị tươi mới vào ngày diễn ra sự kiện. Vui lòng đặt trước ít nhất 24 giờ. Liên hệ ",
       "descriptionEnd": " để tùy chỉnh đơn hàng của bạn.",
       "empty": "Hiện chưa có món ăn thực đơn tiệc nào sẵn sàng.",
+      "emptyCategory": "Không có món nào trong danh mục này.",
+      "allCategory": "Tất cả",
+      "categories": {
+        "label": "Danh mục"
+      },
       "caters": "Phục vụ {serves} khách",
       "enquire": "Yêu Cầu Ngay",
       "addToOrder": "Thêm vào đơn",
@@ -439,6 +444,20 @@
       "rateLimit": "Vui lòng đợi {time} trước khi gửi lại.",
       "submitFailed": "Gửi yêu cầu thất bại. Vui lòng gửi email trực tiếp đến {email}.",
       "submitFailedFallback": "Gửi yêu cầu thất bại. Vui lòng thử lại sau."
+    }
+  },
+  "CateringItem": {
+    "backToCatering": "Quay lại Thực Đơn Tiệc",
+    "backToCateringHint": "Xem tất cả danh mục và gói tiệc",
+    "additionalImagesTitle": "Hình ảnh khác",
+    "additionalImagesSelect": "Xem hình {index}",
+    "includesTitle": "Bao gồm",
+    "relatedTitle": "Có Thể Bạn Cũng Thích",
+    "unavailableBadge": "Hiện không có sẵn",
+    "quoteRequired": "Món này cần báo giá riêng. Vui lòng liên hệ bộ phận tiệc.",
+    "cartBar": {
+      "heading": "Xem giỏ hàng tiệc",
+      "summary": "{count, plural, one {# món · {total}} other {# món · {total}}}"
     }
   },
   "Checkout": {

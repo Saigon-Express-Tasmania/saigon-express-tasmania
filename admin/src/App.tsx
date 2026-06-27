@@ -1,13 +1,13 @@
 import { Dashboard } from '@/pages/Dashboard';
 import { Settings } from '@/pages/Settings/index';
 import { SignIn } from '@/pages/SignIn';
-import { Menu } from '@/pages/Menu';
+import { Menu } from '@/pages/Products/Menu';
 import { Promotions } from '@/pages/Promotions';
-import { CateringPacks } from '@/pages/CateringPacks';
+import { CateringPacks } from '@/pages/Products/CateringPacks';
 import { StoreLocations } from '@/pages/StoreLocations';
-import { WholesaleProducts } from '@/pages/WholesaleProducts';
-import { WholesaleTiers } from '@/pages/WholesaleTiers';
-import { Categories } from '@/pages/Categories';
+import { WholesaleProducts } from '@/pages/Products/WholesaleProducts';
+import { WholesaleTiers } from '@/pages/Products/WholesaleTiers';
+import { Categories } from '@/pages/Products/Categories';
 import { DraftOrders } from '@/pages/Sales/DraftOrders';
 import { SalesOrdersPage } from '@/pages/Sales/SalesOrdersPage';
 import { SalesOrderDetailsPage } from '@/pages/Sales/SalesOrderDetailsPage';
@@ -36,6 +36,7 @@ import ResourcesHub from './pages/ResourcesHub/ResourcesHub';
 import Taxonomies from './pages/ResourcesHub/Taxonomies';
 import MenuAcademy from './pages/ResourcesHub/MenuAcademy';
 import Announcements from './pages/ResourcesHub/Announcements';
+import { Customizations } from './pages/Products/Customizations';
 
 export function App() {
   const { user, isLoading } = useSupabaseAuth();
@@ -66,6 +67,7 @@ export function App() {
             <Route path="/store-locations" element={<StoreLocations />} />
             <Route path="/wholesale-products" element={<WholesaleProducts />} />
             <Route path="/wholesale-tiers" element={<WholesaleTiers />} />
+            <Route path="/customizations" element={<Customizations />} />
             <Route path="/blog-posts" element={<BlogPosts />} />
             <Route path="/featured-reviews" element={<FeaturedReviewsPage />} />
             <Route path="/feedbacks" element={<Feedbacks />} />

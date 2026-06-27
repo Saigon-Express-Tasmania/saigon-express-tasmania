@@ -1,4 +1,4 @@
-import type { AustralianStateCode } from "@/types/WholesaleB2BOrder";
+import type { AustralianStateCode, OrderFulfillmentMethod } from "@/types/WholesaleB2BOrder";
 
 export type CateringOrderReviewForm = {
   customer_name: string;
@@ -6,6 +6,8 @@ export type CateringOrderReviewForm = {
   customer_phone: string;
   event_date: string;
   guest_count: string;
+  requested_fulfillment_method: OrderFulfillmentMethod;
+  requested_pick_up_store_id: number | null;
   shipping_dba_name: string;
   shipping_address: string;
   shipping_city: string;
@@ -13,6 +15,14 @@ export type CateringOrderReviewForm = {
   shipping_postal_code: string;
   shipping_country: string;
   shipping_preferred_window: string;
+  billing_legal_name: string;
+  billing_tax_id: string | null;
+  billing_address: string;
+  billing_street_2: string | null;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: string;
   notes: string | null;
   subtotal: number;
   coupon_code: string | null;

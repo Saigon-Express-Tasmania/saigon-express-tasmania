@@ -72,18 +72,99 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
+  DollarSign,
   FilePenLine,
+  ImageIcon,
   Loader2,
+  Package,
   Pencil,
   Plus,
+  Sparkles,
   Trash2,
+  Truck,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const CATERING_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1920] as const;
 const ADDITIONAL_IMAGE_SM = 256;
 const ADDITIONAL_IMAGE_LG = 1920;
+
+const TIER_ROW_ACCENTS = [
+  'border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20',
+  'border-l-sky-500 bg-sky-50/50 dark:bg-sky-950/20',
+  'border-l-violet-500 bg-violet-50/50 dark:bg-violet-950/20',
+  'border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20',
+] as const;
+
+function CateringPackFormSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className,
+  accentClass,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: ReactNode;
+  className?: string;
+  accentClass?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        'rounded-xl border p-4 shadow-xs md:col-span-2',
+        accentClass ?? 'border-border/70 bg-muted/20',
+        className,
+      )}
+    >
+      <div className="mb-4 flex items-start gap-3 border-b border-border/40 pb-3">
+        {Icon ? (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background/80 shadow-xs ring-1 ring-border/50">
+            <Icon className="size-4 text-foreground/70" aria-hidden />
+          </span>
+        ) : null}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          {description ? (
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function CateringPackFormField({
+  label,
+  htmlFor,
+  description,
+  children,
+  className,
+}: {
+  label: string;
+  htmlFor?: string;
+  description?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('grid min-w-0 gap-2', className)}>
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {description ? (
+        <p className="-mt-1 text-xs text-muted-foreground">{description}</p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
 
 type SortColumn = 'id' | 'category' | 'name';
 type SortDirection = 'asc' | 'desc';
@@ -992,298 +1073,421 @@ export function CateringPacks() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto sm:max-w-5xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId !== null ? 'Edit catering item' : 'Add catering item'}
-            </DialogTitle>
-            <DialogDescription>
-              Use tier prices for hot dishes. Use single price, tag, and includes
-              for standard catering packs.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-2 md:grid-cols-2">
-            <div className="grid gap-2 md:col-span-2">
-              <ImageUpload
-                label="Primary image"
-                description="JPEG, PNG, WebP or GIF. Uploads 256, 512, 1024 and 1920px variants."
-                value={
-                  imagePreviewUrl ??
-                  previewFromImageUrls(form.image_sizes) ??
-                  null
-                }
-                onFileSelect={handleImageUpload}
-                onClear={
-                  Object.keys(form.image_sizes).length > 0
-                    ? handleImageClear
-                    : undefined
-                }
-                uploadResizes={[...CATERING_IMAGE_UPLOAD_RESIZES]}
-                isUploading={isUploadingImages}
-                disabled={saving || imageUploadBusy}
-                shape="square"
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <MenuAdditionalImages
-                images={form.additional_images}
-                onAdd={handleAdditionalImageUpload}
-                onRemove={handleAdditionalImageRemove}
-                isUploading={isUploadingAdditionalImages}
-                disabled={saving || imageUploadBusy}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="pack-id">ID</Label>
-              <Input
-                id="pack-id"
-                type="number"
-                value={form.id}
-                disabled={editingId !== null}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, id: Number(e.target.value) || 0 }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pack-sort">Sort order</Label>
-              <Input
-                id="pack-sort"
-                type="number"
-                value={form.sort_order}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    sort_order: Number(e.target.value) || 0,
-                  }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="pack-category">Category</Label>
-              <Input
-                id="pack-category"
-                value={form.category}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, category: e.target.value }))
-                }
-                placeholder="Catering Packs"
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="pack-name">Name</Label>
-              <Input
-                id="pack-name"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="pack-serves">Serves</Label>
-              <Input
-                id="pack-serves"
-                value={form.serves}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, serves: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pack-price">Price label</Label>
-              <Input
-                id="pack-price"
-                value={form.price}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, price: e.target.value }))
-                }
-                placeholder="$160"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pack-unit-price">Unit price</Label>
-              <Input
-                id="pack-unit-price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.unit_price}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, unit_price: e.target.value }))
-                }
-                placeholder="160.00"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="pack-tag">Tag</Label>
-              <Input
-                id="pack-tag"
-                value={form.tag}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, tag: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pack-tag-bg">Tag background class</Label>
-              <Input
-                id="pack-tag-bg"
-                value={form.tag_bg}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, tag_bg: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="pack-description">Description</Label>
-              <Textarea
-                id="pack-description"
-                rows={3}
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="pack-note">Note</Label>
-              <Textarea
-                id="pack-note"
-                rows={2}
-                value={form.note}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, note: e.target.value }))
-                }
-                placeholder="Optional note shown on hot dishes"
-              />
-            </div>
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="pack-includes">Includes (one per line)</Label>
-              <Textarea
-                id="pack-includes"
-                rows={5}
-                value={form.includesText}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, includesText: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-3 md:col-span-2">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <Label>Tier prices</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Optional size/price/serves rows for hot dishes and platters.
-                  </p>
-                </div>
-                <Button
-                  type="button"
+        <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+          <div className="shrink-0 border-b bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-rose-500/10 px-6 py-5">
+            <DialogHeader className="space-y-2 text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
                   variant="outline"
-                  size="sm"
-                  onClick={addTierPrice}
-                  disabled={saving}
+                  className="gap-1.5 border-amber-300/70 bg-background/70 text-amber-900 dark:text-amber-200"
                 >
-                  <Plus className="mr-1 h-4 w-4" />
-                  Add tier
-                </Button>
+                  <Package className="size-3.5" aria-hidden />
+                  Catering
+                </Badge>
+                {form.is_available ? (
+                  <Badge className="border-emerald-200 bg-emerald-500/15 text-emerald-800 hover:bg-emerald-500/15 dark:text-emerald-200">
+                    Available
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">Hidden</Badge>
+                )}
+                {form.tag.trim() ? (
+                  <Badge className={cn('border-transparent', form.tag_bg || 'bg-muted')}>
+                    {form.tag}
+                  </Badge>
+                ) : null}
               </div>
-
-              {form.prices.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No tier prices. Add tiers or use single price above.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {form.prices.map((tier, index) => (
-                    <div
-                      key={`tier-${index}`}
-                      className="grid gap-3 rounded-lg border p-3 md:grid-cols-[1fr_1fr_1fr_auto]"
-                    >
-                      <div className="grid gap-1.5">
-                        <Label htmlFor={`tier-size-${index}`}>Size</Label>
-                        <Input
-                          id={`tier-size-${index}`}
-                          value={tier.size}
-                          onChange={(e) =>
-                            updateTierPrice(index, 'size', e.target.value)
-                          }
-                          placeholder="Small"
-                        />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label htmlFor={`tier-price-${index}`}>Price</Label>
-                        <Input
-                          id={`tier-price-${index}`}
-                          value={tier.price}
-                          onChange={(e) =>
-                            updateTierPrice(index, 'price', e.target.value)
-                          }
-                          placeholder="$65"
-                        />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label htmlFor={`tier-serves-${index}`}>Serves</Label>
-                        <Input
-                          id={`tier-serves-${index}`}
-                          value={tier.serves}
-                          onChange={(e) =>
-                            updateTierPrice(index, 'serves', e.target.value)
-                          }
-                          placeholder="5–7 People"
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeTierPrice(index)}
-                          disabled={saving}
-                          aria-label={`Remove tier ${index + 1}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <ProductShippingFields
-              idPrefix="pack"
-              value={form}
-              onChange={(shipping) => setForm((f) => ({ ...f, ...shipping }))}
-              disabled={saving || imageUploadBusy}
-            />
-
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="pack-available">Available</Label>
-              <input
-                id="pack-available"
-                type="checkbox"
-                checked={form.is_available}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, is_available: e.target.checked }))
-                }
-                className="h-4 w-4"
-              />
-            </div>
+              <DialogTitle className="text-xl">
+                {editingId !== null ? 'Edit catering item' : 'Add catering item'}
+              </DialogTitle>
+              {form.name.trim() ? (
+                <p className="text-sm font-medium text-foreground/80">{form.name}</p>
+              ) : null}
+              <DialogDescription>
+                Use tier prices for hot dishes. Use single price, tag, and includes
+                for standard catering packs.
+              </DialogDescription>
+            </DialogHeader>
           </div>
 
-          <DialogFooter>
+          <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-5 md:grid-cols-2">
+            <CateringPackFormSection
+              title="Images"
+              description="Primary hero image and optional gallery shots for the catering page."
+              icon={ImageIcon}
+              accentClass="border-sky-200/70 bg-gradient-to-br from-sky-50/80 to-background dark:border-sky-900/50 dark:from-sky-950/30"
+            >
+              <div className="space-y-4">
+                <ImageUpload
+                  label="Primary image"
+                  description="JPEG, PNG, WebP or GIF. Uploads 256, 512, 1024 and 1920px variants."
+                  value={
+                    imagePreviewUrl ??
+                    previewFromImageUrls(form.image_sizes) ??
+                    null
+                  }
+                  onFileSelect={handleImageUpload}
+                  onClear={
+                    Object.keys(form.image_sizes).length > 0
+                      ? handleImageClear
+                      : undefined
+                  }
+                  uploadResizes={[...CATERING_IMAGE_UPLOAD_RESIZES]}
+                  isUploading={isUploadingImages}
+                  disabled={saving || imageUploadBusy}
+                  shape="square"
+                />
+                <MenuAdditionalImages
+                  images={form.additional_images}
+                  onAdd={handleAdditionalImageUpload}
+                  onRemove={handleAdditionalImageRemove}
+                  isUploading={isUploadingAdditionalImages}
+                  disabled={saving || imageUploadBusy}
+                />
+              </div>
+            </CateringPackFormSection>
+
+            <CateringPackFormSection
+              title="Item details"
+              description="Core identity, category, and display order on the catering page."
+              icon={Package}
+              accentClass="border-violet-200/70 bg-gradient-to-br from-violet-50/80 to-background dark:border-violet-900/50 dark:from-violet-950/30"
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <CateringPackFormField label="ID" htmlFor="pack-id">
+                  <Input
+                    id="pack-id"
+                    type="number"
+                    value={form.id}
+                    disabled={editingId !== null}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, id: Number(e.target.value) || 0 }))
+                    }
+                  />
+                </CateringPackFormField>
+                <CateringPackFormField label="Sort order" htmlFor="pack-sort">
+                  <Input
+                    id="pack-sort"
+                    type="number"
+                    value={form.sort_order}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        sort_order: Number(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                </CateringPackFormField>
+                <CateringPackFormField
+                  label="Category"
+                  htmlFor="pack-category"
+                  className="md:col-span-2"
+                >
+                  <Input
+                    id="pack-category"
+                    value={form.category}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, category: e.target.value }))
+                    }
+                    placeholder="Catering Packs"
+                  />
+                </CateringPackFormField>
+                <CateringPackFormField
+                  label="Name"
+                  htmlFor="pack-name"
+                  className="md:col-span-2"
+                >
+                  <Input
+                    id="pack-name"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                  />
+                </CateringPackFormField>
+              </div>
+            </CateringPackFormSection>
+
+            <CateringPackFormSection
+              title="Pricing"
+              description="Single price for packs, or tier rows for hot dishes and platters."
+              icon={DollarSign}
+              accentClass="border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-background dark:border-emerald-900/50 dark:from-emerald-950/30"
+            >
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <CateringPackFormField label="Serves" htmlFor="pack-serves">
+                    <Input
+                      id="pack-serves"
+                      value={form.serves}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, serves: e.target.value }))
+                      }
+                    />
+                  </CateringPackFormField>
+                  <CateringPackFormField label="Price label" htmlFor="pack-price">
+                    <Input
+                      id="pack-price"
+                      value={form.price}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, price: e.target.value }))
+                      }
+                      placeholder="$160"
+                    />
+                  </CateringPackFormField>
+                  <CateringPackFormField label="Unit price" htmlFor="pack-unit-price">
+                    <Input
+                      id="pack-unit-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.unit_price}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, unit_price: e.target.value }))
+                      }
+                      placeholder="160.00"
+                    />
+                  </CateringPackFormField>
+                </div>
+
+                <div className="space-y-3 rounded-lg border border-emerald-200/60 bg-background/60 p-3 dark:border-emerald-900/40">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">Tier prices</p>
+                      <p className="text-xs text-muted-foreground">
+                        Optional size/price/serves rows for hot dishes and platters.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-emerald-300/70 bg-background/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                      onClick={addTierPrice}
+                      disabled={saving}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      Add tier
+                    </Button>
+                  </div>
+
+                  {form.prices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No tier prices. Add tiers or use single price above.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {form.prices.map((tier, index) => (
+                        <div
+                          key={`tier-${index}`}
+                          className={cn(
+                            'grid gap-3 rounded-lg border border-l-4 p-3 md:grid-cols-[1fr_1fr_1fr_auto]',
+                            TIER_ROW_ACCENTS[index % TIER_ROW_ACCENTS.length],
+                          )}
+                        >
+                          <CateringPackFormField
+                            label="Size"
+                            htmlFor={`tier-size-${index}`}
+                          >
+                            <Input
+                              id={`tier-size-${index}`}
+                              value={tier.size}
+                              onChange={(e) =>
+                                updateTierPrice(index, 'size', e.target.value)
+                              }
+                              placeholder="Small"
+                            />
+                          </CateringPackFormField>
+                          <CateringPackFormField
+                            label="Price"
+                            htmlFor={`tier-price-${index}`}
+                          >
+                            <Input
+                              id={`tier-price-${index}`}
+                              value={tier.price}
+                              onChange={(e) =>
+                                updateTierPrice(index, 'price', e.target.value)
+                              }
+                              placeholder="$65"
+                            />
+                          </CateringPackFormField>
+                          <CateringPackFormField
+                            label="Serves"
+                            htmlFor={`tier-serves-${index}`}
+                          >
+                            <Input
+                              id={`tier-serves-${index}`}
+                              value={tier.serves}
+                              onChange={(e) =>
+                                updateTierPrice(index, 'serves', e.target.value)
+                              }
+                              placeholder="5–7 People"
+                            />
+                          </CateringPackFormField>
+                          <div className="flex items-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeTierPrice(index)}
+                              disabled={saving}
+                              aria-label={`Remove tier ${index + 1}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CateringPackFormSection>
+
+            <CateringPackFormSection
+              title="Presentation"
+              description="Tags, copy, and bullet points shown on the public catering card."
+              icon={Sparkles}
+              accentClass="border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-background dark:border-amber-900/50 dark:from-amber-950/30"
+            >
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <CateringPackFormField label="Tag" htmlFor="pack-tag">
+                    <Input
+                      id="pack-tag"
+                      value={form.tag}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, tag: e.target.value }))
+                      }
+                    />
+                  </CateringPackFormField>
+                  <CateringPackFormField
+                    label="Tag background class"
+                    htmlFor="pack-tag-bg"
+                    description="Tailwind classes for the tag badge preview."
+                  >
+                    <Input
+                      id="pack-tag-bg"
+                      value={form.tag_bg}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, tag_bg: e.target.value }))
+                      }
+                    />
+                  </CateringPackFormField>
+                </div>
+                {form.tag.trim() ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300/60 bg-background/70 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">Preview</span>
+                    <Badge className={cn('border-transparent', form.tag_bg || 'bg-muted')}>
+                      {form.tag}
+                    </Badge>
+                  </div>
+                ) : null}
+                <CateringPackFormField label="Description" htmlFor="pack-description">
+                  <Textarea
+                    id="pack-description"
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, description: e.target.value }))
+                    }
+                  />
+                </CateringPackFormField>
+                <CateringPackFormField
+                  label="Note"
+                  htmlFor="pack-note"
+                  description="Optional note shown on hot dishes."
+                >
+                  <Textarea
+                    id="pack-note"
+                    rows={2}
+                    value={form.note}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, note: e.target.value }))
+                    }
+                    placeholder="Optional note shown on hot dishes"
+                  />
+                </CateringPackFormField>
+                <CateringPackFormField
+                  label="Includes"
+                  htmlFor="pack-includes"
+                  description="One item per line."
+                >
+                  <Textarea
+                    id="pack-includes"
+                    rows={5}
+                    value={form.includesText}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, includesText: e.target.value }))
+                    }
+                  />
+                </CateringPackFormField>
+              </div>
+            </CateringPackFormSection>
+
+            <CateringPackFormSection
+              title="Shipping / freight"
+              description="Per sellable unit dimensions used for courier freight quotes."
+              icon={Truck}
+              accentClass="border-teal-200/70 bg-gradient-to-br from-teal-50/80 to-background dark:border-teal-900/50 dark:from-teal-950/30"
+            >
+              <div className="[&>div]:border-0 [&>div]:bg-transparent [&>div]:p-0 [&>div]:shadow-none [&_h4]:sr-only [&_p]:sr-only">
+                <ProductShippingFields
+                  idPrefix="pack"
+                  value={form}
+                  onChange={(shipping) => setForm((f) => ({ ...f, ...shipping }))}
+                  disabled={saving || imageUploadBusy}
+                />
+              </div>
+            </CateringPackFormSection>
+
+            <CateringPackFormSection
+              title="Availability"
+              description="Control whether this item appears on the public catering page."
+              accentClass="border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-background dark:border-rose-900/50 dark:from-rose-950/30"
+            >
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={form.is_available}
+                onClick={() =>
+                  setForm((f) => ({ ...f, is_available: !f.is_available }))
+                }
+                disabled={saving || imageUploadBusy}
+                className={cn(
+                  'flex w-full cursor-pointer items-start gap-3 rounded-lg border p-4 text-left transition-all',
+                  form.is_available
+                    ? 'border-emerald-300/70 bg-emerald-500/10 font-medium text-emerald-950 dark:text-emerald-100'
+                    : 'border-border/60 bg-background hover:border-rose-300/50 hover:bg-rose-50/30',
+                )}
+              >
+                <span
+                  className={cn(
+                    'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
+                    form.is_available
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-muted-foreground/40 bg-background',
+                  )}
+                >
+                  {form.is_available ? (
+                    <Check className="size-3 stroke-[3]" aria-hidden />
+                  ) : null}
+                </span>
+                <div className="grid gap-0.5">
+                  <span className="text-sm font-medium leading-none">
+                    Available on catering page
+                  </span>
+                  <span className="text-xs leading-relaxed text-muted-foreground">
+                    {form.is_available
+                      ? 'Customers can view and enquire about this item.'
+                      : 'Hidden from the public catering menu until enabled.'}
+                  </span>
+                </div>
+              </button>
+            </CateringPackFormSection>
+          </div>
+
+          <DialogFooter className="shrink-0 border-t bg-muted/20 px-6 py-4">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
@@ -1291,7 +1495,11 @@ export function CateringPacks() {
             >
               Cancel
             </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
+            <Button
+              className="bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700"
+              onClick={() => void handleSave()}
+              disabled={saving}
+            >
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

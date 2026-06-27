@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
+import { isCateringCartRoute } from "@/lib/catering-routes";
 import { hasPrivilege } from "@/lib/privileges";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
 import { useCateringCart } from "@/contexts/CateringCartContext";
@@ -104,17 +105,12 @@ function isWholesaleCartRoute(pathname: string): boolean {
   return path === "/wholesale/shop" || path === "/wholesale/orders";
 }
 
-function isCateringCartRoute(pathname: string): boolean {
-  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
-  return (
-    path === "/catering" ||
-    path === "/member/catering-shop" ||
-    path === "/member/catering-orders"
-  );
+function isCateringCartRouteForHeader(pathname: string): boolean {
+  return isCateringCartRoute(pathname);
 }
 
 function getCartContext(pathname: string): CartContext | null {
-  if (isCateringCartRoute(pathname)) return "catering";
+  if (isCateringCartRouteForHeader(pathname)) return "catering";
   if (isWholesaleCartRoute(pathname)) return "wholesale";
   return null;
 }

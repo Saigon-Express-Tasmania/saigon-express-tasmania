@@ -11,10 +11,36 @@ import type { DeliveryCity } from "@/types";
 import type { UserProfile } from "@/types/UserProfile";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
 import {
+  isBillingCountryAustralia,
+  normalizeBillingStateForAustralia,
+} from "@/lib/billing-address";
+import {
   DEFAULT_AUSTRALIAN_STATE_CODE,
   type AustralianStateCode,
+  type OrderFulfillmentMethod,
 } from "@/types/WholesaleB2BOrder";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
+
+export const CATERING_FULFILLMENT_OPTIONS: {
+  value: Extract<OrderFulfillmentMethod, "delivery" | "pick_up">;
+  label: string;
+}[] = [
+  { value: "delivery", label: "Deliver to venue" },
+  { value: "pick_up", label: "Pick up at a store" },
+];
+
+export function isCateringPickup(
+  form: Pick<CateringOrderReviewForm, "requested_fulfillment_method">,
+): boolean {
+  return form.requested_fulfillment_method === "pick_up";
+}
+
+export function hasCateringPickupStoreSelected(
+  form: Pick<CateringOrderReviewForm, "requested_pick_up_store_id">,
+): boolean {
+  const id = form.requested_pick_up_store_id;
+  return id != null && Number.isFinite(id) && id > 0;
+}
 
 function trimmedOrEmpty(value: string | null | undefined): string {
   return String(value ?? "").trim();
@@ -129,8 +155,9 @@ export function withCateringOrderTotals(
   options?: CommerceTaxSettings | CateringOrderTotalsOptions,
 ): CateringOrderReviewForm {
   const { tax, deliveryCities, selfDeliveryFee } = normalizeTotalsOptions(options);
-  const shippingFee =
-    deliveryCities && selfDeliveryFee
+  const shippingFee = isCateringPickup(form)
+    ? 0
+    : deliveryCities && selfDeliveryFee
       ? resolveCateringShippingFee(form, deliveryCities, selfDeliveryFee)
       : form.shipping_fee;
 
@@ -156,6 +183,10 @@ export function buildCateringOrderReviewFromProfile(
     isGstInclusive: tax?.isGstInclusive,
     gstTaxRate: tax?.gstTaxRate,
   });
+  const billingCountry =
+    trimmedOrEmpty(profile.billing_country) || WHOLESALE_DEFAULT_COUNTRY;
+  const rawBillingState =
+    trimmedOrEmpty(profile.billing_state) || DEFAULT_AUSTRALIAN_STATE_CODE;
 
   return {
     customer_name: getWholesaleContactName(profile),
@@ -163,6 +194,8 @@ export function buildCateringOrderReviewFromProfile(
     customer_phone: trimmedOrEmpty(profile.phone),
     event_date: "",
     guest_count: "",
+    requested_fulfillment_method: "delivery",
+    requested_pick_up_store_id: null,
     shipping_dba_name: trimmedOrEmpty(profile.shipping_dba_name || profile.business_name),
     shipping_address: trimmedOrEmpty(profile.shipping_address),
     shipping_city: trimmedOrEmpty(profile.shipping_city),
@@ -172,6 +205,18 @@ export function buildCateringOrderReviewFromProfile(
     shipping_postal_code: trimmedOrEmpty(profile.shipping_postal_code),
     shipping_country: trimmedOrEmpty(profile.shipping_country) || WHOLESALE_DEFAULT_COUNTRY,
     shipping_preferred_window: trimmedOrEmpty(profile.shipping_preferred_window),
+    billing_legal_name: trimmedOrEmpty(
+      profile.billing_legal_name || profile.business_name,
+    ),
+    billing_tax_id: trimmedOrEmpty(profile.billing_tax_id) || null,
+    billing_address: trimmedOrEmpty(profile.billing_address),
+    billing_street_2: null,
+    billing_city: trimmedOrEmpty(profile.billing_city),
+    billing_state: isBillingCountryAustralia(billingCountry)
+      ? normalizeBillingStateForAustralia(rawBillingState)
+      : rawBillingState,
+    billing_postal_code: trimmedOrEmpty(profile.billing_postal_code),
+    billing_country: billingCountry,
     notes: null,
     coupon_code: null,
     ...totals,
@@ -193,6 +238,8 @@ export function buildCateringOrderReviewForGuest(
     customer_phone: "",
     event_date: "",
     guest_count: "",
+    requested_fulfillment_method: "delivery",
+    requested_pick_up_store_id: null,
     shipping_dba_name: "",
     shipping_address: "",
     shipping_city: "",
@@ -200,6 +247,14 @@ export function buildCateringOrderReviewForGuest(
     shipping_postal_code: "",
     shipping_country: WHOLESALE_DEFAULT_COUNTRY,
     shipping_preferred_window: "",
+    billing_legal_name: "",
+    billing_tax_id: null,
+    billing_address: "",
+    billing_street_2: null,
+    billing_city: "",
+    billing_state: DEFAULT_AUSTRALIAN_STATE_CODE,
+    billing_postal_code: "",
+    billing_country: WHOLESALE_DEFAULT_COUNTRY,
     notes: null,
     coupon_code: null,
     ...totals,
@@ -258,6 +313,51 @@ export function buildCateringPaymentFinancialDetails(
   };
 }
 
+export function isCateringBillingSameAsShipping(
+  form: CateringOrderReviewForm,
+): boolean {
+  return (
+    form.billing_legal_name ===
+      (form.shipping_dba_name.trim() || form.customer_name.trim()) &&
+    form.billing_address === form.shipping_address &&
+    (form.billing_street_2 ?? "") === "" &&
+    form.billing_city === form.shipping_city &&
+    form.billing_state === form.shipping_state &&
+    form.billing_postal_code === form.shipping_postal_code &&
+    form.billing_country ===
+      (form.shipping_country.trim() || WHOLESALE_DEFAULT_COUNTRY)
+  );
+}
+
+export function cateringBillingFromShippingForm(
+  form: CateringOrderReviewForm,
+): CateringOrderReviewForm {
+  return {
+    ...form,
+    billing_legal_name: form.shipping_dba_name.trim() || form.customer_name.trim(),
+    billing_address: form.shipping_address,
+    billing_street_2: null,
+    billing_city: form.shipping_city,
+    billing_state: form.shipping_state,
+    billing_postal_code: form.shipping_postal_code,
+    billing_country: WHOLESALE_DEFAULT_COUNTRY,
+    shipping_country: WHOLESALE_DEFAULT_COUNTRY,
+  };
+}
+
+export function isCateringBillingComplete(
+  form: CateringOrderReviewForm,
+): boolean {
+  return (
+    form.billing_legal_name.trim().length > 0 &&
+    form.billing_address.trim().length > 0 &&
+    form.billing_city.trim().length > 0 &&
+    form.billing_state.trim().length > 0 &&
+    form.billing_postal_code.trim().length > 0 &&
+    form.billing_country.trim().length > 0
+  );
+}
+
 export function validateCateringOrderReview(
   form: CateringOrderReviewForm,
 ): string | null {
@@ -265,10 +365,22 @@ export function validateCateringOrderReview(
   if (!form.customer_email.trim()) return "Please enter your email.";
   if (!form.customer_phone.trim()) return "Please enter your phone number.";
   if (!form.event_date.trim()) return "Please select an event date.";
-  if (!form.shipping_address.trim()) return "Delivery address is required.";
-  if (!form.shipping_city.trim()) return "Delivery city is required.";
-  if (!form.shipping_state.trim()) return "Delivery state is required.";
-  if (!form.shipping_postal_code.trim()) return "Delivery postal code is required.";
+  if (isCateringPickup(form)) {
+    if (!hasCateringPickupStoreSelected(form)) {
+      return "Please select a pickup store.";
+    }
+  } else {
+    if (!form.shipping_address.trim()) return "Delivery address is required.";
+    if (!form.shipping_city.trim()) return "Delivery city is required.";
+    if (!form.shipping_state.trim()) return "Delivery state is required.";
+    if (!form.shipping_postal_code.trim()) return "Delivery postal code is required.";
+  }
+  if (!form.billing_legal_name.trim()) return "Billing legal name is required.";
+  if (!form.billing_address.trim()) return "Billing street address is required.";
+  if (!form.billing_city.trim()) return "Billing city is required.";
+  if (!form.billing_state.trim()) return "Billing state is required.";
+  if (!form.billing_postal_code.trim()) return "Billing postal code is required.";
+  if (!form.billing_country.trim()) return "Billing country is required.";
   if (form.grand_total <= 0) return "Order total must be greater than zero.";
   return null;
 }
@@ -278,9 +390,10 @@ export function serializeCateringOrderReviewForPlacement(
   tax?: CommerceTaxSettings,
 ) {
   const isGstInclusive = tax?.isGstInclusive !== false;
+  const isPickup = isCateringPickup(form);
   const noteLines = [
     form.guest_count.trim() ? `Guest count: ${form.guest_count.trim()}` : null,
-    form.shipping_preferred_window.trim()
+    !isPickup && form.shipping_preferred_window.trim()
       ? `Delivery window: ${form.shipping_preferred_window.trim()}`
       : null,
     form.notes?.trim() || null,
@@ -290,8 +403,10 @@ export function serializeCateringOrderReviewForPlacement(
     customerName: form.customer_name.trim(),
     customerEmail: form.customer_email.trim(),
     customerPhone: form.customer_phone.trim(),
-    fulfillmentType: "delivery" as const,
+    fulfillmentType: (isPickup ? "pick_up" : "delivery") as OrderFulfillmentMethod,
     pickupTime: form.event_date.trim(),
+    requestedPickUpStoreId: isPickup ? form.requested_pick_up_store_id : undefined,
+    storeId: isPickup ? form.requested_pick_up_store_id ?? undefined : undefined,
     notes: noteLines.length > 0 ? noteLines.join("\n") : undefined,
     financialDetails: {
       subtotal_ex_gst: form.subtotal,
@@ -302,17 +417,32 @@ export function serializeCateringOrderReviewForPlacement(
       coupon_discount: form.coupon_discount,
       currency: "AUD",
     },
-    shippingAddress: {
-      dba_name: form.shipping_dba_name.trim() || form.customer_name.trim(),
-      street_1: form.shipping_address.trim(),
-      street_2: null,
-      city: form.shipping_city.trim(),
-      state: form.shipping_state,
-      postal_code: form.shipping_postal_code.trim(),
-      country: form.shipping_country.trim() || WHOLESALE_DEFAULT_COUNTRY,
-      special_instructions: null,
-      preferred_window: form.shipping_preferred_window.trim() || null,
+    billingAddress: {
+      legal_name: form.billing_legal_name.trim(),
+      street_1: form.billing_address.trim(),
+      street_2: form.billing_street_2?.trim() || null,
+      city: form.billing_city.trim(),
+      state: form.billing_state,
+      postal_code: form.billing_postal_code.trim(),
+      country: form.billing_country.trim() || WHOLESALE_DEFAULT_COUNTRY,
+      tax_id: form.billing_tax_id?.trim() || null,
+      payment_terms: "prepaid",
     },
+    ...(isPickup
+      ? {}
+      : {
+          shippingAddress: {
+            dba_name: form.shipping_dba_name.trim() || form.customer_name.trim(),
+            street_1: form.shipping_address.trim(),
+            street_2: null,
+            city: form.shipping_city.trim(),
+            state: form.shipping_state,
+            postal_code: form.shipping_postal_code.trim(),
+            country: form.shipping_country.trim() || WHOLESALE_DEFAULT_COUNTRY,
+            special_instructions: null,
+            preferred_window: form.shipping_preferred_window.trim() || null,
+          },
+        }),
   };
 }
 

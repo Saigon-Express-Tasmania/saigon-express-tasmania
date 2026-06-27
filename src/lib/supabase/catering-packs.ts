@@ -1,7 +1,16 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
+import { parseNumericCateringItemId } from "@/lib/catering-item-routes";
+import {
+  normalizeMenuImageUrls,
+  parseMenuImageMore,
+  pickMenuImageUrl,
+  type MenuImageMoreEntry,
+  type MenuImageUrls,
+} from "@/types";
 import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import {
+  fetchCateringProductRowById,
   fetchCateringProductRows,
   type CateringProductRow,
 } from "./products";
@@ -22,6 +31,7 @@ export type CateringPack = {
   category: string;
   serves: string | null;
   price: string | null;
+  catalogUnitPrice: string | null;
   description: string;
   includes: string[];
   note: string | null;
@@ -29,8 +39,12 @@ export type CateringPack = {
   tag: string;
   tagBg: string;
   img: string | null;
+  imageUrls: MenuImageUrls;
+  moreImages: MenuImageMoreEntry[];
   sortOrder: number;
   isAvailable: boolean;
+  customizationIds: number[];
+  customizationsDisabled: boolean;
 };
 
 function mapTierPrices(input: CateringProductRow["prices"]): CateringTierPrice[] {
@@ -47,32 +61,21 @@ function mapTierPrices(input: CateringProductRow["prices"]): CateringTierPrice[]
     .filter((item) => item.size && item.price && item.serves);
 }
 
-function resolvePackImage(
-  imageUrl: string | null,
-  imageUrls: Record<string, unknown> | null,
-): string | null {
-  if (imageUrls && typeof imageUrls === "object" && !Array.isArray(imageUrls)) {
-    for (const size of [1920, 1024, 512, 256]) {
-      const url = String(imageUrls[String(size)] ?? "").trim();
-      if (url) return url;
-    }
-    for (const [key, value] of Object.entries(imageUrls)) {
-      if (key === "more") continue;
-      const url = String(value ?? "").trim();
-      if (url) return url;
-    }
-  }
-  const legacy = imageUrl?.trim();
-  return legacy || null;
-}
+export function mapCateringPackRow(row: CateringProductRow): CateringPack {
+  const imageUrls = normalizeMenuImageUrls(row.image_urls);
+  const moreImages = parseMenuImageMore(row.image_urls);
+  const img =
+    pickMenuImageUrl(imageUrls, [1920, 1024, 512, 256]) ??
+    row.image_url?.trim() ??
+    null;
 
-function mapCateringPackRow(row: CateringProductRow): CateringPack {
   return {
     id: Number(row.id),
     name: row.name,
     category: row.category?.trim() || FEATURED_CATERING_PACK_CATEGORY,
     serves: row.serves?.trim() || null,
     price: row.price?.trim() || null,
+    catalogUnitPrice: row.unit_price?.trim() || null,
     description: row.description ?? "",
     includes: Array.isArray(row.includes)
       ? row.includes.map((value) => String(value))
@@ -81,15 +84,26 @@ function mapCateringPackRow(row: CateringProductRow): CateringPack {
     prices: mapTierPrices(row.prices),
     tag: row.tag ?? "",
     tagBg: row.tag_bg ?? "",
-    img: resolvePackImage(row.image_url, row.image_urls),
+    img,
+    imageUrls,
+    moreImages,
     sortOrder: Number(row.sort_order ?? 0),
     isAvailable: Boolean(row.is_available),
+    customizationIds: Array.isArray(row.customization_ids)
+      ? row.customization_ids.map((id) => Number(id))
+      : [],
+    customizationsDisabled: Boolean(row.customizations_disabled),
   };
 }
 
 async function loadCateringPacks(): Promise<CateringPack[]> {
   const rows = await fetchCateringProductRows();
   return rows.map(mapCateringPackRow);
+}
+
+async function loadCateringItemById(id: number): Promise<CateringPack | null> {
+  const row = await fetchCateringProductRowById(id);
+  return row ? mapCateringPackRow(row) : null;
 }
 
 export const getCateringPacks = unstable_cache(
@@ -100,3 +114,22 @@ export const getCateringPacks = unstable_cache(
     tags: [CACHE_TAG],
   },
 );
+
+export function getCateringItemById(id: number): Promise<CateringPack | null> {
+  return unstable_cache(
+    () => loadCateringItemById(id),
+    [CACHE_TAG, "catering-item", SERVER_CACHE_INSTANCE_ID, "id", String(id)],
+    {
+      revalidate: SHORT_REVALIDATE_SECONDS,
+      tags: [CACHE_TAG, `${CACHE_TAG}-item-${id}`],
+    },
+  )();
+}
+
+export function getCateringItemFromParam(
+  param: string,
+): Promise<CateringPack | null> {
+  const id = parseNumericCateringItemId(param);
+  if (id === null) return Promise.resolve(null);
+  return getCateringItemById(id);
+}

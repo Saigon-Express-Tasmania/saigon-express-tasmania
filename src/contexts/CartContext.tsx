@@ -28,6 +28,8 @@ export type MenuItem = {
   /** Energy in kilojoules (kJ). */
   energy: number;
   foodContent?: FoodContent;
+  customizationIds?: number[];
+  customizationsDisabled?: boolean;
 };
 
 export type CartItem = {

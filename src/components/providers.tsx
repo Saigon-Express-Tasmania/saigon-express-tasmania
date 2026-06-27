@@ -79,6 +79,7 @@ export function Providers({
                         </ClientOnly>
                         <ClientOnly>
                           <CateringShoppingCart
+                            storeLocations={storeLocations}
                             deliveryCities={deliveryCities}
                             selfDeliveryFee={selfDeliveryFee}
                             selfDeliveryOrigin={selfDeliveryOrigin}

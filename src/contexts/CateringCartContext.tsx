@@ -12,6 +12,8 @@ export type CateringCartItem = {
   variantLabel: string | null;
   qty: number;
   unitPrice: number;
+  /** Product catalogue `unit_price` text; empty means cart line is estimated. */
+  catalogUnitPrice?: string | null;
   imageUrl: string | null;
   /** When true, line is GST-free (basic food, etc.). */
   gstFree?: boolean;
@@ -23,6 +25,7 @@ export type CateringCartProductInput = {
   productName: string;
   variantLabel?: string | null;
   unitPrice: number;
+  catalogUnitPrice?: string | null;
   imageUrl?: string | null;
   gstFree?: boolean;
 };
@@ -85,6 +88,7 @@ const useCateringCartStore = create<CateringCartStore>()(
                   variantLabel: product.variantLabel?.trim() || null,
                   qty: 1,
                   unitPrice: product.unitPrice,
+                  catalogUnitPrice: product.catalogUnitPrice ?? null,
                   imageUrl: product.imageUrl ?? null,
                   gstFree: product.gstFree ?? false,
                   addedAt: now,

@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Flame, Leaf, MessageSquare } from "lucide-react";
 import { SingleChoiceOptionIndicator } from "@/components/SingleChoiceCheckIndicator";
-import type { CustomOption, OptionGroup } from "@/lib/item-customise-options";
+import type { CustomOption, OptionGroup } from "@/lib/product-customizations";
+import {
+  isSpiceGroupKey,
+  isVeggieGroupKey,
+} from "@/lib/product-customizations";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,10 +69,10 @@ function OptionPriceTag({
 }
 
 function GroupIcon({ groupId }: { groupId: string }) {
-  if (groupId === "spice") {
+  if (isSpiceGroupKey(groupId)) {
     return <Flame className="size-4 text-brand-red" />;
   }
-  if (groupId === "veggies") {
+  if (isVeggieGroupKey(groupId)) {
     return <Leaf className="size-4 text-green-600" />;
   }
   return null;

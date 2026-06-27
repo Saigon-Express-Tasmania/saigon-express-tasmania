@@ -30,3 +30,9 @@ export function defaultConfirmPrivileges(current: BusinessType[]): BusinessType[
   if (hasAnyPortalPartnerPrivilege(base)) return base;
   return normalizePartnerPrivileges([...base]);
 }
+
+export function defaultFranchiseAccountPrivileges(
+  existing: BusinessType[] = [],
+): BusinessType[] {
+  return normalizePartnerPrivileges([...existing, 'wholesale', 'franchise']);
+}

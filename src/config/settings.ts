@@ -36,6 +36,7 @@ export const BLOG_POST_DETAIL_REVALIDATE_SECONDS = LONG_REVALIDATE_SECONDS;
 export const CACHE_TAGS = {
   menu: "menu",
   categories: "categories",
+  productCustomizations: "product-customizations",
   promotions: "promotions",
   cateringPacks: "catering-packs",
   storeLocations: "store-locations",

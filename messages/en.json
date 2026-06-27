@@ -391,6 +391,11 @@
       "description": "All boxes are freshly prepared on the day of your event. Please provide at least 24 hours' notice. Contact ",
       "descriptionEnd": " to customise your order.",
       "empty": "No catering menu items available right now.",
+      "emptyCategory": "No items in this category.",
+      "allCategory": "All",
+      "categories": {
+        "label": "Category"
+      },
       "caters": "Caters {serves}",
       "enquire": "Enquire Now",
       "addToOrder": "Add to order",
@@ -439,6 +444,20 @@
       "rateLimit": "Please wait {time} before submitting again.",
       "submitFailed": "Failed to send enquiry. Please email {email} directly.",
       "submitFailedFallback": "Failed to send enquiry. Please try again later."
+    }
+  },
+  "CateringItem": {
+    "backToCatering": "Back to Catering Menu",
+    "backToCateringHint": "Browse all catering categories and packs",
+    "additionalImagesTitle": "Additional images",
+    "additionalImagesSelect": "View image {index}",
+    "includesTitle": "What's included",
+    "relatedTitle": "You May Also Like",
+    "unavailableBadge": "Currently unavailable",
+    "quoteRequired": "This item requires a custom quote. Please contact catering.",
+    "cartBar": {
+      "heading": "View catering cart",
+      "summary": "{count, plural, one {# item · {total}} other {# items · {total}}}"
     }
   },
   "Checkout": {

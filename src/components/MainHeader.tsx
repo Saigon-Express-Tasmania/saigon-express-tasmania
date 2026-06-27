@@ -9,7 +9,7 @@ import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { useSupabase } from "@/hooks/useSupabase";
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
+import { isPublicCateringShopRoute } from "@/lib/catering-routes";
 import { MapPin, Menu, ClipboardList, ShoppingCart, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -23,22 +23,6 @@ import type { StoreLocation } from "@/types";
 type MainHeaderProps = {
   storeLocations: StoreLocation[];
 };
-
-function stripLocalePrefix(pathname: string): string {
-  for (const locale of SUPPORTED_LOCALES) {
-    if (locale === DEFAULT_LOCALE) continue;
-    const prefix = `/${locale}`;
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return pathname.slice(prefix.length) || "/";
-    }
-  }
-  return pathname;
-}
-
-function isCateringShopRoute(pathname: string): boolean {
-  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
-  return path === "/catering";
-}
 
 export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const tLinks = useTranslations("NavLinks");
@@ -61,7 +45,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
     isHydrated: isGuestOrderHydrated,
   } = useGuestCateringOrder();
   const { isSignedIn, profile, authMetadata } = useSupabase();
-  const isCateringPage = isCateringShopRoute(pathname);
+  const isCateringPage = isPublicCateringShopRoute(pathname);
   const showGuestLastOrder =
     isCateringPage && !isSignedIn && isGuestOrderHydrated && hasActiveGuestOrder;
   const showCateringCart = isCateringPage && !showGuestLastOrder;

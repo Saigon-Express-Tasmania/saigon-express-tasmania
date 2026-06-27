@@ -13,13 +13,14 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
 import {
   GUEST_CATERING_ORDER_STORAGE_KEY,
   isGuestCateringOrderTrackable,
   shouldBlockGuestCateringCart,
   type GuestCateringOrderSession,
 } from "@/lib/guest-catering-order-session";
+import { useCateringCart } from "@/contexts/CateringCartContext";
+import { isPublicCateringShopRoute } from "@/lib/catering-routes";
 import { clearCateringOrderRateLimit } from "@/lib/catering-order-rate-limit";
 import {
   fetchOrderByTrackingToken,
@@ -64,17 +65,6 @@ type GuestCateringOrderContextValue = {
 const GuestCateringOrderContext =
   createContext<GuestCateringOrderContextValue | null>(null);
 
-function stripLocalePrefix(pathname: string): string {
-  for (const locale of SUPPORTED_LOCALES) {
-    if (locale === DEFAULT_LOCALE) continue;
-    const prefix = `/${locale}`;
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return pathname.slice(prefix.length) || "/";
-    }
-  }
-  return pathname;
-}
-
 type RefreshTrackedOrderOptions = {
   clearIfMissing?: boolean;
 };
@@ -96,8 +86,7 @@ async function fetchTrackedOrderWithRetry(
 }
 
 function isCateringRoute(pathname: string): boolean {
-  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
-  return path === "/catering";
+  return isPublicCateringShopRoute(pathname);
 }
 
 function GuestCateringOrderCheckoutSync() {
@@ -105,6 +94,7 @@ function GuestCateringOrderCheckoutSync() {
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
   const { clearGuestOrder, setLastOrderOpen } = useGuestCateringOrder();
+  const { clearCart } = useCateringCart();
   const handledCheckoutRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -120,6 +110,7 @@ function GuestCateringOrderCheckoutSync() {
     if (checkout === "success") {
       clearCateringOrderRateLimit();
       clearGuestOrder();
+      clearCart();
       toast.success("Payment successful. Your catering order is confirmed.");
     } else if (checkout === "cancelled") {
       toast.error("Payment was cancelled. You can try again when ready.");
@@ -127,7 +118,7 @@ function GuestCateringOrderCheckoutSync() {
     }
 
     router.replace(pathname, { scroll: false });
-  }, [clearGuestOrder, pathname, router, searchParams, setLastOrderOpen]);
+  }, [clearCart, clearGuestOrder, pathname, router, searchParams, setLastOrderOpen]);
 
   return null;
 }

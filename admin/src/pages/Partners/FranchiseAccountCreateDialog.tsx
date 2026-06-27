@@ -10,6 +10,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { PendingFranchiseInterest } from '@/lib/pending-franchise-interests';
+import { hasAnyPortalPartnerPrivilege } from '@/lib/privileges';
+import type { BusinessType } from '@/types/UserProfile';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -20,6 +22,12 @@ import {
   previewFranchiseAccount,
   type FranchiseAccountPreview,
 } from './franchise-account';
+import {
+  defaultFranchiseAccountPrivileges,
+  normalizePartnerPrivileges,
+  PARTNER_PRIVILEGE_OPTIONS,
+  togglePartnerPrivilege,
+} from './partner-privilege-form';
 
 const PASSWORD_CHARS =
   'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -111,12 +119,16 @@ export function FranchiseAccountCreateDialog({
   const [preview, setPreview] = useState<FranchiseAccountPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [password, setPassword] = useState('');
+  const [selectedPrivileges, setSelectedPrivileges] = useState<BusinessType[]>(
+    () => defaultFranchiseAccountPrivileges(),
+  );
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!interest) {
       setPreview(null);
       setPassword('');
+      setSelectedPrivileges(defaultFranchiseAccountPrivileges());
       return;
     }
 
@@ -124,10 +136,22 @@ export function FranchiseAccountCreateDialog({
     setLoadingPreview(true);
     setPreview(null);
     setPassword('');
+    setSelectedPrivileges(defaultFranchiseAccountPrivileges());
 
     void previewFranchiseAccount(interest.id)
       .then((result) => {
-        if (!cancelled) setPreview(result);
+        if (!cancelled) {
+          setPreview(result);
+          setSelectedPrivileges(
+            normalizePartnerPrivileges(
+              result.emailExists && !result.alreadyHasFranchise
+                ? result.preview.privileges
+                : defaultFranchiseAccountPrivileges(
+                    result.existingUser?.privileges,
+                  ),
+            ),
+          );
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -156,11 +180,20 @@ export function FranchiseAccountCreateDialog({
       return;
     }
 
+    const privileges = normalizePartnerPrivileges(selectedPrivileges);
+    if (!preview.alreadyHasFranchise && !hasAnyPortalPartnerPrivilege(privileges)) {
+      toast.error(
+        'Select at least one portal privilege (wholesale, warehouse, or franchise).',
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       const result = await completeFranchiseAccount({
         franchiseInterestId: interest.id,
         password: preview.passwordRequired ? password : undefined,
+        privileges: preview.alreadyHasFranchise ? undefined : privileges,
       });
 
       toast.success(
@@ -168,7 +201,7 @@ export function FranchiseAccountCreateDialog({
           ? 'Franchise partner account created.'
           : preview.alreadyHasFranchise
             ? 'Franchise interest marked as resolved.'
-            : 'Franchise privilege added to existing account.',
+            : 'Privileges added to existing account.',
       );
       onClose();
       await onCompleted();
@@ -186,7 +219,7 @@ export function FranchiseAccountCreateDialog({
   const submitLabel = preview?.alreadyHasFranchise
     ? 'Mark as resolved'
     : preview?.emailExists
-      ? 'Add franchise privilege'
+      ? 'Add privileges'
       : 'Create account';
 
   return (
@@ -218,7 +251,7 @@ export function FranchiseAccountCreateDialog({
                 An account already exists for <strong>{preview.preview.email}</strong>.
                 {preview.alreadyHasFranchise
                   ? ' This user already has franchise access. You can mark this interest as resolved.'
-                  : ' Confirm below to add the franchise privilege to this user.'}
+                  : ' Confirm below to add wholesale and franchise privileges to this user.'}
               </div>
             ) : (
               <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
@@ -240,13 +273,59 @@ export function FranchiseAccountCreateDialog({
             <section className="space-y-2 rounded-md border p-3">
               <h4 className="text-sm font-semibold">
                 {preview.emailExists && !preview.alreadyHasFranchise
-                  ? 'After adding franchise privilege'
+                  ? 'After adding privileges'
                   : preview.alreadyHasFranchise
                     ? 'Franchise interest'
                     : 'New account preview'}
               </h4>
-              <ProfilePreviewGrid profile={preview.preview} />
+              <ProfilePreviewGrid
+                profile={{
+                  ...preview.preview,
+                  privileges: preview.alreadyHasFranchise
+                    ? preview.preview.privileges
+                    : selectedPrivileges,
+                }}
+              />
             </section>
+
+            {!preview.alreadyHasFranchise ? (
+              <div className="grid gap-2">
+                <Label>Privileges</Label>
+                <div className="flex flex-wrap gap-x-5 gap-y-3 rounded-md border p-3">
+                  {PARTNER_PRIVILEGE_OPTIONS.map((option) => {
+                    const checked = selectedPrivileges.includes(option.value);
+                    const isOnlyPersonal =
+                      option.value === 'personal' &&
+                      selectedPrivileges.length === 1 &&
+                      checked;
+
+                    return (
+                      <label
+                        key={option.value}
+                        className="flex cursor-pointer items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-input"
+                          checked={checked}
+                          disabled={submitting || isOnlyPersonal}
+                          onChange={() =>
+                            setSelectedPrivileges((current) =>
+                              togglePartnerPrivilege(current, option.value),
+                            )
+                          }
+                        />
+                        <span className="capitalize">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Wholesale and franchise are selected by default for franchise
+                  accounts, including when adding privileges to an existing account.
+                </p>
+              </div>
+            ) : null}
 
             {preview.passwordRequired ? (
               <div className="grid gap-2">

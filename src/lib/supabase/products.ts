@@ -7,13 +7,13 @@ import { createServerSupabaseClient } from "./server";
 export type ProductType = "alacarte" | "wholesale" | "catering";
 
 const ALACARTE_SELECT =
-  "id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content";
+  "id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
 
 const WHOLESALE_SELECT =
   "id, name, sku, category, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at";
 
 export const CATERING_SELECT =
-  "id, name, category, serves, price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available";
+  "id, name, category, serves, price, unit_price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available, customization_ids, customizations_disabled";
 
 const PRODUCT_CACHE_TAGS: Record<ProductType, string> = {
   alacarte: CACHE_TAGS.menu,
@@ -163,6 +163,7 @@ export type CateringProductRow = {
   category: string;
   serves: string | null;
   price: string | null;
+  unit_price: string | null;
   description: string;
   includes: string[] | null;
   note: string | null;
@@ -173,7 +174,40 @@ export type CateringProductRow = {
   image_urls: Record<string, unknown> | null;
   sort_order: number;
   is_available: boolean;
+  customization_ids: number[] | null;
+  customizations_disabled: boolean | null;
 };
+
+async function queryCateringProductRowById(
+  id: number,
+): Promise<CateringProductRow | null> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(CATERING_SELECT)
+    .eq("product_type", "catering")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`products catering item ${id}: ${error.message}`);
+  }
+
+  return (data as CateringProductRow | null) ?? null;
+}
+
+export async function fetchCateringProductRowById(
+  id: number,
+): Promise<CateringProductRow | null> {
+  return unstable_cache(
+    () => queryCateringProductRowById(id),
+    ["products", "catering", "id", String(id), SERVER_CACHE_INSTANCE_ID],
+    {
+      revalidate: SHORT_REVALIDATE_SECONDS,
+      tags: [CACHE_TAGS.cateringPacks, `${CACHE_TAGS.cateringPacks}-item-${id}`],
+    },
+  )();
+}
 
 export async function fetchCateringProductRows(): Promise<CateringProductRow[]> {
   return getCachedAvailableProductRows<CateringProductRow>(

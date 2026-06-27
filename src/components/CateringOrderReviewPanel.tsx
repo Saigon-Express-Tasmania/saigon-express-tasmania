@@ -5,13 +5,29 @@ import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import DeliveryCitySelect from "@/components/DeliveryCitySelect";
+import PickupStorePicker from "@/components/PickupStorePicker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
-import { withCateringOrderTotals } from "@/lib/catering-order-review";
+import {
+  CATERING_FULFILLMENT_OPTIONS,
+  cateringBillingFromShippingForm,
+  hasCateringPickupStoreSelected,
+  isCateringBillingComplete,
+  isCateringBillingSameAsShipping,
+  isCateringPickup,
+  withCateringOrderTotals,
+} from "@/lib/catering-order-review";
 import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
+import { formatStoreHours } from "@/lib/store-hours";
+import { filterActiveStoreLocations } from "@/lib/supabase/store-locations-client";
 import { useCommerceTax } from "@/contexts/CommerceTaxContext";
 import { formatGstRateLabel } from "@/lib/gst";
-import { AUSTRALIAN_STATES, WHOLESALE_DEFAULT_COUNTRY } from "@/lib/wholesale-b2b-order";
+import BillingLocationFields from "@/components/BillingLocationFields";
+import {
+  getDeliveryAustralianStateOptions,
+  WHOLESALE_DEFAULT_COUNTRY,
+} from "@/lib/wholesale-b2b-order";
+import { billingCountryPatch } from "@/lib/billing-address";
 import {
   Popover,
   PopoverContent,
@@ -27,17 +43,19 @@ import {
 import {
   buildCateringCartItemsSignature,
   extractPersistableCateringReviewFields,
+  readCateringOrderReviewBillingSameAsShipping,
   writeCateringOrderReviewDraft,
 } from "@/lib/catering-order-review-storage";
 import { cn } from "@/lib/utils";
-import type { DeliveryCity } from "@/types";
+import type { DeliveryCity, StoreLocation } from "@/types";
 import type { UserProfile } from "@/types/UserProfile";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
 import {
   DEFAULT_AUSTRALIAN_STATE_CODE,
   type AustralianStateCode,
+  type OrderFulfillmentMethod,
 } from "@/types/WholesaleB2BOrder";
-import { ArrowLeft, CalendarIcon, ClipboardCheck, Loader2 } from "lucide-react";
+import { ArrowLeft, CalendarIcon, ClipboardCheck, CreditCard, Loader2 } from "lucide-react";
 import "react-day-picker/style.css";
 
 const fieldClass =
@@ -192,9 +210,12 @@ type CateringOrderReviewPanelProps = {
   items: CateringCartItem[];
   review: CateringOrderReviewForm;
   profile: UserProfile | null;
+  storeLocations: StoreLocation[];
   deliveryCities: DeliveryCity[];
   selfDeliveryFee: SelfDeliveryFee;
   selfDeliveryOrigin: string;
+  isCartTotalEstimated: boolean;
+  isCheckingOut: boolean;
   onReviewChange: (next: CateringOrderReviewForm) => void;
   onBack: () => void;
   onConfirm: () => void;
@@ -205,9 +226,12 @@ export default function CateringOrderReviewPanel({
   items,
   review,
   profile,
+  storeLocations,
   deliveryCities,
   selfDeliveryFee,
   selfDeliveryOrigin,
+  isCartTotalEstimated,
+  isCheckingOut,
   onReviewChange,
   onBack,
   onConfirm,
@@ -216,6 +240,15 @@ export default function CateringOrderReviewPanel({
   const commerceTax = useCommerceTax();
   const { isGstInclusive, gstTaxRate } = commerceTax;
   const gstRateLabel = formatGstRateLabel(gstTaxRate);
+  const cartItemsSignature = useMemo(
+    () => buildCateringCartItemsSignature(items),
+    [items],
+  );
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(() => {
+    const persisted = readCateringOrderReviewBillingSameAsShipping(cartItemsSignature);
+    if (persisted != null) return persisted;
+    return isCateringBillingSameAsShipping(review);
+  });
   const totalsOptions = useMemo(
     () => ({
       tax: commerceTax,
@@ -228,6 +261,66 @@ export default function CateringOrderReviewPanel({
     () => withCateringOrderTotals(review, items, totalsOptions),
     [review, items, totalsOptions],
   );
+  const isPickup = isCateringPickup(review);
+  const pickupStores = useMemo(
+    () => filterActiveStoreLocations(storeLocations),
+    [storeLocations],
+  );
+  const selectedPickupStore = useMemo(
+    () =>
+      review.requested_pick_up_store_id != null
+        ? (pickupStores.find(
+            (store) => store.id === review.requested_pick_up_store_id,
+          ) ?? null)
+        : null,
+    [review.requested_pick_up_store_id, pickupStores],
+  );
+  const selectedPickupHours = formatStoreHours(
+    selectedPickupStore?.hours ?? null,
+  );
+  const pickupStoreMissing =
+    isPickup && !hasCateringPickupStoreSelected(review);
+  const pickupStoreInvalid =
+    isPickup &&
+    hasCateringPickupStoreSelected(review) &&
+    pickupStores.length > 0 &&
+    !pickupStores.some(
+      (store) => store.id === review.requested_pick_up_store_id,
+    );
+  const isProcessing = isPlacingOrder || isCheckingOut;
+  const eventDateSelected = review.event_date.trim().length > 0;
+  const deliveryAddressComplete =
+    review.shipping_city.trim().length > 0 &&
+    review.shipping_postal_code.trim().length > 0;
+  const billingComplete = isCateringBillingComplete(review);
+  const showFullBillingFields = isPickup || !billingSameAsShipping;
+  const fulfillmentReady = isPickup
+    ? !pickupStoreMissing && !pickupStoreInvalid
+    : deliveryAddressComplete;
+  const checkoutWarnings = !isCartTotalEstimated
+    ? [
+        !eventDateSelected
+          ? "Select an event date above before checkout."
+          : null,
+        isPickup
+          ? pickupStoreMissing
+            ? "Select a pickup store above before checkout."
+            : pickupStoreInvalid
+              ? "The selected pickup store is no longer available. Please choose another location."
+              : null
+          : !deliveryAddressComplete
+            ? "Select a delivery city and postal code above to calculate delivery before checkout."
+            : null,
+        !billingComplete
+          ? isPickup
+            ? "Enter your billing address above before checkout."
+            : !billingSameAsShipping
+              ? "Enter your billing address above before checkout."
+              : null
+          : null,
+      ].filter((message): message is string => message != null)
+    : [];
+  const confirmDisabled = isProcessing || checkoutWarnings.length > 0;
   const couponDiscount = totalsReview.coupon_discount ?? 0;
   const totalDiscount =
     totalsReview.wholesale_discount + couponDiscount;
@@ -245,6 +338,50 @@ export default function CateringOrderReviewPanel({
       ),
     );
   };
+
+  const patchShipping = (next: Partial<CateringOrderReviewForm>) => {
+    const merged = {
+      ...review,
+      ...next,
+      shipping_country: WHOLESALE_DEFAULT_COUNTRY,
+      shipping_state: DEFAULT_AUSTRALIAN_STATE_CODE,
+    };
+    onReviewChange(
+      withCateringOrderTotals(
+        billingSameAsShipping ? cateringBillingFromShippingForm(merged) : merged,
+        items,
+        totalsOptions,
+      ),
+    );
+  };
+
+  const handleBillingSameAsShippingChange = (checked: boolean) => {
+    setBillingSameAsShipping(checked);
+    if (checked) {
+      onReviewChange(
+        withCateringOrderTotals(
+          cateringBillingFromShippingForm(review),
+          items,
+          totalsOptions,
+        ),
+      );
+    }
+  };
+
+  useEffect(() => {
+    writeCateringOrderReviewDraft({
+      version: 1,
+      cartItemsSignature,
+      billingSameAsShipping,
+      form: extractPersistableCateringReviewFields(review),
+    });
+  }, [cartItemsSignature, review, billingSameAsShipping]);
+
+  useEffect(() => {
+    if (isPickup && billingSameAsShipping) {
+      setBillingSameAsShipping(false);
+    }
+  }, [isPickup, billingSameAsShipping]);
 
   useEffect(() => {
     if (!profile) return;
@@ -272,9 +409,33 @@ export default function CateringOrderReviewPanel({
         profile.shipping_preferred_window,
       ),
       shipping_state:
-        review.shipping_state ||
-        (profile.shipping_state as AustralianStateCode | null) ||
+        getDeliveryAustralianStateOptions().some(
+          (option) => option.value === review.shipping_state,
+        )
+          ? review.shipping_state
+          : DEFAULT_AUSTRALIAN_STATE_CODE,
+      billing_legal_name: maybeFill(
+        review.billing_legal_name,
+        profile.billing_legal_name || profile.business_name,
+      ),
+      billing_tax_id:
+        review.billing_tax_id?.trim() ||
+        profile.billing_tax_id?.trim() ||
+        review.billing_tax_id,
+      billing_address: maybeFill(review.billing_address, profile.billing_address),
+      billing_city: maybeFill(review.billing_city, profile.billing_city),
+      billing_postal_code: maybeFill(
+        review.billing_postal_code,
+        profile.billing_postal_code,
+      ),
+      billing_state:
+        review.billing_state ||
+        (profile.billing_state as AustralianStateCode | null) ||
         DEFAULT_AUSTRALIAN_STATE_CODE,
+      billing_country:
+        review.billing_country.trim() ||
+        profile.billing_country?.trim() ||
+        WHOLESALE_DEFAULT_COUNTRY,
     };
 
     const changed =
@@ -284,7 +445,14 @@ export default function CateringOrderReviewPanel({
       next.shipping_city !== review.shipping_city ||
       next.shipping_postal_code !== review.shipping_postal_code ||
       next.shipping_preferred_window !== review.shipping_preferred_window ||
-      next.shipping_state !== review.shipping_state;
+      next.shipping_state !== review.shipping_state ||
+      next.billing_legal_name !== review.billing_legal_name ||
+      next.billing_tax_id !== review.billing_tax_id ||
+      next.billing_address !== review.billing_address ||
+      next.billing_city !== review.billing_city ||
+      next.billing_postal_code !== review.billing_postal_code ||
+      next.billing_state !== review.billing_state ||
+      next.billing_country !== review.billing_country;
 
     if (changed) {
       onReviewChange(withCateringOrderTotals(next, items, totalsOptions));
@@ -295,7 +463,8 @@ export default function CateringOrderReviewPanel({
   const handleBack = () => {
     writeCateringOrderReviewDraft({
       version: 1,
-      cartItemsSignature: buildCateringCartItemsSignature(items),
+      cartItemsSignature,
+      billingSameAsShipping,
       form: extractPersistableCateringReviewFields(review),
     });
     onBack();
@@ -318,7 +487,9 @@ export default function CateringOrderReviewPanel({
             Review catering order
           </h2>
           <p className="text-xs text-white/45">
-            Confirm event and delivery details before payment
+            {profile
+              ? "Confirm event and delivery details before payment"
+              : "No account required — enter your details and checkout as a guest"}
           </p>
         </div>
       </div>
@@ -327,7 +498,11 @@ export default function CateringOrderReviewPanel({
         <section className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
           <SectionTitle
             title="Contact"
-            description="We will use these details for order updates."
+            description={
+              profile
+                ? "We will use these details for order updates."
+                : "No sign-in needed. Enter your contact details to complete checkout."
+            }
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Your name">
@@ -358,28 +533,82 @@ export default function CateringOrderReviewPanel({
 
         <section className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
           <SectionTitle
-            title="Event details"
-            description="When and how many guests you are catering for."
+            title="Event & fulfillment"
+            description="When your event will be held and how you will receive the order."
           />
           <div className="grid gap-3 sm:grid-cols-2">
+            <ReviewSelect
+              label="How do you want to receive your order?"
+              value={review.requested_fulfillment_method}
+              onValueChange={(value) => {
+                const method = value as OrderFulfillmentMethod;
+                if (method === "pick_up") {
+                  setBillingSameAsShipping(false);
+                  patch({
+                    requested_fulfillment_method: method,
+                    requested_pick_up_store_id: review.requested_pick_up_store_id,
+                  });
+                  return;
+                }
+                setBillingSameAsShipping(true);
+                onReviewChange(
+                  withCateringOrderTotals(
+                    cateringBillingFromShippingForm({
+                      ...review,
+                      requested_fulfillment_method: method,
+                      requested_pick_up_store_id: null,
+                    }),
+                    items,
+                    totalsOptions,
+                  ),
+                );
+              }}
+              options={CATERING_FULFILLMENT_OPTIONS}
+            />
             <ReviewDatePicker
               label="Event date"
               value={review.event_date}
               onChange={(value) => patch({ event_date: value })}
             />
-            <Field label="Guest count">
-              <input
-                type="number"
-                min="1"
-                className={fieldClass}
-                value={review.guest_count}
-                onChange={(event) => patch({ guest_count: event.target.value })}
-                placeholder="Approximate guests"
-              />
-            </Field>
           </div>
+          {isPickup ? (
+            <div className="space-y-2 pt-1">
+              <Field label="Pickup store (required)">
+                <PickupStorePicker
+                  stores={pickupStores}
+                  selectedId={review.requested_pick_up_store_id}
+                  onSelect={(storeId) =>
+                    patch({ requested_pick_up_store_id: storeId })
+                  }
+                  variant="emerald"
+                />
+              </Field>
+              {pickupStoreMissing ? (
+                <p className="text-xs font-medium text-amber-400/90">
+                  Select a pickup store to continue.
+                </p>
+              ) : pickupStoreInvalid ? (
+                <p className="text-xs font-medium text-red-300">
+                  The selected pickup store is no longer available. Please choose
+                  another location.
+                </p>
+              ) : selectedPickupStore ? (
+                <p className="text-xs text-white/40">
+                  You will collect your order from{" "}
+                  <span className="text-white/70">{selectedPickupStore.name}</span>
+                  {selectedPickupHours ? ` · ${selectedPickupHours}` : ""}
+                </p>
+              ) : (
+                <p className="text-xs text-white/40">
+                  Select the store where you would like to pick up your catering
+                  order.
+                </p>
+              )}
+            </div>
+          ) : null}
         </section>
 
+        {!isPickup ? (
         <section className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
           <SectionTitle
             title="Delivery"
@@ -390,7 +619,9 @@ export default function CateringOrderReviewPanel({
               <input
                 className={fieldClass}
                 value={review.shipping_dba_name}
-                onChange={(event) => patch({ shipping_dba_name: event.target.value })}
+                onChange={(event) =>
+                  patchShipping({ shipping_dba_name: event.target.value })
+                }
               />
             </Field>
             <Field label="Delivery window">
@@ -398,7 +629,7 @@ export default function CateringOrderReviewPanel({
                 className={fieldClass}
                 value={review.shipping_preferred_window}
                 onChange={(event) =>
-                  patch({ shipping_preferred_window: event.target.value })
+                  patchShipping({ shipping_preferred_window: event.target.value })
                 }
                 placeholder="e.g. 11:30am – 12:00pm"
               />
@@ -408,7 +639,9 @@ export default function CateringOrderReviewPanel({
                 <input
                   className={fieldClass}
                   value={review.shipping_address}
-                  onChange={(event) => patch({ shipping_address: event.target.value })}
+                  onChange={(event) =>
+                    patchShipping({ shipping_address: event.target.value })
+                  }
                 />
               </Field>
             </div>
@@ -419,7 +652,7 @@ export default function CateringOrderReviewPanel({
               cityName={review.shipping_city}
               postalCode={review.shipping_postal_code}
               onChange={({ name, postalCode }) =>
-                patch({
+                patchShipping({
                   shipping_city: name,
                   shipping_postal_code: postalCode,
                 })
@@ -430,13 +663,139 @@ export default function CateringOrderReviewPanel({
               label="State"
               value={review.shipping_state}
               onValueChange={(value) =>
-                patch({ shipping_state: value as AustralianStateCode })
+                patchShipping({ shipping_state: value as AustralianStateCode })
               }
-              options={AUSTRALIAN_STATES.filter((state) => state.active).map((state) => ({
-                value: state.value,
-                label: state.label,
-              }))}
+              options={getDeliveryAustralianStateOptions()}
             />
+          </div>
+        </section>
+        ) : null}
+
+        <section className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SectionTitle
+              title="Billing address"
+              description={
+                isPickup
+                  ? "Required for your invoice and tax records"
+                  : undefined
+              }
+            />
+            {!isPickup ? (
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
+                <input
+                  type="checkbox"
+                  checked={billingSameAsShipping}
+                  onChange={(event) =>
+                    handleBillingSameAsShippingChange(event.target.checked)
+                  }
+                  disabled={isProcessing}
+                  className="h-4 w-4 rounded border-white/20 bg-black/40 text-emerald-400 focus:ring-emerald-400/40"
+                />
+                Same as delivery address
+              </label>
+            ) : null}
+          </div>
+          {!isPickup && billingSameAsShipping ? (
+            <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/45">
+              Billing address matches delivery. Tax ID still applies below.
+            </p>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {showFullBillingFields ? (
+              <>
+                <Field label="Legal name">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_legal_name}
+                    onChange={(event) =>
+                      patch({ billing_legal_name: event.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Tax ID / ABN">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_tax_id ?? ""}
+                    onChange={(event) =>
+                      patch({ billing_tax_id: event.target.value || null })
+                    }
+                  />
+                </Field>
+                <div className="sm:col-span-2">
+                  <Field label="Street address">
+                    <input
+                      className={fieldClass}
+                      value={review.billing_address}
+                      onChange={(event) =>
+                        patch({ billing_address: event.target.value })
+                      }
+                    />
+                  </Field>
+                </div>
+                <div className="sm:col-span-2">
+                  <Field label="Street line 2">
+                    <input
+                      className={fieldClass}
+                      value={review.billing_street_2 ?? ""}
+                      onChange={(event) =>
+                        patch({ billing_street_2: event.target.value || null })
+                      }
+                    />
+                  </Field>
+                </div>
+                <Field label="City">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_city}
+                    onChange={(event) => patch({ billing_city: event.target.value })}
+                  />
+                </Field>
+                <BillingLocationFields
+                  variant="emerald"
+                  country={review.billing_country}
+                  state={review.billing_state}
+                  onCountryChange={(country) =>
+                    patch(
+                      billingCountryPatch(country, review.billing_state),
+                    )
+                  }
+                  onStateChange={(state) => patch({ billing_state: state })}
+                  disabled={isProcessing}
+                />
+                <Field label="Postal code">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_postal_code}
+                    onChange={(event) =>
+                      patch({ billing_postal_code: event.target.value })
+                    }
+                  />
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label="Legal name">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_legal_name}
+                    onChange={(event) =>
+                      patch({ billing_legal_name: event.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Tax ID / ABN">
+                  <input
+                    className={fieldClass}
+                    value={review.billing_tax_id ?? ""}
+                    onChange={(event) =>
+                      patch({ billing_tax_id: event.target.value || null })
+                    }
+                  />
+                </Field>
+              </>
+            )}
           </div>
         </section>
 
@@ -505,19 +864,24 @@ export default function CateringOrderReviewPanel({
               </div>
             ) : null}
             <div className="flex justify-between text-white/60">
-              <span>Delivery</span>
+              <span>{isPickup ? "Pickup" : "Delivery"}</span>
               <span className="tabular-nums text-white">
-                {totalsReview.shipping_fee > 0
-                  ? `$${totalsReview.shipping_fee.toFixed(2)}`
-                  : review.shipping_city.trim() && review.shipping_postal_code.trim()
-                    ? "Distance unavailable"
-                    : "Select delivery city"}
+                {isPickup
+                  ? "Free"
+                  : totalsReview.shipping_fee > 0
+                    ? `$${totalsReview.shipping_fee.toFixed(2)}`
+                    : review.shipping_city.trim() && review.shipping_postal_code.trim()
+                      ? "Distance unavailable"
+                      : "Select delivery city"}
               </span>
             </div>
             <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
               <span>{isGstInclusive ? "Grand total" : "Grand total (inc GST)"}</span>
               <span className="tabular-nums text-emerald-400">
-                ${totalsReview.grand_total.toFixed(2)} est
+                ${totalsReview.grand_total.toFixed(2)}
+                {isCartTotalEstimated ? (
+                  <span className="text-sm font-semibold text-emerald-400/70"> est</span>
+                ) : null}
               </span>
             </div>
           </div>
@@ -536,26 +900,45 @@ export default function CateringOrderReviewPanel({
       </div>
 
       <div className="border-t border-white/10 px-6 py-5">
+        {checkoutWarnings.length > 0 && !isProcessing ? (
+          <div
+            className="mb-3 space-y-1.5 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2.5 text-center text-xs font-medium leading-relaxed text-amber-200"
+            role="status"
+          >
+            {checkoutWarnings.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={onConfirm}
-          disabled={isPlacingOrder}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-4 text-sm font-bold text-white transition-colors hover:bg-emerald-500/90 disabled:opacity-60"
+          disabled={confirmDisabled}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-4 text-sm font-bold text-white transition-colors hover:bg-emerald-500/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPlacingOrder ? (
+          {isProcessing ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Placing order…
+              {isCheckingOut ? "Preparing checkout…" : "Placing order…"}
+            </>
+          ) : isCartTotalEstimated ? (
+            <>
+              <ClipboardCheck className="h-4 w-4" />
+              {`Place order ($${totalsReview.grand_total.toFixed(2)} est.)`}
             </>
           ) : (
             <>
-              <ClipboardCheck className="h-4 w-4" />
-              Place order (${totalsReview.grand_total.toFixed(2)} est.)
+              <CreditCard className="h-4 w-4" />
+              {`Proceed to Checkout · Pay $${totalsReview.grand_total.toFixed(2)}`}
             </>
           )}
         </button>
         <p className="mt-2 text-center text-xs text-white/30">
-          No payment now — our team will send you a quotation to review and pay later
+          {isCartTotalEstimated
+            ? "No payment now — our team will send you a quotation to review and pay later"
+            : eventDateSelected && fulfillmentReady
+              ? "Secure payment via Stripe · Card & Apple Pay accepted"
+              : null}
         </p>
       </div>
     </div>

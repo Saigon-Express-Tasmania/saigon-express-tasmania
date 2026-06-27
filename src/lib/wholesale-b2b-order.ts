@@ -13,6 +13,10 @@ import type {
   AustralianStateCode,
   WholesaleShippingAddress,
 } from "@/types/WholesaleB2BOrder";
+import {
+  isBillingCountryAustralia,
+  normalizeBillingStateForAustralia,
+} from "@/lib/billing-address";
 
 function optionalString(value: unknown): string | null {
   if (value == null) return null;
@@ -99,6 +103,26 @@ export const AUSTRALIAN_STATES: {
   { value: "VIC", label: "Victoria", active: false },
   { value: "WA", label: "Western Australia", active: false },
 ];
+
+export function getDeliveryAustralianStateOptions(): Array<{
+  value: AustralianStateCode;
+  label: string;
+}> {
+  return AUSTRALIAN_STATES.filter((state) => state.active).map((state) => ({
+    value: state.value,
+    label: state.label,
+  }));
+}
+
+export function getBillingAustralianStateOptions(): Array<{
+  value: AustralianStateCode;
+  label: string;
+}> {
+  return AUSTRALIAN_STATES.map((state) => ({
+    value: state.value,
+    label: state.label,
+  }));
+}
 
 function isAustralianStateCode(value: string): value is AustralianStateCode {
   return AUSTRALIAN_STATES.some((state) => state.value === value);
@@ -212,6 +236,12 @@ export function buildWholesaleOrderReviewFromProfile(
   const billingStreet =
     profile.billing_address?.trim() || personalStreet;
   const billingCity = profile.billing_city?.trim() || personalCity;
+  const billingCountry =
+    profile.billing_country?.trim() || WHOLESALE_DEFAULT_COUNTRY;
+  const rawBillingState =
+    profile.billing_state?.trim() ||
+    parseAustralianStateCode(profile.state) ||
+    "TAS";
 
   return {
     customer_name,
@@ -237,13 +267,14 @@ export function buildWholesaleOrderReviewFromProfile(
     billing_address: billingStreet,
     billing_street_2: profile.address_line2?.trim() || null,
     billing_city: billingCity,
-    billing_state:
-      parseAustralianStateCode(profile.billing_state ?? profile.state) ?? "TAS",
+    billing_state: isBillingCountryAustralia(billingCountry)
+      ? normalizeBillingStateForAustralia(rawBillingState)
+      : rawBillingState,
     billing_postal_code:
       profile.billing_postal_code?.trim() ||
       profile.postal_code?.trim() ||
       "",
-    billing_country: WHOLESALE_DEFAULT_COUNTRY,
+    billing_country: billingCountry,
     billing_tax_id:
       profile.billing_tax_id?.trim() || profile.abn?.trim() || null,
     payment_terms: "prepaid",
@@ -325,6 +356,7 @@ export function validateWholesaleOrderReview(
   if (!form.billing_city.trim()) return "Billing city is required.";
   if (!form.billing_state.trim()) return "Billing state is required.";
   if (!form.billing_postal_code.trim()) return "Billing postal code is required.";
+  if (!form.billing_country.trim()) return "Billing country is required.";
   if (form.grand_total <= 0) return "Order total must be greater than zero.";
   return null;
 }
@@ -353,9 +385,9 @@ export function serializeWholesaleOrderReviewForCheckout(
     street_1: form.billing_address.trim(),
     street_2: form.billing_street_2?.trim() || null,
     city: form.billing_city.trim(),
-    state: form.billing_state,
+    state: form.billing_state.trim(),
     postal_code: form.billing_postal_code.trim(),
-    country: WHOLESALE_DEFAULT_COUNTRY,
+    country: form.billing_country.trim() || WHOLESALE_DEFAULT_COUNTRY,
     tax_id: form.billing_tax_id?.trim() || null,
     payment_terms: form.payment_terms,
   };

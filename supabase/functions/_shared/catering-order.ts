@@ -51,6 +51,18 @@ export type CateringShippingAddress = {
   preferred_window?: string | null;
 };
 
+export type CateringBillingAddress = {
+  legal_name: string;
+  street_1: string;
+  street_2?: string | null;
+  city: string;
+  state?: string | null;
+  postal_code: string;
+  country?: string | null;
+  tax_id?: string | null;
+  payment_terms?: string | null;
+};
+
 export type CateringOrderInput = {
   mode: StripePaymentMode;
   customerAccount?: string | null;
@@ -61,7 +73,10 @@ export type CateringOrderInput = {
   eventDate: string;
   notes?: string;
   financialDetails: CateringFinancialDetails;
-  shippingAddress: CateringShippingAddress;
+  shippingAddress?: CateringShippingAddress;
+  billingAddress: CateringBillingAddress;
+  requestedPickUpStoreId?: number | null;
+  storeId?: number | null;
   items: CateringOrderItemInput[];
 };
 
@@ -170,6 +185,65 @@ function parseFinancialDetails(
   };
 }
 
+function parseOptionalStoreId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const storeId = Number(value);
+  if (!Number.isFinite(storeId) || storeId <= 0) {
+    throw new Error("Invalid pickup store");
+  }
+  return storeId;
+}
+
+function defaultCateringPickupAddressFields(): CateringShippingAddress {
+  return {
+    dba_name: "In-store pickup",
+    street_1: "In-store pickup",
+    street_2: null,
+    city: "N/A",
+    state: "N/A",
+    postal_code: "0000",
+    country: "Australia",
+    special_instructions: null,
+    preferred_window: null,
+  };
+}
+
+function formatStreetLine(street1: string, street2?: string | null): string {
+  const line1 = street1.trim();
+  const line2 = street2?.trim();
+  return line2 ? `${line1}, ${line2}` : line1;
+}
+
+function parseBillingAddress(value: unknown): CateringBillingAddress {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Billing address is required");
+  }
+
+  const row = value as Record<string, unknown>;
+  const legal_name = String(row.legal_name ?? "").trim();
+  const street_1 = String(row.street_1 ?? "").trim();
+  const city = String(row.city ?? "").trim();
+  const postal_code = String(row.postal_code ?? "").trim();
+
+  if (!legal_name) throw new Error("Billing legal name is required");
+  if (!street_1) throw new Error("Billing street address is required");
+  if (!city) throw new Error("Billing city is required");
+  if (!postal_code) throw new Error("Billing postal code is required");
+
+  return {
+    legal_name,
+    street_1,
+    street_2: row.street_2 != null ? String(row.street_2).trim() || null : null,
+    city,
+    state: row.state != null ? String(row.state).trim() || null : null,
+    postal_code,
+    country: row.country != null ? String(row.country).trim() || null : null,
+    tax_id: row.tax_id != null ? String(row.tax_id).trim() || null : null,
+    payment_terms:
+      row.payment_terms != null ? String(row.payment_terms).trim() || null : null,
+  };
+}
+
 function parseShippingAddress(value: unknown): CateringShippingAddress {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Delivery address is required");
@@ -267,17 +341,36 @@ export async function validateCateringOrderInput(
   }
   if (!customerPhone) throw new Error("Please enter your phone number");
 
-  const shippingAddress = parseShippingAddress(data.shippingAddress);
+  const requestedPickUpStoreId = parseOptionalStoreId(data.requestedPickUpStoreId);
+  const storeId = parseOptionalStoreId(data.storeId);
+  const pickUpStoreId = requestedPickUpStoreId ?? storeId;
+  const isPickup = fulfillmentType === "pick_up";
+
+  if (isPickup) {
+    if (pickUpStoreId == null) {
+      throw new Error("Please select a pickup store");
+    }
+  }
+
+  const shippingAddress = isPickup
+    ? defaultCateringPickupAddressFields()
+    : parseShippingAddress(data.shippingAddress);
+  const billingAddress = parseBillingAddress(data.billingAddress);
   const financialDetails = parseFinancialDetails(data.financialDetails, commerceTax);
-  const expectedShippingFee = await resolveCateringShippingFee(
-    supabase,
-    shippingAddress.city,
-    shippingAddress.postal_code,
-  );
-  assertCateringShippingFeeMatches(
-    financialDetails.shipping_fee ?? 0,
-    expectedShippingFee,
-  );
+
+  if (!isPickup) {
+    const expectedShippingFee = await resolveCateringShippingFee(
+      supabase,
+      shippingAddress.city,
+      shippingAddress.postal_code,
+    );
+    assertCateringShippingFeeMatches(
+      financialDetails.shipping_fee ?? 0,
+      expectedShippingFee,
+    );
+  } else if ((financialDetails.shipping_fee ?? 0) !== 0) {
+    throw new Error("Pickup catering orders cannot include a delivery fee");
+  }
 
   return {
     mode,
@@ -290,6 +383,9 @@ export async function validateCateringOrderInput(
     notes: notes || undefined,
     financialDetails,
     shippingAddress,
+    billingAddress,
+    requestedPickUpStoreId: isPickup ? pickUpStoreId : null,
+    storeId: isPickup ? pickUpStoreId : null,
     items: parseItems(data.items),
   };
 }
@@ -374,7 +470,9 @@ export async function createPendingCateringOrder(
   const cancelToken = randomCrockfordBase32(ORDER_TOKEN_LENGTH);
   const trackingToken = randomCrockfordBase32(ORDER_TOKEN_LENGTH);
   const requestedTargetDate = parseRequestedTargetDate(input.eventDate);
-  const shipping = input.shippingAddress;
+  const shipping = input.shippingAddress ?? defaultCateringPickupAddressFields();
+  const billing = input.billingAddress;
+  const pickUpStoreId = input.requestedPickUpStoreId ?? input.storeId ?? null;
   const financials = input.financialDetails;
   const statusUpdatedAt = new Date().toISOString();
 
@@ -385,8 +483,10 @@ export async function createPendingCateringOrder(
     customer_name: input.customerName,
     customer_email: input.customerEmail,
     customer_phone: input.customerPhone,
+    store_id: pickUpStoreId,
     requested_fulfillment_method: input.fulfillmentType,
     requested_target_date: requestedTargetDate,
+    requested_pick_up_store_id: pickUpStoreId,
     cancel_token: cancelToken,
     tracking_token: trackingToken,
     shipping_dba_name: shipping.dba_name || input.customerName,
@@ -397,13 +497,14 @@ export async function createPendingCateringOrder(
     shipping_state: shipping.state,
     shipping_postal_code: shipping.postal_code,
     shipping_country: shipping.country,
-    billing_legal_name: shipping.dba_name || input.customerName,
-    billing_address: shipping.street_1,
-    billing_city: shipping.city,
-    billing_state: shipping.state,
-    billing_postal_code: shipping.postal_code,
-    billing_country: shipping.country,
-    payment_terms: "prepaid",
+    billing_legal_name: billing.legal_name,
+    billing_tax_id: billing.tax_id ?? null,
+    billing_address: formatStreetLine(billing.street_1, billing.street_2),
+    billing_city: billing.city,
+    billing_state: billing.state ?? "N/A",
+    billing_postal_code: billing.postal_code,
+    billing_country: billing.country ?? "Australia",
+    payment_terms: billing.payment_terms ?? "prepaid",
     subtotal: formatMoney(financials.subtotal_ex_gst),
     coupon_code: financials.coupon_code,
     coupon_discount: formatMoney(financials.coupon_discount ?? 0),

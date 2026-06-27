@@ -338,7 +338,51 @@ function billingAddressToDbFields(
   };
 }
 
+function cateringAddressToDbFields(
+  shipping: WholesaleShippingAddress,
+  customerName: string,
+): OrderAddressDbFields {
+  const shippingFields = shippingAddressToDbFields(shipping);
+  const billingName = shipping.dba_name.trim() || customerName.trim();
+  return {
+    ...shippingFields,
+    billing_legal_name: billingName || null,
+    billing_tax_id: null,
+    billing_address: shippingFields.shipping_address,
+    billing_city: shippingFields.shipping_city,
+    billing_state: shippingFields.shipping_state,
+    billing_postal_code: shippingFields.shipping_postal_code,
+    billing_country: shippingFields.shipping_country,
+  };
+}
+
 function resolveOrderAddressFields(input: OrderCheckoutInput): OrderAddressDbFields {
+  if (input.orderType === "catering") {
+    if (input.billingAddress) {
+      const billing = billingAddressToDbFields(input.billingAddress);
+      if (input.fulfillmentType === "pick_up") {
+        return {
+          ...defaultOrderAddressFields(),
+          ...billing,
+        };
+      }
+      if (input.shippingAddress) {
+        return {
+          ...shippingAddressToDbFields(input.shippingAddress),
+          ...billing,
+        };
+      }
+      return {
+        ...defaultOrderAddressFields(),
+        ...billing,
+      };
+    }
+    if (input.fulfillmentType !== "pick_up" && input.shippingAddress) {
+      return cateringAddressToDbFields(input.shippingAddress, input.customerName);
+    }
+    return defaultOrderAddressFields();
+  }
+
   if (input.orderType === "wholesale" && input.billingAddress) {
     const billing = billingAddressToDbFields(input.billingAddress);
     if (input.fulfillmentType === "pick_up") {
@@ -1142,6 +1186,16 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   ) {
     throw new Error("Please select a pickup store before checkout");
   }
+  if (
+    orderType === "catering" &&
+    fulfillmentType === "pick_up" &&
+    existingOrderId == null
+  ) {
+    const pickUpStoreId = requestedPickUpStoreId ?? storeId;
+    if (pickUpStoreId == null || pickUpStoreId <= 0) {
+      throw new Error("Please select a pickup store before checkout");
+    }
+  }
   if (!origin) throw new Error("Missing site origin");
 
   const pickupTime =
@@ -1150,10 +1204,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
   if (orderType === "wholesale" && !customerAccount) {
     throw new Error("Please sign in to place a wholesale order");
   }
-  if (orderType === "catering" && !customerAccount) {
-    if (existingOrderId == null) {
-      throw new Error("Please sign in to place a catering order");
-    }
+  if (orderType === "catering" && !customerAccount && existingOrderId != null) {
     if (!trackingToken) {
       throw new Error("Tracking token is required to pay for this order");
     }
@@ -1174,6 +1225,18 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
     }
     if (fulfillmentType !== "pick_up" && !shippingAddress) {
       throw new Error("Wholesale checkout requires shipping address for delivery or shipping");
+    }
+  }
+
+  if (orderType === "catering" && existingOrderId == null) {
+    if (fulfillmentType !== "pick_up" && !shippingAddress) {
+      throw new Error("Delivery address is required");
+    }
+    if (!billingAddress) {
+      throw new Error("Billing address is required");
+    }
+    if (!financialDetails) {
+      throw new Error("Invalid financial details");
     }
   }
 
@@ -1409,6 +1472,60 @@ async function fetchWholesaleTiers(
   });
 }
 
+async function validateCateringCatalogUnitPrices(
+  supabase: ReturnType<typeof createServiceClient>,
+  items: OrderCheckoutItem[],
+): Promise<void> {
+  const productIds = [...new Set(items.map((item) => item.productId))];
+  if (productIds.length === 0) return;
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, unit_price, product_type")
+    .in("id", productIds)
+    .eq("product_type", "catering");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rowsById = new Map<number, { unit_price: string | null }>();
+  for (const row of data ?? []) {
+    const record = row as Record<string, unknown>;
+    const id = Number(record.id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    rowsById.set(id, {
+      unit_price:
+        record.unit_price != null ? String(record.unit_price).trim() : null,
+    });
+  }
+
+  for (const item of items) {
+    const row = rowsById.get(item.productId);
+    if (!row) {
+      throw new Error(`${item.itemName} is not available for catering checkout.`);
+    }
+
+    const catalogueUnitPrice = row.unit_price?.trim() ?? "";
+    if (!catalogueUnitPrice) {
+      throw new Error(
+        `${item.itemName} requires a custom quote and cannot be paid online.`,
+      );
+    }
+
+    const catalogueAmount = Number(catalogueUnitPrice);
+    if (!Number.isFinite(catalogueAmount) || catalogueAmount <= 0) {
+      throw new Error(`Invalid catalogue price for ${item.itemName}.`);
+    }
+
+    if (Math.abs(catalogueAmount - item.unitPrice) > 0.01) {
+      throw new Error(
+        `The price for ${item.itemName} has changed. Please refresh and try again.`,
+      );
+    }
+  }
+}
+
 async function validateWholesaleInventoryAvailability(
   supabase: ReturnType<typeof createServiceClient>,
   customerAccount: string,
@@ -1570,6 +1687,24 @@ export async function createOrderCheckoutSession(
     wholesaleStripeUnitAmountCents = wholesaleTotals.stripe_unit_amount_cents;
   }
 
+  if (input.orderType === "catering") {
+    await validateCateringCatalogUnitPrices(supabase, input.items);
+    if (input.fulfillmentType !== "pick_up") {
+      if (!input.shippingAddress) {
+        throw new Error("Delivery address is required");
+      }
+      const shippingFee = await resolveCateringShippingFee(
+        supabase,
+        input.shippingAddress.city,
+        input.shippingAddress.postal_code,
+      );
+      assertCateringShippingFeeMatches(
+        input.financialDetails?.shipping_fee ?? 0,
+        shippingFee,
+      );
+    }
+  }
+
   if (totals.grand_total <= 0) {
     throw new Error("Order total must be greater than zero");
   }
@@ -1693,7 +1828,10 @@ export async function createOrderCheckoutSession(
         quantity: item.qty,
       }));
 
-  if (input.orderType === "wholesale" && totals.shipping_fee > 0) {
+  if (
+    (input.orderType === "wholesale" || input.orderType === "catering") &&
+    totals.shipping_fee > 0
+  ) {
     lineItems.push({
       price_data: {
         currency: "aud",

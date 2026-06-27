@@ -9,7 +9,6 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -155,7 +154,7 @@ function cateringRow(item) {
     'EACH'::public.product_uom,
     ${item.isAvailable ? "true" : "false"},
     ${item.sortOrder ?? 0},
-    '{}'::jsonb,
+    ${item.imageUrls ? wholesaleImageUrls({ imageUrls: item.imageUrls }) : "'{}'::jsonb"},
     ${sqlText(item.price ?? "")},
     '',
     null,
@@ -192,7 +191,9 @@ function loadWholesaleProducts() {
 
 function parseCateringTuples(sql) {
   const items = [];
-  const insertBlocks = [...sql.matchAll(/insert into public\.catering_packs\s*\(([\s\S]*?)\)\s*values\s*([\s\S]*?)\s*on conflict/gi)];
+  const insertBlocks = [
+    ...sql.matchAll(/insert into public\.products\s*\(([\s\S]*?)\)\s*values\s*([\s\S]*?)\s*on conflict/gi),
+  ];
 
   for (const [, columnBlock, valuesBlock] of insertBlocks) {
     const columns = columnBlock
@@ -221,6 +222,7 @@ function parseCateringTuples(sql) {
         note: record.note,
         prices: record.prices ?? [],
         imageUrl: record.image_url,
+        imageUrls: record.image_urls ?? {},
         sortOrder: record.sort_order ?? 0,
         isAvailable: record.is_available !== false,
       });
@@ -302,11 +304,13 @@ function parseSqlLiteral(raw) {
 }
 
 function loadCateringProducts() {
-  const sql = execSync("git show HEAD:supabase/migrations/20260528161000_catering_packs.sql", {
-    cwd: root,
-    encoding: "utf8",
-  });
-  return parseCateringTuples(sql);
+  const migration = fs.readFileSync(migrationPath, "utf8");
+  const cateringStart = migration.indexOf("-- Catering");
+  if (cateringStart === -1) {
+    throw new Error("products migration missing -- Catering section");
+  }
+  const cateringBlock = migration.slice(cateringStart);
+  return parseCateringTuples(cateringBlock);
 }
 
 function buildSeedSql(alacarte, wholesale, catering) {

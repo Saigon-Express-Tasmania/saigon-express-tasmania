@@ -10,6 +10,8 @@ import { useSupabase } from "@/hooks/useSupabase";
 import {
   buildCateringOrderReviewForGuest,
   buildCateringOrderReviewFromProfile,
+  isCateringPickup,
+  isCateringBillingSameAsShipping,
   serializeCateringOrderReviewForPlacement,
   validateCateringOrderReview,
   withCateringOrderTotals,
@@ -20,10 +22,12 @@ import {
   clearCateringOrderReviewDraft,
   extractPersistableCateringReviewFields,
   hydrateCateringOrderReview,
+  readCateringOrderReviewBillingSameAsShipping,
   readCateringOrderReviewDraft,
+  writeCateringGuestCheckoutProfile,
   writeCateringOrderReviewDraft,
 } from "@/lib/catering-order-review-storage";
-import { formatAud } from "@/lib/catering-price";
+import { formatAud, isCateringUnitPriceEstimated } from "@/lib/catering-price";
 import {
   formatRateLimitCooldown,
   getCateringOrderRateLimitState,
@@ -32,10 +36,10 @@ import {
 import { getClientStripeMode } from "@/lib/stripe-mode";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
-import type { DeliveryCity } from "@/types";
+import type { DeliveryCity, StoreLocation } from "@/types";
 import type { CateringOrderReviewForm } from "@/types/CateringOrderReview";
 import type { UserProfileSelfUpdate } from "@/types/UserProfile";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronRight,
   ClipboardCheck,
@@ -66,15 +70,18 @@ const panelMotion = {
 };
 
 export default function CateringShoppingCart({
+  storeLocations,
   deliveryCities,
   selfDeliveryFee,
   selfDeliveryOrigin,
 }: {
+  storeLocations: StoreLocation[];
   deliveryCities: DeliveryCity[];
   selfDeliveryFee: SelfDeliveryFee;
   selfDeliveryOrigin: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname() ?? "/catering";
   const commerceTax = useCommerceTax();
   const { profile, user, session, updateOwnProfile } = useSupabase();
   const { saveGuestOrder } = useGuestCateringOrder();
@@ -92,6 +99,7 @@ export default function CateringShoppingCart({
     null,
   );
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [rateLimitRemainingMs, setRateLimitRemainingMs] = useState(0);
 
   const isRateLimited = rateLimitRemainingMs > 0;
@@ -116,11 +124,23 @@ export default function CateringShoppingCart({
     [sortedCart],
   );
 
+  const isCartTotalEstimated = useMemo(
+    () =>
+      sortedCart.some((item) =>
+        isCateringUnitPriceEstimated(item.catalogUnitPrice),
+      ),
+    [sortedCart],
+  );
+
   const persistReviewDraft = () => {
     if (!orderReview) return;
     writeCateringOrderReviewDraft({
       version: 1,
       cartItemsSignature,
+      billingSameAsShipping:
+        readCateringOrderReviewBillingSameAsShipping(cartItemsSignature) ??
+        (!isCateringPickup(orderReview) &&
+          isCateringBillingSameAsShipping(orderReview)),
       form: extractPersistableCateringReviewFields(orderReview),
     });
   };
@@ -133,8 +153,10 @@ export default function CateringShoppingCart({
     setCartOpen(false);
   };
 
+  const isProcessing = isPlacingOrder || isCheckingOut;
+
   useEffect(() => {
-    if (!cartOpen && !isPlacingOrder) return;
+    if (!cartOpen && !isProcessing) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -142,7 +164,7 @@ export default function CateringShoppingCart({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [cartOpen, isPlacingOrder]);
+  }, [cartOpen, isProcessing]);
 
   useEffect(() => {
     if (!cartOpen) {
@@ -159,6 +181,11 @@ export default function CateringShoppingCart({
     const timerId = window.setInterval(updateRateLimit, 1000);
     return () => window.clearInterval(timerId);
   }, []);
+
+  useEffect(() => {
+    if (!orderReview || profile) return;
+    writeCateringGuestCheckoutProfile(orderReview);
+  }, [orderReview, profile]);
 
   const handleBeginReview = () => {
     if (isRateLimited) {
@@ -184,16 +211,6 @@ export default function CateringShoppingCart({
 
     if (user && profile) {
       const customerEmail = profile.email?.trim() ?? user.email?.trim() ?? "";
-      const customerPhone = profile.phone?.trim() ?? "";
-
-      if (!customerEmail) {
-        toast.error("Please add an email to your profile before placing an order.");
-        return;
-      }
-      if (!customerPhone) {
-        toast.error("Please add a phone number to your profile before placing an order.");
-        return;
-      }
 
       setOrderReview(
         hydrateCateringOrderReview(
@@ -224,19 +241,14 @@ export default function CateringShoppingCart({
     setCartView("review");
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceQuoteOrder = async () => {
     if (!orderReview) {
       toast.error("Please review your order details.");
       return;
     }
 
-    const isMemberOrder = Boolean(user && profile);
     const accessToken = session?.access_token ?? null;
-
-    if (isMemberOrder && !accessToken) {
-      toast.error("Please sign in to place an order.");
-      return;
-    }
+    const isAuthenticatedMember = Boolean(user && profile && accessToken);
 
     const reviewForPlacement = withCateringOrderTotals(
       orderReview,
@@ -261,7 +273,7 @@ export default function CateringShoppingCart({
 
     setIsPlacingOrder(true);
     try {
-      if (isMemberOrder && profile) {
+      if (isAuthenticatedMember && profile) {
         const profileBackfill: UserProfileSelfUpdate = {};
         const applyIfBlank = <K extends keyof UserProfileSelfUpdate>(
           key: K,
@@ -323,7 +335,7 @@ export default function CateringShoppingCart({
         accessToken,
         body: {
           mode: getClientStripeMode(),
-          ...(isMemberOrder && profile
+          ...(isAuthenticatedMember && profile
             ? { customerAccount: profile.id }
             : {}),
           ...placementFields,
@@ -347,7 +359,7 @@ export default function CateringShoppingCart({
 
       const trackingToken = result.data.trackingToken;
 
-      if (isMemberOrder) {
+      if (isAuthenticatedMember) {
         clearCateringOrderReviewDraft();
         clearCart();
         setCartView("cart");
@@ -380,20 +392,163 @@ export default function CateringShoppingCart({
     }
   };
 
+  const handleConfirmPayment = async () => {
+    if (!orderReview) {
+      toast.error("Please review your order details.");
+      return;
+    }
+
+    const accessToken = session?.access_token ?? null;
+    const isAuthenticatedMember = Boolean(user && profile && accessToken);
+
+    const reviewForPlacement = withCateringOrderTotals(
+      orderReview,
+      sortedCart,
+      totalsOptions,
+    );
+    const validationError = validateCateringOrderReview(reviewForPlacement);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    const checkoutFields = serializeCateringOrderReviewForPlacement(
+      reviewForPlacement,
+      commerceTax,
+    );
+
+    const trimOrNull = (value: string | null | undefined): string | null => {
+      const next = String(value ?? "").trim();
+      return next ? next : null;
+    };
+
+    setIsCheckingOut(true);
+    try {
+      if (isAuthenticatedMember && profile) {
+        const profileBackfill: UserProfileSelfUpdate = {};
+        const applyIfBlank = <K extends keyof UserProfileSelfUpdate>(
+          key: K,
+          profileValue: string | null | undefined,
+          reviewValue: string | null | undefined,
+        ) => {
+          if (trimOrNull(profileValue)) return;
+          const candidate = trimOrNull(reviewValue);
+          if (candidate) {
+            profileBackfill[key] = candidate as UserProfileSelfUpdate[K];
+          }
+        };
+
+        applyIfBlank("phone", profile.phone, reviewForPlacement.customer_phone);
+        applyIfBlank(
+          "shipping_dba_name",
+          profile.shipping_dba_name,
+          reviewForPlacement.shipping_dba_name,
+        );
+        applyIfBlank(
+          "shipping_preferred_window",
+          profile.shipping_preferred_window,
+          reviewForPlacement.shipping_preferred_window,
+        );
+        applyIfBlank(
+          "shipping_address",
+          profile.shipping_address,
+          reviewForPlacement.shipping_address,
+        );
+        applyIfBlank("shipping_city", profile.shipping_city, reviewForPlacement.shipping_city);
+        applyIfBlank(
+          "shipping_state",
+          profile.shipping_state,
+          reviewForPlacement.shipping_state,
+        );
+        applyIfBlank(
+          "shipping_postal_code",
+          profile.shipping_postal_code,
+          reviewForPlacement.shipping_postal_code,
+        );
+        applyIfBlank(
+          "shipping_country",
+          profile.shipping_country,
+          reviewForPlacement.shipping_country,
+        );
+
+        if (Object.keys(profileBackfill).length > 0) {
+          await updateOwnProfile(profileBackfill);
+        }
+      }
+
+      const successReturnTo = isAuthenticatedMember
+        ? "/member/catering-orders"
+        : pathname;
+
+      const result = await invokeEdgeFunction<{ url?: string | null }>("checkout", {
+        method: "POST",
+        accessToken: accessToken ?? undefined,
+        body: {
+          mode: getClientStripeMode(),
+          orderType: "catering",
+          ...(isAuthenticatedMember && profile
+            ? { customerAccount: profile.id }
+            : {}),
+          origin: window.location.origin,
+          returnTo: pathname,
+          successReturnTo,
+          ...checkoutFields,
+          items: cart.map((item) => ({
+            productId: item.productId,
+            qty: item.qty,
+            unitPrice: Number(item.unitPrice),
+            itemName: item.variantLabel
+              ? `${item.productName} (${item.variantLabel})`
+              : item.productName,
+          })),
+        },
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error || "Checkout failed");
+      }
+
+      const checkoutUrl = result.data.url;
+      if (!checkoutUrl) {
+        throw new Error("No checkout URL returned");
+      }
+
+      clearCateringOrderReviewDraft();
+      setCartOpen(false);
+      toast.success("Redirecting to secure payment…");
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Checkout failed";
+      toast.error(message);
+      setIsCheckingOut(false);
+    }
+  };
+
+  const handleConfirmReview = () => {
+    if (isCartTotalEstimated) {
+      void handlePlaceQuoteOrder();
+    } else {
+      void handleConfirmPayment();
+    }
+  };
+
   return (
     <>
-      {isPlacingOrder ? (
+      {isProcessing ? (
         <div
           className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-black/55 backdrop-blur-[2px]"
           aria-busy="true"
           aria-live="polite"
           role="alertdialog"
-          aria-label="Placing catering order"
+          aria-label={isCheckingOut ? "Preparing checkout" : "Placing catering order"}
         >
           <div className="mx-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/90 px-6 py-4 shadow-2xl">
             <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-400" />
             <p className="text-sm font-semibold text-white">
-              Submitting your catering order…
+              {isCheckingOut
+                ? "Preparing secure checkout…"
+                : "Submitting your catering order…"}
             </p>
           </div>
         </div>
@@ -407,7 +562,7 @@ export default function CateringShoppingCart({
               aria-label="Close cart"
               className="fixed inset-0 z-50 bg-black/60"
               onClick={() => {
-                if (!isPlacingOrder) {
+                if (!isProcessing) {
                   closeCart();
                 }
               }}
@@ -425,12 +580,15 @@ export default function CateringShoppingCart({
                   items={sortedCart}
                   review={orderReview}
                   profile={profile}
+                  storeLocations={storeLocations}
                   deliveryCities={deliveryCities}
                   selfDeliveryFee={selfDeliveryFee}
                   selfDeliveryOrigin={selfDeliveryOrigin}
+                  isCartTotalEstimated={isCartTotalEstimated}
+                  isCheckingOut={isCheckingOut}
                   onReviewChange={setOrderReview}
                   onBack={() => setCartView("cart")}
-                  onConfirm={() => void handlePlaceOrder()}
+                  onConfirm={() => void handleConfirmReview()}
                   isPlacingOrder={isPlacingOrder}
                 />
               ) : (
@@ -445,7 +603,7 @@ export default function CateringShoppingCart({
                         <button
                           type="button"
                           onClick={clearCart}
-                          disabled={isPlacingOrder}
+                          disabled={isProcessing}
                           className="text-xs text-white/30 transition-colors hover:text-red-400 disabled:pointer-events-none disabled:opacity-40"
                         >
                           Clear all
@@ -454,7 +612,7 @@ export default function CateringShoppingCart({
                       <button
                         type="button"
                         onClick={closeCart}
-                        disabled={isPlacingOrder}
+                        disabled={isProcessing}
                         className="text-2xl leading-none text-white/40 transition-colors hover:text-white disabled:pointer-events-none disabled:opacity-40"
                       >
                         &times;
@@ -536,13 +694,19 @@ export default function CateringShoppingCart({
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-white/45">Subtotal</span>
                         <span className="text-lg font-bold text-white">
-                          {formatAud(cartTotal)} est
+                          {formatAud(cartTotal)}
+                          {isCartTotalEstimated ? (
+                            <span className="text-sm font-semibold text-white/60">
+                              {" "}
+                              est
+                            </span>
+                          ) : null}
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={handleBeginReview}
-                        disabled={isPlacingOrder || isRateLimited}
+                        disabled={isProcessing || isRateLimited}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500/90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <ClipboardCheck className="h-4 w-4" />

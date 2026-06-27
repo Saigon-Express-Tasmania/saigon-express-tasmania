@@ -34,7 +34,7 @@ export type WholesaleShippingAddress = {
   street_1: string;
   street_2?: string | null;
   city: string;
-  state?: AustralianStateCode | null;
+  state?: string | null;
   postal_code: string;
   country?: string | null;
   special_instructions?: string | null;
@@ -46,7 +46,7 @@ export type WholesaleBillingAddress = {
   street_1: string;
   street_2?: string | null;
   city: string;
-  state?: AustralianStateCode | null;
+  state?: string | null;
   postal_code: string;
   country?: string | null;
   tax_id?: string | null;
@@ -93,7 +93,7 @@ export type WholesaleOrderReviewForm = {
   billing_address: string;
   billing_street_2: string | null;
   billing_city: string;
-  billing_state: AustralianStateCode;
+  billing_state: string;
   billing_postal_code: string;
   billing_country: string;
   billing_legal_name: string;

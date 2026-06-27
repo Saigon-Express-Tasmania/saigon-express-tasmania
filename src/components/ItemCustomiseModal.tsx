@@ -1,8 +1,15 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import React, { useState, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { MenuItem } from "@/contexts/CartContext";
+import { useOptionGroupsForItem } from "@/lib/item-customise-options";
+import {
+  computeExtraPrice,
+  initialSelections,
+  isSpiceGroupKey,
+  isVeggieGroupKey,
+  type ItemCustomisation,
+} from "@/lib/product-customizations";
 import {
   X,
   Plus,
@@ -14,257 +21,14 @@ import {
   Leaf,
   ShoppingCart,
 } from "lucide-react";
-import { MenuItem } from "@/contexts/CartContext";
+import { useTranslations } from "next-intl";
+import React, { useMemo, useState } from "react";
 
-// ─── Customisation types ──────────────────────────────────────────────────────
-
-export type CustomOption = { id: string; label: string; price: number };
-
-export type OptionGroup = {
-  id: string;
-  title: string;
-  type: "single" | "multi";
-  required?: boolean;
-  options: CustomOption[];
-};
-
-export type ItemCustomisation = {
-  selections: Record<string, string[]>;
-  qty: number;
-  note: string;
-  extraPrice: number;
-};
-
-// ─── Raw label shape from t.raw() ────────────────────────────────────────────
-
-interface RawOptionLabel {
-  id: string;
-  label: string;
-}
-
-// ─── Prices (static — not translated) ────────────────────────────────────────
-
-const PROTEIN_PRICES: Record<string, number> = {
-  pork: 0,
-  chicken: 0,
-  prawn: 1.5,
-  beef: 1.5,
-  tofu: 0,
-  pork_belly: 2.0,
-  mixed: 1.0,
-};
-
-const EXTRAS_PRICES: Record<string, number> = {
-  extra_beef: 3.0,
-  extra_chicken: 3.0,
-  extra_prawn: 3.0,
-  extra_seafood: 5.0,
-  extra_crispy_pork: 5.0,
-  extra_veggies: 3.0,
-  extra_noodles: 2.0,
-  extra_fried_egg: 2.5,
-  extra_broth: 2.0,
-  extra_chilli: 1.0,
-  extra_sauce: 2.0,
-};
-
-const SAUCE_PRICES: Record<string, number> = {
-  sauce_mayo: 1.0,
-  sauce_hoisin: 1.0,
-  sauce_fish: 1.0,
-  sauce_soy: 1.0,
-  sauce_chilli: 1.0,
-  no_sauce: 0,
-};
-
-// ─── Merge translated labels with static prices ───────────────────────────────
-
-function mergeLabels(
-  raw: RawOptionLabel[],
-  prices: Record<string, number>,
-): CustomOption[] {
-  return raw.map(({ id, label }) => ({ id, label, price: prices[id] ?? 0 }));
-}
-
-// ─── Hook: build option groups with translated titles + labels ────────────────
-
-function useOptionGroups(category: string): OptionGroup[] {
-  const t = useTranslations("ItemCustomiseModal");
-
-  return useMemo(() => {
-    const cat = category.toLowerCase();
-
-    const proteins = mergeLabels(
-      t.raw("proteinOptions") as RawOptionLabel[],
-      PROTEIN_PRICES,
-    );
-    const extras = mergeLabels(
-      t.raw("unifiedExtras") as RawOptionLabel[],
-      EXTRAS_PRICES,
-    );
-    const banhMiVeg = mergeLabels(
-      t.raw("banhMiVeggies") as RawOptionLabel[],
-      {},
-    );
-    const spices = mergeLabels(t.raw("spiceOptions") as RawOptionLabel[], {});
-    const sauces = mergeLabels(
-      t.raw("sauceOptions") as RawOptionLabel[],
-      SAUCE_PRICES,
-    );
-
-    const titles = t.raw("groupTitles") as Record<string, string>;
-
-    if (cat.includes("bánh mì") || cat.includes("banh mi")) {
-      return [
-        {
-          id: "protein",
-          title: titles.protein_banh_mi,
-          type: "single",
-          required: true,
-          options: proteins,
-        },
-        { id: "extras", title: titles.extras, type: "multi", options: extras },
-        {
-          id: "veggies",
-          title: titles.veggies,
-          type: "multi",
-          options: banhMiVeg,
-        },
-        {
-          id: "spice",
-          title: titles.spice,
-          type: "single",
-          required: true,
-          options: spices,
-        },
-        {
-          id: "sauce",
-          title: titles.sauce_banh_mi,
-          type: "multi",
-          options: sauces,
-        },
-      ];
-    }
-
-    if (
-      cat.includes("pho") ||
-      cat.includes("phở") ||
-      cat.includes("bún bò") ||
-      cat.includes("soup")
-    ) {
-      return [
-        {
-          id: "extras",
-          title: titles.extras,
-          type: "multi",
-          required: false,
-          options: extras,
-        },
-        {
-          id: "spice",
-          title: titles.spice,
-          type: "single",
-          required: true,
-          options: spices,
-        },
-        {
-          id: "sauce",
-          title: titles.sauce_condiments,
-          type: "multi",
-          options: sauces,
-        },
-      ];
-    }
-
-    if (
-      cat.includes("rice paper") ||
-      cat.includes("cuốn") ||
-      cat.includes("goi") ||
-      cat.includes("gỏi")
-    ) {
-      return [
-        { id: "extras", title: titles.extras, type: "multi", options: extras },
-        { id: "spice", title: titles.spice, type: "single", options: spices },
-        {
-          id: "sauce",
-          title: titles.sauce_condiments,
-          type: "multi",
-          options: sauces,
-        },
-      ];
-    }
-
-    if (
-      cat.includes("com") ||
-      cat.includes("rice") ||
-      cat.includes("fried rice") ||
-      cat.includes("bun") ||
-      cat.includes("bún")
-    ) {
-      return [
-        {
-          id: "protein",
-          title: titles.protein_rice,
-          type: "single",
-          options: proteins,
-        },
-        { id: "extras", title: titles.extras, type: "multi", options: extras },
-        { id: "spice", title: titles.spice, type: "single", options: spices },
-        {
-          id: "sauce",
-          title: titles.sauce_banh_mi,
-          type: "multi",
-          options: sauces,
-        },
-      ];
-    }
-
-    if (
-      cat.includes("chicken") ||
-      cat.includes("burger") ||
-      cat.includes("stir") ||
-      cat.includes("noodle") ||
-      cat.includes("main")
-    ) {
-      return [
-        { id: "extras", title: titles.extras, type: "multi", options: extras },
-        { id: "spice", title: titles.spice, type: "single", options: spices },
-        {
-          id: "sauce",
-          title: titles.sauce_banh_mi,
-          type: "multi",
-          options: sauces,
-        },
-      ];
-    }
-
-    if (
-      cat.includes("entrée") ||
-      cat.includes("entree") ||
-      cat.includes("appetis") ||
-      cat.includes("starter")
-    ) {
-      return [
-        { id: "extras", title: titles.extras, type: "multi", options: extras },
-        { id: "spice", title: titles.spice, type: "single", options: spices },
-        {
-          id: "sauce",
-          title: titles.sauce_condiments,
-          type: "multi",
-          options: sauces,
-        },
-      ];
-    }
-
-    // Default
-    return [
-      { id: "spice", title: titles.spice, type: "single", options: spices },
-    ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category]);
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
+export type {
+  CustomOption,
+  ItemCustomisation,
+  OptionGroup,
+} from "@/lib/product-customizations";
 
 interface Props {
   item: MenuItem;
@@ -274,15 +38,11 @@ interface Props {
 
 export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
   const t = useTranslations("ItemCustomiseModal");
-  const groups = useOptionGroups(item.category);
+  const groups = useOptionGroupsForItem(item);
 
-  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
-    const init: Record<string, string[]> = {};
-    groups.forEach((g) => {
-      init[g.id] = g.id === "spice" ? ["medium"] : [];
-    });
-    return init;
-  });
+  const [selections, setSelections] = useState<Record<string, string[]>>(() =>
+    initialSelections(groups),
+  );
 
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState("");
@@ -290,8 +50,8 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     () => {
       const init: Record<string, boolean> = {};
-      groups.forEach((g) => {
-        init[g.id] = true;
+      groups.forEach((group) => {
+        init[group.id] = true;
       });
       return init;
     },
@@ -322,16 +82,10 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
     });
   };
 
-  const extraPrice = useMemo(() => {
-    let total = 0;
-    groups.forEach((g) => {
-      (selections[g.id] ?? []).forEach((optId) => {
-        const opt = g.options.find((o) => o.id === optId);
-        if (opt) total += opt.price;
-      });
-    });
-    return total;
-  }, [selections, groups]);
+  const extraPrice = useMemo(
+    () => computeExtraPrice(groups, selections),
+    [selections, groups],
+  );
 
   const basePrice = parseFloat(item.price);
   const lineTotal = (basePrice + extraPrice) * qty;
@@ -345,15 +99,12 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
-        {/* Header */}
         <div className="flex items-start gap-3 p-4 border-b border-gray-100 bg-white sticky top-0 z-10">
           {item.imageUrl && (
             <AppImage
@@ -385,23 +136,21 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
           </button>
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {groups.map((group) => (
             <div
               key={group.id}
               className="border border-gray-100 rounded-xl overflow-hidden"
             >
-              {/* Group header */}
               <button
                 onClick={() => toggleGroup(group.id)}
                 className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  {group.id === "spice" && (
+                  {isSpiceGroupKey(group.id) && (
                     <Flame className="w-4 h-4 text-red-500" />
                   )}
-                  {group.id === "veggies" && (
+                  {isVeggieGroupKey(group.id) && (
                     <Leaf className="w-4 h-4 text-green-500" />
                   )}
                   <span className="font-semibold text-gray-800 text-sm">
@@ -425,7 +174,6 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
                 )}
               </button>
 
-              {/* Options */}
               {expandedGroups[group.id] && (
                 <div className="divide-y divide-gray-50">
                   {group.options.map((opt) => {
@@ -487,7 +235,6 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
             </div>
           ))}
 
-          {/* Special Instructions */}
           <div className="border border-gray-100 rounded-xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 bg-gray-50">
               <MessageSquare className="w-4 h-4 text-gray-500" />
@@ -514,10 +261,8 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
           </div>
         </div>
 
-        {/* Footer: qty + add to cart */}
         <div className="border-t border-gray-100 p-4 bg-white sticky bottom-0">
           <div className="flex items-center gap-3">
-            {/* Qty control */}
             <div className="flex items-center gap-2 bg-gray-100 rounded-full px-1 py-1">
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -536,7 +281,6 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
               </button>
             </div>
 
-            {/* Add to cart */}
             <button
               onClick={handleConfirm}
               className="flex-1 flex items-center justify-between bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-full px-5 py-3 font-semibold transition-colors"

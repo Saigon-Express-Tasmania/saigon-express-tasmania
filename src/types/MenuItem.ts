@@ -144,6 +144,8 @@ export type MenuItemRow = {
   ingredients: unknown;
   energy: number;
   food_content: unknown;
+  customization_ids?: number[] | null;
+  customizations_disabled?: boolean | null;
 };
 
 export function normalizeMenuImageUrls(value: unknown): MenuImageUrls {
@@ -193,5 +195,9 @@ export function mapMenuItemRow(row: MenuItemRow): MenuItem {
     ingredients: parseMenuItemIngredient(row.ingredients),
     energy: row.energy ?? 0,
     foodContent: parseFoodContent(row.food_content),
+    customizationIds: Array.isArray(row.customization_ids)
+      ? row.customization_ids.map((id) => Number(id))
+      : [],
+    customizationsDisabled: Boolean(row.customizations_disabled),
   };
 }
