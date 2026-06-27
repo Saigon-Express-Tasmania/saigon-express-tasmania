@@ -4,6 +4,7 @@ import HomeCateringCategoryPills from "@/components/home/HomeCateringCategoryPil
 import HomeFeaturedReviewsSection from "@/components/home/HomeFeaturedReviewsSection";
 import HomeOurFoodCategoryPills from "@/components/home/HomeOurFoodCategoryPills";
 import HomeWholesaleCategoryPills from "@/components/home/HomeWholesaleCategoryPills";
+import HeroVideo from "@/components/home/HeroVideo";
 import HomeMediaPreload from "@/components/HomeMediaPreload";
 import LazyImage from "@/components/LazyImage";
 import Link from "@/components/link";
@@ -73,18 +74,7 @@ export default async function Home() {
 
       {/* ── HERO ────────────────────────────────────────────────────────── */}
       <section className="relative h-[88vh] min-h-[560px] overflow-hidden">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          className="absolute inset-0 w-full h-full object-cover"
-          poster="/images/intro-cover.jpg"
-        >
-          <source src="/videos/intro.webm" type="video/webm" />
-          <source src="/videos/intro-960.mp4" type="video/mp4" />
-        </video>
+        <HeroVideo />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
 
         <div className="relative z-10 h-full flex flex-col justify-end pb-16 px-6 md:px-12 lg:px-20 max-w-[1280px] mx-auto">

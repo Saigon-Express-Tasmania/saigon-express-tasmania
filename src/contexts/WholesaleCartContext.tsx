@@ -1,6 +1,7 @@
 "use client";
 
 import type { WholesalePricingTier } from "@/types";
+import { useCommerceCartConfig } from "@/contexts/CommerceCartConfigContext";
 import { createContext, useContext, useEffect, useState } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -195,13 +196,12 @@ const WholesaleCartContext = createContext<WholesaleCartContextValue | null>(
 
 export function WholesaleCartProvider({
   children,
-  pricingTiers,
-  minimumOrderValue,
 }: {
   children: React.ReactNode;
-  pricingTiers: WholesalePricingTier[];
-  minimumOrderValue: number;
 }) {
+  const { wholesaleCartConfig } = useCommerceCartConfig();
+  const pricingTiers = wholesaleCartConfig.pricingTiers;
+  const minimumOrderValue = wholesaleCartConfig.minimumWholesaleOrderValue;
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {

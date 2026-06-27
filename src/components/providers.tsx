@@ -2,46 +2,36 @@
 
 import AppChrome from "@/components/AppChrome";
 import CateringGuestLastOrderPanel from "@/components/CateringGuestLastOrderPanel";
-import CateringShoppingCart from "@/components/CateringShoppingCart";
 import ClientOnly from "@/components/ClientOnly";
 import CookieConsent from "@/components/CookieConsent";
+import DeferredShoppingCarts from "@/components/DeferredShoppingCarts";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import WholesaleCartInventorySync from "@/components/WholesaleCartInventorySync";
-import WholesaleShoppingCart from "@/components/WholesaleShoppingCart";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { CartProvider } from "@/contexts/CartContext";
-import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
 import { CateringCartProvider } from "@/contexts/CateringCartContext";
+import { CommerceCartConfigProvider } from "@/contexts/CommerceCartConfigContext";
 import { CommerceTaxProvider } from "@/contexts/CommerceTaxContext";
+import { CartProvider } from "@/contexts/CartContext";
 import { GuestCateringOrderProvider } from "@/contexts/GuestCateringOrderContext";
-import { WholesaleInventoryProvider } from "@/contexts/WholesaleInventoryContext";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import { SupabaseStorageProvider } from "@/contexts/SupabaseStorageContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { WholesaleCartProvider } from "@/contexts/WholesaleCartContext";
+import { WholesaleInventoryProvider } from "@/contexts/WholesaleInventoryContext";
 import { setClientStoreLocations } from "@/lib/supabase/store-locations-client";
-import type { SelfDeliveryFee } from "@/lib/self-delivery-fee";
-import type { WholesaleCartConfig } from "@/lib/wholesale-page";
-import type { DeliveryCity, SiteContentSnapshot, StoreLocation } from "@/types";
+import type { SiteContentSnapshot, StoreLocation } from "@/types";
 
 interface ProvidersProps {
   children: React.ReactNode;
   siteContent: SiteContentSnapshot;
   storeLocations: StoreLocation[];
-  deliveryCities: DeliveryCity[];
-  wholesaleCartConfig: WholesaleCartConfig;
-  selfDeliveryFee: SelfDeliveryFee;
-  selfDeliveryOrigin: string;
 }
 
 export function Providers({
   children,
   siteContent,
   storeLocations,
-  deliveryCities,
-  wholesaleCartConfig,
-  selfDeliveryFee,
-  selfDeliveryOrigin,
 }: ProvidersProps) {
   setClientStoreLocations(storeLocations);
 
@@ -52,51 +42,34 @@ export function Providers({
           <ThemeProvider defaultTheme="light">
             <CartProvider>
               <WholesaleInventoryProvider>
-                <WholesaleCartProvider
-                  pricingTiers={wholesaleCartConfig.pricingTiers}
-                  minimumOrderValue={
-                    wholesaleCartConfig.minimumWholesaleOrderValue
-                  }
-                >
-                  <CommerceTaxProvider
-                    isGstInclusive={wholesaleCartConfig.isGstInclusive}
-                    gstTaxRate={wholesaleCartConfig.gstTaxRate}
-                  >
-                  <CateringCartProvider>
-                    <GuestCateringOrderProvider>
-                      <WholesaleCartInventorySync />
-                      <TooltipProvider>
-                        <AppChrome storeLocations={storeLocations}>
-                          {children}
-                        </AppChrome>
-                        <ClientOnly>
-                          <WholesaleShoppingCart
-                            storeLocations={storeLocations}
-                            deliveryCities={deliveryCities}
-                            selfDeliveryFee={selfDeliveryFee}
-                            selfDeliveryOrigin={selfDeliveryOrigin}
-                          />
-                        </ClientOnly>
-                        <ClientOnly>
-                          <CateringShoppingCart
-                            storeLocations={storeLocations}
-                            deliveryCities={deliveryCities}
-                            selfDeliveryFee={selfDeliveryFee}
-                            selfDeliveryOrigin={selfDeliveryOrigin}
-                          />
-                        </ClientOnly>
-                        <ClientOnly>
-                          <CateringGuestLastOrderPanel />
-                        </ClientOnly>
-                        <ClientOnly>
-                          <CookieConsent />
-                        </ClientOnly>
-                        <Toaster />
-                      </TooltipProvider>
-                    </GuestCateringOrderProvider>
-                  </CateringCartProvider>
-                  </CommerceTaxProvider>
-                </WholesaleCartProvider>
+                <CommerceCartConfigProvider>
+                  <WholesaleCartProvider>
+                    <CommerceTaxProvider>
+                      <CateringCartProvider>
+                        <GuestCateringOrderProvider>
+                          <WholesaleCartInventorySync />
+                          <TooltipProvider>
+                            <AppChrome storeLocations={storeLocations}>
+                              {children}
+                            </AppChrome>
+                            <ClientOnly>
+                              <DeferredShoppingCarts
+                                storeLocations={storeLocations}
+                              />
+                            </ClientOnly>
+                            <ClientOnly>
+                              <CateringGuestLastOrderPanel />
+                            </ClientOnly>
+                            <ClientOnly>
+                              <CookieConsent />
+                            </ClientOnly>
+                            <Toaster />
+                          </TooltipProvider>
+                        </GuestCateringOrderProvider>
+                      </CateringCartProvider>
+                    </CommerceTaxProvider>
+                  </WholesaleCartProvider>
+                </CommerceCartConfigProvider>
               </WholesaleInventoryProvider>
             </CartProvider>
           </ThemeProvider>

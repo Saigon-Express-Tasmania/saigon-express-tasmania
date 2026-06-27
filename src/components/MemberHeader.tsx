@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/config/localize";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
+import { isWholesaleCartRoute } from "@/lib/commerce-cart-routes";
 import { isCateringCartRoute } from "@/lib/catering-routes";
 import { hasPrivilege } from "@/lib/privileges";
 import { useWholesaleCart } from "@/contexts/WholesaleCartContext";
@@ -98,11 +99,6 @@ function isCateringNavActive(pathname: string): boolean {
 
 function isFranchiseNavActive(pathname: string): boolean {
   return FRANCHISE_NAV_LINKS.some((link) => isActiveNav(pathname, link.href));
-}
-
-function isWholesaleCartRoute(pathname: string): boolean {
-  const path = stripLocalePrefix(pathname.replace(/\/$/, "") || "/");
-  return path === "/wholesale/shop" || path === "/wholesale/orders";
 }
 
 function isCateringCartRouteForHeader(pathname: string): boolean {

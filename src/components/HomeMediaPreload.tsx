@@ -9,12 +9,6 @@ export default function HomeMediaPreload() {
         type="image/jpeg"
         fetchPriority="high"
       />
-      <link
-        rel="preload"
-        href="/videos/intro-960.mp4"
-        as="video"
-        type="video/mp4"
-      />
     </>
   );
 }

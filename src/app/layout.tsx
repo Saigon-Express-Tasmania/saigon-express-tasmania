@@ -7,9 +7,6 @@ import NavigationProgress from "@/components/NavigationProgress";
 import SiteChromeProviders from "@/components/SiteChromeProviders";
 import SiteChromeProvidersLoader from "@/components/SiteChromeProvidersLoader";
 import {
-  DEFAULT_SELF_DELIVERY_FEE,
-  DEFAULT_SELF_DELIVERY_ORIGIN,
-  DEFAULT_WHOLESALE_CART_CONFIG,
   EMPTY_SITE_CONTENT_SNAPSHOT,
 } from "@/lib/site-chrome-defaults";
 import { rootLayoutMetadata } from "@/lib/seo-metadata";
@@ -38,10 +35,6 @@ export default function RootLayout({
               <SiteChromeProviders
                 siteContent={EMPTY_SITE_CONTENT_SNAPSHOT}
                 storeLocations={[]}
-                deliveryCities={[]}
-                wholesaleCartConfig={DEFAULT_WHOLESALE_CART_CONFIG}
-                selfDeliveryFee={DEFAULT_SELF_DELIVERY_FEE}
-                selfDeliveryOrigin={DEFAULT_SELF_DELIVERY_ORIGIN}
               >
                 {children}
               </SiteChromeProviders>
