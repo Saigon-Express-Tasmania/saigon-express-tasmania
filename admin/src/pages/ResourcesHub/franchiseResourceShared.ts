@@ -630,3 +630,13 @@ export function resolveImagePreview(
   if (/^https?:\/\//i.test(value)) return value;
   return getPublicUrl(value);
 }
+
+export function hasPreviewableResourceContent(
+  row: Pick<FranchiseResourceRow, 'content' | 'content_file' | 'video_file'>,
+): boolean {
+  return Boolean(
+    row.content?.trim() ||
+      row.content_file?.trim() ||
+      row.video_file?.trim(),
+  );
+}

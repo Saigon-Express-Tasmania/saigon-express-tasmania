@@ -32,12 +32,25 @@ export default defineConfig({
         replacement: path.resolve(__dirname, '../src/lib/franchise-resource-file-download'),
       },
       {
+        find: 'xlsx',
+        replacement: path.resolve(projectRoot, 'node_modules/xlsx-js-style'),
+      },
+      {
         find: '@',
         replacement: path.resolve(__dirname, './src'),
       },
     ],
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "react/jsx-runtime", "react-pdf"],
+    include: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react-pdf",
+      "xlsx-js-style",
+      "handsontable",
+      "handsontable/registry",
+    ],
+    exclude: ["xlsx"],
   },
 })

@@ -49,6 +49,7 @@ import { FranchiseResourceEditorDialog } from './FranchiseResourceEditorDialog';
 import { FranchiseResourcePreviewDialog } from './FranchiseResourcePreviewDialog';
 import {
   defaultNewestPeriodId,
+  hasPreviewableResourceContent,
   normalizeResourceRow,
   resolveImagePreview,
   RESOURCE_COLUMNS,
@@ -608,7 +609,8 @@ export function FranchiseResourceAdminPage({
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex justify-end gap-2">
-                              {enableContentPreview ? (
+                              {enableContentPreview &&
+                              hasPreviewableResourceContent(row) ? (
                                 <Button
                                   variant="outline"
                                   size="sm"
