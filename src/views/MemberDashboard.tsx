@@ -413,6 +413,14 @@ export default function MemberDashboard({
         </div>
       ) : null}
 
+      {hasFranchise ? (
+        <div
+          className={`container py-8 ${hasWholesale ? "pb-8" : "pb-16"}`}
+        >
+          <FranchiseAnnouncementsSection />
+        </div>
+      ) : null}
+
       {hasWholesale ? (
         <div className="container py-8 pb-16">
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -443,12 +451,6 @@ export default function MemberDashboard({
             items={recentReorderItems}
             onReorderItem={handleReorderItem}
           />
-        </div>
-      ) : null}
-
-      {hasFranchise ? (
-        <div className="container py-8 pb-16">
-          <FranchiseAnnouncementsSection />
         </div>
       ) : null}
     </MemberPortalBackground>

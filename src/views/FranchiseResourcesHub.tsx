@@ -194,6 +194,17 @@ function buildCategoryGroups(categories: TaxonomyCategory[]): {
   return { groups, ungrouped: filteredUngrouped };
 }
 
+function findCategoryGroupForCategoryId(
+  groups: CategoryGroup[],
+  categoryId: number,
+): CategoryGroup | undefined {
+  return groups.find(
+    (group) =>
+      group.parentCategory?.id === categoryId ||
+      group.categories.some((category) => category.id === categoryId),
+  );
+}
+
 type CategorySidebarEntry =
   | { kind: "group"; group: CategoryGroup; groupIndex: number }
   | { kind: "category"; category: TaxonomyCategory };
@@ -1755,15 +1766,16 @@ export default function FranchiseResourcesHub() {
 
   useEffect(() => {
     if (activeCategoryId == null) return;
-    const parentGroup = categoryGroups.find(
-      (group) => group.parentCategory?.id === activeCategoryId,
+    const containingGroup = findCategoryGroupForCategoryId(
+      categoryGroups,
+      activeCategoryId,
     );
-    if (parentGroup) {
-      setExpandedCategoryGroupPrefix(parentGroup.prefix);
+    if (containingGroup) {
+      setExpandedCategoryGroupPrefix(containingGroup.prefix);
       return;
     }
     setExpandedCategoryGroupPrefix(null);
-  }, [activeCategoryId, categories, categoryGroups]);
+  }, [activeCategoryId, categoryGroups]);
 
   const handleCategoryGroupToggle = useCallback((prefix: string) => {
     setExpandedCategoryGroupPrefix((current) =>
@@ -1773,11 +1785,12 @@ export default function FranchiseResourcesHub() {
 
   const handleSelectCategory = useCallback(
     (categoryId: number) => {
-      const parentGroup = categoryGroups.find(
-        (group) => group.parentCategory?.id === categoryId,
+      const containingGroup = findCategoryGroupForCategoryId(
+        categoryGroups,
+        categoryId,
       );
-      if (parentGroup) {
-        setExpandedCategoryGroupPrefix(parentGroup.prefix);
+      if (containingGroup) {
+        setExpandedCategoryGroupPrefix(containingGroup.prefix);
       } else {
         setExpandedCategoryGroupPrefix(null);
       }
