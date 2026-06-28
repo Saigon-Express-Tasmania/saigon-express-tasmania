@@ -420,6 +420,7 @@ function CourseDetailMain({
         resource={course}
         layout="hub"
         hideHeader
+        videoFirst
       />
 
       <ModuleInfoPanel
@@ -659,6 +660,12 @@ export default function FranchiseMenuAcademyCourse({
     }
   }, [course, courseLoading, hasFranchise, isLoading, isSignedIn, router]);
 
+  const heroImage = useMemo(() => {
+    const thumbnail = course?.thumbnail_url?.trim();
+    if (!thumbnail) return DEFAULT_COURSE_IMAGE;
+    return resolveFranchiseResourceFileUrl(thumbnail, getPublicUrl);
+  }, [course?.thumbnail_url, getPublicUrl]);
+
   const handleLogout = async () => {
     await signOut();
     toast.success("Signed out.");
@@ -684,11 +691,6 @@ export default function FranchiseMenuAcademyCourse({
     );
   }
 
-  const heroImage = useMemo(() => {
-    const thumbnail = course.thumbnail_url?.trim();
-    if (!thumbnail) return DEFAULT_COURSE_IMAGE;
-    return resolveFranchiseResourceFileUrl(thumbnail, getPublicUrl);
-  }, [course.thumbnail_url, getPublicUrl]);
   const heroGradient = CARD_GRADIENTS[course.id % CARD_GRADIENTS.length];
   const durationLabel = formatCourseDuration(course.course_duration);
   const memberState = course.member_state;

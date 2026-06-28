@@ -144,6 +144,8 @@ export type FranchiseResourceContentProps = {
   layout?: "default" | "hub";
   /** When false, skips the title/meta header (e.g. when shown in a sidebar). */
   hideHeader?: boolean;
+  /** When true, renders the video above the file viewer and body content. */
+  videoFirst?: boolean;
   /** Rendered to the right of the document title (hub actions). */
   titleAction?: ReactNode;
 };
@@ -153,6 +155,7 @@ export default function FranchiseResourceContent({
   className,
   layout = "default",
   hideHeader = false,
+  videoFirst = false,
   titleAction,
 }: FranchiseResourceContentProps) {
   const { getPublicUrl } = useSupabaseStorage();
@@ -185,6 +188,28 @@ export default function FranchiseResourceContent({
   const summaryText = resource.summary?.trim() ?? "";
   const descriptionText = resource.description?.trim() ?? "";
   const tags = resource.tags?.filter((tag) => tag.trim()) ?? [];
+
+  const filePreviewSection = contentFileUrl ? (
+    <section
+      className={cn(
+        isHubLayout && "flex min-h-0 min-w-0 flex-1 flex-col",
+        isHubLayout && "max-xl:-mx-3 sm:max-xl:-mx-6",
+      )}
+    >
+      <FranchiseResourceContentFileViewer
+        url={contentFileUrl}
+        title={resource.title}
+        fillHeight={isHubLayout}
+        externalBottomBar={isHubLayout}
+      />
+    </section>
+  ) : null;
+
+  const videoSection = videoUrl ? (
+    <section className={cn(isHubLayout && "shrink-0")}>
+      <ResourceVideoPlayer url={videoUrl} title={resource.title} />
+    </section>
+  ) : null;
 
   return (
     <article
@@ -319,28 +344,17 @@ export default function FranchiseResourceContent({
         ) : null}
       </header>
 
-      {contentFileUrl ? (
-        <section
-          className={cn(
-            isHubLayout && "flex min-h-0 min-w-0 flex-1 flex-col",
-            isHubLayout &&
-              "max-xl:-mx-3 sm:max-xl:-mx-6",
-          )}
-        >
-          <FranchiseResourceContentFileViewer
-            url={contentFileUrl}
-            title={resource.title}
-            fillHeight={isHubLayout}
-            externalBottomBar={isHubLayout}
-          />
-        </section>
-      ) : null}
-
-      {videoUrl ? (
-        <section className={cn(isHubLayout && "shrink-0")}>
-          <ResourceVideoPlayer url={videoUrl} title={resource.title} />
-        </section>
-      ) : null}
+      {videoFirst ? (
+        <>
+          {videoSection}
+          {filePreviewSection}
+        </>
+      ) : (
+        <>
+          {filePreviewSection}
+          {videoSection}
+        </>
+      )}
 
       {contentText ? (
         <section className={cn(isHubLayout && "shrink-0")}>

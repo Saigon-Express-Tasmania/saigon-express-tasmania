@@ -134,14 +134,15 @@ export function FranchiseResourceAdminPage({
   const { profile, isLoading: profileLoading } = useUserProfile();
   const isAdmin = profile?.user_role === 'admin';
   const { labels, theme, resourceType, taxonomyPlace, taxonomyKinds } = config;
+  const listFilterTaxonomyKind = config.listFilterTaxonomyKind ?? 'category';
   const listTaxonomyFilters = config.listTaxonomyFilters ?? [];
   const listTableTaxonomyColumns =
     config.listTableTaxonomyColumns ??
-    (config.listFilterTaxonomyKind === 'category' ? ['category' as const] : []);
+    (listFilterTaxonomyKind === 'category' ? ['category' as const] : []);
   const usesLegacyTaxonomyFilter =
     listTaxonomyFilters.length === 0 &&
-    (config.listFilterTaxonomyKind === 'category' ||
-      config.listFilterTaxonomyKind === 'folder');
+    (listFilterTaxonomyKind === 'category' ||
+      listFilterTaxonomyKind === 'folder');
   const showTitleThumbnail = config.showTitleThumbnail ?? false;
   const enableContentPreview = config.enableContentPreview ?? false;
   const ListIcon = theme.icon;
@@ -237,7 +238,6 @@ export function FranchiseResourceAdminPage({
     editor.openCreate(defaults);
   }, [config.taxonomyKinds, editor, taxonomyByKind.period]);
 
-  const listFilterTaxonomyKind = config.listFilterTaxonomyKind ?? 'category';
   const listFilterTaxonomies = taxonomyByKind[listFilterTaxonomyKind];
   const listFilterLabel =
     listFilterTaxonomyKind === 'folder' ? 'Folder' : 'Category';

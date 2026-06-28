@@ -155,6 +155,8 @@ export const DOCUMENT_PAGE_CONFIG: FranchiseResourcePageConfig = {
   resourceType: 'document',
   taxonomyPlace: 'document',
   taxonomyKinds: ['category'],
+  listFilterTaxonomyKind: 'category',
+  listTableTaxonomyColumns: ['category'],
   enableContentPreview: true,
   uploadFolder: 'franchise-documents',
   labels: {
