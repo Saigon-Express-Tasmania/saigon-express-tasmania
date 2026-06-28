@@ -45,6 +45,32 @@ const FranchiseResourceXlsxViewer = dynamic(
   },
 );
 
+const FranchiseResourceImageViewer = dynamic(
+  () => import("./FranchiseResourceImageViewer"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-border py-12 text-sm text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Preparing image viewer…
+      </div>
+    ),
+  },
+);
+
+const FranchiseResourceTextViewer = dynamic(
+  () => import("./FranchiseResourceTextViewer"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-border py-12 text-sm text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Preparing text viewer…
+      </div>
+    ),
+  },
+);
+
 function getUrlExtension(url: string): string {
   try {
     const pathname = new URL(url).pathname;
@@ -81,6 +107,27 @@ function isXlsxUrl(url: string, mimeType?: string): boolean {
   }
   const ext = getUrlExtension(url);
   return ext === "xlsx" || ext === "xls" || ext === "xlsm";
+}
+
+function isImageUrl(url: string, mimeType?: string): boolean {
+  const mime = mimeType?.toLowerCase() ?? "";
+  if (mime.startsWith("image/")) return true;
+  const ext = getUrlExtension(url);
+  return (
+    ext === "png" ||
+    ext === "jpg" ||
+    ext === "jpeg" ||
+    ext === "gif" ||
+    ext === "webp" ||
+    ext === "svg"
+  );
+}
+
+function isTextUrl(url: string, mimeType?: string): boolean {
+  const mime = mimeType?.toLowerCase() ?? "";
+  if (mime.startsWith("text/")) return true;
+  const ext = getUrlExtension(url);
+  return ext === "txt" || ext === "text";
 }
 
 type FranchiseResourceContentFileViewerProps = {
@@ -129,6 +176,28 @@ export default function FranchiseResourceContentFileViewer({
   if (isXlsxUrl(resolvedUrl, mimeType)) {
     return (
       <FranchiseResourceXlsxViewer
+        url={resolvedUrl}
+        title={title}
+        fillHeight={fillHeight}
+        externalBottomBar={externalBottomBar}
+      />
+    );
+  }
+
+  if (isImageUrl(resolvedUrl, mimeType)) {
+    return (
+      <FranchiseResourceImageViewer
+        url={resolvedUrl}
+        title={title}
+        fillHeight={fillHeight}
+        externalBottomBar={externalBottomBar}
+      />
+    );
+  }
+
+  if (isTextUrl(resolvedUrl, mimeType)) {
+    return (
+      <FranchiseResourceTextViewer
         url={resolvedUrl}
         title={title}
         fillHeight={fillHeight}

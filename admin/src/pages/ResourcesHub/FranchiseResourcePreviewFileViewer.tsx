@@ -1,5 +1,7 @@
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import FranchiseResourceDocxViewer from '@/components/franchise-resources/FranchiseResourceDocxViewer';
+import FranchiseResourceImageViewer from '@/components/franchise-resources/FranchiseResourceImageViewer';
+import FranchiseResourceTextViewer from '@/components/franchise-resources/FranchiseResourceTextViewer';
 import FranchiseResourceXlsxViewer from '@/components/franchise-resources/FranchiseResourceXlsxViewer';
 import { Download, FileText } from 'lucide-react';
 import { useMemo } from 'react';
@@ -44,6 +46,39 @@ function isXlsxUrl(url: string, mimeType?: string): boolean {
   return ext === 'xlsx' || ext === 'xls' || ext === 'xlsm';
 }
 
+function isImageUrl(url: string, mimeType?: string): boolean {
+  const mime = mimeType?.toLowerCase() ?? '';
+  if (mime.startsWith('image/')) return true;
+  const ext = getUrlExtension(url);
+  return (
+    ext === 'png' ||
+    ext === 'jpg' ||
+    ext === 'jpeg' ||
+    ext === 'gif' ||
+    ext === 'webp' ||
+    ext === 'svg'
+  );
+}
+
+function isTextUrl(url: string, mimeType?: string): boolean {
+  const mime = mimeType?.toLowerCase() ?? '';
+  if (mime.startsWith('text/')) return true;
+  const ext = getUrlExtension(url);
+  return ext === 'txt' || ext === 'text';
+}
+
+function matchesFileType(
+  check: (url: string, mimeType?: string) => boolean,
+  resolvedUrl: string,
+  originalUrl: string,
+  mimeType?: string,
+): boolean {
+  return (
+    check(resolvedUrl, mimeType) ||
+    (originalUrl !== resolvedUrl && check(originalUrl, mimeType))
+  );
+}
+
 type FranchiseResourcePreviewFileViewerProps = {
   url: string;
   title?: string;
@@ -69,16 +104,24 @@ export function FranchiseResourcePreviewFileViewer({
     );
   }
 
-  if (isPdfUrl(resolvedUrl, mimeType) || isPdfUrl(url, mimeType)) {
+  if (matchesFileType(isPdfUrl, resolvedUrl, url, mimeType)) {
     return <FranchiseResourcePreviewPdfViewer url={resolvedUrl} title={title} />;
   }
 
-  if (isDocxUrl(resolvedUrl, mimeType) || isDocxUrl(url, mimeType)) {
+  if (matchesFileType(isDocxUrl, resolvedUrl, url, mimeType)) {
     return <FranchiseResourceDocxViewer url={resolvedUrl} title={title} />;
   }
 
-  if (isXlsxUrl(resolvedUrl, mimeType) || isXlsxUrl(url, mimeType)) {
+  if (matchesFileType(isXlsxUrl, resolvedUrl, url, mimeType)) {
     return <FranchiseResourceXlsxViewer url={resolvedUrl} title={title} />;
+  }
+
+  if (matchesFileType(isImageUrl, resolvedUrl, url, mimeType)) {
+    return <FranchiseResourceImageViewer url={resolvedUrl} title={title} />;
+  }
+
+  if (matchesFileType(isTextUrl, resolvedUrl, url, mimeType)) {
+    return <FranchiseResourceTextViewer url={resolvedUrl} title={title} />;
   }
 
   return (
