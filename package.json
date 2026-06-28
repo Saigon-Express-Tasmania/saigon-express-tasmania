@@ -12,7 +12,9 @@
     "admin:dev": "npm exec -- vite admin",
     "admin:build": "npm exec -- tsc -b admin/tsconfig.json && npm exec -- vite build admin",
     "admin:lint": "eslint admin",
-    "admin:preview": "npm exec -- vite preview admin"
+    "admin:preview": "npm exec -- vite preview admin",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans": "^5.2.10",
@@ -89,6 +91,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@netlify/plugin-nextjs": "^5.15.11",
     "@resvg/resvg-js": "^2.6.2",
     "eslint": "^9",

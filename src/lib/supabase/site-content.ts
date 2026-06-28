@@ -75,7 +75,13 @@ async function readJsonFileFromStorage(path: string): Promise<unknown | null> {
     return null;
   }
 
-  return JSON.parse(text);
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Invalid JSON in storage file";
+    throw new Error(`${path}: ${message}`);
+  }
 }
 
 async function fetchSettingsFromDb(): Promise<Record<string, string>> {

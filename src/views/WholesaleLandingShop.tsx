@@ -198,7 +198,7 @@ export default function WholesaleLandingShop({
                   {t("notice.ctaRegister")}
                 </button>
               </Link>
-              <Link href="/portals/wholesale">
+              <Link href="/member">
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg border border-border hover:border-primary/40 transition-colors">
                   {t("notice.ctaPin")}
                 </button>

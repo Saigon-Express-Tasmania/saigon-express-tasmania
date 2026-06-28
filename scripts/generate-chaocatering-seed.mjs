@@ -28,8 +28,8 @@ const CATERING_ID_START = 610001;
 const CUSTOMIZATION_ID_START = 9;
 
 const CATEGORY_ORDER = [
-  "Chao\u2019s Top Picks",
-  "Chao's Platters",
+  "Saigon Top Picks",
+  "Saigon Platters",
   "Individual Lunch Boxes",
   "Tea Time Boxes",
   "Funeral & Wake Catering",
