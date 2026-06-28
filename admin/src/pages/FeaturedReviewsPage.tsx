@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout';
+import { ImageUpload } from '@/components/ImageUpload';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import supabase from '@/lib/supabase/client';
 import {
   emptyFeaturedReviewInput,
@@ -64,6 +66,7 @@ function reviewToInput(review: FeaturedReview): FeaturedReviewInput {
   return {
     id: review.id,
     reviewer_name: review.reviewer_name,
+    reviewer_picture: review.reviewer_picture,
     rating: review.rating,
     review_text: review.review_text,
     location: review.location,
@@ -72,8 +75,50 @@ function reviewToInput(review: FeaturedReview): FeaturedReviewInput {
   };
 }
 
+function reviewerSlug(name: string): string {
+  return (
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'reviewer'
+  );
+}
+
+function ReviewerPictureCell({
+  name,
+  pictureUrl,
+}: {
+  name: string;
+  pictureUrl: string | null;
+}) {
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+
+  if (pictureUrl) {
+    return (
+      <img
+        src={pictureUrl}
+        alt={name}
+        className="size-9 rounded-full object-cover bg-muted"
+      />
+    );
+  }
+
+  return (
+    <div className="flex size-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+      {initials || '?'}
+    </div>
+  );
+}
+
 export function FeaturedReviewsPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const { uploadMedia, isUploading: isPictureUploading } = useSupabaseStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [reviews, setReviews] = useState<FeaturedReview[]>([]);
@@ -139,6 +184,31 @@ export function FeaturedReviewsPage() {
     setDialogOpen(true);
   };
 
+  const handlePictureUpload = async (fileInputs: File | File[]) => {
+    const file = Array.isArray(fileInputs) ? fileInputs[0] : fileInputs;
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `${reviewerSlug(form.reviewer_name)}-${Date.now()}.${ext}`;
+
+    try {
+      const { publicUrl } = await uploadMedia(file, {
+        folder: 'featured-reviews/avatars',
+        fileName,
+        upsert: true,
+      });
+      setForm((current) => ({ ...current, reviewer_picture: publicUrl }));
+      toast.success('Reviewer photo uploaded.');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to upload reviewer photo.';
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const handlePictureClear = () => {
+    setForm((current) => ({ ...current, reviewer_picture: null }));
+  };
+
   const handleSave = async () => {
     if (!form.reviewer_name.trim()) {
       toast.error('Reviewer name is required.');
@@ -158,6 +228,7 @@ export function FeaturedReviewsPage() {
       const payload = {
         id: form.id,
         reviewer_name: form.reviewer_name.trim(),
+        reviewer_picture: form.reviewer_picture?.trim() || null,
         rating: form.rating,
         review_text: form.review_text.trim(),
         location: form.location?.trim() || null,
@@ -170,6 +241,7 @@ export function FeaturedReviewsPage() {
           .from('featured_reviews')
           .update({
             reviewer_name: payload.reviewer_name,
+            reviewer_picture: payload.reviewer_picture,
             rating: payload.rating,
             review_text: payload.review_text,
             location: payload.location,
@@ -295,6 +367,9 @@ export function FeaturedReviewsPage() {
                         ID
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Photo
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
                         Reviewer
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
@@ -322,6 +397,12 @@ export function FeaturedReviewsPage() {
                       >
                         <td className="px-4 py-3 font-mono text-sm">
                           {review.id}
+                        </td>
+                        <td className="px-4 py-3">
+                          <ReviewerPictureCell
+                            name={review.reviewer_name}
+                            pictureUrl={review.reviewer_picture}
+                          />
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {review.reviewer_name}
@@ -406,6 +487,15 @@ export function FeaturedReviewsPage() {
                 }
               />
             </div>
+            <ImageUpload
+              label="Reviewer photo"
+              description="Shown on the public reviews carousel. JPEG, PNG, WebP or GIF."
+              value={form.reviewer_picture}
+              onFileSelect={handlePictureUpload}
+              onClear={form.reviewer_picture ? handlePictureClear : undefined}
+              isUploading={isPictureUploading}
+              disabled={saving}
+            />
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="rating">Rating</Label>

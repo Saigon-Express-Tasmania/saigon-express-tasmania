@@ -1,6 +1,7 @@
 export type FeaturedReview = {
   id: number;
   reviewer_name: string;
+  reviewer_picture: string | null;
   rating: number;
   review_text: string;
   location: string | null;
@@ -11,6 +12,7 @@ export type FeaturedReview = {
 export type FeaturedReviewInput = {
   id: number;
   reviewer_name: string;
+  reviewer_picture: string | null;
   rating: number;
   review_text: string;
   location: string | null;
@@ -21,6 +23,7 @@ export type FeaturedReviewInput = {
 export const emptyFeaturedReviewInput = (): FeaturedReviewInput => ({
   id: 0,
   reviewer_name: '',
+  reviewer_picture: null,
   rating: 5,
   review_text: '',
   location: null,

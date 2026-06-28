@@ -2,6 +2,7 @@
 export type FeaturedReviewRow = {
   id: number;
   reviewer_name: string;
+  reviewer_picture: string | null;
   rating: number;
   review_text: string;
   location: string | null;
@@ -13,6 +14,7 @@ export type FeaturedReviewRow = {
 export type FeaturedReview = {
   id: number;
   reviewerName: string;
+  reviewerPicture: string | null;
   rating: number;
   reviewText: string;
   location: string | null;
@@ -24,6 +26,7 @@ export function mapFeaturedReviewRow(row: FeaturedReviewRow): FeaturedReview {
   return {
     id: row.id,
     reviewerName: row.reviewer_name,
+    reviewerPicture: row.reviewer_picture,
     rating: row.rating,
     reviewText: row.review_text,
     location: row.location,

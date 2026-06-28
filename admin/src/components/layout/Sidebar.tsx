@@ -104,7 +104,7 @@ const navItems: NavItem[] = [
     title: "Categories",
     href: "/categories",
     icon: Tags,
-    group: "Content",
+    group: "Products",
   },
   {
     title: "Customizations",

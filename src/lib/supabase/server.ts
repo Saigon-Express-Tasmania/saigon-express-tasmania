@@ -41,7 +41,7 @@ export async function fetchFeaturedReviewRows(): Promise<FeaturedReviewRow[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("featured_reviews")
-    .select("id, reviewer_name, rating, review_text, location, is_featured, created_at")
+    .select("id, reviewer_name, reviewer_picture, rating, review_text, location, is_featured, created_at")
     .eq("is_featured", true)
     .order("created_at", { ascending: false });
 

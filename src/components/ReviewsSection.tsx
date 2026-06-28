@@ -40,7 +40,14 @@ const AVATAR_COLORS = [
   "bg-orange-700",
 ];
 
-function ReviewerAvatar({ name }: { name: string }) {
+function ReviewerAvatar({
+  name,
+  pictureUrl,
+}: {
+  name: string;
+  pictureUrl?: string | null;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
   const initials = name
     .split(" ")
     .slice(0, 2)
@@ -50,6 +57,20 @@ function ReviewerAvatar({ name }: { name: string }) {
   const colorIdx =
     name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) %
     AVATAR_COLORS.length;
+
+  if (pictureUrl && !imageFailed) {
+    return (
+      <img
+        src={pictureUrl}
+        alt={name}
+        width={40}
+        height={40}
+        className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-stone-800"
+        onError={() => setImageFailed(true)}
+      />
+    );
+  }
+
   return (
     <div
       className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${AVATAR_COLORS[colorIdx]}`}
@@ -62,6 +83,7 @@ function ReviewerAvatar({ name }: { name: string }) {
 // ─── Review Card ──────────────────────────────────────────────────────────────
 interface ReviewCardProps {
   reviewerName: string;
+  reviewerPicture?: string | null;
   rating: number;
   reviewText: string;
   location: string | null;
@@ -69,6 +91,7 @@ interface ReviewCardProps {
 
 function ReviewCard({
   reviewerName,
+  reviewerPicture,
   rating,
   reviewText,
   location,
@@ -77,7 +100,7 @@ function ReviewCard({
     <div className="flex-shrink-0 w-80 bg-stone-900 border border-stone-800 rounded-2xl p-6 flex flex-col gap-4 mx-3 select-none">
       {/* Top row: avatar + name + location */}
       <div className="flex items-center gap-3">
-        <ReviewerAvatar name={reviewerName} />
+        <ReviewerAvatar name={reviewerName} pictureUrl={reviewerPicture} />
         <div className="min-w-0">
           <p className="text-white font-semibold text-sm leading-tight truncate">
             {reviewerName}
@@ -234,6 +257,7 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
                 <ReviewCard
                   key={`${review.id}-${idx}`}
                   reviewerName={review.reviewerName}
+                  reviewerPicture={review.reviewerPicture}
                   rating={review.rating}
                   reviewText={review.reviewText}
                   location={review.location ?? null}
