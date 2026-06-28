@@ -87,12 +87,12 @@
     "typescript": "^5",
     "vaul": "^1.1.2",
     "vite": "^8.0.14",
-    "xlsx": "^0.18.5",
+    "xlsx-js-style": "^1.2.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0",
     "@netlify/plugin-nextjs": "^5.15.11",
+    "@playwright/test": "^1.55.0",
     "@resvg/resvg-js": "^2.6.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",

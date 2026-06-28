@@ -34,3 +34,22 @@ export const DOCUMENT_VIEWER_DOC_CLASS =
 
 export const DOCUMENT_VIEWER_TABLE_CLASS =
   "w-full min-w-max border-collapse text-left text-xs sm:text-sm [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_td]:align-top [&_td]:whitespace-pre-wrap [&_tr:nth-child(even)]:bg-muted/20";
+
+/** Spreadsheet scroll: full sheet height; page scrolls vertically, grid scrolls horizontally. */
+export const DOCUMENT_VIEWER_XLSX_SCROLL_BASE_CLASS =
+  "w-full min-w-0 overflow-x-auto overscroll-y-auto [-webkit-overflow-scrolling:touch] touch-auto p-2 sm:p-4";
+
+export const DOCUMENT_VIEWER_XLSX_SCROLL_X_CLASS =
+  "max-xl:scrollbar-hide-x";
+
+export const DOCUMENT_VIEWER_XLSX_SCROLL_CLASS = `${DOCUMENT_VIEWER_XLSX_SCROLL_BASE_CLASS} ${DOCUMENT_VIEWER_XLSX_SCROLL_X_CLASS}`;
+
+export const DOCUMENT_VIEWER_XLSX_SCROLL_FILL_CLASS = DOCUMENT_VIEWER_XLSX_SCROLL_CLASS;
+
+export const DOCUMENT_VIEWER_XLSX_SCROLL_TOUCH_CLASS = DOCUMENT_VIEWER_XLSX_SCROLL_CLASS;
+
+export const DOCUMENT_VIEWER_XLSX_SCROLL_FILL_TOUCH_CLASS =
+  DOCUMENT_VIEWER_XLSX_SCROLL_FILL_CLASS;
+
+export const DOCUMENT_VIEWER_XLSX_TABLE_CLASS =
+  "min-w-max table-fixed border-collapse text-left [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_td]:align-top [&_td]:whitespace-pre-wrap [&_td]:overflow-hidden";

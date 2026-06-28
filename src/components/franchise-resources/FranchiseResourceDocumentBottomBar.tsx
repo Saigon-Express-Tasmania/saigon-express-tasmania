@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import FranchiseResourceDocumentZoomNav from "@/components/franchise-resources/FranchiseResourceDocumentZoomNav";
 import FranchiseResourcePdfPageNav from "@/components/franchise-resources/FranchiseResourcePdfPageNav";
+import FranchiseResourceXlsxSheetSelect from "@/components/franchise-resources/FranchiseResourceXlsxSheetSelect";
 import { useFranchiseResourceDocumentViewer } from "@/components/franchise-resources/FranchiseResourceDocumentViewerContext";
 import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
 import { downloadFranchiseResourceFile } from "@/lib/franchise-resource-file-download";
@@ -11,6 +12,7 @@ import {
   resolveFranchiseResourceFileUrl,
 } from "@/types/franchise-resources";
 import { FileText, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type FranchiseResourceDocumentBottomBarProps = {
   documentTitle: string;
@@ -30,6 +32,7 @@ function BottomBarContent({
   const viewer = useFranchiseResourceDocumentViewer();
   const { getPublicUrl } = useSupabaseStorage();
   const pdfPageState = viewer?.pdfPageState ?? null;
+  const sheetPickerState = viewer?.sheetPickerState ?? null;
   const trimmedFileName = fileName?.trim() ?? "";
   const hasControls = showZoom || showPagination;
   const [downloading, setDownloading] = useState(false);
@@ -64,9 +67,30 @@ function BottomBarContent({
             <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold leading-tight text-foreground sm:text-sm">
-              {documentTitle}
-            </p>
+            <div
+              className={cn(
+                "flex min-w-0 items-center gap-2",
+                sheetPickerState && "max-sm:w-full",
+              )}
+            >
+              <p
+                className={cn(
+                  "min-w-0 flex-1 truncate text-xs font-semibold leading-tight text-foreground sm:text-sm",
+                  sheetPickerState && "hidden sm:block",
+                )}
+              >
+                {documentTitle}
+              </p>
+              {sheetPickerState ? (
+                <FranchiseResourceXlsxSheetSelect
+                  variant="compact"
+                  sheetNames={sheetPickerState.sheetNames}
+                  activeSheetIndex={sheetPickerState.activeSheetIndex}
+                  onSelectSheet={viewer?.onSelectSheet ?? (() => {})}
+                  className="w-full max-w-none sm:h-8 sm:w-auto sm:max-w-[10rem] sm:shrink-0"
+                />
+              ) : null}
+            </div>
             {trimmedFileName ? (
               canDownload ? (
                 <button
