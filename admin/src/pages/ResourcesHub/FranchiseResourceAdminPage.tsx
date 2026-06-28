@@ -37,21 +37,26 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  FolderUp,
   Loader2,
   Eye,
   Pencil,
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
 import { toast } from 'sonner';
 import { FranchiseResourceEditorDialog } from './FranchiseResourceEditorDialog';
+import { FranchiseResourceFolderImportDialog } from './FranchiseResourceFolderImportDialog';
+import { FranchiseResourceFolderImportPreviewDialog } from './FranchiseResourceFolderImportPreviewDialog';
 import { FranchiseResourcePreviewDialog } from './FranchiseResourcePreviewDialog';
 import {
   defaultNewestPeriodId,
   hasPreviewableResourceContent,
   normalizeResourceRow,
   resolveImagePreview,
+  resourceDescriptionExcerpt,
+  resourceListDisplayTitle,
   RESOURCE_COLUMNS,
   type FranchiseResourcePageConfig,
   type FranchiseResourceRow,
@@ -63,6 +68,7 @@ import {
   useFranchiseResourceEditor,
   useFranchiseResourceTaxonomies,
 } from './useFranchiseResourceEditor';
+import { useFranchiseResourceFolderImport } from './useFranchiseResourceFolderImport';
 
 function SortableHeader({
   label,
@@ -208,6 +214,22 @@ export function FranchiseResourceAdminPage({
     onSaved: loadResources,
   });
 
+  const folderImport = useFranchiseResourceFolderImport({
+    config,
+    onComplete: async () => {
+      await Promise.all([loadResources(), loadTaxonomies()]);
+    },
+  });
+
+  useEffect(() => {
+    const input = folderImport.folderInputRef.current;
+    if (!input || !config.enableFolderImport) return;
+    input.setAttribute('webkitdirectory', '');
+    input.setAttribute('directory', '');
+  }, [config.enableFolderImport, folderImport.folderInputRef]);
+
+  const listBusy = loading || folderImport.importing || folderImport.preparingPreview;
+
   useEffect(() => {
     if (!isAdmin) {
       setLoading(false);
@@ -242,6 +264,15 @@ export function FranchiseResourceAdminPage({
   const listFilterTaxonomies = taxonomyByKind[listFilterTaxonomyKind];
   const listFilterLabel =
     listFilterTaxonomyKind === 'folder' ? 'Folder' : 'Category';
+  const legacyTableTaxonomyKind: TaxonomyListKind | null =
+    usesLegacyTaxonomyFilter
+      ? listFilterTaxonomyKind === 'folder'
+        ? 'folder'
+        : 'category'
+      : null;
+  const visibleTableTaxonomyColumns = listTableTaxonomyColumns.filter(
+    (kind) => kind !== legacyTableTaxonomyKind,
+  );
 
   const taxonomyLabelById = useMemo(() => {
     return new Map(taxonomies.map((row) => [row.id, row.label]));
@@ -389,9 +420,29 @@ export function FranchiseResourceAdminPage({
             <div className="flex items-center gap-2">
               <RefreshTableButton
                 onClick={() => void loadResources()}
-                disabled={loading}
+                disabled={listBusy}
               />
-              <Button onClick={handleOpenCreate} disabled={loading}>
+              {config.enableFolderImport ? (
+                <>
+                  <input
+                    ref={folderImport.folderInputRef}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={folderImport.handleFolderInputChange}
+                    {...({ webkitdirectory: '', directory: '' } as InputHTMLAttributes<HTMLInputElement>)}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={folderImport.triggerFolderPick}
+                    disabled={listBusy}
+                  >
+                    <FolderUp className="mr-2 h-4 w-4" />
+                    {config.labels.importFolderButton ?? 'Import folder'}
+                  </Button>
+                </>
+              ) : null}
+              <Button onClick={handleOpenCreate} disabled={listBusy}>
                 <Plus className="mr-2 h-4 w-4" />
                 {labels.addButton}
               </Button>
@@ -496,19 +547,18 @@ export function FranchiseResourceAdminPage({
                           sortDirection={sortDirection}
                           onSort={handleSort}
                         />
-                        <SortableHeader
-                          label="Slug"
-                          column="slug"
-                          sortColumn={sortColumn}
-                          sortDirection={sortDirection}
-                          onSort={handleSort}
-                        />
+                        <th className="px-4 py-3 text-left text-sm font-semibold">
+                          Author
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold">
+                          Description
+                        </th>
                         {usesLegacyTaxonomyFilter ? (
                           <th className="px-4 py-3 text-left text-sm font-semibold">
                             {listFilterLabel}
                           </th>
                         ) : null}
-                        {listTableTaxonomyColumns.map((kind) => (
+                        {visibleTableTaxonomyColumns.map((kind) => (
                           <th
                             key={kind}
                             className="px-4 py-3 text-left text-sm font-semibold"
@@ -532,6 +582,10 @@ export function FranchiseResourceAdminPage({
                         const thumbnailUrl = showTitleThumbnail
                           ? resolveImagePreview(row.thumbnail_url, getPublicUrl)
                           : null;
+                        const displayTitle = resourceListDisplayTitle(row);
+                        const descriptionExcerpt = resourceDescriptionExcerpt(
+                          row.description,
+                        );
 
                         return (
                         <tr
@@ -559,7 +613,9 @@ export function FranchiseResourceAdminPage({
                                 </div>
                               ) : null}
                               <div className="min-w-0">
-                                <span className="line-clamp-2">{row.title}</span>
+                                <span className="line-clamp-2 text-foreground">
+                                  {displayTitle}
+                                </span>
                                 {row.is_mandatory ? (
                                   <Badge
                                     variant="outline"
@@ -571,8 +627,17 @@ export function FranchiseResourceAdminPage({
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                            {row.slug}
+                          <td className="px-4 py-3 text-sm text-muted-foreground">
+                            {row.author_name?.trim() || '—'}
+                          </td>
+                          <td className="max-w-xs px-4 py-3 text-sm text-muted-foreground">
+                            {descriptionExcerpt ? (
+                              <span className="line-clamp-2" title={descriptionExcerpt}>
+                                {descriptionExcerpt}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           {usesLegacyTaxonomyFilter ? (
                             <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -582,7 +647,7 @@ export function FranchiseResourceAdminPage({
                                 : '—'}
                             </td>
                           ) : null}
-                          {listTableTaxonomyColumns.map((kind) => {
+                          {visibleTableTaxonomyColumns.map((kind) => {
                             const taxonomyId = row[taxonomyIdFieldForKind(kind)];
                             return (
                               <td
@@ -656,6 +721,24 @@ export function FranchiseResourceAdminPage({
           </CardContent>
         </Card>
       </div>
+
+      <FranchiseResourceFolderImportPreviewDialog
+        preview={folderImport.preview}
+        open={folderImport.previewOpen}
+        includeParentPrefix={folderImport.includeParentPrefix}
+        onIncludeParentPrefixChange={folderImport.handleIncludeParentPrefixChange}
+        removeUnderscoresFromCategoryNames={
+          folderImport.removeUnderscoresFromCategoryNames
+        }
+        onRemoveUnderscoresFromCategoryNamesChange={
+          folderImport.handleRemoveUnderscoresFromCategoryNamesChange
+        }
+        onOpenChange={folderImport.setPreviewOpen}
+        onConfirm={folderImport.confirmImport}
+        onCancel={folderImport.cancelPreview}
+      />
+
+      <FranchiseResourceFolderImportDialog progress={folderImport.progress} />
 
       <FranchiseResourceEditorDialog
         config={config}

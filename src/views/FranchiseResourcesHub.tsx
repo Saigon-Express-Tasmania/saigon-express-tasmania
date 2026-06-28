@@ -63,6 +63,305 @@ function categoryFolderId(id: number): FolderId {
   return `category-${id}`;
 }
 
+const CATEGORY_LABEL_SEPARATOR = " / ";
+
+function formatSortOrderPrefix(sortOrder: number): string {
+  return String(sortOrder).padStart(2, "0");
+}
+
+function formatSortPrefixedLabel(name: string, sortOrder: number): string {
+  if (sortOrder === 0) return name;
+  return `${formatSortOrderPrefix(sortOrder)}_${name}`;
+}
+
+function formatCategorySortLabel(name: string, sortOrder: number): string {
+  return `${formatSortOrderPrefix(sortOrder)}_${name}`;
+}
+
+function compareTaxonomyBySort(
+  a: Pick<TaxonomyCategory, "label" | "sort_order">,
+  b: Pick<TaxonomyCategory, "label" | "sort_order">,
+): number {
+  const aExplicit = a.sort_order !== 0;
+  const bExplicit = b.sort_order !== 0;
+  if (aExplicit && bExplicit) return a.sort_order - b.sort_order;
+  if (aExplicit !== bExplicit) return aExplicit ? -1 : 1;
+  return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+}
+
+function categoryDisplayLabel(category: TaxonomyCategory): string {
+  const { prefix, child } = parseCategoryLabel(category.label);
+  const displayChild = formatCategorySortLabel(child, category.sort_order);
+  if (prefix) {
+    return `${prefix}${CATEGORY_LABEL_SEPARATOR}${displayChild}`;
+  }
+  return displayChild;
+}
+
+function parseCategoryLabel(label: string): {
+  prefix: string | null;
+  child: string;
+} {
+  const index = label.indexOf(CATEGORY_LABEL_SEPARATOR);
+  if (index === -1) {
+    return { prefix: null, child: label };
+  }
+
+  return {
+    prefix: label.slice(0, index).trim() || null,
+    child: label.slice(index + CATEGORY_LABEL_SEPARATOR.length).trim() || label,
+  };
+}
+
+type CategoryGroup = {
+  prefix: string;
+  categories: TaxonomyCategory[];
+  parentCategory: TaxonomyCategory | null;
+};
+
+function categoryNameMatchesGroupPrefix(
+  category: TaxonomyCategory,
+  prefix: string,
+): boolean {
+  const parsed = parseCategoryLabel(category.label);
+  if (parsed.prefix) return false;
+  return (
+    parsed.child.localeCompare(prefix, undefined, { sensitivity: "base" }) ===
+    0
+  );
+}
+
+function buildCategoryGroups(categories: TaxonomyCategory[]): {
+  groups: CategoryGroup[];
+  ungrouped: TaxonomyCategory[];
+} {
+  const sorted = [...categories].sort(compareTaxonomyBySort);
+  const groupsMap = new Map<string, TaxonomyCategory[]>();
+  const ungrouped: TaxonomyCategory[] = [];
+
+  for (const category of sorted) {
+    const { prefix } = parseCategoryLabel(category.label);
+    if (!prefix) {
+      ungrouped.push(category);
+      continue;
+    }
+
+    const list = groupsMap.get(prefix) ?? [];
+    list.push(category);
+    groupsMap.set(prefix, list);
+  }
+
+  const groupSortKey = (groupCategories: TaxonomyCategory[]) => {
+    const explicitOrders = groupCategories
+      .map((category) => category.sort_order)
+      .filter((order) => order !== 0);
+    if (explicitOrders.length === 0) return Number.MAX_SAFE_INTEGER;
+    return Math.min(...explicitOrders);
+  };
+
+  const groups = [...groupsMap.entries()]
+    .map(([prefix, groupCategories]) => ({
+      prefix,
+      categories: [...groupCategories].sort(compareTaxonomyBySort),
+      parentCategory: null as TaxonomyCategory | null,
+    }))
+    .sort((a, b) => {
+      const aKey = groupSortKey(a.categories);
+      const bKey = groupSortKey(b.categories);
+      const aExplicit = aKey !== Number.MAX_SAFE_INTEGER;
+      const bExplicit = bKey !== Number.MAX_SAFE_INTEGER;
+      if (aExplicit && bExplicit && aKey !== bKey) return aKey - bKey;
+      if (aExplicit !== bExplicit) return aExplicit ? -1 : 1;
+      return a.prefix.localeCompare(b.prefix, undefined, { sensitivity: "base" });
+    });
+
+  const linkedParentIds = new Set<number>();
+  for (const group of groups) {
+    const parentCategory =
+      ungrouped.find((category) =>
+        categoryNameMatchesGroupPrefix(category, group.prefix),
+      ) ?? null;
+    if (parentCategory) {
+      group.parentCategory = parentCategory;
+      linkedParentIds.add(parentCategory.id);
+    }
+  }
+
+  const filteredUngrouped = ungrouped
+    .filter((category) => !linkedParentIds.has(category.id))
+    .sort(compareTaxonomyBySort);
+
+  return { groups, ungrouped: filteredUngrouped };
+}
+
+type CategorySidebarEntry =
+  | { kind: "group"; group: CategoryGroup; groupIndex: number }
+  | { kind: "category"; category: TaxonomyCategory };
+
+function categoryGroupSortMeta(
+  group: CategoryGroup,
+): Pick<TaxonomyCategory, "label" | "sort_order"> {
+  if (group.parentCategory) {
+    return {
+      label: group.parentCategory.label,
+      sort_order: group.parentCategory.sort_order,
+    };
+  }
+
+  const explicitOrders = group.categories
+    .map((category) => category.sort_order)
+    .filter((order) => order !== 0);
+  return {
+    label: group.prefix,
+    sort_order:
+      explicitOrders.length === 0 ? 0 : Math.min(...explicitOrders),
+  };
+}
+
+function buildCategorySidebarEntries(
+  groups: CategoryGroup[],
+  ungrouped: TaxonomyCategory[],
+): CategorySidebarEntry[] {
+  const entries: CategorySidebarEntry[] = [
+    ...groups.map((group, groupIndex) => ({
+      kind: "group" as const,
+      group,
+      groupIndex,
+    })),
+    ...ungrouped.map((category) => ({
+      kind: "category" as const,
+      category,
+    })),
+  ];
+
+  return entries.sort((a, b) => {
+    const metaA =
+      a.kind === "group"
+        ? categoryGroupSortMeta(a.group)
+        : { label: a.category.label, sort_order: a.category.sort_order };
+    const metaB =
+      b.kind === "group"
+        ? categoryGroupSortMeta(b.group)
+        : { label: b.category.label, sort_order: b.category.sort_order };
+    return compareTaxonomyBySort(metaA, metaB);
+  });
+}
+
+const CATEGORY_GROUP_ACCORDION_ACCENTS = [
+  {
+    header: "bg-gradient-to-r from-accent/18 via-accent/10 to-transparent",
+    headerActive:
+      "bg-gradient-to-r from-accent/22 via-accent/12 to-primary/5",
+    chevron: "text-accent-foreground",
+    badge: "bg-accent/25 text-accent-foreground",
+    line: "border-accent/40",
+    dot: "bg-accent",
+    dotIdle: "bg-accent/40 group-hover:bg-accent/60",
+    nestedActive: "bg-accent/15 text-accent-foreground",
+    marker: "bg-accent",
+  },
+  {
+    header: "bg-gradient-to-r from-sky-500/14 via-sky-500/8 to-transparent",
+    headerActive: "bg-gradient-to-r from-sky-500/18 via-sky-500/10 to-transparent",
+    chevron: "text-sky-600 dark:text-sky-400",
+    badge: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+    line: "border-sky-400/40",
+    dot: "bg-sky-500",
+    dotIdle: "bg-sky-400/40 group-hover:bg-sky-500/60",
+    nestedActive: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    marker: "bg-sky-500",
+  },
+  {
+    header: "bg-gradient-to-r from-violet-500/14 via-violet-500/8 to-transparent",
+    headerActive:
+      "bg-gradient-to-r from-violet-500/18 via-violet-500/10 to-transparent",
+    chevron: "text-violet-600 dark:text-violet-400",
+    badge: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+    line: "border-violet-400/40",
+    dot: "bg-violet-500",
+    dotIdle: "bg-violet-400/40 group-hover:bg-violet-500/60",
+    nestedActive: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    marker: "bg-violet-500",
+  },
+  {
+    header: "bg-gradient-to-r from-fuchsia-500/14 via-fuchsia-500/8 to-transparent",
+    headerActive:
+      "bg-gradient-to-r from-fuchsia-500/18 via-fuchsia-500/10 to-transparent",
+    chevron: "text-fuchsia-600 dark:text-fuchsia-400",
+    badge: "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300",
+    line: "border-fuchsia-400/40",
+    dot: "bg-fuchsia-500",
+    dotIdle: "bg-fuchsia-400/40 group-hover:bg-fuchsia-500/60",
+    nestedActive: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+    marker: "bg-fuchsia-500",
+  },
+] as const;
+
+const CATEGORY_GROUP_PREFIX_ACCENTS = [
+  {
+    header: "bg-gradient-to-r from-emerald-500/14 via-emerald-500/8 to-transparent",
+    headerActive:
+      "bg-gradient-to-r from-emerald-500/18 via-emerald-500/10 to-transparent",
+    chevron: "text-emerald-600 dark:text-emerald-400",
+    badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    line: "border-emerald-400/40",
+    dot: "bg-emerald-500",
+    dotIdle: "bg-emerald-400/40 group-hover:bg-emerald-500/60",
+    nestedActive: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    marker: "bg-emerald-500",
+  },
+  {
+    header: "bg-gradient-to-r from-amber-500/14 via-amber-500/8 to-transparent",
+    headerActive:
+      "bg-gradient-to-r from-amber-500/18 via-amber-500/10 to-transparent",
+    chevron: "text-amber-600 dark:text-amber-400",
+    badge: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    line: "border-amber-400/40",
+    dot: "bg-amber-500",
+    dotIdle: "bg-amber-400/40 group-hover:bg-amber-500/60",
+    nestedActive: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    marker: "bg-amber-500",
+  },
+  {
+    header: "bg-gradient-to-r from-orange-500/14 via-orange-500/8 to-transparent",
+    headerActive:
+      "bg-gradient-to-r from-orange-500/18 via-orange-500/10 to-transparent",
+    chevron: "text-orange-600 dark:text-orange-400",
+    badge: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+    line: "border-orange-400/40",
+    dot: "bg-orange-500",
+    dotIdle: "bg-orange-400/40 group-hover:bg-orange-500/60",
+    nestedActive: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+    marker: "bg-orange-500",
+  },
+  {
+    header: "bg-gradient-to-r from-rose-500/14 via-rose-500/8 to-transparent",
+    headerActive:
+      "bg-gradient-to-r from-rose-500/18 via-rose-500/10 to-transparent",
+    chevron: "text-rose-600 dark:text-rose-400",
+    badge: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+    line: "border-rose-400/40",
+    dot: "bg-rose-500",
+    dotIdle: "bg-rose-400/40 group-hover:bg-rose-500/60",
+    nestedActive: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    marker: "bg-rose-500",
+  },
+] as const;
+
+type CategoryGroupAccent =
+  | (typeof CATEGORY_GROUP_ACCORDION_ACCENTS)[number]
+  | (typeof CATEGORY_GROUP_PREFIX_ACCENTS)[number];
+
+function categoryGroupAccent(
+  groupIndex: number,
+  hasParentCategory: boolean,
+): CategoryGroupAccent {
+  const palette = hasParentCategory
+    ? CATEGORY_GROUP_ACCORDION_ACCENTS
+    : CATEGORY_GROUP_PREFIX_ACCENTS;
+  return palette[groupIndex % palette.length];
+}
+
 function announcementFolderId(id: number): FolderId {
   return `folder-${id}`;
 }
@@ -82,10 +381,9 @@ function folderLabel(
   }
   if (folder.startsWith("category-")) {
     const categoryId = Number.parseInt(folder.slice("category-".length), 10);
-    return (
-      categories.find((category) => category.id === categoryId)?.label ??
-      "Category"
-    );
+    const category = categories.find((row) => row.id === categoryId);
+    if (!category) return "Category";
+    return categoryDisplayLabel(category);
   }
   return folder;
 }
@@ -135,8 +433,26 @@ type FranchiseDocumentRow = {
   requires_acknowledgement: boolean;
   published_at: string | null;
   created_at: string;
+  sort_order: number;
   member_state: FranchiseResourceMemberState | null;
 };
+
+function compareDocumentsBySort(
+  a: Pick<FranchiseDocumentRow, "title" | "sort_order">,
+  b: Pick<FranchiseDocumentRow, "title" | "sort_order">,
+): number {
+  const aExplicit = a.sort_order !== 0;
+  const bExplicit = b.sort_order !== 0;
+  if (aExplicit && bExplicit) return a.sort_order - b.sort_order;
+  if (aExplicit !== bExplicit) return aExplicit ? -1 : 1;
+  return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+}
+
+function sortDocumentsByOrder(
+  documents: FranchiseDocumentRow[],
+): FranchiseDocumentRow[] {
+  return [...documents].sort(compareDocumentsBySort);
+}
 
 type FranchiseDocumentDetail = FranchiseDocumentRow & FranchiseResourceContentData;
 
@@ -387,6 +703,7 @@ function normalizeDocumentRow(raw: Record<string, unknown>): FranchiseDocumentRo
     requires_acknowledgement: Boolean(raw.requires_acknowledgement),
     published_at: (raw.published_at as string | null) ?? null,
     created_at: raw.created_at as string,
+    sort_order: Number(raw.sort_order) || 0,
     member_state: memberState,
   };
 }
@@ -398,7 +715,7 @@ function mapDocumentToListItem(row: FranchiseDocumentRow): HubListItem {
   return {
     id: String(row.id),
     sender: row.author_name?.trim() || "Franchise HQ",
-    subject: row.title,
+    subject: formatSortPrefixedLabel(row.title, row.sort_order),
     preview: getResourcePreviewText(row.summary, row.description),
     date: formatShortDate(row.published_at ?? row.created_at),
     dateHighlight: row.is_featured,
@@ -457,23 +774,203 @@ function CategoryButton({
   label,
   active,
   onClick,
+  nested = false,
+  accent,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
+  nested?: boolean;
+  accent?: CategoryGroupAccent;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-md px-4 py-2.5 text-left text-sm transition-colors ${
+      className={cn(
+        "group flex w-full items-center gap-2 rounded-lg text-left text-[13px] leading-snug transition-all duration-150",
+        nested ? "py-2 pr-2" : "px-3 py-2",
         active
-          ? "bg-primary text-primary-foreground"
-          : "bg-secondary text-muted-foreground hover:bg-muted"
-      }`}
+          ? nested && accent
+            ? cn("font-medium", accent.nestedActive)
+            : nested
+              ? "bg-primary/10 font-medium text-primary"
+              : "bg-gradient-to-r from-primary to-primary/90 font-medium text-primary-foreground shadow-sm shadow-primary/20"
+          : nested
+            ? "text-muted-foreground hover:text-foreground"
+            : "border border-primary/12 bg-card/90 text-muted-foreground hover:border-primary/25 hover:bg-primary/5 hover:text-foreground",
+      )}
     >
-      {label}
+      {!nested ? (
+        <span
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+            active
+              ? "bg-primary-foreground/15"
+              : "bg-primary/10 text-primary",
+          )}
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+        </span>
+      ) : (
+        <span
+          className={cn(
+            "h-1.5 w-1.5 shrink-0 rounded-full",
+            active
+              ? accent?.dot ?? "bg-primary"
+              : accent?.dotIdle ??
+                  "bg-border group-hover:bg-muted-foreground/50",
+          )}
+          aria-hidden
+        />
+      )}
+      <span className="min-w-0 truncate">{label}</span>
     </button>
+  );
+}
+
+function CategoryGroupSection({
+  prefix,
+  categories,
+  parentCategory,
+  expanded,
+  activeFolder,
+  onToggle,
+  onSelectCategory,
+  onSelectParentCategory,
+  groupIndex,
+}: {
+  prefix: string;
+  categories: TaxonomyCategory[];
+  parentCategory: TaxonomyCategory | null;
+  expanded: boolean;
+  activeFolder: FolderId;
+  onToggle: () => void;
+  onSelectCategory: (categoryId: number) => void;
+  onSelectParentCategory?: (prefix: string, parentCategory: TaxonomyCategory) => void;
+  groupIndex: number;
+}) {
+  const accent = categoryGroupAccent(groupIndex, parentCategory != null);
+  const hasActiveChild = categories.some(
+    (category) => activeFolder === categoryFolderId(category.id),
+  );
+  const isParentActive =
+    parentCategory != null &&
+    activeFolder === categoryFolderId(parentCategory.id);
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      {parentCategory ? (
+        <button
+          type="button"
+          onClick={() => onSelectParentCategory?.(prefix, parentCategory)}
+          aria-expanded={expanded}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] leading-snug transition-all duration-150",
+            isParentActive
+              ? cn(
+                  accent.headerActive,
+                  "font-semibold text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+                )
+              : expanded || hasActiveChild
+                ? cn(accent.headerActive, "font-medium text-foreground")
+                : cn(
+                    accent.header,
+                    "font-medium text-muted-foreground hover:brightness-[1.03] hover:text-foreground",
+                  ),
+          )}
+        >
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+              isParentActive || expanded || hasActiveChild
+                ? accent.chevron
+                : "text-muted-foreground/80",
+              expanded && "rotate-90",
+            )}
+          />
+          <span className="min-w-0 flex-1 truncate">
+            {categoryDisplayLabel(parentCategory)}
+          </span>
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+              accent.badge,
+            )}
+          >
+            {categories.length}
+          </span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] leading-snug transition-all duration-150",
+            expanded || hasActiveChild
+              ? cn(accent.headerActive, "font-medium text-foreground")
+              : cn(
+                  accent.header,
+                  "font-medium text-muted-foreground hover:brightness-[1.03] hover:text-foreground",
+                ),
+          )}
+        >
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+              expanded || hasActiveChild
+                ? accent.chevron
+                : "text-muted-foreground/80",
+              expanded && "rotate-90",
+            )}
+          />
+          <span className="min-w-0 flex-1 truncate">{prefix}</span>
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+              accent.badge,
+            )}
+          >
+            {categories.length}
+          </span>
+        </button>
+      )}
+      {expanded ? (
+        <div
+          className={cn(
+            "relative ml-4 flex flex-col gap-0.5 border-l pb-1 pl-2.5",
+            accent.line,
+          )}
+        >
+          {categories.map((category) => {
+            const { child } = parseCategoryLabel(category.label);
+            const isActive = activeFolder === categoryFolderId(category.id);
+            const label = formatCategorySortLabel(child, category.sort_order);
+            return (
+              <div key={category.id} className="relative">
+                {isActive ? (
+                  <span
+                    className={cn(
+                      "absolute -left-[11px] top-2 h-4 w-0.5 rounded-full",
+                      accent.marker,
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
+                <CategoryButton
+                  label={label}
+                  nested
+                  accent={accent}
+                  active={isActive}
+                  onClick={() => onSelectCategory(category.id)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -583,6 +1080,7 @@ async function fetchAnnouncements(
       requires_acknowledgement,
       published_at,
       created_at,
+      sort_order,
       member_state:franchise_resource_member_states (
         status,
         first_seen_at,
@@ -667,6 +1165,7 @@ async function fetchCategoryDocuments(
       requires_acknowledgement,
       published_at,
       created_at,
+      sort_order,
       member_state:franchise_resource_member_states (
         status,
         first_seen_at,
@@ -718,6 +1217,7 @@ async function fetchFranchiseDocumentDetail(
       requires_acknowledgement,
       published_at,
       created_at,
+      sort_order,
       member_state:franchise_resource_member_states (
         status,
         first_seen_at,
@@ -898,6 +1398,8 @@ export default function FranchiseResourcesHub() {
   const [page, setPage] = useState(0);
   const [categories, setCategories] = useState<TaxonomyCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [expandedCategoryGroupPrefix, setExpandedCategoryGroupPrefix] =
+    useState<string | null>(null);
   const [announcementFolders, setAnnouncementFolders] = useState<TaxonomyCategory[]>(
     [],
   );
@@ -935,6 +1437,14 @@ export default function FranchiseResourcesHub() {
     () => parseCategoryId(activeFolder),
     [activeFolder],
   );
+  const { groups: categoryGroups, ungrouped: ungroupedCategories } = useMemo(
+    () => buildCategoryGroups(categories),
+    [categories],
+  );
+  const categorySidebarEntries = useMemo(
+    () => buildCategorySidebarEntries(categoryGroups, ungroupedCategories),
+    [categoryGroups, ungroupedCategories],
+  );
   const activeAnnouncementFolderId = useMemo(
     () => parseAnnouncementFolderId(activeFolder),
     [activeFolder],
@@ -969,8 +1479,9 @@ export default function FranchiseResourcesHub() {
     };
 
     if (isStarredView) {
-      const dbFavourites = documents
-        .filter((doc) => doc.member_state?.is_favourite)
+      const dbFavourites = sortDocumentsByOrder(
+        documents.filter((doc) => doc.member_state?.is_favourite),
+      )
         .map(mapDocumentToListItem)
         .filter(matchesSearch);
       const mockFavourites = RESOURCE_MESSAGES.filter(
@@ -980,7 +1491,9 @@ export default function FranchiseResourcesHub() {
     }
 
     if (isAnnouncementView || isCategoryView) {
-      return documents.map(mapDocumentToListItem).filter(matchesSearch);
+      return sortDocumentsByOrder(documents)
+        .map(mapDocumentToListItem)
+        .filter(matchesSearch);
     }
 
     return RESOURCE_MESSAGES.filter((message) => {
@@ -1239,6 +1752,53 @@ export default function FranchiseResourcesHub() {
     updateResourcesHubHash(folder, null);
     setMobileNavOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (activeCategoryId == null) return;
+    const parentGroup = categoryGroups.find(
+      (group) => group.parentCategory?.id === activeCategoryId,
+    );
+    if (parentGroup) {
+      setExpandedCategoryGroupPrefix(parentGroup.prefix);
+      return;
+    }
+    setExpandedCategoryGroupPrefix(null);
+  }, [activeCategoryId, categories, categoryGroups]);
+
+  const handleCategoryGroupToggle = useCallback((prefix: string) => {
+    setExpandedCategoryGroupPrefix((current) =>
+      current === prefix ? null : prefix,
+    );
+  }, []);
+
+  const handleSelectCategory = useCallback(
+    (categoryId: number) => {
+      const parentGroup = categoryGroups.find(
+        (group) => group.parentCategory?.id === categoryId,
+      );
+      if (parentGroup) {
+        setExpandedCategoryGroupPrefix(parentGroup.prefix);
+      } else {
+        setExpandedCategoryGroupPrefix(null);
+      }
+      selectFolder(categoryFolderId(categoryId));
+    },
+    [categoryGroups, selectFolder],
+  );
+
+  const handleCategoryGroupParentClick = useCallback(
+    (prefix: string, parentCategory: TaxonomyCategory) => {
+      const isParentActive =
+        activeFolder === categoryFolderId(parentCategory.id);
+      const isExpanded = expandedCategoryGroupPrefix === prefix;
+      if (isParentActive && isExpanded) {
+        setExpandedCategoryGroupPrefix(null);
+        return;
+      }
+      handleSelectCategory(parentCategory.id);
+    },
+    [activeFolder, expandedCategoryGroupPrefix, handleSelectCategory],
+  );
 
   const closeSelectedDocument = useCallback(() => {
     setSelectedDocumentId(null);
@@ -1950,26 +2510,56 @@ export default function FranchiseResourcesHub() {
             </div>
 
             <div className="mb-6">
-              <div className="label-badge mb-2.5">Categories</div>
-              <div className="flex flex-col gap-1.5">
+              <div className="mb-2.5 flex items-center gap-2">
+                <span className="label-badge">Categories</span>
+                {!categoriesLoading && categories.length > 0 ? (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {categories.length}
+                  </span>
+                ) : null}
+              </div>
+              <div className="overflow-hidden rounded-xl border border-primary/15 bg-gradient-to-br from-primary/8 via-card to-accent/10 p-1.5 shadow-sm shadow-primary/5">
                 {categoriesLoading ? (
-                  <div className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading categories…
                   </div>
                 ) : categories.length === 0 ? (
-                  <p className="px-4 py-2 text-sm text-muted-foreground">
+                  <p className="px-3 py-3 text-sm text-muted-foreground">
                     No categories yet.
                   </p>
                 ) : (
-                  categories.map((category) => (
-                    <CategoryButton
-                      key={category.id}
-                      label={category.label}
-                      active={activeFolder === categoryFolderId(category.id)}
-                      onClick={() => selectFolder(categoryFolderId(category.id))}
-                    />
-                  ))
+                  <div className="flex flex-col gap-0.5">
+                    {categorySidebarEntries.map((entry) =>
+                      entry.kind === "group" ? (
+                        <CategoryGroupSection
+                          key={entry.group.prefix}
+                          prefix={entry.group.prefix}
+                          categories={entry.group.categories}
+                          parentCategory={entry.group.parentCategory}
+                          expanded={
+                            expandedCategoryGroupPrefix === entry.group.prefix
+                          }
+                          activeFolder={activeFolder}
+                          groupIndex={entry.groupIndex}
+                          onToggle={() =>
+                            handleCategoryGroupToggle(entry.group.prefix)
+                          }
+                          onSelectCategory={handleSelectCategory}
+                          onSelectParentCategory={handleCategoryGroupParentClick}
+                        />
+                      ) : (
+                        <CategoryButton
+                          key={entry.category.id}
+                          label={categoryDisplayLabel(entry.category)}
+                          active={
+                            activeFolder === categoryFolderId(entry.category.id)
+                          }
+                          onClick={() => handleSelectCategory(entry.category.id)}
+                        />
+                      ),
+                    )}
+                  </div>
                 )}
               </div>
             </div>

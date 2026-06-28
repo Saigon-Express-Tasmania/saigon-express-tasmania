@@ -118,6 +118,8 @@ export type FranchiseResourcePageConfig = {
   showTitleThumbnail?: boolean;
   /** Show preview action to open course content in a dialog. */
   enableContentPreview?: boolean;
+  /** Show folder import button for bulk document uploads from local directories. */
+  enableFolderImport?: boolean;
   uploadFolder: string;
   labels: {
     singular: string;
@@ -126,6 +128,7 @@ export type FranchiseResourcePageConfig = {
     listTitle: string;
     listDescription: string;
     addButton: string;
+    importFolderButton?: string;
     editTitle: string;
     addTitle: string;
     saveButton: string;
@@ -158,6 +161,7 @@ export const DOCUMENT_PAGE_CONFIG: FranchiseResourcePageConfig = {
   listFilterTaxonomyKind: 'category',
   listTableTaxonomyColumns: ['category'],
   enableContentPreview: true,
+  enableFolderImport: true,
   uploadFolder: 'franchise-documents',
   labels: {
     singular: 'Document',
@@ -167,6 +171,7 @@ export const DOCUMENT_PAGE_CONFIG: FranchiseResourcePageConfig = {
     listDescription:
       'Manage document resources shown in the franchise Resources Hub.',
     addButton: 'Add document',
+    importFolderButton: 'Import folder',
     editTitle: 'Edit document',
     addTitle: 'Add document',
     saveButton: 'Save document',
@@ -395,6 +400,41 @@ export function titleFromFileName(fileName: string): string {
   return base.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+export function resourceListDisplayTitle(
+  row: Pick<FranchiseResourceRow, 'title' | 'slug'>,
+): string {
+  const trimmedTitle = row.title.trim();
+  if (trimmedTitle) return trimmedTitle;
+
+  const tail = row.slug.split('-').pop();
+  if (!tail) return row.slug;
+  return titleFromFileName(`${tail}.txt`) || row.slug;
+}
+
+function stripHtmlForExcerpt(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function resourceDescriptionExcerpt(
+  description: string | null | undefined,
+  maxLength = 120,
+): string | null {
+  if (!description?.trim()) return null;
+  const plain = stripHtmlForExcerpt(description);
+  if (!plain) return null;
+  if (plain.length <= maxLength) return plain;
+  return `${plain.slice(0, maxLength).trimEnd()}…`;
+}
+
 function toDatetimeLocalValue(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
@@ -522,7 +562,7 @@ export function normalizeResourceRow(
 export function rowToInput(row: FranchiseResourceRow): ResourceInput {
   return {
     title: row.title,
-    slug: slugify(row.title),
+    slug: row.slug,
     category_id: row.category_id != null ? String(row.category_id) : '',
     course_id: row.course_id != null ? String(row.course_id) : '',
     period_id: row.period_id != null ? String(row.period_id) : '',
@@ -566,8 +606,14 @@ function parseOptionalId(value: string): number | null {
   return Number.isNaN(id) ? null : id;
 }
 
+export function resolveResourceSlug(form: ResourceInput): string {
+  const explicit = form.slug.trim();
+  if (explicit) return explicit;
+  return slugify(form.title);
+}
+
 export function canPersistResource(form: ResourceInput): boolean {
-  const slug = slugify(form.title);
+  const slug = resolveResourceSlug(form);
   return (
     Boolean(form.title.trim()) &&
     Boolean(slug) &&
@@ -587,7 +633,7 @@ export function buildResourcePayload(
   return {
     type: resourceType,
     title: form.title.trim(),
-    slug: slugify(form.title),
+    slug: resolveResourceSlug(form),
     category_id: parseOptionalId(form.category_id),
     course_id: parseOptionalId(form.course_id),
     period_id: parseOptionalId(form.period_id),
