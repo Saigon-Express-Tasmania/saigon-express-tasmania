@@ -107,6 +107,14 @@ export default function MainFooter() {
                   </Link>
                 </li>
               ))}              
+              <li>
+                <Link
+                  href="/news"
+                  className="hover:text-white transition-colors"
+                >
+                  {t("footer.news")}
+                </Link>
+              </li>
               {/* <li>
                 <Link
                   href="/get-the-app"

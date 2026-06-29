@@ -1,11 +1,13 @@
 "use client";
 
-import AppImage from "@/components/AppImage";
-import { useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import Link from "@/components/link";
 import { useTranslations } from "next-intl";
 import { MapPin, Clock, Phone, ExternalLink, ChevronRight } from "lucide-react";
-import { MapView } from "@/components/Map";
+import {
+  TASMANIA_MAP_EMBED_URL,
+  resolvePickupStoreMapEmbedUrl,
+} from "@/lib/google-maps-embed";
 import type { StoreLocation } from "@/types";
 
 // Parse hours JSON from DB: { mon: "11:00 AM - 8:30 PM", ... }
@@ -53,127 +55,19 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
   const [selectedStore, setSelectedStore] = useState<StoreLocation | null>(
     null,
   );
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-  const [markersAdded, setMarkersAdded] = useState(false);
 
-  const handleMapReady = useCallback((map: google.maps.Map) => {
-    setMapInstance(map);
-    map.setCenter({ lat: -42.0, lng: 147.3 });
-    map.setZoom(9);
-  }, []);
-
-  const addMarkers = useCallback(
-    (map: google.maps.Map, storeList: StoreLocation[]) => {
-      // Snapshot translated strings for use inside imperative Google Maps callbacks.
-      // useTranslations() cannot be called inside a callback, so we capture the
-      // values once at call-site (within the React render cycle via useCallback).
-      const labelDirections = t("map.infoGetDirections");
-      const labelDelivery = t("map.infoOrderDelivery");
-      const labelOpen = t("map.infoStatusOpen");
-      const labelClosed = t("map.infoStatusClosed");
-
-      storeList.forEach((store: StoreLocation) => {
-        const lat = parseFloat(String(store.lat));
-        const lng = parseFloat(String(store.lng));
-        if (isNaN(lat) || isNaN(lng)) return;
-
-        const hours = formatHours(store.hours);
-        const open = isOpenNow(store.hours);
-        const statusLabel = open ? labelOpen : labelClosed;
-        const statusBg = open ? "#dcfce7" : "#fee2e2";
-        const statusColor = open ? "#15803d" : "#b91c1c";
-
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map,
-          title: store.name,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 11,
-            fillColor: "#C41E3A",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2.5,
-          },
-        });
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-          <div style="font-family:'DM Sans',sans-serif;padding:6px 4px;min-width:220px;max-width:260px;">
-            <div style="font-weight:700;font-size:14px;color:#1a1a1a;margin-bottom:6px;line-height:1.3;">${store.name}</div>
-            <div style="font-size:12px;color:#555;margin-bottom:6px;display:flex;align-items:flex-start;gap:5px;">
-              <span style="margin-top:1px;">📍</span><span>${store.address}</span>
-            </div>
-            ${
-              store.phone
-                ? `<div style="font-size:12px;color:#555;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
-              <span>📞</span>
-              <a href="tel:${store.phone}" style="color:#C41E3A;font-weight:600;text-decoration:none;">${store.phone}</a>
-            </div>`
-                : ""
-            }
-            <div style="font-size:12px;color:#555;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
-              <span>🕐</span>
-              <span>${hours}</span>
-              <span style="margin-left:4px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:${statusBg};color:${statusColor};">${statusLabel}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <a href="https://maps.google.com/?q=${encodeURIComponent(store.address)}" target="_blank"
-                 style="font-size:12px;color:#C41E3A;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">
-                ${labelDirections}
-              </a>
-              ${
-                store.deliveryUrl
-                  ? `<a href="${store.deliveryUrl}" target="_blank"
-                 style="font-size:11px;background:#C41E3A;color:#fff;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:4px;display:inline-block;">
-                ${labelDelivery}
-              </a>`
-                  : ""
-              }
-            </div>
-          </div>`,
-        });
-
-        marker.addListener("click", () => {
-          infoWindow.open(map, marker);
-          setSelectedId(store.id);
-          map.panTo({ lat, lng });
-          map.setZoom(15);
-        });
-      });
-    },
-
-    [t],
-  );
-
-  const handleMapReadyFull = useCallback(
-    (map: google.maps.Map) => {
-      handleMapReady(map);
-      (window as unknown as Record<string, unknown>).__sge_map = map;
-    },
-    [handleMapReady],
-  );
-
-  if (!markersAdded && stores.length > 0 && mapInstance) {
-    addMarkers(mapInstance, stores);
-    setMarkersAdded(true);
-  }
+  const mapEmbedUrl = useMemo(() => {
+    if (!selectedStore) return TASMANIA_MAP_EMBED_URL;
+    return resolvePickupStoreMapEmbedUrl(selectedStore) ?? TASMANIA_MAP_EMBED_URL;
+  }, [selectedStore]);
 
   const handleStoreClick = (storeId: number) => {
     const store = stores.find((s: StoreLocation) => s.id === storeId);
     if (!store) return;
 
-    setSelectedId((prev) => (prev === storeId ? null : storeId));
-    setSelectedStore(store);
-
-    if (mapInstance) {
-      const lat = parseFloat(String(store.lat));
-      const lng = parseFloat(String(store.lng));
-      if (!isNaN(lat) && !isNaN(lng)) {
-        mapInstance.panTo({ lat, lng });
-        mapInstance.setZoom(15);
-      }
-    }
+    const isDeselecting = selectedId === storeId;
+    setSelectedId(isDeselecting ? null : storeId);
+    setSelectedStore(isDeselecting ? null : store);
   };
 
   return (
@@ -341,18 +235,22 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
             className="lg:col-span-3 overflow-hidden border border-gray-200 shadow-lg"
             style={{ height: "calc(100vh - 220px)", minHeight: "500px" }}
           >
-            {selectedStore && selectedStore.googleMapUrl && (
-              <iframe
-                src={selectedStore.googleMapUrl}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                style={{ border: 0 }}
-                allowFullScreen
-                aria-hidden="false"
-                tabIndex={0}
-              />
-            )}
+            <iframe
+              key={mapEmbedUrl}
+              src={mapEmbedUrl}
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title={
+                selectedStore
+                  ? t("map.storeTitle", { store: selectedStore.name })
+                  : t("map.tasmaniaTitle")
+              }
+            />
           </div>
         </div>
       </div>

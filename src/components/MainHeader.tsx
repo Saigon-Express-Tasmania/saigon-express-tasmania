@@ -1,7 +1,8 @@
 "use client";
 
 import AppImage from "@/components/AppImage";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import Link from "@/components/link";
 import { useCart } from "@/contexts/CartContext";
 import { useCateringCart } from "@/contexts/CateringCartContext";
@@ -10,19 +11,28 @@ import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { useSupabase } from "@/hooks/useSupabase";
 import { isPublicCateringShopRoute } from "@/lib/catering-routes";
-import { MapPin, Menu, ClipboardList, ShoppingCart, X } from "lucide-react";
+import { Menu, ClipboardList, ShoppingCart, X, ChevronDown, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { PORTAL_LINKS, NAV_LINKS } from "@/config/nav-links";
+import { PORTAL_LINKS, NAV_LINKS, isNavDropdown } from "@/config/nav-links";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { LOGO_IMG_CLASS, LOGO_INTRINSIC, LOGO_URL } from "@/lib/site-images";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
 import { hasPrivilege } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
 import type { StoreLocation } from "@/types";
+import { cn } from "@/lib/utils";
 
 type MainHeaderProps = {
   storeLocations: StoreLocation[];
 };
+
+const MOBILE_MENU_ANIM_MS = 220;
+type MobileMenuPhase = "closed" | "entering" | "open" | "exiting";
 
 export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const tLinks = useTranslations("NavLinks");
@@ -31,7 +41,11 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
   const contactPhone = useFormattedContactPhone();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileMenuPhase, setMobileMenuPhase] = useState<MobileMenuPhase>("closed");
+  const [communityMenuOpen, setCommunityMenuOpen] = useState(false);
+  const [mobileCommunityOpen, setMobileCommunityOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname() ?? "/";
   const { cartCount, setCartOpen } = useCart();
   const {
@@ -77,8 +91,107 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
     setOrderLocationsOpen(true);
   }, []);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      setMobileMenuPhase("entering");
+      const timer = window.setTimeout(
+        () => setMobileMenuPhase("open"),
+        MOBILE_MENU_ANIM_MS,
+      );
+      return () => window.clearTimeout(timer);
+    }
+
+    setMobileMenuPhase((current) =>
+      current === "closed" || current === "exiting" ? current : "exiting",
+    );
+    const timer = window.setTimeout(
+      () => setMobileMenuPhase("closed"),
+      MOBILE_MENU_ANIM_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (mobileMenuPhase === "closed") return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuPhase]);
+
+  const isCommunityActive = useMemo(
+    () =>
+      NAV_LINKS.some(
+        (item) =>
+          isNavDropdown(item) &&
+          item.key === "community" &&
+          item.items.some((link) => pathname.startsWith(link.href)),
+      ),
+    [pathname],
+  );
+
+  const desktopNavClass = (active: boolean) =>
+    cn(
+      "rounded-full px-3.5 py-2 text-sm font-semibold transition-all duration-200",
+      active
+        ? "bg-brand-red/10 text-brand-red ring-1 ring-brand-red/25 shadow-sm"
+        : "text-brand-dark/75 hover:bg-brand-amber/15 hover:text-brand-red",
+    );
+
+  const mobileNavClass = (active: boolean) =>
+    cn(
+      "flex w-full items-center rounded-xl border px-4 py-3 text-sm font-semibold shadow-sm transition-all duration-200",
+      active
+        ? "border-brand-red/30 bg-red-50 text-brand-red shadow-[inset_3px_0_0_0_#C8102E]"
+        : "border-brand-red/10 bg-white text-brand-dark hover:border-brand-amber hover:bg-amber-50 hover:text-brand-red active:scale-[0.99]",
+    );
+
+  const dropdownLinkClass = (active: boolean) =>
+    cn(
+      "block rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+      active
+        ? "bg-brand-red/10 text-brand-red"
+        : "text-brand-dark/75 hover:bg-brand-amber/10 hover:text-brand-red",
+    );
+
+  const mobileMenuPanelAnimClass =
+    mobileMenuPhase === "entering"
+      ? "animate-mobile-menu-in"
+      : mobileMenuPhase === "exiting"
+        ? "animate-mobile-menu-out"
+        : "";
+  const mobileMenuBackdropAnimClass =
+    mobileMenuPhase === "entering"
+      ? "animate-mobile-menu-backdrop-in"
+      : mobileMenuPhase === "exiting"
+        ? "animate-mobile-menu-backdrop-out"
+        : "";
+  const mobileMenuMotionStyle = {
+    "--mobile-menu-anim-ms": `${MOBILE_MENU_ANIM_MS}ms`,
+  } as CSSProperties;
+
   return (
     <>
+      {isMounted && mobileMenuPhase !== "closed"
+        ? createPortal(
+            <button
+              type="button"
+              aria-label="Close menu"
+              className={cn(
+                "fixed inset-0 z-40 bg-black/50 lg:hidden",
+                mobileMenuBackdropAnimClass,
+              )}
+              style={mobileMenuMotionStyle}
+              onClick={() => setMobileOpen(false)}
+            />,
+            document.body,
+          )
+        : null}
       {/* <div className="topbar sticky top-0 z-50">
         <div className="max-w-[1280px] mx-auto px-4 h-9 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
@@ -114,7 +227,8 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
           </div>
         </div>
       </div> */}
-      <header className="main-header-under-shade sticky-header-scroll-shadow sticky top-0 z-50">
+      <header className="main-header-under-shade sticky-header-scroll-shadow relative sticky top-0 z-50 border-b border-brand-red/10 bg-gradient-to-r from-white via-brand-cream/50 to-white backdrop-blur-md">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-red via-brand-amber to-brand-red" />
         <div className="max-w-[1280px] mx-auto px-4 h-16 flex items-center justify-between gap-6">
           <Link href="/" className="shrink-0">
             <AppImage
@@ -127,37 +241,68 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
             />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-7">
-            {NAV_LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-sm font-medium text-brand-dark/80 hover:text-brand-red transition-colors"
-              >
-                {tLinks(`${l.key}`)}
-              </Link>
-            ))}
+          <nav className="hidden lg:flex items-center gap-1.5">
+            {NAV_LINKS.map((item) =>
+              isNavDropdown(item) ? (
+                <Popover
+                  key={item.key}
+                  open={communityMenuOpen}
+                  onOpenChange={setCommunityMenuOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex items-center gap-1",
+                        desktopNavClass(isCommunityActive),
+                      )}
+                    >
+                      {tLinks(item.key)}
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 transition-transform duration-200",
+                          communityMenuOpen ? "rotate-180 text-brand-amber" : "",
+                        )}
+                      />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="w-52 border-brand-red/15 bg-gradient-to-b from-white to-brand-cream/90 p-2 shadow-xl"
+                  >
+                    {item.items.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setCommunityMenuOpen(false)}
+                        className={dropdownLinkClass(
+                          pathname.startsWith(link.href),
+                        )}
+                      >
+                        {tLinks(link.key)}
+                      </Link>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={desktopNavClass(pathname.startsWith(item.href))}
+                >
+                  {tLinks(item.key)}
+                </Link>
+              ),
+            )}
           </nav>
 
           <div className="flex items-center gap-3">
             <Link
-              href="/stores"
-              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
-            >
-              <MapPin size={15} />
-              {tLinks("find_us")}
-            </Link>
-            <Link
-              href="/catering"
-              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
-            >
-              🍱 {tLinks("catering")}
-            </Link>
-            <Link
               href={myAccountHref}
-              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-brand-dark/70 hover:text-brand-red transition-colors"
+              className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-amber/35 bg-brand-amber/10 px-4 py-2 text-sm font-semibold text-brand-dark transition-all hover:border-brand-red/35 hover:bg-brand-red/10 hover:text-brand-red"
             >
-              👤 {tLinks("my_account")}
+              <User size={15} className="text-brand-red" />
+              {tLinks("my_account")}
             </Link>
             {showGuestLastOrder ? (
               <button
@@ -202,7 +347,12 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
               </button>
             )}
             <button
-              className="lg:hidden p-2 text-brand-dark"
+              className={cn(
+                "lg:hidden rounded-full border p-2.5 transition-all duration-200",
+                mobileOpen
+                  ? "border-brand-red bg-brand-red text-white shadow-md"
+                  : "border-brand-red/25 bg-brand-red/8 text-brand-red hover:bg-brand-red hover:text-white",
+              )}
               onClick={() => setMobileOpen((v) => !v)}
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -212,27 +362,84 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
           </div>
         </div>
 
-        {mobileOpen && (
-          <div className="absolute top-full left-0 right-0 lg:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3 shadow-lg z-50">
-            {NAV_LINKS.map((l) => (
+        {mobileMenuPhase !== "closed" && (
+          <div
+            className={cn(
+              "absolute top-full left-0 right-0 lg:hidden border-t-2 border-brand-red/15 bg-gradient-to-b from-white via-brand-cream/80 to-brand-cream px-4 py-5 shadow-[0_18px_40px_rgba(200,16,46,0.14)] z-50 max-h-[calc(100dvh-4rem)] overflow-y-auto",
+              mobileMenuPanelAnimClass,
+            )}
+            style={mobileMenuMotionStyle}
+          >
+            <div className="space-y-2">
+              {NAV_LINKS.map((item) =>
+                isNavDropdown(item) ? (
+                  <div key={item.key} className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setMobileCommunityOpen((v) => !v)}
+                      className={cn(
+                        mobileNavClass(isCommunityActive),
+                        "justify-between",
+                      )}
+                    >
+                      <span>{tLinks(item.key)}</span>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-transform duration-200",
+                          mobileCommunityOpen
+                            ? "rotate-180 text-brand-amber"
+                            : "text-brand-red/70",
+                        )}
+                      />
+                    </button>
+                    {mobileCommunityOpen ? (
+                      <div className="space-y-2 border-l-2 border-brand-amber/50 pl-3">
+                        {item.items.map((link) => (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={() => setMobileOpen(false)}
+                            className={mobileNavClass(
+                              pathname.startsWith(link.href),
+                            )}
+                          >
+                            {tLinks(link.key)}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={mobileNavClass(pathname.startsWith(item.href))}
+                  >
+                    {tLinks(item.key)}
+                  </Link>
+                ),
+              )}
+            </div>
+
+            <div className="mt-5 space-y-3 border-t border-brand-red/15 pt-5">
               <Link
-                key={l.href}
-                href={l.href}
+                href={myAccountHref}
                 onClick={() => setMobileOpen(false)}
-                className="block text-sm font-medium text-brand-dark/80 hover:text-brand-red py-1"
+                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-dark to-brand-dark/90 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:from-brand-red hover:to-brand-red/90 active:scale-[0.99]"
               >
-                {tLinks(`${l.key}`)}
+                <User size={16} />
+                {tLinks("my_account")}
               </Link>
-            ))}
-            <div className="pt-2 border-t border-gray-100 space-y-2">
               {PORTAL_LINKS.map((p) => (
                 <Link
                   key={p.href}
                   href={p.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block text-sm text-brand-dark/60 hover:text-brand-red py-1"
+                  className="flex items-center gap-2 rounded-xl border border-brand-amber/25 bg-amber-50 px-4 py-3 text-sm font-semibold text-brand-dark transition-all hover:border-brand-red hover:bg-red-50 hover:text-brand-red"
                 >
-                  {p.icon} {t(`portals.${p.id}`)}
+                  <span>{p.icon}</span>
+                  {t(`portals.${p.id}`)}
                 </Link>
               ))}
             </div>

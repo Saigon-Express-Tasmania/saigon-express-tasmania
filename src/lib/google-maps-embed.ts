@@ -7,11 +7,18 @@ import {
 } from "@/lib/wholesale-b2b-order";
 import type { StoreLocation } from "@/types";
 
-export function buildGoogleMapsEmbedUrl(query: string): string | null {
+export function buildGoogleMapsEmbedUrl(
+  query: string,
+  zoom = 15,
+): string | null {
   const trimmed = query.trim();
   if (!trimmed) return null;
-  return `https://maps.google.com/maps?q=${encodeURIComponent(trimmed)}&z=15&output=embed`;
+  return `https://maps.google.com/maps?q=${encodeURIComponent(trimmed)}&z=${zoom}&output=embed`;
 }
+
+export const TASMANIA_MAP_EMBED_URL =
+  buildGoogleMapsEmbedUrl("Tasmania, Australia", 8) ??
+  "https://maps.google.com/maps?q=Tasmania,+Australia&z=7&output=embed";
 
 export function resolvePickupStoreMapEmbedUrl(
   store: StoreLocation,

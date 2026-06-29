@@ -1,7 +1,7 @@
 {
   "NavLinks": {
     "home": "Trang Chủ",
-    "our_food": "Món Ăn",
+    "our_food": "Menu",
     "our_story": "Câu Chuyện",
     "wholesale": "Bán Buôn",
     "franchise": "Nhượng Quyền",
@@ -11,7 +11,10 @@
     "my_account": "Tài Khoản",
     "sign_out": "Đăng xuất",
     "order": "Giỏ hàng {count}",
-    "order_online": "Giỏ hàng"
+    "order_online": "Giỏ hàng",
+    "careers": "Tuyển Dụng",
+    "community": "Cộng Đồng",
+    "news": "Tin Tức"
   },
   "CookieConsent": {
     "ariaLabel": "Chấp thuận cookie",
@@ -190,7 +193,8 @@
       "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "findStore": "Tìm Cửa Hàng",
       "careers": "Tuyển Dụng",
-      "faq": "Câu Hỏi Thường Gặp"
+      "faq": "Câu Hỏi Thường Gặp",
+      "news": "Tin Tức"
     }
   },
   "Careers": {
@@ -1782,6 +1786,8 @@
       "orderPickup": "🛒 Đặt Mang Về"
     },
     "map": {
+      "tasmaniaTitle": "Bản đồ Tasmania, Úc",
+      "storeTitle": "Bản đồ {store}",
       "infoGetDirections": "Chỉ Đường ↗",
       "infoOrderDelivery": "🚗 Đặt Giao Hàng",
       "infoStatusOpen": "ĐANG MỞ",

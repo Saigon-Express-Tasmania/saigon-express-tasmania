@@ -1,17 +1,20 @@
 {
   "NavLinks": {
     "home": "Home",
-    "our_food": "Our Food",
+    "our_food": "Menu",
     "our_story": "Our Story",
     "wholesale": "Wholesale",
     "franchise": "Franchise",
     "faq": "FAQ",
-    "find_us": "Find Us",
+    "find_us": "Find A Store",
     "catering": "Catering",
     "my_account": "My Account",
     "sign_out": "Sign out",
     "order": "Order {count}",
-    "order_online": "Order Online"
+    "order_online": "Order Online",
+    "careers": "Careers",
+    "community": "Community",
+    "news": "News"
   },
   "CookieConsent": {
     "ariaLabel": "Cookie consent",
@@ -190,7 +193,8 @@
       "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "findStore": "Find a Store",
       "careers": "Careers",
-      "faq": "FAQ"
+      "faq": "FAQ",
+      "news": "News"
     }
   },
   "Careers": {
@@ -1782,6 +1786,8 @@
       "orderPickup": "🛒 Order Pickup"
     },
     "map": {
+      "tasmaniaTitle": "Map of Tasmania, Australia",
+      "storeTitle": "Map of {store}",
       "infoGetDirections": "Get Directions ↗",
       "infoOrderDelivery": "🚗 Order Delivery",
       "infoStatusOpen": "OPEN",
