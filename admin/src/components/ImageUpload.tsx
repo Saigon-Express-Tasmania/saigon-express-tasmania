@@ -1,10 +1,12 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { resolveSiteAssetUrl } from '@/lib/blog-news-logos';
+import { fetchSettingsByKeys } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 import { ImageIcon, Loader2, Upload, X } from 'lucide-react';
 import { resizeImageToSizes } from '@/lib/image-resize';
-import { useCallback, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 function fileMatchesAccept(file: File, accept: string): boolean {
   const type = file.type.toLowerCase();
@@ -56,8 +58,28 @@ export function ImageUpload({
   const dragCounterRef = useRef(0);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [siteUrl, setSiteUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetchSettingsByKeys(['site_url']).then((settings) => {
+      if (cancelled) return;
+      const url = settings.site_url?.trim();
+      if (url) setSiteUrl(url);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const preview = localPreview ?? value ?? null;
+  const previewSrc = useMemo(() => {
+    if (!preview) return null;
+    if (localPreview) return localPreview;
+    return resolveSiteAssetUrl(preview, siteUrl) ?? preview;
+  }, [preview, localPreview, siteUrl]);
   const busy = disabled || isUploading;
   const processFile = useCallback(
     async (file: File) => {
@@ -145,8 +167,8 @@ export function ImageUpload({
             shape === 'circle' ? 'rounded-full' : 'rounded-lg',
           )}
         >
-          {preview ? (
-            <img src={preview} alt="" className="size-full object-cover" />
+          {previewSrc ? (
+            <img src={previewSrc} alt="" className="size-full object-cover" />
           ) : (
             <ImageIcon className="size-8 text-muted-foreground" />
           )}

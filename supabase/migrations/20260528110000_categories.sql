@@ -15,11 +15,15 @@ create table public.categories (
   "imageUrl" text,
   addon text[] not null default '{}'::text[],
   style text,
-  icon text
+  icon text,
+  customization_ids bigint[] not null default '{}'::bigint[]
 );
 
 comment on table public.categories is
   'Menu categories used by the public site, including category image and add-on pairing rules.';
+
+comment on column public.categories.customization_ids is
+  'Ordered product_customizations ids applied to menu items in this category when the product has no override.';
 
 create index categories_alias_idx
   on public.categories (alias);
@@ -67,7 +71,8 @@ insert into public.categories (
   name,
   description,
   "imageUrl",
-  addon
+  addon,
+  customization_ids
 )
 values
   (
@@ -75,93 +80,181 @@ values
     'Entrée',
     null,
     '/manus-storage/entree-seafood-spring-rolls_f060f6bd.jpg',
-    '{}'::text[]
+    '{}'::text[],
+    array[3, 6, 8]::bigint[]
   ),
   (
     'Bánh Mì',
     'Bánh Mì',
     null,
     '/manus-storage/crispyroastporkbanhmi_ce355122.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[1, 3, 4, 5, 7]::bigint[]
   ),
   (
     'Rice Paper Rolls',
     'Rice Paper Rolls',
     null,
     '/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_5da191dd.png',
-    '{}'::text[]
+    '{}'::text[],
+    array[3, 6, 8]::bigint[]
   ),
   (
     'Pho',
     'Pho',
     null,
     '/manus-storage/pho-1_92a9985e.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[3, 5, 8]::bigint[]
   ),
   (
     'Noodle Soup',
     'Noodle Soup',
     null,
     '/manus-storage/pho-2_4fc44f9f.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[3, 5, 8]::bigint[]
   ),
   (
     'Bun Bowl',
     'Bun Bowl',
     null,
     '/manus-storage/bun-bowl-1_3b12ea6c.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[2, 3, 6, 7]::bigint[]
   ),
   (
     'Rice Dishes',
     'Rice Dishes',
     null,
     '/manus-storage/banh-mi-2_7d02846f.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[2, 3, 6, 7]::bigint[]
   ),
   (
     'Grill Signatures',
     'Grill Signatures',
     null,
     '/manus-storage/banh-mi-1_9ba4dcf0.jpg',
-    array['Drinks', 'Rice Paper Rolls']::text[]
+    array['Drinks', 'Rice Paper Rolls']::text[],
+    array[3, 6, 7]::bigint[]
   ),
   (
     'Bao Buns',
     'Bao Buns',
     null,
     '/manus-storage/banh-mi-3_465cb7d1.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[3, 6, 7]::bigint[]
   ),
   (
     'Omelette',
     'Omelette',
     null,
     '/manus-storage/bun-bowl-1_3b12ea6c.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[3, 6, 7]::bigint[]
   ),
   (
     'Burgers & Chicken',
     'Burgers & Chicken',
     null,
     '/manus-storage/banh-mi-2_7d02846f.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[3, 6, 7]::bigint[]
   ),
   (
     'Meal Deals',
     'Meal Deals',
     null,
     '/manus-storage/banh-mi-3_465cb7d1.jpg',
-    array['Drinks', 'Entrée']::text[]
+    array['Drinks', 'Entrée']::text[],
+    array[3, 6, 7]::bigint[]
   ),
   (
     'Drinks',
     'Drinks',
     null,
     '/manus-storage/spring-rolls-2_f1e40ae6.jpg',
+    '{}'::text[],
+    array[6]::bigint[]
+  )
+on conflict (alias) do update set
+  kind = excluded.kind,
+  name = excluded.name,
+  description = excluded.description,
+  "imageUrl" = excluded."imageUrl",
+  addon = excluded.addon,
+  customization_ids = excluded.customization_ids;
+
+-- Catering categories (Chao Catering collections import)
+insert into public.categories (
+  kind,
+  alias,
+  name,
+  description,
+  "imageUrl",
+  addon
+)
+values
+  (
+    'catering'::public.category_kind,
+    'chaos-top-picks',
+    'Chao’s Top Picks',
+    'Inspired by the hawker stalls in Vietnam, these done-for-you collections are a surefire way to please a crowd. With all the usual suspects you''d expect, but with the distinctive Chao touch, these packs are popular with the crowds!',
+    '/manus-storage/chaos-top-picks_db4b5207.jpg',
+    '{}'::text[]
+  ),
+  (
+    'catering'::public.category_kind,
+    'chaos-platters',
+    'Chao''s Platters',
+    'Kick off your private or corporate event with these yummy finger foods. We''re setting the bar high with everything from sizzling skewers to bao buns and roasted duck wraps.',
+    '/manus-storage/chaos-platters_6dcebca2.jpg',
+    '{}'::text[]
+  ),
+  (
+    'catering'::public.category_kind,
+    'individual-lunch-boxes',
+    'Individual Lunch Boxes',
+    'Chao''s answer to your lunch box, our versions are well thought out and ideal for your small to large groups.',
+    '/manus-storage/individual-lunch-boxes_4230980b.jpg',
+    '{}'::text[]
+  ),
+  (
+    'catering'::public.category_kind,
+    'tea-time-boxes',
+    'Tea Time Boxes',
+    'Our selections are very appetising and pretty on the eye. Perfect for your small to large gatherings.',
+    '/manus-storage/tea-time-boxes_aa20c018.jpg',
+    '{}'::text[]
+  ),
+  (
+    'catering'::public.category_kind,
+    'funeral-wake-catering',
+    'Funeral & Wake Catering',
+    'We provide reliable and affordable wake catering in Sydney with nourishing and comforting food as well as compassionate and respectful service. We do our best to put you and your guests at ease – smooth and stress-free – and you can focus on memorial gathering with your loved ones.',
+    '/manus-storage/funeral-wake-catering_c72124c9.jpg',
+    '{}'::text[]
+  ),
+  (
+    'catering'::public.category_kind,
+    'add-ons',
+    'Add-Ons',
+    'Mix and match your favourite dishes with our stunning array of add-ons. From entrees to phos and everything in between, indulge in the best we have to offer.',
+    '/manus-storage/add-ons_5e40d07d.jpg',
+    '{}'::text[]
+  ),
+  (
+    'catering'::public.category_kind,
+    'drinks-desserts',
+    'Drinks & Desserts',
+    'Grab a refreshing drink from our range of juices, coconut drinks, fizzy drinks and waters and a platter of fresh seasonal fruits. Clean your palette and savour the feast.',
+    '/manus-storage/drinks-desserts_6835c3b8.jpg',
     '{}'::text[]
   )
 on conflict (alias) do update set
+  kind = excluded.kind,
   name = excluded.name,
   description = excluded.description,
   "imageUrl" = excluded."imageUrl",

@@ -2,6 +2,7 @@ import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
+import { SearchableMultiSelect } from '@/components/SearchableMultiSelect';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +81,7 @@ import {
   Package,
   Pencil,
   Plus,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   Truck,
@@ -175,6 +177,17 @@ type CateringTierPrice = {
   serves: string;
 };
 
+type CustomizationOption = {
+  id: number;
+  kind: string;
+  key: string;
+  title: string;
+};
+
+function formatCustomizationLabel(row: CustomizationOption): string {
+  return `#${row.id} — ${row.title} (${row.key})`;
+}
+
 function SortableHeader({
   label,
   column,
@@ -226,6 +239,8 @@ type CateringPackRow = {
   prices: CateringTierPrice[];
   sort_order: number;
   is_available: boolean;
+  customizationIds: number[];
+  customizationsDisabled: boolean;
 } & ProductShippingRow;
 
 type CateringPackInput = {
@@ -245,6 +260,8 @@ type CateringPackInput = {
   prices: CateringTierPrice[];
   sort_order: number;
   is_available: boolean;
+  customizationIds: number[];
+  customizationsDisabled: boolean;
 } & ProductShippingInput;
 
 const emptyTierPrice = (): CateringTierPrice => ({
@@ -270,6 +287,8 @@ const emptyCateringPackInput = (): CateringPackInput => ({
   prices: [],
   sort_order: 0,
   is_available: true,
+  customizationIds: [],
+  customizationsDisabled: false,
   ...emptyProductShippingInput(),
 });
 
@@ -340,6 +359,7 @@ export function CateringPacks() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [packs, setPacks] = useState<CateringPackRow[]>([]);
+  const [customizations, setCustomizations] = useState<CustomizationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -366,7 +386,7 @@ export function CateringPacks() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available, customization_ids, customizations_disabled, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'catering')
         .order('sort_order', { ascending: true })
@@ -376,10 +396,17 @@ export function CateringPacks() {
 
       setPacks(
         (data ?? []).map((row) => {
-          const pack = row as CateringPackRow;
+          const pack = row as CateringPackRow & {
+            customization_ids: number[] | null;
+            customizations_disabled: boolean;
+          };
           return {
             ...pack,
             prices: parseTierPrices(pack.prices),
+            customizationIds: Array.isArray(pack.customization_ids)
+              ? pack.customization_ids.map((id) => Number(id))
+              : [],
+            customizationsDisabled: pack.customizations_disabled ?? false,
           };
         }),
       );
@@ -393,13 +420,39 @@ export function CateringPacks() {
     }
   }, []);
 
+  const loadCustomizations = useCallback(async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('product_customizations')
+        .select('id, kind, key, title')
+        .eq('kind', 'catering')
+        .order('sort_order', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (fetchError) throw fetchError;
+      setCustomizations((data ?? []) as CustomizationOption[]);
+    } catch {
+      setCustomizations([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAdmin) {
       void loadCateringPacks();
+      void loadCustomizations();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadCateringPacks]);
+  }, [isAdmin, loadCateringPacks, loadCustomizations]);
+
+  const customizationSelectOptions = useMemo(
+    () =>
+      customizations.map((row) => ({
+        value: String(row.id),
+        label: formatCustomizationLabel(row),
+      })),
+    [customizations],
+  );
 
   const categoryOptions = useMemo(() => {
     const values = new Set<string>();
@@ -503,6 +556,8 @@ export function CateringPacks() {
       prices: pack.prices.length > 0 ? pack.prices : [],
       sort_order: pack.sort_order,
       is_available: pack.is_available,
+      customizationIds: [...pack.customizationIds],
+      customizationsDisabled: pack.customizationsDisabled,
       ...productShippingFromRow(pack),
     });
     setImagePreviewUrl(
@@ -704,6 +759,8 @@ export function CateringPacks() {
         prices: tierPrices,
         sort_order: Number(form.sort_order) || 0,
         is_available: form.is_available,
+        customization_ids: form.customizationIds,
+        customizations_disabled: form.customizationsDisabled,
         ...productShippingToPayload(form),
       };
 
@@ -1422,6 +1479,76 @@ export function CateringPacks() {
                     }
                   />
                 </CateringPackFormField>
+              </div>
+            </CateringPackFormSection>
+
+            <CateringPackFormSection
+              title="Customizations"
+              description="Override category defaults for this item. Leave empty to inherit from the catering category."
+              icon={SlidersHorizontal}
+              accentClass="border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-background dark:border-emerald-900/50 dark:from-emerald-950/30"
+            >
+              <div className="space-y-4">
+                <CateringPackFormField
+                  label="Customization groups"
+                  htmlFor="pack-customizations"
+                  description="Ordered groups shown when customers configure this item. Selection order is preserved."
+                >
+                  <SearchableMultiSelect
+                    id="pack-customizations"
+                    options={customizationSelectOptions}
+                    values={form.customizationIds.map(String)}
+                    onValuesChange={(values) =>
+                      setForm((f) => ({
+                        ...f,
+                        customizationIds: values.map((value) => Number(value)),
+                      }))
+                    }
+                    disabled={saving || imageUploadBusy || form.customizationsDisabled}
+                    placeholder="Search catering customization groups…"
+                  />
+                </CateringPackFormField>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={form.customizationsDisabled}
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      customizationsDisabled: !f.customizationsDisabled,
+                    }))
+                  }
+                  disabled={saving || imageUploadBusy}
+                  className={cn(
+                    'flex w-full cursor-pointer items-start gap-3 rounded-lg border p-4 text-left transition-all',
+                    form.customizationsDisabled
+                      ? 'border-amber-300/70 bg-amber-500/10 font-medium text-amber-950 dark:text-amber-100'
+                      : 'border-border/60 bg-background hover:border-emerald-300/50 hover:bg-emerald-50/30',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
+                      form.customizationsDisabled
+                        ? 'border-amber-600 bg-amber-600 text-white'
+                        : 'border-muted-foreground/40 bg-background',
+                    )}
+                  >
+                    {form.customizationsDisabled ? (
+                      <Check className="size-3 stroke-[3]" aria-hidden />
+                    ) : null}
+                  </span>
+                  <div className="grid gap-0.5">
+                    <span className="text-sm font-medium leading-none">
+                      Disable customizations
+                    </span>
+                    <span className="text-xs leading-relaxed text-muted-foreground">
+                      {form.customizationsDisabled
+                        ? 'No customization options are shown for this item, even if category or product overrides are set.'
+                        : 'When enabled, category defaults or product overrides above apply on the storefront.'}
+                    </span>
+                  </div>
+                </button>
               </div>
             </CateringPackFormSection>
 

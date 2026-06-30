@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { SearchableMultiSelect } from '@/components/SearchableMultiSelect';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import {
   Card,
@@ -40,23 +42,126 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
+import { slugify } from '@/pages/ResourcesHub/franchiseResourceShared';
+import { cn } from '@/lib/utils';
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ImageIcon,
+  Layers,
   Loader2,
+  Palette,
   Pencil,
   Plus,
+  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 const CATEGORY_KINDS = ['menu', 'wholesale', 'catering'] as const;
 type CategoryKind = (typeof CATEGORY_KINDS)[number];
 
+const KIND_ACCENT: Record<
+  CategoryKind,
+  { header: string; badge: string; label: string }
+> = {
+  menu: {
+    header: 'from-emerald-500/20 via-teal-500/10 to-cyan-500/10',
+    badge:
+      'border-emerald-300/70 bg-background/70 text-emerald-900 dark:text-emerald-200',
+    label: 'Menu',
+  },
+  wholesale: {
+    header: 'from-sky-500/20 via-blue-500/10 to-indigo-500/10',
+    badge: 'border-sky-300/70 bg-background/70 text-sky-900 dark:text-sky-200',
+    label: 'Wholesale',
+  },
+  catering: {
+    header: 'from-amber-500/20 via-orange-500/10 to-rose-500/10',
+    badge:
+      'border-amber-300/70 bg-background/70 text-amber-900 dark:text-amber-200',
+    label: 'Catering',
+  },
+};
+
+function CategoryFormSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className,
+  accentClass,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: ReactNode;
+  className?: string;
+  accentClass?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        'rounded-xl border p-4 shadow-xs',
+        accentClass ?? 'border-border/70 bg-muted/20',
+        className,
+      )}
+    >
+      <div className="mb-4 flex items-start gap-3 border-b border-border/40 pb-3">
+        {Icon ? (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background/80 shadow-xs ring-1 ring-border/50">
+            <Icon className="size-4 text-foreground/70" aria-hidden />
+          </span>
+        ) : null}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          {description ? (
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function CategoryFormField({
+  label,
+  htmlFor,
+  description,
+  children,
+  className,
+}: {
+  label: string;
+  htmlFor?: string;
+  description?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('grid min-w-0 gap-2', className)}>
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {description ? (
+        <p className="-mt-1 text-xs text-muted-foreground">{description}</p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
 type SortColumn = 'id' | 'alias' | 'kind';
 type SortDirection = 'asc' | 'desc';
+
+type CustomizationOption = {
+  id: number;
+  kind: CategoryKind;
+  key: string;
+  title: string;
+};
 
 type CategoryRow = {
   id: number;
@@ -68,29 +173,34 @@ type CategoryRow = {
   addon: string[];
   style: string | null;
   icon: string | null;
+  customizationIds: number[];
 };
 
 type CategoryInput = {
   kind: CategoryKind;
-  alias: string;
   name: string;
   description: string;
   imageUrl: string;
   addon: string;
   style: string;
   icon: string;
+  customizationIds: number[];
 };
 
 const emptyCategoryInput = (): CategoryInput => ({
   kind: 'menu',
-  alias: '',
   name: '',
   description: '',
   imageUrl: '',
   addon: '',
   style: '',
   icon: '',
+  customizationIds: [],
 });
+
+function formatCustomizationLabel(row: CustomizationOption): string {
+  return `#${row.id} — ${row.title} (${row.key})`;
+}
 
 function SortableHeader({
   label,
@@ -132,6 +242,7 @@ export function Categories() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [customizations, setCustomizations] = useState<CustomizationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,11 +264,28 @@ export function Categories() {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('categories')
-        .select('id, kind, alias, name, description, imageUrl, addon, style, icon')
+        .select(
+          'id, kind, alias, name, description, imageUrl, addon, style, icon, customization_ids',
+        )
         .order('id', { ascending: true });
 
       if (fetchError) throw fetchError;
-      setCategories((data ?? []) as CategoryRow[]);
+      setCategories(
+        (data ?? []).map((row) => ({
+          id: row.id,
+          kind: row.kind as CategoryKind,
+          alias: row.alias,
+          name: row.name,
+          description: row.description,
+          imageUrl: row.imageUrl,
+          addon: row.addon ?? [],
+          style: row.style,
+          icon: row.icon,
+          customizationIds: Array.isArray(row.customization_ids)
+            ? row.customization_ids.map((id) => Number(id))
+            : [],
+        })),
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load categories.';
@@ -168,13 +296,42 @@ export function Categories() {
     }
   }, []);
 
+  const loadCustomizations = useCallback(async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('product_customizations')
+        .select('id, kind, key, title')
+        .order('sort_order', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (fetchError) throw fetchError;
+      setCustomizations((data ?? []) as CustomizationOption[]);
+    } catch {
+      setCustomizations([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAdmin) {
       void loadCategories();
+      void loadCustomizations();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadCategories]);
+  }, [isAdmin, loadCategories, loadCustomizations]);
+
+  const customizationSelectOptions = useMemo(
+    () =>
+      customizations
+        .filter((row) => row.kind === form.kind)
+        .map((row) => ({
+          value: String(row.id),
+          label: formatCustomizationLabel(row),
+        })),
+    [customizations, form.kind],
+  );
+
+  const generatedAlias = useMemo(() => slugify(form.name), [form.name]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -228,13 +385,13 @@ export function Categories() {
     setEditing(category);
     setForm({
       kind: category.kind,
-      alias: category.alias,
       name: category.name,
       description: category.description ?? '',
       imageUrl: category.imageUrl ?? '',
       addon: category.addon.join(', '),
       style: category.style ?? '',
       icon: category.icon ?? '',
+      customizationIds: [...category.customizationIds],
     });
     setImagePreviewUrl(category.imageUrl ?? null);
     setDialogOpen(true);
@@ -243,7 +400,7 @@ export function Categories() {
   const handleImageUpload = async (fileInputs: File | File[]) => {
     const file = Array.isArray(fileInputs) ? fileInputs[0] : fileInputs;
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const aliasPart = form.alias.trim().toLowerCase().replace(/\s+/g, '-') || 'category';
+    const aliasPart = slugify(form.name) || 'category';
     const fileName = `${aliasPart}-${Date.now()}.${ext}`;
 
     try {
@@ -269,12 +426,14 @@ export function Categories() {
   };
 
   const handleSave = async () => {
-    if (!form.alias.trim()) {
-      toast.error('Alias is required.');
-      return;
-    }
     if (!form.name.trim()) {
       toast.error('Name is required.');
+      return;
+    }
+
+    const alias = slugify(form.name.trim());
+    if (!alias) {
+      toast.error('Name must produce a valid alias slug.');
       return;
     }
 
@@ -287,13 +446,14 @@ export function Categories() {
     try {
       const payload = {
         kind: form.kind,
-        alias: form.alias.trim(),
+        alias,
         name: form.name.trim(),
         description: form.description.trim() || null,
         imageUrl: form.imageUrl.trim() || null,
         addon: addonValues,
         style: form.style.trim() || null,
         icon: form.icon.trim() || null,
+        customization_ids: form.customizationIds,
       };
 
       if (editing) {
@@ -543,124 +703,243 @@ export function Categories() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editing ? 'Edit category' : 'Add category'}
-            </DialogTitle>
-            <DialogDescription>
-              Alias is used as the key. Add-ons are comma-separated aliases.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-2 md:grid-cols-2">
-            <div className="grid gap-2 md:col-span-2">
-              <ImageUpload
-                label="Category image"
-                description="JPEG, PNG, WebP or GIF. Upload to fill image URL automatically."
-                value={imagePreviewUrl ?? form.imageUrl ?? null}
-                onFileSelect={handleImageUpload}
-                onClear={form.imageUrl ? handleImageClear : undefined}
-                isUploading={isUploading}
-                disabled={saving}
-                shape="square"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cat-kind">Kind</Label>
-              <Select
-                value={form.kind}
-                onValueChange={(value) =>
-                  setForm((f) => ({ ...f, kind: value as CategoryKind }))
-                }
-              >
-                <SelectTrigger id="cat-kind">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_KINDS.map((kind) => (
-                    <SelectItem key={kind} value={kind}>
-                      {kind}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cat-alias">Alias</Label>
-              <Input
-                id="cat-alias"
-                value={form.alias}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, alias: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cat-name">Name</Label>
-              <Input
-                id="cat-name"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="cat-image">Image URL</Label>
-              <Input
-                id="cat-image"
-                value={form.imageUrl}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, imageUrl: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cat-style">Style</Label>
-              <Input
-                id="cat-style"
-                value={form.style}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, style: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cat-icon">Icon</Label>
-              <Input
-                id="cat-icon"
-                value={form.icon}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, icon: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="cat-addon">Add-ons</Label>
-              <Input
-                id="cat-addon"
-                placeholder="Drinks, Entrée"
-                value={form.addon}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, addon: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="cat-description">Description</Label>
-              <Textarea
-                id="cat-description"
-                rows={3}
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-              />
-            </div>
+        <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+          <div
+            className={cn(
+              'shrink-0 border-b bg-gradient-to-r px-6 py-5',
+              KIND_ACCENT[form.kind].header,
+            )}
+          >
+            <DialogHeader className="space-y-2 text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn('gap-1.5', KIND_ACCENT[form.kind].badge)}
+                >
+                  <Layers className="size-3.5" aria-hidden />
+                  {KIND_ACCENT[form.kind].label}
+                </Badge>
+                {editing ? (
+                  <Badge variant="secondary" className="font-mono">
+                    #{editing.id}
+                  </Badge>
+                ) : null}
+                {generatedAlias ? (
+                  <Badge
+                    variant="outline"
+                    className="border-violet-300/60 bg-violet-500/10 font-mono text-violet-900 dark:text-violet-200"
+                  >
+                    {generatedAlias}
+                  </Badge>
+                ) : null}
+              </div>
+              <DialogTitle className="text-xl">
+                {editing ? 'Edit category' : 'Add category'}
+              </DialogTitle>
+              {form.name.trim() ? (
+                <p className="text-sm font-medium text-foreground/80">
+                  {form.name.trim()}
+                </p>
+              ) : null}
+              <DialogDescription>
+                The alias slug is generated from the name. Add-ons are
+                comma-separated category aliases. Customizations apply to
+                products in this category unless overridden per product.
+              </DialogDescription>
+            </DialogHeader>
           </div>
 
-          <DialogFooter>
+          <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-5 md:grid-cols-2">
+            <CategoryFormSection
+              title="Media"
+              description="Hero image shown on menu and category navigation."
+              icon={ImageIcon}
+              accentClass="border-sky-200/70 bg-gradient-to-br from-sky-50/80 to-background dark:border-sky-900/50 dark:from-sky-950/30"
+            >
+              <div className="space-y-4">
+                <ImageUpload
+                  label="Category image"
+                  description="JPEG, PNG, WebP or GIF. Upload to fill image URL automatically."
+                  value={imagePreviewUrl ?? form.imageUrl ?? null}
+                  onFileSelect={handleImageUpload}
+                  onClear={form.imageUrl ? handleImageClear : undefined}
+                  isUploading={isUploading}
+                  disabled={saving}
+                  shape="square"
+                />
+                <CategoryFormField label="Image URL" htmlFor="cat-image">
+                  <Input
+                    id="cat-image"
+                    value={form.imageUrl}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, imageUrl: e.target.value }))
+                    }
+                    className="font-mono text-xs"
+                  />
+                </CategoryFormField>
+              </div>
+            </CategoryFormSection>
+
+            <CategoryFormSection
+              title="Display"
+              description="Optional CSS class and icon token for the storefront."
+              icon={Palette}
+              accentClass="border-fuchsia-200/70 bg-gradient-to-br from-fuchsia-50/80 to-background dark:border-fuchsia-900/50 dark:from-fuchsia-950/30"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CategoryFormField label="Style" htmlFor="cat-style">
+                  <Input
+                    id="cat-style"
+                    value={form.style}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, style: e.target.value }))
+                    }
+                    placeholder="category-banh-mi"
+                  />
+                </CategoryFormField>
+                <CategoryFormField label="Icon" htmlFor="cat-icon">
+                  <Input
+                    id="cat-icon"
+                    value={form.icon}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, icon: e.target.value }))
+                    }
+                    placeholder="sandwich"
+                  />
+                </CategoryFormField>
+              </div>
+            </CategoryFormSection>
+
+            <CategoryFormSection
+              title="Identity"
+              description="Channel, display name, and optional blurb."
+              icon={Layers}
+              accentClass="border-violet-200/70 bg-gradient-to-br from-violet-50/80 to-background dark:border-violet-900/50 dark:from-violet-950/30"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CategoryFormField
+                  label="Kind"
+                  htmlFor="cat-kind"
+                  className="sm:col-span-2"
+                >
+                  <Select
+                    value={form.kind}
+                    onValueChange={(value) => {
+                      const nextKind = value as CategoryKind;
+                      const allowedIds = new Set(
+                        customizations
+                          .filter((row) => row.kind === nextKind)
+                          .map((row) => row.id),
+                      );
+                      setForm((f) => ({
+                        ...f,
+                        kind: nextKind,
+                        customizationIds: f.customizationIds.filter((id) =>
+                          allowedIds.has(id),
+                        ),
+                      }));
+                    }}
+                  >
+                    <SelectTrigger id="cat-kind" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
+                      {CATEGORY_KINDS.map((kind) => (
+                        <SelectItem key={kind} value={kind}>
+                          {KIND_ACCENT[kind].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CategoryFormField>
+                <CategoryFormField
+                  label="Name"
+                  htmlFor="cat-name"
+                  className="sm:col-span-2"
+                >
+                  <Input
+                    id="cat-name"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                    placeholder="Bánh Mì"
+                  />
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {generatedAlias ? (
+                      <>
+                        Alias:{' '}
+                        <span className="text-foreground/80">
+                          {generatedAlias}
+                        </span>
+                      </>
+                    ) : (
+                      'Alias is generated from the name'
+                    )}
+                  </p>
+                </CategoryFormField>
+                <CategoryFormField
+                  label="Description"
+                  htmlFor="cat-description"
+                  className="sm:col-span-2"
+                >
+                  <Textarea
+                    id="cat-description"
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, description: e.target.value }))
+                    }
+                  />
+                </CategoryFormField>
+              </div>
+            </CategoryFormSection>
+
+            <CategoryFormSection
+              title="Product behaviour"
+              description="Add-on pairings and default customization groups for items in this category."
+              icon={SlidersHorizontal}
+              accentClass="border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-background dark:border-emerald-900/50 dark:from-emerald-950/30"
+            >
+              <div className="grid gap-4">
+                <CategoryFormField
+                  label="Add-ons"
+                  htmlFor="cat-addon"
+                  description="Comma-separated category aliases paired with this one (e.g. Drinks, Entrée)."
+                >
+                  <Input
+                    id="cat-addon"
+                    placeholder="Drinks, Entrée"
+                    value={form.addon}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, addon: e.target.value }))
+                    }
+                  />
+                </CategoryFormField>
+                <CategoryFormField
+                  label="Customizations"
+                  htmlFor="cat-customizations"
+                  description="Ordered groups applied when a product has no override. Selection order is preserved."
+                >
+                  <SearchableMultiSelect
+                    id="cat-customizations"
+                    options={customizationSelectOptions}
+                    values={form.customizationIds.map(String)}
+                    onValuesChange={(values) =>
+                      setForm((f) => ({
+                        ...f,
+                        customizationIds: values.map((value) => Number(value)),
+                      }))
+                    }
+                    disabled={saving}
+                    placeholder="Search customization groups…"
+                  />
+                </CategoryFormField>
+              </div>
+            </CategoryFormSection>
+          </div>
+
+          <DialogFooter className="shrink-0 border-t bg-muted/20 px-6 py-4">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
@@ -675,7 +954,7 @@ export function Categories() {
                   Saving…
                 </>
               ) : (
-                'Save'
+                'Save category'
               )}
             </Button>
           </DialogFooter>
