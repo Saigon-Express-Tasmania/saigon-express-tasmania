@@ -144,26 +144,11 @@
       "label": "TIN MỚI NHẤT",
       "title": "Tin Tức & Cập Nhật",
       "viewAll": "Xem tất cả",
-      "items": [
-        {
-          "date": "1 Thg 6 2016",
-          "tag": "CÂU CHUYỆN",
-          "title": "Khởi Đầu: Mở Cửa Hàng Đầu Tiên Tại 335 Elizabeth St, North Hobart",
-          "excerpt": "Năm 2016, Tiến sĩ Tien có một ước mơ — mang hương vị ẩm thực đường phố Việt Nam chính gốc đến Tasmania. Từ một cửa hàng nhỏ tại 335 Elizabeth Street, North Hobart, ông muốn mọi người Hobart cảm nhận sự ấm áp của văn hóa Việt qua thức ăn tươi, lành mạnh và giá phải chăng. Cửa hàng đầu tiên đó trở thành trái tim của Saigon Express ngày nay."
-        },
-        {
-          "date": "15 Thg 3 2024",
-          "tag": "ĐỘI NGŨ",
-          "title": "Những Người Đằng Sau Mỗi Tô: Gặp Gia Đình Saigon Express",
-          "excerpt": "Đằng sau mỗi tô phở nóng hổi và mỗi ổ bánh mì nướng tươi là đội ngũ tận tâm coi mỗi khách như người thân. Nhân viên của chúng tôi mang đam mê, văn hóa và sự chăm sóc vào từng món — mỗi ngày."
-        },
-        {
-          "date": "10 Thg 4 2025",
-          "tag": "CỬA HÀNG MỚI",
-          "title": "Saigon Express Sorell — Cửa Hàng Thứ 8 Đã Khai Trương!",
-          "excerpt": "Chúng tôi vui mừng thông báo khai trương Saigon Express Sorell, cửa hàng thứ 8 tại Tasmania! Mang ẩm thực Việt tươi, lành mạnh đến cộng đồng Sorell — vì thức ăn ngon nên có mặt cho mọi người trên khắp đảo."
-        }
-      ]
+      "readMore": "ĐỌC THÊM"
+    },
+    "featuredIn": {
+      "label": "Được Giới Thiệu Trên",
+      "tagline": "Được công nhận bởi các nền tảng ẩm thực và truyền thông địa phương hàng đầu Tasmania"
     },
     "partner": {
       "title": "🤝 Trở Thành Đối Tác",
@@ -1064,7 +1049,9 @@
       "legalLabel": "Tư Cách Pháp Nhân:",
       "legalValue": "Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "addressLabel": "Địa Chỉ Đăng Ký:",
-      "addressValue": "Level 2, 86 Collins St, Hobart TAS 7000"
+      "addressValue": "Level 2, 86 Collins St, Hobart TAS 7000",
+      "imageOverlayTitle": "Hợp tác cùng phát triển",
+      "imageOverlaySubtitle": "Thương hiệu đã được khẳng định"
     },
     "benefits": {
       "label": "QUYỀN LỢI ĐỐI TÁC NHƯỢNG QUYỀN",

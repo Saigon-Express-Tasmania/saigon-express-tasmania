@@ -2,14 +2,14 @@
 
 import LazyImage from "@/components/LazyImage";
 import Link from "@/components/link";
+import { resolvePublicAssetUrl } from "@/lib/resolve-site-url";
 import { cn } from "@/lib/utils";
 import type { BlogPost } from "@/types";
-import { Calendar, ChevronRight, Eye, Newspaper } from "lucide-react";
+import { Newspaper } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
-const FALLBACK_IMAGE =
-  "/manus-storage/news-story-began_47dbdf79.jpg";
+const FALLBACK_IMAGE = "/manus-storage/news-story-began_47dbdf79.jpg";
 
 function formatPublishedDate(
   iso: string | null,
@@ -25,29 +25,79 @@ function formatPublishedDate(
   });
 }
 
-function PostMeta({
+function PostCardBody({
   post,
   locale,
-  viewsLabel,
+  readMoreLabel,
+  featured = false,
 }: {
   post: BlogPost;
   locale: string;
-  viewsLabel: (count: number) => string;
+  readMoreLabel: string;
+  featured?: boolean;
 }) {
   const publishedLabel = formatPublishedDate(post.publishedAt, locale);
+  const newsLogoUrl = resolvePublicAssetUrl(post.newsLogoImageUrl);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 text-xs text-brand-dark/50">
-      <span className="news-badge">{post.category}</span>
-      {publishedLabel && (
-        <span className="inline-flex items-center gap-1">
-          <Calendar className="h-3.5 w-3.5" />
-          {publishedLabel}
-        </span>
-      )}
-      <span className="inline-flex items-center gap-1">
-        <Eye className="h-3.5 w-3.5" />
-        {viewsLabel(post.viewCount)}
+    <div className="flex flex-1 flex-col">
+      <div className="flex items-start gap-4 sm:gap-6">
+        <div
+          className={cn(
+            "flex shrink-0 flex-col gap-3",
+            featured ? "w-[76px] sm:w-[88px]" : "w-[68px] sm:w-[76px]",
+          )}
+        >
+          {newsLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={newsLogoUrl}
+              alt={post.category}
+              className={cn(
+                "block w-full object-contain object-top",
+                featured
+                  ? "max-h-14 sm:max-h-16"
+                  : "max-h-12 sm:max-h-14",
+              )}
+            />
+          ) : (
+            <span className="news-badge text-[10px] leading-snug">
+              {post.category}
+            </span>
+          )}
+          {publishedLabel && (
+            <p className="text-xs font-semibold uppercase leading-snug tracking-wide text-[#666666]">
+              {publishedLabel}
+            </p>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3
+            className={cn(
+              "m-0 font-bold leading-tight text-brand-red",
+              featured
+                ? "line-clamp-4 text-xl sm:text-2xl lg:text-3xl"
+                : "line-clamp-3 text-lg",
+            )}
+          >
+            {post.title}
+          </h3>
+          {post.excerpt && (
+            <p
+              className={cn(
+                "mt-3 leading-relaxed text-[#444444]",
+                featured
+                  ? "line-clamp-5 text-base sm:text-[17px]"
+                  : "line-clamp-4 text-[15px]",
+              )}
+            >
+              {post.excerpt}
+            </p>
+          )}
+        </div>
+      </div>
+      <span className="mt-auto pt-4 text-[13px] font-bold tracking-wide text-brand-red">
+        {readMoreLabel} →
       </span>
     </div>
   );
@@ -57,17 +107,15 @@ function FeaturedPostCard({
   post,
   locale,
   readMoreLabel,
-  viewsLabel,
 }: {
   post: BlogPost;
   locale: string;
   readMoreLabel: string;
-  viewsLabel: (count: number) => string;
 }) {
   return (
-    <article className="group overflow-hidden rounded-sm border border-brand-dark/10 bg-white card-lift">
-      <Link href={`/news/${post.slug}`} className="grid gap-0 lg:grid-cols-2">
-        <div className="aspect-[16/10] overflow-hidden lg:aspect-auto lg:min-h-[320px]">
+    <article className="group overflow-hidden rounded-xl border border-[#eaeaea] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.08)] card-lift">
+      <Link href={`/news/${post.slug}`} className="grid lg:grid-cols-2">
+        <div className="aspect-[65/32] overflow-hidden border-b border-[#f0f0f0] bg-[#e0e0e0] lg:aspect-auto lg:min-h-[320px] lg:border-b-0 lg:border-r lg:border-[#f0f0f0]">
           <LazyImage
             src={post.featuredImageUrl ?? FALLBACK_IMAGE}
             alt={post.title}
@@ -76,20 +124,13 @@ function FeaturedPostCard({
             eager
           />
         </div>
-        <div className="flex flex-col justify-center gap-4 p-6 sm:p-8 lg:p-10">
-          <PostMeta post={post} locale={locale} viewsLabel={viewsLabel} />
-          <h2 className="font-serif text-2xl sm:text-3xl text-brand-dark leading-snug group-hover:text-brand-red transition-colors">
-            {post.title}
-          </h2>
-          {post.excerpt && (
-            <p className="text-sm sm:text-base text-brand-dark/65 leading-relaxed line-clamp-4">
-              {post.excerpt}
-            </p>
-          )}
-          <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red">
-            {readMoreLabel}
-            <ChevronRight className="h-4 w-4" />
-          </span>
+        <div className="flex flex-1 flex-col px-5 py-4 lg:justify-center lg:px-10 lg:py-10">
+          <PostCardBody
+            post={post}
+            locale={locale}
+            readMoreLabel={readMoreLabel}
+            featured
+          />
         </div>
       </Link>
     </article>
@@ -100,38 +141,28 @@ function PostCard({
   post,
   locale,
   readMoreLabel,
-  viewsLabel,
 }: {
   post: BlogPost;
   locale: string;
   readMoreLabel: string;
-  viewsLabel: (count: number) => string;
 }) {
   return (
-    <article className="group overflow-hidden rounded-sm border border-brand-dark/10 bg-white card-lift">
-      <Link href={`/news/${post.slug}`} className="block">
-        <div className="aspect-[16/10] overflow-hidden">
+    <article className="group h-full overflow-hidden rounded-xl border border-[#eaeaea] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.08)] card-lift">
+      <Link href={`/news/${post.slug}`} className="flex h-full flex-col">
+        <div className="aspect-[65/32] overflow-hidden border-b border-[#f0f0f0] bg-[#e0e0e0]">
           <LazyImage
             src={post.featuredImageUrl ?? FALLBACK_IMAGE}
             alt={post.title}
-            wrapperClassName="h-full w-full"
+            wrapperClassName="w-full h-full"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
-        <div className="space-y-3 p-4 sm:p-5">
-          <PostMeta post={post} locale={locale} viewsLabel={viewsLabel} />
-          <h3 className="font-serif text-lg text-brand-dark leading-snug group-hover:text-brand-red transition-colors line-clamp-2">
-            {post.title}
-          </h3>
-          {post.excerpt && (
-            <p className="text-sm text-brand-dark/60 leading-relaxed line-clamp-3">
-              {post.excerpt}
-            </p>
-          )}
-          <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red">
-            {readMoreLabel}
-            <ChevronRight className="h-3.5 w-3.5" />
-          </span>
+        <div className="flex flex-1 flex-col px-5 py-4">
+          <PostCardBody
+            post={post}
+            locale={locale}
+            readMoreLabel={readMoreLabel}
+          />
         </div>
       </Link>
     </article>
@@ -154,8 +185,6 @@ export default function News({ posts }: { posts: BlogPost[] }) {
   }, [activeCategory, posts]);
 
   const [featuredPost, ...restPosts] = filteredPosts;
-
-  const viewsLabel = (count: number) => t("card.views", { count });
 
   return (
     <div className="min-h-screen bg-brand-cream">
@@ -220,7 +249,6 @@ export default function News({ posts }: { posts: BlogPost[] }) {
                   post={featuredPost}
                   locale={locale}
                   readMoreLabel={t("card.readMore")}
-                  viewsLabel={viewsLabel}
                 />
               )}
 
@@ -232,7 +260,6 @@ export default function News({ posts }: { posts: BlogPost[] }) {
                       post={post}
                       locale={locale}
                       readMoreLabel={t("card.readMore")}
-                      viewsLabel={viewsLabel}
                     />
                   ))}
                 </div>

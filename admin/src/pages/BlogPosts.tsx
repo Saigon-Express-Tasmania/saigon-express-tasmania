@@ -31,10 +31,25 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { generateExcerptFromBlogPost } from '@/lib/blog-excerpt';
+import {
+  BLOG_NEWS_LOGO_CUSTOM_VALUE,
+  BLOG_NEWS_LOGO_NONE_VALUE,
+  BLOG_NEWS_LOGO_PRESETS,
+  getNewsLogoSelectValue,
+  resolveSiteAssetUrl,
+} from '@/lib/blog-news-logos';
 import { generateTagsFromBlogPost } from '@/lib/blog-tag-keywords';
+import { fetchSettingsByKeys } from '@/lib/settings';
 import supabase from '@/lib/supabase/client';
 import {
   appendUploadedAsset,
@@ -66,7 +81,7 @@ const MAX_EDITOR_SIDEBAR_WIDTH = 640;
 const CONTENT_AUTO_SAVE_MS = 3000;
 
 const BLOG_POST_COLUMNS =
-  'id, slug, title, excerpt, content, category, featured_image_url, tags, published_at, view_count, is_published, show_wholesale_cta, reference, created_at, updated_at';
+  'id, slug, title, excerpt, content, category, featured_image_url, news_logo_image_url, tags, published_at, view_count, is_published, show_wholesale_cta, reference, created_at, updated_at';
 
 type SortColumn = 'id' | 'title' | 'category';
 type SortDirection = 'asc' | 'desc';
@@ -207,6 +222,7 @@ function buildBlogPostPayload(form: BlogPostInput) {
     content: form.content.trim(),
     category: form.category.trim() || 'News',
     featured_image_url: form.featured_image_url.trim() || null,
+    news_logo_image_url: form.news_logo_image_url.trim() || null,
     tags: parseTags(form.tags),
     published_at: form.published_at,
     view_count: Math.max(0, Number(form.view_count) || 0),
@@ -227,6 +243,7 @@ function postToInput(
     content: post.content,
     category: post.category,
     featured_image_url: post.featured_image_url ?? '',
+    news_logo_image_url: post.news_logo_image_url ?? '',
     tags: formatTags(post.tags),
     published_at: post.published_at,
     view_count: post.view_count,
@@ -293,6 +310,7 @@ export function BlogPosts() {
 
   const [deleteTarget, setDeleteTarget] = useState<BlogPost | null>(null);
   const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
+  const [siteUrl, setSiteUrl] = useState('https://saigonexpress.com.au');
 
   const formRef = useRef(form);
   formRef.current = form;
@@ -345,6 +363,34 @@ export function BlogPosts() {
       document.removeEventListener('mouseup', handleSidebarMouseUp);
     };
   }, [handleSidebarMouseMove, handleSidebarMouseUp]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    void fetchSettingsByKeys(['site_url']).then((settings) => {
+      if (settings.site_url?.trim()) {
+        setSiteUrl(settings.site_url.trim());
+      }
+    });
+  }, [isAdmin]);
+
+  const newsLogoSelectValue = getNewsLogoSelectValue(form.news_logo_image_url);
+  const newsLogoPreviewUrl = resolveSiteAssetUrl(
+    form.news_logo_image_url,
+    siteUrl,
+  );
+
+  const handleNewsLogoSelectChange = (value: string) => {
+    if (value === BLOG_NEWS_LOGO_CUSTOM_VALUE) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      news_logo_image_url:
+        value === BLOG_NEWS_LOGO_NONE_VALUE ? '' : value,
+    }));
+  };
 
   const loadPosts = useCallback(async () => {
     try {
@@ -918,7 +964,21 @@ export function BlogPosts() {
                           {post.id}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          {post.title}
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            {post.news_logo_image_url ? (
+                              <img
+                                src={
+                                  resolveSiteAssetUrl(
+                                    post.news_logo_image_url,
+                                    siteUrl,
+                                  ) ?? ''
+                                }
+                                alt=""
+                                className="h-6 w-auto max-w-[72px] shrink-0 object-contain"
+                              />
+                            ) : null}
+                            <span className="min-w-0">{post.title}</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                           {post.slug}
@@ -1028,6 +1088,64 @@ export function BlogPosts() {
                     }
                     placeholder="News"
                   />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="post-news-logo">Publication logo URL</Label>
+                  <Input
+                    id="post-news-logo"
+                    value={form.news_logo_image_url}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        news_logo_image_url: e.target.value,
+                      }))
+                    }
+                    placeholder="/images/themercury.svg or https://…"
+                  />
+                  <div className="grid gap-1.5">
+                    <Label
+                      htmlFor="post-news-logo-preset"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Quick pick
+                    </Label>
+                    <Select
+                      value={newsLogoSelectValue}
+                      onValueChange={handleNewsLogoSelectChange}
+                    >
+                      <SelectTrigger
+                        id="post-news-logo-preset"
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Choose a preset logo" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[200]">
+                        {BLOG_NEWS_LOGO_PRESETS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Optional logo shown on news cards instead of the category
+                    badge. Paths like /images/themercury.svg resolve against
+                    site URL ({siteUrl}).
+                  </p>
+                  {newsLogoPreviewUrl && (
+                    <div className="rounded-md border bg-muted/30 p-3">
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        Preview
+                      </p>
+                      <img
+                        src={newsLogoPreviewUrl}
+                        alt="Publication logo preview"
+                        className="h-8 w-auto max-w-full object-contain"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-2">

@@ -12,6 +12,7 @@ create table public.blog_posts (
   content text not null,
   category text not null default 'News',
   featured_image_url text,
+  news_logo_image_url text,
   tags text[] not null default '{}'::text[],
   published_at timestamptz,
   view_count integer not null default 0,
@@ -36,6 +37,10 @@ comment on column public.blog_posts.content is
   'Article body HTML rendered inside the prose container.';
 comment on column public.blog_posts.category is
   'Badge label shown on listing and detail pages (e.g. News).';
+comment on column public.blog_posts.featured_image_url is
+  'Hero image shown on listing cards and the article detail page.';
+comment on column public.blog_posts.news_logo_image_url is
+  'Optional publication logo path (e.g. /images/themercury.svg) shown on news cards.';
 comment on column public.blog_posts.tags is
   'Hashtags or topic labels for the article.';
 comment on column public.blog_posts.show_wholesale_cta is

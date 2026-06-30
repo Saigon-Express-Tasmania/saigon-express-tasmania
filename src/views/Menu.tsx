@@ -264,7 +264,7 @@ export default function Menu({
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
-      <section className="relative aspect-5/2 overflow-hidden">
+      <section className="relative aspect-[5/1.6] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{

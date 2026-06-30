@@ -1,13 +1,13 @@
 "use client";
 
-import NextLink from "next/link";
 import type { ComponentProps } from "react";
+import { Link as IntlLink } from "@/i18n/navigation";
 
-type LinkProps = Omit<ComponentProps<typeof NextLink>, "href"> & {
+type LinkProps = Omit<ComponentProps<typeof IntlLink>, "href"> & {
   href: string;
 };
 
-/** Drop-in replacement for wouter's Link, using Next.js routing. */
+/** Locale-aware Next.js link (next-intl). */
 export default function Link({ href, prefetch = true, ...props }: LinkProps) {
-  return <NextLink href={href} prefetch={prefetch} {...props} />;
+  return <IntlLink href={href} prefetch={prefetch} {...props} />;
 }

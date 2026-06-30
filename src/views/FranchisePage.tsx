@@ -288,7 +288,7 @@ export default function FranchisePage() {
       <AnimationOnScroll />
       <div className="min-h-screen bg-brand-cream font-sans overflow-hidden">
         {/* Hero Section */}
-        <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
+        <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden py-20 md:py-28 lg:py-32 pt-28 md:pt-32">
           <div
             className="absolute inset-0 bg-cover bg-center transform scale-105 animate-slow-zoom"
             style={{
@@ -297,7 +297,7 @@ export default function FranchisePage() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
 
-          <div className="relative z-10 w-full px-6 md:px-20 max-w-[1280px] mx-auto flex flex-col items-center text-center mt-20">
+          <div className="relative z-10 w-full px-6 md:px-20 max-w-[1280px] mx-auto flex flex-col items-center text-center">
             <div data-aos="fade-down" data-aos-duration="1000">
               <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-6">
                 {t("hero.badge")}
@@ -396,10 +396,10 @@ export default function FranchisePage() {
               />
               <div className="absolute bottom-6 left-6 z-20 bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-lg border border-white/20">
                 <p className="text-brand-red font-bold text-lg">
-                  Hợp tác cùng phát triển
+                  {t("about.imageOverlayTitle")}
                 </p>
                 <p className="text-brand-dark/60 text-xs">
-                  Thương hiệu đã được khẳng định
+                  {t("about.imageOverlaySubtitle")}
                 </p>
               </div>
             </div>

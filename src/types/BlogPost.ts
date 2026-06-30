@@ -6,6 +6,7 @@ export type BlogPostRow = {
   excerpt: string | null;
   category: string;
   featured_image_url: string | null;
+  news_logo_image_url: string | null;
   published_at: string | null;
   view_count: number;
 };
@@ -26,6 +27,7 @@ export type BlogPost = {
   excerpt: string | null;
   category: string;
   featuredImageUrl: string | null;
+  newsLogoImageUrl: string | null;
   publishedAt: string | null;
   viewCount: number;
 };
@@ -51,6 +53,7 @@ export function mapBlogPostRow(row: BlogPostRow): BlogPost {
     excerpt: row.excerpt,
     category: row.category,
     featuredImageUrl: row.featured_image_url,
+    newsLogoImageUrl: row.news_logo_image_url,
     publishedAt: row.published_at,
     viewCount: row.view_count,
   };

@@ -100,13 +100,14 @@ export async function fetchPromotionRows(): Promise<PromotionRow[]> {
   return (data ?? []) as PromotionRow[];
 }
 
+const BLOG_POST_LIST_SELECT =
+  "id, slug, title, excerpt, category, featured_image_url, news_logo_image_url, published_at, view_count";
+
 export async function fetchBlogPostRows(): Promise<BlogPostRow[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("blog_posts")
-    .select(
-      "id, slug, title, excerpt, category, featured_image_url, published_at, view_count",
-    )
+    .select(BLOG_POST_LIST_SELECT)
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false });
 
@@ -124,7 +125,7 @@ export async function fetchBlogPostBySlug(
   const { data, error } = await supabase
     .from("blog_posts")
     .select(
-      "id, slug, title, excerpt, content, category, featured_image_url, tags, published_at, view_count, show_wholesale_cta, counting_secret",
+      "id, slug, title, excerpt, content, category, featured_image_url, news_logo_image_url, tags, published_at, view_count, show_wholesale_cta, counting_secret",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -193,9 +194,7 @@ export async function fetchRelatedBlogPostRows(
   const relatedIds = links.map((link) => link.related_post_id);
   const { data: posts, error: postsError } = await supabase
     .from("blog_posts")
-    .select(
-      "id, slug, title, excerpt, category, featured_image_url, published_at, view_count",
-    )
+    .select(BLOG_POST_LIST_SELECT)
     .in("id", relatedIds);
 
   if (postsError) {

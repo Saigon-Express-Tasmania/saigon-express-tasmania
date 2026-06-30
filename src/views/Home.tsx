@@ -10,7 +10,10 @@ import LazyImage from "@/components/LazyImage";
 import Link from "@/components/link";
 
 import dynamic from "next/dynamic";
-import { getTranslations } from "next-intl/server";
+import { getBlogPosts } from "@/lib/supabase/blog-posts";
+import { resolvePublicAssetUrl } from "@/lib/resolve-site-url";
+import type { BlogPost } from "@/types";
+import { getLocale, getTranslations } from "next-intl/server";
 import { ChevronRight, MapPin, ShoppingCart } from "lucide-react";
 import { Suspense } from "react";
 
@@ -35,9 +38,6 @@ const IMGS = {
   cat2: "/manus-storage/pho-2_4fc44f9f.jpg",
   cat3: "/manus-storage/spring-rolls-1_02f22814.jpg",
   wholesale: "/manus-storage/wholesale-restaurant-counter_2d79d665.jpg",
-  news1: "/manus-storage/news-story-began_47dbdf79.jpg",
-  news2: "/manus-storage/news-team-behind_03530abb.jpg",
-  news3: "/manus-storage/sorell_store_food_36779d67.jpg",
 };
 
 const CATEGORY_IMAGES = [
@@ -46,12 +46,54 @@ const CATEGORY_IMAGES = [
   "/manus-storage/saigo_express__Roasted_pork_and_roasted_duck_NativeLarge_aff2e8e9.png",
 ] as const;
 
-const NEWS_IMAGES = [IMGS.news1, IMGS.news2, IMGS.news3] as const;
+const HOME_NEWS_LIMIT = 3;
+const NEWS_FALLBACK_IMAGE =
+  "/manus-storage/news-story-began_47dbdf79.jpg";
+
+const FEATURED_IN_LOGOS: Array<{
+  src: string;
+  alt: string;
+  className: string;
+}> = [
+  { src: "/images/themercury.svg", alt: "The Mercury", className: "h-8 md:h-9" },
+  {
+    src: "/images/pulse-tasmania.png",
+    alt: "Pulse Tasmania",
+    className: "h-10 md:h-11",
+  },
+  { src: "/images/urban-list.svg", alt: "Urban List", className: "h-7 md:h-8" },
+  {
+    src: "/images/delicious-logo.svg",
+    alt: "delicious.",
+    className: "h-8 md:h-9",
+  },
+  {
+    src: "/images/agfg-logo.png",
+    alt: "Australian Good Food Guide",
+    className: "h-8 md:h-9",
+  },
+];
+
+function formatPublishedDate(
+  iso: string | null,
+  locale: string,
+): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 const GetApp = dynamic(() => import("@/components/GetApp"));
 
 export default async function Home() {
   const t = await getTranslations("Home");
+  const locale = await getLocale();
+  const newsPosts = (await getBlogPosts()).slice(0, HOME_NEWS_LIMIT);
 
   const marqueeItems = t.raw("marquee.items") as string[];
   const cateringTags = t.raw("catering.tags") as string[];
@@ -59,12 +101,6 @@ export default async function Home() {
   const categoryItems = t.raw("categories.items") as Array<{
     title: string;
     desc: string;
-  }>;
-  const newsItems = t.raw("news.items") as Array<{
-    date: string;
-    tag: string;
-    title: string;
-    excerpt: string;
   }>;
 
   return (
@@ -395,10 +431,36 @@ export default async function Home() {
         </div>
       </section> */}
 
+      {/* ── AS FEATURED IN ──────────────────────────────────────────────── */}
+      <section className="bg-white border-y border-brand-dark/10 py-8 md:py-10">
+        <div className="max-w-[1280px] mx-auto px-4 text-center">
+          <span className="section-label">{t("featuredIn.label")}</span>
+          <p className="mt-2 mb-8 text-sm text-brand-dark/60 max-w-xl mx-auto leading-relaxed">
+            {t("featuredIn.tagline")}
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">
+            {FEATURED_IN_LOGOS.map((logo) => (
+              <div
+                key={logo.src}
+                className="flex shrink-0 items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-300"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logo.src}
+                  alt={logo.alt}
+                  className={`w-auto object-contain ${logo.className}`}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── NEWS ────────────────────────────────────────────────────────── */}
-      <section className="py-20 lg:py-28 bg-white">
+      <section className="py-8 bg-white">
         <div className="max-w-[1280px] mx-auto px-4">
-          <div className="flex items-end justify-between mb-10 reveal">
+          {/* <div className="flex items-end justify-between mb-10 reveal">
             <div>
               <span className="section-label">{t("news.label")}</span>
               <h2 className="font-serif text-4xl text-brand-dark mt-2">
@@ -411,36 +473,73 @@ export default async function Home() {
             >
               {t("news.viewAll")} <ChevronRight size={14} />
             </Link>
-          </div>
+          </div> */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {newsItems.map((n, i) => (
-              <article
-                key={i}
-                className="group block bg-brand-cream overflow-hidden rounded-sm card-lift reveal cursor-pointer"
-                style={{ animationDelay: `${i * 0.08}s` }}
-              >
-                <div className="overflow-hidden aspect-[4/3]">
-                  <LazyImage
-                    src={NEWS_IMAGES[i]}
-                    alt={n.title}
-                    wrapperClassName="w-full h-full"
-                    className="group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="news-badge">{n.tag}</span>
-                    <span className="text-xs text-brand-dark/40">{n.date}</span>
-                  </div>
-                  <h3 className="font-serif text-base text-brand-dark leading-snug mb-2">
-                    {n.title}
-                  </h3>
-                  <p className="text-xs text-brand-dark/60 leading-relaxed line-clamp-3">
-                    {n.excerpt}
-                  </p>
-                </div>
-              </article>
-            ))}
+            {newsPosts.map((post: BlogPost, i) => {
+              const publishedLabel = formatPublishedDate(
+                post.publishedAt,
+                locale,
+              );
+              const newsLogoUrl = resolvePublicAssetUrl(post.newsLogoImageUrl);
+
+              return (
+                <article
+                  key={post.id}
+                  className="group reveal h-full overflow-hidden rounded-xl border border-[#eaeaea] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.08)] card-lift"
+                  style={{ animationDelay: `${i * 0.08}s` }}
+                >
+                  <Link
+                    href={`/news/${post.slug}`}
+                    className="flex h-full flex-col"
+                  >
+                    <div className="aspect-[65/32] overflow-hidden border-b border-[#f0f0f0] bg-[#e0e0e0]">
+                      <LazyImage
+                        src={post.featuredImageUrl ?? NEWS_FALLBACK_IMAGE}
+                        alt={post.title}
+                        wrapperClassName="w-full h-full"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="flex flex-1 flex-col px-5 py-4">
+                      <div className="flex items-start gap-4 sm:gap-6">
+                        <div className="flex w-[68px] shrink-0 flex-col gap-3 sm:w-[76px]">
+                          {newsLogoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={newsLogoUrl}
+                              alt={post.category}
+                              className="block max-h-12 w-full object-contain object-top sm:max-h-14"
+                            />
+                          ) : (
+                            <span className="news-badge text-[10px] leading-snug">
+                              {post.category}
+                            </span>
+                          )}
+                          {publishedLabel && (
+                            <p className="text-xs font-semibold uppercase leading-snug tracking-wide text-[#666666]">
+                              {publishedLabel}
+                            </p>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="m-0 line-clamp-3 text-lg font-bold leading-tight text-brand-red">
+                            {post.title}
+                          </h3>
+                          {post.excerpt && (
+                            <p className="mt-3 line-clamp-4 text-[15px] leading-relaxed text-[#444444]">
+                              {post.excerpt}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="mt-auto pt-4 text-[13px] font-bold tracking-wide text-brand-red">
+                        {t("news.readMore")} →
+                      </span>
+                    </div>
+                  </Link>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>

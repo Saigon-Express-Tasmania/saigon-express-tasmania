@@ -34,9 +34,9 @@ export default function Careers({ jobs }: { jobs: JobListing[] }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Hero */}
-      <section className="relative h-[52vh] min-h-[400px] overflow-hidden">
+      <section className="relative min-h-[52vh] overflow-hidden py-16 md:py-20 lg:py-24">
         <div className="absolute inset-0 bg-black" />
-        <div className="relative h-full flex flex-col items-center justify-center text-center px-6">
+        <div className="relative flex flex-col items-center justify-center text-center px-6">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="inline-block text-xs font-bold tracking-[0.25em] uppercase px-4 py-1.5 rounded-full mb-5 text-white border border-white/30 bg-white/10 backdrop-blur-sm">
               {t("hero.badge")}

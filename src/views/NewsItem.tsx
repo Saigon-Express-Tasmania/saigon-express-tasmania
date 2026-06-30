@@ -1,6 +1,7 @@
 "use client";
 
 import LazyImage from "@/components/LazyImage";
+import BlogPostNewsLogo from "@/components/BlogPostNewsLogo";
 import Link from "@/components/link";
 import { ShareDealButton } from "@/components/ShareDealButton";
 import type { BlogPost, BlogPostDetail } from "@/types";
@@ -137,7 +138,15 @@ export default function NewsItem({ post }: { post: BlogPostDetail }) {
 
       <article className="mx-auto max-w-3xl px-4 py-10 sm:py-16">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <span className="news-badge">{post.category}</span>
+          {post.newsLogoImageUrl ? (
+            <BlogPostNewsLogo
+              src={post.newsLogoImageUrl}
+              alt={post.category}
+              className="h-6 w-auto max-w-[140px] object-contain"
+            />
+          ) : (
+            <span className="news-badge">{post.category}</span>
+          )}
           {publishedLabel && (
             <span className="inline-flex items-center gap-1 text-xs text-brand-dark/50">
               <Calendar className="h-3.5 w-3.5" />

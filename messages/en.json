@@ -144,26 +144,11 @@
       "label": "LATEST FROM US",
       "title": "News & Updates",
       "viewAll": "View all",
-      "items": [
-        {
-          "date": "1 Jun 2016",
-          "tag": "OUR STORY",
-          "title": "How It All Began: Opening Our First Store at 335 Elizabeth St, North Hobart",
-          "excerpt": "In 2016, Dr. Tien had one dream — to bring the authentic flavours of Vietnamese street food to Tasmania. Starting from a small shopfront at 335 Elizabeth Street, North Hobart, he wanted every Hobartian to experience the warmth of Vietnamese culture through fresh, healthy, and affordable food. That first store became the heart of what Saigon Express is today."
-        },
-        {
-          "date": "15 Mar 2024",
-          "tag": "TEAM",
-          "title": "The People Behind Every Bowl: Meet the Saigon Express Family",
-          "excerpt": "Behind every steaming bowl of pho and every freshly baked bánh mì is a dedicated team who treat every customer like family. Our staff bring passion, culture, and care to every single dish — every single day."
-        },
-        {
-          "date": "10 Apr 2025",
-          "tag": "NEW STORE",
-          "title": "Saigon Express Sorell — Our 8th Store Is Now Open!",
-          "excerpt": "We're thrilled to announce the opening of Saigon Express Sorell, our 8th store in Tasmania! Bringing fresh, healthy Vietnamese food to the Sorell community — because great food should be accessible to everyone across the island."
-        }
-      ]
+      "readMore": "READ MORE"
+    },
+    "featuredIn": {
+      "label": "As Featured In",
+      "tagline": "Recognised by Tasmania's leading food and local media platforms"
     },
     "partner": {
       "title": "🤝 Become a Partner",
@@ -1064,7 +1049,9 @@
       "legalLabel": "Legal Entity:",
       "legalValue": "Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "addressLabel": "Registered Address:",
-      "addressValue": "Level 2, 86 Collins St, Hobart TAS 7000"
+      "addressValue": "Level 2, 86 Collins St, Hobart TAS 7000",
+      "imageOverlayTitle": "Grow Together",
+      "imageOverlaySubtitle": "An established brand"
     },
     "benefits": {
       "label": "FRANCHISE BENEFITS",

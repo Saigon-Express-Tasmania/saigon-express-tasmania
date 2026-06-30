@@ -20,6 +20,7 @@ export type BlogPost = {
   content: string;
   category: string;
   featured_image_url: string | null;
+  news_logo_image_url: string | null;
   tags: string[];
   published_at: string | null;
   view_count: number;
@@ -37,6 +38,7 @@ export type BlogPostInput = {
   content: string;
   category: string;
   featured_image_url: string;
+  news_logo_image_url: string;
   tags: string;
   published_at: string | null;
   view_count: number;
@@ -57,6 +59,7 @@ export const emptyBlogPostInput = (): BlogPostInput => ({
   content: '',
   category: 'News',
   featured_image_url: '',
+  news_logo_image_url: '',
   tags: '',
   published_at: new Date().toISOString(),
   view_count: 0,

@@ -4,12 +4,6 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
-  experimental: {
-    staleTimes: {
-      dynamic: 60,
-      static: 300,
-    },
-  },
   async redirects() {
     return [
       { source: "/en-US", destination: "/", permanent: true },
