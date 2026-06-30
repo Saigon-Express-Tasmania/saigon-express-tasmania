@@ -12,10 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState, type ReactNode } from 'react';
 import { formatOrderTypeLabel, type OrderType } from './orderType';
 import { SalesOrderAddressEditor } from './SalesOrderAddressEditor';
+import { SalesOrderGatewayDataPanel } from './SalesOrderGatewayDataPanel';
 import { SalesOrderB2BEditor } from './SalesOrderB2BEditor';
 import {
   SalesOrderFormField,
   SalesOrderFormSection,
+  SalesOrderSectionHeading,
   salesOrderFormGridClass,
 } from './SalesOrderFormField';
 import { SalesOrderItemsEditor } from './SalesOrderItemsEditor';
@@ -43,6 +45,7 @@ import {
   type SalesOrderForm,
   type SalesOrdersDataset,
 } from './salesOrderShared';
+import type { SalesOrderSectionAccent } from './salesOrderUi';
 
 type EditorTab = 'customer' | 'addresses' | 'items' | 'payment' | 'b2b';
 
@@ -79,25 +82,28 @@ const formatPaymentTermsLabel = (terms: PaymentTerms): string => {
 const tabPanelClass =
   'mt-0 h-[min(58vh,560px)] flex-none overflow-y-auto px-0.5 pr-1 data-[state=inactive]:hidden';
 
+const itemsTabPanelClass =
+  'mt-0 flex min-h-0 flex-1 flex-col overflow-hidden px-0.5 data-[state=inactive]:hidden';
+
 const stackedSectionClass = 'space-y-6 py-1';
 
 function StackedSection({
   title,
+  accent,
   children,
   showSeparator = true,
 }: {
   title: string;
+  accent: SalesOrderSectionAccent;
   children: ReactNode;
   showSeparator?: boolean;
 }) {
   return (
-    <>
-      {showSeparator ? <Separator className="my-8" /> : null}
-      <div className={stackedSectionClass}>
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        {children}
-      </div>
-    </>
+    <section className="space-y-6">
+      {showSeparator ? <Separator /> : null}
+      <SalesOrderSectionHeading title={title} accent={accent} size="outer" bleed />
+      <div className={stackedSectionClass}>{children}</div>
+    </section>
   );
 }
 
@@ -133,6 +139,7 @@ export function SalesOrderEditorContent({
       <SalesOrderFormSection
         title="Order metadata"
         description="System identifiers and order context."
+        accent="slate"
       >
         <div className={salesOrderFormGridClass}>
           <SalesOrderFormField
@@ -183,6 +190,7 @@ export function SalesOrderEditorContent({
       <SalesOrderFormSection
         title="Customer contact"
         description="Primary contact details for this order."
+        accent="emerald"
       >
         <div className={salesOrderFormGridClass}>
           <SalesOrderFormField
@@ -256,6 +264,7 @@ export function SalesOrderEditorContent({
       <SalesOrderFormSection
         title="Fulfillment & terms"
         description="How and when this order should be fulfilled."
+        accent="sky"
       >
         <div className={salesOrderFormGridClass}>
           <SalesOrderFormField
@@ -358,7 +367,7 @@ export function SalesOrderEditorContent({
         </div>
       </SalesOrderFormSection>
 
-      <SalesOrderFormSection title="Notes">
+      <SalesOrderFormSection title="Notes" accent="amber">
         <SalesOrderFormField
           label="Order notes"
           htmlFor={id('notes')}
@@ -411,8 +420,9 @@ export function SalesOrderEditorContent({
   );
 
   const itemsSection = (
-    <div className="space-y-6 py-1">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden py-1">
       <SalesOrderItemsEditor
+        className="min-h-0 flex-1"
         orderType={orderType}
         items={form.items}
         onItemsChange={applyItemsChange}
@@ -421,7 +431,8 @@ export function SalesOrderEditorContent({
         readOnly={readOnly}
       />
 
-      <SalesOrderFormSection title="Order totals">
+      <div className="shrink-0 space-y-6 overflow-y-auto">
+      <SalesOrderFormSection title="Order totals" accent="violet">
         <div className={salesOrderFormGridClass}>
           <SalesOrderFormField
             label="Subtotal"
@@ -552,12 +563,12 @@ export function SalesOrderEditorContent({
             label="Grand total"
             readOnly
             value={`$${Number(form.grand_total).toFixed(2)}`}
-            valueClassName="tabular-nums font-medium"
+            valueClassName="tabular-nums text-base font-bold text-emerald-700 dark:text-emerald-300"
           />
         </div>
       </SalesOrderFormSection>
 
-      <SalesOrderFormSection title="Fulfillment status">
+      <SalesOrderFormSection title="Fulfillment status" accent="emerald">
         <div className={salesOrderFormGridClass}>
           <SalesOrderFormField
             label="Status"
@@ -604,12 +615,13 @@ export function SalesOrderEditorContent({
           </SalesOrderFormField>
         </div>
       </SalesOrderFormSection>
+      </div>
     </div>
   );
 
   const paymentSection = (
     <div className="space-y-6 py-1">
-      <SalesOrderFormSection title="Payment details">
+      <SalesOrderFormSection title="Payment details" accent="amber">
         <div className={salesOrderFormGridClass}>
           <SalesOrderFormField
             label="Payment status"
@@ -773,8 +785,17 @@ export function SalesOrderEditorContent({
       </SalesOrderFormSection>
 
       <SalesOrderFormSection
+        title="Gateway data"
+        description="Raw payment gateway payload stored with this order."
+        accent="amber"
+      >
+        <SalesOrderGatewayDataPanel gatewayData={form.payment.gateway_data} />
+      </SalesOrderFormSection>
+
+      <SalesOrderFormSection
         title="Order tokens"
         description="Customer-facing cancel and tracking links."
+        accent="slate"
       >
         <div className={salesOrderFormGridClass}>
           <SalesOrderFormField
@@ -831,13 +852,23 @@ export function SalesOrderEditorContent({
   if (layout === 'stacked') {
     return (
       <div>
-        <StackedSection title="Customer" showSeparator={false}>
+        <StackedSection title="Customer" accent="emerald" showSeparator={false}>
           {customerSection}
         </StackedSection>
-        <StackedSection title="Addresses">{addressesSection}</StackedSection>
-        <StackedSection title={itemsTabLabel}>{itemsSection}</StackedSection>
-        <StackedSection title="Payment & tokens">{paymentSection}</StackedSection>
-        {b2bSection ? <StackedSection title="B2B">{b2bSection}</StackedSection> : null}
+        <StackedSection title="Addresses" accent="sky">
+          {addressesSection}
+        </StackedSection>
+        <StackedSection title={itemsTabLabel} accent="violet">
+          {itemsSection}
+        </StackedSection>
+        <StackedSection title="Payment & tokens" accent="amber">
+          {paymentSection}
+        </StackedSection>
+        {b2bSection ? (
+          <StackedSection title="B2B" accent="rose">
+            {b2bSection}
+          </StackedSection>
+        ) : null}
       </div>
     );
   }
@@ -864,7 +895,7 @@ export function SalesOrderEditorContent({
         {addressesSection}
       </TabsContent>
 
-      <TabsContent value="items" className={tabPanelClass}>
+      <TabsContent value="items" className={itemsTabPanelClass}>
         {itemsSection}
       </TabsContent>
 

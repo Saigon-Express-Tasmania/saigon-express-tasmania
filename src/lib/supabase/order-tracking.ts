@@ -16,6 +16,7 @@ import { getClientStripeMode } from "@/lib/stripe-mode";
 import { parseStoredItemCustomisation } from "@/lib/product-customizations";
 import type { ItemCustomisation } from "@/lib/product-customizations";
 import { formatRequestedTargetDate } from "@/lib/supabase/wholesale-orders";
+import { getSettings } from "@/lib/supabase/settings";
 import {
   normalizeWholesaleImageUrls,
   pickWholesaleImageUrl,
@@ -195,6 +196,7 @@ function buildTrackedOrderB2B(row: Record<string, unknown>): WholesaleOrderB2B {
 function mapTrackedOrderItem(
   item: Record<string, unknown>,
   productImages: Map<number, WholesaleImageUrls>,
+  siteUrl: string | null,
 ): TrackedOrderItem {
   const qty = Number(item.quantity ?? item.qty ?? 0);
   const unitPrice = Number(item.unit_price ?? 0);
@@ -212,7 +214,11 @@ function mapTrackedOrderItem(
     item_name: String(item.name ?? item.item_name ?? ""),
     imageUrl:
       productId > 0
-        ? pickWholesaleImageUrl(productImages.get(productId), [512, 256, 1448])
+        ? pickWholesaleImageUrl(
+            productImages.get(productId),
+            [512, 256, 1448],
+            siteUrl,
+          )
         : null,
     customisation: parseStoredItemCustomisation(item.customisation),
   };
@@ -253,6 +259,7 @@ function mapTrackedOrderRow(
   row: Record<string, unknown>,
   rawItems: Record<string, unknown>[],
   productImages: Map<number, WholesaleImageUrls>,
+  siteUrl: string | null,
 ): TrackedOrder {
   const requestedTargetDate = (row.requested_target_date as string | null) ?? null;
   const grandTotal = Number(row.grand_total ?? row.total ?? 0);
@@ -285,7 +292,9 @@ function mapTrackedOrderRow(
     status_updated_at:
       row.status_updated_at == null ? null : String(row.status_updated_at),
     notes: row.notes == null ? null : String(row.notes),
-    items: rawItems.map((item) => mapTrackedOrderItem(item, productImages)),
+    items: rawItems.map((item) =>
+      mapTrackedOrderItem(item, productImages, siteUrl),
+    ),
     address: extractOrderFlatAddress(row),
     b2b: buildTrackedOrderB2B(row),
   };
@@ -315,9 +324,13 @@ async function fetchTrackedOrderForMode(
   const orderRow = data as Record<string, unknown>;
   const rawItems = await fetchTrackedOrderItems(supabase, Number(orderRow.id));
   const productIds = rawItems.map((item) => Number(item.product_id ?? 0));
-  const productImages = await fetchProductImageMap(supabase, productIds);
+  const [productImages, settings] = await Promise.all([
+    fetchProductImageMap(supabase, productIds),
+    getSettings(),
+  ]);
+  const siteUrl = settings.site_url?.trim() || null;
 
-  return mapTrackedOrderRow(orderRow, rawItems, productImages);
+  return mapTrackedOrderRow(orderRow, rawItems, productImages, siteUrl);
 }
 
 export async function fetchOrderByTrackingToken(

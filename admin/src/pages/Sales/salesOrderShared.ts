@@ -108,6 +108,7 @@ export type SalesOrderPaymentForm = {
   method: PaymentMethod;
   gateway: PaymentGateway;
   gateway_transaction_id: string;
+  gateway_data: Record<string, unknown> | null;
   amount: string;
 };
 
@@ -275,6 +276,7 @@ export function emptyPaymentForm(
     method: 'credit_card',
     gateway: 'none',
     gateway_transaction_id: '',
+    gateway_data: null,
     amount: '0.00',
   };
 }

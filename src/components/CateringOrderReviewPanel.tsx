@@ -7,8 +7,7 @@ import { DayPicker } from "react-day-picker";
 import DeliveryCitySelect from "@/components/DeliveryCitySelect";
 import { FormFieldLabel } from "@/components/FormFieldLabel";
 import PickupStorePicker from "@/components/PickupStorePicker";
-import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
-import CustomisationSummary from "@/components/CustomisationSummary";
+import CateringCartLineItem from "@/components/CateringCartLineItem";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
 import { cateringCartLineUnitPrice } from "@/contexts/CateringCartContext";
 import {
@@ -875,33 +874,15 @@ export default function CateringOrderReviewPanel({
             {items.map((item) => {
               const lineUnitPrice = cateringCartLineUnitPrice(item);
               return (
-              <div
-                key={item.lineKey}
-                className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
-              >
-                <WholesaleCartItemThumbnail
-                  imageUrl={item.imageUrl}
-                  alt={item.productName}
-                  size="sm"
+                <CateringCartLineItem
+                  key={item.lineKey}
+                  item={item}
+                  lineTotal={`$${(Number(lineUnitPrice) * item.qty).toFixed(2)}`}
+                  unitPriceLabel={`${item.qty} × $${Number(lineUnitPrice).toFixed(2)}${
+                    !isGstInclusive ? " ex GST" : ""
+                  }`}
                 />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">{item.productName}</p>
-                  {item.variantLabel ? (
-                    <p className="mt-0.5 text-xs text-white/45">{item.variantLabel}</p>
-                  ) : null}
-                  {item.customisation ? (
-                    <CustomisationSummary customisation={item.customisation} />
-                  ) : null}
-                  <p className="mt-0.5 text-xs text-white/40">
-                    {item.qty} × ${Number(lineUnitPrice).toFixed(2)}
-                    {!isGstInclusive ? " ex GST" : ""}
-                  </p>
-                </div>
-                <p className="shrink-0 text-sm font-semibold tabular-nums text-white">
-                  ${(Number(lineUnitPrice) * item.qty).toFixed(2)}
-                </p>
-              </div>
-            );
+              );
             })}
           </div>
         </section>

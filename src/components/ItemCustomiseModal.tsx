@@ -4,6 +4,7 @@ import AppImage from "@/components/AppImage";
 import { MenuItem } from "@/contexts/CartContext";
 import { useOptionGroupsForItem } from "@/lib/item-customise-options";
 import {
+  buildCustomisationGroups,
   computeExtraPrice,
   getMissingRequiredOptionGroups,
   initialSelections,
@@ -90,7 +91,7 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
           : [...current, optionId];
       }
 
-      if (nextIds.length > 0) {
+      if (type === "single" && nextIds.length > 0) {
         setExpandedGroups((expanded) => ({ ...expanded, [groupId]: false }));
       }
 
@@ -146,7 +147,13 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
       });
       return;
     }
-    onConfirm({ selections, qty, note, extraPrice });
+    onConfirm({
+      selections,
+      groups: buildCustomisationGroups(groups, selections),
+      qty,
+      note,
+      extraPrice,
+    });
   };
 
   return (

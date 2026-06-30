@@ -1,3 +1,5 @@
+import { resolveSiteAssetUrl } from "@/lib/resolve-site-url";
+
 /** Size key → public image URL (e.g. `"512"` → `https://...`). */
 export type WholesaleImageUrls = Record<string, string>;
 
@@ -73,14 +75,17 @@ export function normalizeWholesaleImageUrls(
 export function pickWholesaleImageUrl(
   urls: WholesaleImageUrls | null | undefined,
   preferredSizes: number[] = [1024, 1448, 512, 256],
+  siteUrl?: string | null,
 ): string | null {
   const map = urls ?? {};
   for (const size of preferredSizes) {
     const url = map[String(size)]?.trim();
-    if (url) return url;
+    if (url) return resolveSiteAssetUrl(url, siteUrl);
   }
   const fallback = Object.values(map).find((url) => url?.trim());
-  return fallback?.trim() ?? null;
+  return fallback?.trim()
+    ? resolveSiteAssetUrl(fallback.trim(), siteUrl)
+    : null;
 }
 
 export function mapWholesaleProductRow(row: WholesaleProductRow): WholesaleProduct {

@@ -17,13 +17,15 @@ import CateringPackOrderButton from "@/components/CateringPackOrderButton";
 import CateringProductHtml from "@/components/CateringProductHtml";
 import CateringTierSelect from "@/components/CateringTierSelect";
 import {
-  ItemCustomiseModal,
-  type ItemCustomisation,
-} from "@/components/ItemCustomiseModal";
+  EMPTY_CUSTOMISE_MENU_ITEM,
+  ItemCustomiseInlineAddSection,
+  ItemCustomiseInlineFields,
+  useCateringItemCustomisation,
+} from "@/components/ItemCustomiseInline";
+import type { ItemCustomisation } from "@/lib/product-customizations";
 import LazyImage from "@/components/LazyImage";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import { useCateringCart } from "@/contexts/CateringCartContext";
-import { useProductCustomizations } from "@/contexts/ProductCustomizationsContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { cateringPackToCustomiseItem } from "@/lib/catering-customise-item";
 import { cateringItemDetailPath, cateringListPath } from "@/lib/catering-item-routes";
@@ -52,7 +54,6 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
 
   const { isSignedIn } = useSupabase();
   const { addToCart, cartCount, cartTotal, setCartOpen } = useCateringCart();
-  const { getOptionGroupsForItem } = useProductCustomizations();
   const { session, trackedOrder, setLastOrderOpen, isHydrated } =
     useGuestCateringOrder();
 
@@ -62,7 +63,6 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
 
   const [selectedGalleryId, setSelectedGalleryId] = useState("primary");
   const [selectedTierIndex, setSelectedTierIndex] = useState(0);
-  const [customiseOpen, setCustomiseOpen] = useState(false);
   const [resolveOrderWarning, setResolveOrderWarning] = useState(false);
 
   const selectedTier: CateringTierPrice | null =
@@ -71,7 +71,92 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
   const displayPrice =
     selectedTier?.price ?? item.price ?? item.prices[0]?.price ?? null;
 
-  const hasOrderPrice = parseCateringPrice(displayPrice) != null;
+  const unitPrice = useMemo(() => {
+    if (selectedTier != null) {
+      return parseCateringPrice(selectedTier.price);
+    }
+    return parseCateringPrice(item.price);
+  }, [item.price, selectedTier]);
+
+  const customiseMenuItem = useMemo(() => {
+    if (unitPrice == null) return null;
+    return cateringPackToCustomiseItem(item, unitPrice);
+  }, [item, unitPrice]);
+
+  const customisationState = useCateringItemCustomisation(
+    customiseMenuItem ?? EMPTY_CUSTOMISE_MENU_ITEM,
+  );
+
+  const hasCustomizations = customisationState.groups.length > 0;
+
+  const orderPriceLabel = useMemo(() => {
+    if (unitPrice == null) return null;
+    return (
+      selectedTier?.price?.trim() ||
+      item.price?.trim() ||
+      formatAud(unitPrice)
+    );
+  }, [item.price, selectedTier, unitPrice]);
+
+  const hasOrderPrice = unitPrice != null;
+
+  const handleBlockedAddToOrder = useCallback(() => {
+    const message = tCatering("guestOrder.resolveFirst");
+    toast.warning(message, {
+      id: "catering-resolve-order",
+      duration: 7000,
+    });
+    setResolveOrderWarning(true);
+    setLastOrderOpen(true);
+    requestAnimationFrame(() => {
+      document
+        .getElementById("catering-resolve-order-warning")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, [setLastOrderOpen, tCatering]);
+
+  const addLineToCart = useCallback(
+    (customisation?: ItemCustomisation) => {
+      if (!item.isAvailable || unitPrice == null) return;
+
+      if (guestOrderBlocksCart) {
+        handleBlockedAddToOrder();
+        return;
+      }
+
+      addToCart(
+        {
+          productId: item.id,
+          productName: item.name,
+          variantLabel: selectedTier?.size ?? null,
+          unitPrice,
+          catalogUnitPrice: item.catalogUnitPrice,
+          imageUrl: item.img,
+        },
+        customisation ? { customisation } : undefined,
+      );
+    },
+    [
+      addToCart,
+      guestOrderBlocksCart,
+      handleBlockedAddToOrder,
+      item,
+      selectedTier,
+      unitPrice,
+    ],
+  );
+
+  const handleAddToOrder = useCallback(() => {
+    if (hasCustomizations) return;
+    addLineToCart();
+  }, [addLineToCart, hasCustomizations]);
+
+  const handleAddWithCustomisation = useCallback(
+    (customisation: ItemCustomisation) => {
+      addLineToCart(customisation);
+    },
+    [addLineToCart],
+  );
 
   const itemPath = useCallback(
     (pack: CateringPack) => cateringItemDetailPath(pack, locale),
@@ -127,105 +212,11 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
     galleryOptions.find((option) => option.id === selectedGalleryId) ??
     galleryOptions[0];
 
-  const handleBlockedAddToOrder = useCallback(() => {
-    const message = tCatering("guestOrder.resolveFirst");
-    toast.warning(message, {
-      id: "catering-resolve-order",
-      duration: 7000,
-    });
-    setResolveOrderWarning(true);
-    setLastOrderOpen(true);
-    requestAnimationFrame(() => {
-      document
-        .getElementById("catering-resolve-order-warning")
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
-  }, [setLastOrderOpen, tCatering]);
-
   useEffect(() => {
     if (!guestOrderBlocksCart) {
       setResolveOrderWarning(false);
     }
   }, [guestOrderBlocksCart]);
-
-  const handleAddToOrder = useCallback(() => {
-    if (!item.isAvailable) return;
-
-    if (guestOrderBlocksCart) {
-      handleBlockedAddToOrder();
-      return;
-    }
-
-    const unitPrice =
-      selectedTier != null
-        ? parseCateringPrice(selectedTier.price)
-        : parseCateringPrice(item.price);
-
-    if (unitPrice == null) {
-      toast.error(t("quoteRequired"));
-      return;
-    }
-
-    const customiseMenuItem = cateringPackToCustomiseItem(item, unitPrice);
-    if (getOptionGroupsForItem(customiseMenuItem).length > 0) {
-      setCustomiseOpen(true);
-      return;
-    }
-
-    addToCart({
-      productId: item.id,
-      productName: item.name,
-      variantLabel: selectedTier?.size ?? null,
-      unitPrice,
-      catalogUnitPrice: item.catalogUnitPrice,
-      imageUrl: item.img,
-    });
-  }, [
-    addToCart,
-    getOptionGroupsForItem,
-    guestOrderBlocksCart,
-    handleBlockedAddToOrder,
-    item,
-    selectedTier,
-    t,
-  ]);
-
-  const customiseItem = useMemo(
-    () => {
-      if (!customiseOpen) return null;
-      const unitPrice =
-        selectedTier != null
-          ? parseCateringPrice(selectedTier.price)
-          : parseCateringPrice(item.price);
-      if (unitPrice == null) return null;
-      return cateringPackToCustomiseItem(item, unitPrice);
-    },
-    [customiseOpen, item, selectedTier],
-  );
-
-  const handleCustomiseConfirm = useCallback(
-    (customisation: ItemCustomisation) => {
-      const unitPrice =
-        selectedTier != null
-          ? parseCateringPrice(selectedTier.price)
-          : parseCateringPrice(item.price);
-      if (unitPrice == null) return;
-
-      addToCart(
-        {
-          productId: item.id,
-          productName: item.name,
-          variantLabel: selectedTier?.size ?? null,
-          unitPrice,
-          catalogUnitPrice: item.catalogUnitPrice,
-          imageUrl: item.img,
-        },
-        { customisation },
-      );
-      setCustomiseOpen(false);
-    },
-    [addToCart, item, selectedTier],
-  );
 
   const backHref =
     item.category === FEATURED_CATERING_PACK_CATEGORY
@@ -387,15 +378,39 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
                 />
               ) : null}
 
-              {hasOrderPrice ? (
-                <CateringPackOrderButton
-                  pack={item}
-                  selectedTier={selectedTier}
-                  onAdd={handleAddToOrder}
-                  orderLabel={tCatering("menu.addToOrder")}
-                  quoteLabel={tCatering("menu.customPrice")}
-                  disabled={!item.isAvailable}
+              {hasCustomizations ? (
+                <ItemCustomiseInlineFields
+                  groups={customisationState.groups}
+                  selections={customisationState.selections}
+                  note={customisationState.note}
+                  onNoteChange={customisationState.setNote}
+                  onToggleOption={customisationState.toggleOption}
+                  className="mb-0 border-t-0 pt-0"
                 />
+              ) : null}
+
+              {hasOrderPrice ? (
+                hasCustomizations && unitPrice != null && orderPriceLabel ? (
+                  <ItemCustomiseInlineAddSection
+                    unitPrice={unitPrice}
+                    priceLabel={orderPriceLabel}
+                    orderLabel={tCatering("menu.addToOrder")}
+                    groups={customisationState.groups}
+                    selections={customisationState.selections}
+                    buildCustomisation={customisationState.buildCustomisation}
+                    onAdd={handleAddWithCustomisation}
+                    disabled={!item.isAvailable}
+                  />
+                ) : (
+                  <CateringPackOrderButton
+                    pack={item}
+                    selectedTier={selectedTier}
+                    onAdd={handleAddToOrder}
+                    orderLabel={tCatering("menu.addToOrder")}
+                    quoteLabel={tCatering("menu.customPrice")}
+                    disabled={!item.isAvailable}
+                  />
+                )
               ) : (
                 <Link
                   href={`${cateringListPath(locale)}#catering-enquiry-form`}
@@ -490,14 +505,6 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
             </button>
           </div>
         </div>
-      ) : null}
-
-      {customiseItem ? (
-        <ItemCustomiseModal
-          item={customiseItem}
-          onConfirm={handleCustomiseConfirm}
-          onClose={() => setCustomiseOpen(false)}
-        />
       ) : null}
     </div>
   );

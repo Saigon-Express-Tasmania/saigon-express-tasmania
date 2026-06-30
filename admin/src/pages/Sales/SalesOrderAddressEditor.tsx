@@ -103,7 +103,7 @@ export function SalesOrderAddressEditor({
   return (
     <div className="space-y-6">
       {isPickup ? (
-        <SalesOrderFormSection title="Pickup location">
+        <SalesOrderFormSection title="Pickup location" accent="sky">
           <SalesOrderPickupStoreSection
             storeId={requestedPickUpStoreId}
             onStoreChange={onPickupStoreChange}
@@ -114,7 +114,7 @@ export function SalesOrderAddressEditor({
           />
         </SalesOrderFormSection>
       ) : (
-        <SalesOrderFormSection title="Shipping address">
+        <SalesOrderFormSection title="Shipping address" accent="sky">
           <div className={salesOrderFormGridClass}>
             {field('shipping_dba_name', 'DBA / business name')}
             {field('shipping_address', 'Street address', { fullWidth: true })}
@@ -131,7 +131,7 @@ export function SalesOrderAddressEditor({
         </SalesOrderFormSection>
       )}
 
-      <SalesOrderFormSection title="Billing address">
+      <SalesOrderFormSection title="Billing address" accent="amber">
         <div className={salesOrderFormGridClass}>
           {field('billing_legal_name', 'Legal name')}
           {field('billing_tax_id', 'Tax ID / ABN')}

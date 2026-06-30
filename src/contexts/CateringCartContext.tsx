@@ -215,7 +215,7 @@ const useCateringCartStore = create<CateringCartStore>()(
       clearCart: () => set({ cart: [], highlightLineKey: null }),
     }),
     {
-      name: "saigon-catering-cart",
+      name: "saigon-catering-cart-v2",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ cart: state.cart }),
     },

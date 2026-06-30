@@ -123,7 +123,7 @@ export function SalesOrderB2BEditor({
         </p>
       </div>
 
-      <SalesOrderFormSection title="Buyer">
+      <SalesOrderFormSection title="Buyer" accent="rose">
         <div className={salesOrderFormGridClass}>
         <B2BField
           id={fieldId('buyer-name')}
@@ -162,7 +162,7 @@ export function SalesOrderB2BEditor({
       </SalesOrderFormSection>
 
       {isPickup ? (
-        <SalesOrderFormSection title="Pickup location">
+        <SalesOrderFormSection title="Pickup location" accent="sky">
           <SalesOrderPickupStoreSection
             storeId={requestedPickUpStoreId}
             idPrefix={`${idPrefix}-b2b`}
@@ -172,7 +172,7 @@ export function SalesOrderB2BEditor({
           />
         </SalesOrderFormSection>
       ) : (
-        <SalesOrderFormSection title="Shipping address">
+        <SalesOrderFormSection title="Shipping address" accent="sky">
           <div className={salesOrderFormGridClass}>
           <B2BField
             id={fieldId('shipping-dba-name')}
@@ -250,7 +250,7 @@ export function SalesOrderB2BEditor({
         </SalesOrderFormSection>
       )}
 
-      <SalesOrderFormSection title="Billing address">
+      <SalesOrderFormSection title="Billing address" accent="amber">
         <div className={salesOrderFormGridClass}>
         <B2BField
           id={fieldId('billing-legal-name')}

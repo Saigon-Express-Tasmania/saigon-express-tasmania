@@ -78,7 +78,7 @@ const useCartStore = create<CartStore>()(
       clearCart: () => set({ cart: [] }),
     }),
     {
-      name: "saigon-cart",
+      name: "saigon-cart-v2",
       storage: createJSONStorage(() => localStorage),
       // Only persist the cart items, not the open/close UI state
       partialize: (state) => ({ cart: state.cart }),

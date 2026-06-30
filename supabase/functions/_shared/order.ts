@@ -26,48 +26,16 @@ export type OrderType = "pickup" | "wholesale" | "catering";
 
 export type OrderFulfillmentType = "pick_up" | "delivery" | "shipping";
 
-export type OrderItemCustomisation = {
-  selections: Record<string, string[]>;
-  qty: number;
-  note: string;
-  extraPrice: number;
-};
+export type {
+  OrderItemCustomisation,
+  OrderItemCustomisationGroupSnapshot,
+} from "./order-item-customisation.ts";
+import {
+  parseOrderItemCustomisation,
+  type OrderItemCustomisation,
+} from "./order-item-customisation.ts";
 
-function parseOrderItemCustomisation(
-  value: unknown,
-): OrderItemCustomisation | null {
-  if (!value || typeof value !== "object") return null;
-
-  const row = value as Record<string, unknown>;
-  const selections = row.selections;
-  if (!selections || typeof selections !== "object" || Array.isArray(selections)) {
-    return null;
-  }
-
-  const parsedSelections: Record<string, string[]> = {};
-  for (const [groupId, ids] of Object.entries(selections)) {
-    if (!Array.isArray(ids)) continue;
-    parsedSelections[groupId] = ids.filter((id): id is string => typeof id === "string");
-  }
-
-  const extraPrice = Number(row.extraPrice ?? 0);
-  const qty = Number(row.qty ?? 1);
-  const note = typeof row.note === "string" ? row.note : "";
-
-  if (
-    Object.values(parsedSelections).every((ids) => ids.length === 0) &&
-    !note.trim()
-  ) {
-    return null;
-  }
-
-  return {
-    selections: parsedSelections,
-    qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
-    note,
-    extraPrice: Number.isFinite(extraPrice) && extraPrice >= 0 ? extraPrice : 0,
-  };
-}
+export { parseOrderItemCustomisation };
 
 export type OrderCheckoutItem = {
   productId: number;

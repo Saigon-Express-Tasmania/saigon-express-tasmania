@@ -79,3 +79,7 @@ export function useProductCustomizations(): ProductCustomizationsContextValue {
   }
   return ctx;
 }
+
+export function useOptionalProductCustomizations(): ProductCustomizationsContextValue | null {
+  return useContext(ProductCustomizationsContext);
+}

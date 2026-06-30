@@ -2307,6 +2307,8 @@
     "requiredBadgeFulfilled": "Selected",
     "tapToChoose": "Tap to choose",
     "chooseAny": "Choose any",
+    "pickOne": "Pick one",
+    "selectedSummaryTitle": "Your selections",
     "specialInstructions": {
       "title": "Special Instructions",
       "optional": "Optional",
@@ -2314,6 +2316,7 @@
       "charCount": "{count}/200"
     },
     "addToCart": "Add to Cart",
+    "customizeTitle": "Customise your order",
     "missingRequiredTitle": "Please select the following before adding to cart:",
     "dismissMissingRequired": "Dismiss",
     "readyToAdd": "Ready to add to cart",

@@ -10,8 +10,15 @@ export type OptionGroup = {
   options: CustomOption[];
 };
 
+export type ItemCustomisationGroupSnapshot = {
+  key: string;
+  title: string;
+  options: { key: string; title: string }[];
+};
+
 export type ItemCustomisation = {
   selections: Record<string, string[]>;
+  groups?: ItemCustomisationGroupSnapshot[];
   qty: number;
   note: string;
   extraPrice: number;
@@ -51,17 +58,22 @@ function sortOptions(
   });
 }
 
+/** Trim whitespace and trailing ":" from labels before display. */
+export function normalizeCustomisationLabel(label: string): string {
+  return label.trim().replace(/:+\s*$/u, "");
+}
+
 export function mapGroupToOptionGroup(
   group: ProductCustomizationGroup,
 ): OptionGroup {
   return {
     id: group.key,
-    title: group.title,
+    title: normalizeCustomisationLabel(group.title),
     type: group.type,
     required: group.required,
     options: sortOptions(group.options).map((opt) => ({
       id: opt.key,
-      label: opt.title,
+      label: normalizeCustomisationLabel(opt.title),
       price: Number(opt.price) || 0,
     })),
   };
@@ -164,6 +176,71 @@ export function computeExtraPrice(
   return total;
 }
 
+export function buildCustomisationGroups(
+  optionGroups: OptionGroup[],
+  selections: Record<string, string[]>,
+): ItemCustomisationGroupSnapshot[] {
+  const snapshots: ItemCustomisationGroupSnapshot[] = [];
+
+  for (const group of optionGroups) {
+    const selectedIds = selections[group.id] ?? [];
+    if (selectedIds.length === 0) continue;
+
+    const options = selectedIds.map((optionId) => {
+      const option = group.options.find((entry) => entry.id === optionId);
+      return {
+        key: optionId,
+        title: normalizeCustomisationLabel(
+          option?.label ?? formatCustomisationOptionId(optionId),
+        ),
+      };
+    });
+
+    snapshots.push({
+      key: group.id,
+      title: normalizeCustomisationLabel(group.title),
+      options,
+    });
+  }
+
+  return snapshots;
+}
+
+export function parseCustomisationGroupSnapshots(
+  value: unknown,
+): ItemCustomisationGroupSnapshot[] {
+  if (!Array.isArray(value)) return [];
+
+  const groups: ItemCustomisationGroupSnapshot[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const key = typeof row.key === "string" ? row.key.trim() : "";
+    const title =
+      typeof row.title === "string" ? normalizeCustomisationLabel(row.title) : "";
+    const optionsRaw = row.options;
+    if (!key || !title || !Array.isArray(optionsRaw)) continue;
+
+    const options: { key: string; title: string }[] = [];
+    for (const opt of optionsRaw) {
+      if (!opt || typeof opt !== "object") continue;
+      const optRow = opt as Record<string, unknown>;
+      const optKey = typeof optRow.key === "string" ? optRow.key.trim() : "";
+      const optTitle =
+        typeof optRow.title === "string"
+          ? normalizeCustomisationLabel(optRow.title)
+          : "";
+      if (!optKey || !optTitle) continue;
+      options.push({ key: optKey, title: optTitle });
+    }
+
+    if (options.length === 0) continue;
+    groups.push({ key, title, options });
+  }
+
+  return groups;
+}
+
 export function isSpiceGroupKey(groupKey: string): boolean {
   return groupKey.includes("spice");
 }
@@ -186,29 +263,104 @@ export function formatCustomisationOptionId(optionId: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+export function formatCustomisationGroupKey(groupKey: string): string {
+  return groupKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export type CustomisationSummaryGroup = {
+  groupKey: string;
+  groupTitle: string;
+  optionLabels: string[];
+};
+
+function buildGroupsByKey(
+  catalog?: ProductCustomizationsCatalog,
+): Record<string, ProductCustomizationGroup> | null {
+  if (!catalog) return null;
+  return Object.values(catalog).reduce<Record<string, ProductCustomizationGroup>>(
+    (acc, group) => {
+      acc[group.key] = group;
+      return acc;
+    },
+    {},
+  );
+}
+
+export function getCustomisationSummaryGroups(
+  customisation: ItemCustomisation,
+  catalog?: ProductCustomizationsCatalog,
+): CustomisationSummaryGroup[] {
+  if (customisation.groups?.length) {
+    return customisation.groups.map((group) => ({
+      groupKey: group.key,
+      groupTitle: normalizeCustomisationLabel(group.title),
+      optionLabels: group.options.map((option) =>
+        normalizeCustomisationLabel(option.title),
+      ),
+    }));
+  }
+
+  const groupsByKey = buildGroupsByKey(catalog);
+  const groups: CustomisationSummaryGroup[] = [];
+
+  for (const [groupKey, optionIds] of Object.entries(customisation.selections)) {
+    if (optionIds.length === 0) continue;
+
+    const group = groupsByKey?.[groupKey];
+    const optionLabels = optionIds.map((optionId) => {
+      const option = group?.options.find((entry) => entry.key === optionId);
+      return normalizeCustomisationLabel(
+        option?.title ?? formatCustomisationOptionId(optionId),
+      );
+    });
+
+    groups.push({
+      groupKey,
+      groupTitle: normalizeCustomisationLabel(
+        group?.title ?? formatCustomisationGroupKey(groupKey),
+      ),
+      optionLabels,
+    });
+  }
+
+  return groups;
+}
+
+export function formatCustomisationSummaryGroupLine(
+  group: CustomisationSummaryGroup,
+  options?: { multipleGroups?: boolean },
+): string {
+  const joined = group.optionLabels.join(" · ");
+  const multipleGroups = options?.multipleGroups ?? false;
+  const groupTitle = normalizeCustomisationLabel(group.groupTitle);
+
+  if (group.optionLabels.length > 1 || multipleGroups) {
+    return `${groupTitle}: ${joined}`;
+  }
+
+  return joined;
+}
+
+export function formatCustomisationSummaryText(
+  groups: CustomisationSummaryGroup[],
+): string {
+  const multipleGroups = groups.length > 1;
+  return groups
+    .map((group) =>
+      formatCustomisationSummaryGroupLine(group, { multipleGroups }),
+    )
+    .join(" · ");
+}
+
 export function getCustomisationSummaryLabels(
   customisation: ItemCustomisation,
   catalog?: ProductCustomizationsCatalog,
 ): string[] {
-  const groupsByKey = catalog
-    ? Object.values(catalog).reduce<Record<string, ProductCustomizationGroup>>(
-        (acc, group) => {
-          acc[group.key] = group;
-          return acc;
-        },
-        {},
-      )
-    : null;
-
-  const labels: string[] = [];
-  Object.entries(customisation.selections).forEach(([groupKey, ids]) => {
-    const group = groupsByKey?.[groupKey];
-    ids.forEach((id) => {
-      const option = group?.options.find((entry) => entry.key === id);
-      labels.push(option?.title ?? formatCustomisationOptionId(id));
-    });
-  });
-  return labels;
+  return getCustomisationSummaryGroups(customisation, catalog).flatMap(
+    (group) => group.optionLabels,
+  );
 }
 
 export function parseStoredItemCustomisation(
@@ -231,8 +383,10 @@ export function parseStoredItemCustomisation(
   const extraPrice = Number(row.extraPrice ?? 0);
   const qty = Number(row.qty ?? 1);
   const note = typeof row.note === "string" ? row.note : "";
+  const groups = parseCustomisationGroupSnapshots(row.groups);
 
   if (
+    groups.length === 0 &&
     Object.values(parsedSelections).every((ids) => ids.length === 0) &&
     !note.trim()
   ) {
@@ -241,6 +395,7 @@ export function parseStoredItemCustomisation(
 
   return {
     selections: parsedSelections,
+    ...(groups.length > 0 ? { groups } : {}),
     qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
     note,
     extraPrice: Number.isFinite(extraPrice) && extraPrice >= 0 ? extraPrice : 0,

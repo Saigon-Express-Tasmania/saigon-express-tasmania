@@ -2307,6 +2307,8 @@
     "requiredBadgeFulfilled": "Đã chọn",
     "tapToChoose": "Chạm để chọn",
     "chooseAny": "Chọn tuỳ ý",
+    "pickOne": "Chọn một",
+    "selectedSummaryTitle": "Lựa chọn của bạn",
     "specialInstructions": {
       "title": "Yêu cầu đặc biệt",
       "optional": "Tuỳ chọn",
@@ -2314,6 +2316,7 @@
       "charCount": "{count}/200"
     },
     "addToCart": "Thêm vào giỏ",
+    "customizeTitle": "Tuỳ chỉnh đơn hàng",
     "missingRequiredTitle": "Vui lòng chọn các mục sau trước khi thêm vào giỏ:",
     "dismissMissingRequired": "Đóng",
     "readyToAdd": "Sẵn sàng thêm vào giỏ",

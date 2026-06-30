@@ -1,5 +1,6 @@
 import { createServiceClient } from "./supabase.ts";
 import type { OrderCheckoutItem, OrderFulfillmentType, OrderItemCustomisation } from "./order.ts";
+import { parseOrderItemCustomisation } from "./order-item-customisation.ts";
 import {
   formatOrderInvoiceNumber,
   type StripePaymentMode,
@@ -310,45 +311,9 @@ function parseItems(value: unknown): CateringOrderItemInput[] {
       qty,
       unitPrice,
       itemName,
-      customisation: parseCateringItemCustomisation(row.customisation),
+      customisation: parseOrderItemCustomisation(row.customisation),
     };
   });
-}
-
-function parseCateringItemCustomisation(
-  value: unknown,
-): OrderItemCustomisation | null {
-  if (!value || typeof value !== "object") return null;
-
-  const row = value as Record<string, unknown>;
-  const selections = row.selections;
-  if (!selections || typeof selections !== "object" || Array.isArray(selections)) {
-    return null;
-  }
-
-  const parsedSelections: Record<string, string[]> = {};
-  for (const [groupId, ids] of Object.entries(selections)) {
-    if (!Array.isArray(ids)) continue;
-    parsedSelections[groupId] = ids.filter((id): id is string => typeof id === "string");
-  }
-
-  const extraPrice = Number(row.extraPrice ?? 0);
-  const qty = Number(row.qty ?? 1);
-  const note = typeof row.note === "string" ? row.note : "";
-
-  if (
-    Object.values(parsedSelections).every((ids) => ids.length === 0) &&
-    !note.trim()
-  ) {
-    return null;
-  }
-
-  return {
-    selections: parsedSelections,
-    qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
-    note,
-    extraPrice: Number.isFinite(extraPrice) && extraPrice >= 0 ? extraPrice : 0,
-  };
 }
 
 export async function validateCateringOrderInput(

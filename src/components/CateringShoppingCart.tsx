@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import CateringOrderReviewPanel from "@/components/CateringOrderReviewPanel";
-import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
-import CustomisationSummary from "@/components/CustomisationSummary";
+import CateringCartLineItem from "@/components/CateringCartLineItem";
 import { useCateringCart, cateringCartLineUnitPrice, cateringCartCheckoutLine } from "@/contexts/CateringCartContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -45,10 +44,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Loader2,
-  Minus,
-  Plus,
   ShoppingCart,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -616,69 +612,17 @@ export default function CateringShoppingCart({
                       </div>
                     ) : (
                       sortedCart.map((item) => (
-                        <div
+                        <CateringCartLineItem
                           key={item.lineKey}
-                          className="rounded-xl border border-white/10 bg-white/5 p-4"
-                        >
-                          <div className="flex items-start gap-3">
-                            <WholesaleCartItemThumbnail
-                              imageUrl={item.imageUrl}
-                              alt={item.productName}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold leading-snug text-white">
-                                {item.productName}
-                              </p>
-                              {item.variantLabel ? (
-                                <p className="mt-0.5 text-xs text-white/45">
-                                  {item.variantLabel}
-                                </p>
-                              ) : null}
-                              {item.customisation ? (
-                                <CustomisationSummary
-                                  customisation={item.customisation}
-                                />
-                              ) : null}
-                              <p className="mt-0.5 text-xs text-white/40">
-                                {formatAud(cateringCartLineUnitPrice(item))} each
-                              </p>
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <div className="text-sm font-bold text-white">
-                                {formatAud(
-                                  cateringCartLineUnitPrice(item) * item.qty,
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeFromCart(item.lineKey)}
-                                className="mt-2 text-white/30 transition-colors hover:text-red-400"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="mt-3 flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => updateQty(item.lineKey, -1)}
-                              disabled={item.qty <= 1}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white disabled:opacity-40"
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </button>
-                            <span className="w-8 text-center text-sm font-bold text-white">
-                              {item.qty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQty(item.lineKey, 1)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
+                          item={item}
+                          lineTotal={formatAud(
+                            cateringCartLineUnitPrice(item) * item.qty,
+                          )}
+                          unitPriceLabel={`${formatAud(cateringCartLineUnitPrice(item))} each`}
+                          interactive
+                          onRemove={() => removeFromCart(item.lineKey)}
+                          onUpdateQty={(delta) => updateQty(item.lineKey, delta)}
+                        />
                       ))
                     )}
                   </div>

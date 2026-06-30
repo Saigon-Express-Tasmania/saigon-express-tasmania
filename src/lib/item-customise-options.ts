@@ -3,6 +3,7 @@
 import type { MenuItem } from "@/contexts/CartContext";
 import { useProductCustomizations } from "@/contexts/ProductCustomizationsContext";
 import {
+  buildCustomisationGroups,
   computeExtraPrice,
   getMissingRequiredOptionGroups,
   initialSelections,
@@ -79,6 +80,7 @@ export function useItemCustomisationState(item: MenuItem) {
 
   const buildCustomisation = (qty: number): ItemCustomisation => ({
     selections,
+    groups: buildCustomisationGroups(groups, selections),
     qty,
     note,
     extraPrice,

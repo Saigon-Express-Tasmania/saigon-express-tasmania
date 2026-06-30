@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -23,6 +24,11 @@ import {
 import { SalesOrderDeleteDialog } from './SalesOrderDeleteDialog';
 import { SalesOrderEditorContent } from './SalesOrderEditorContent';
 import { SalesOrderFulfillmentDialog } from './SalesOrderFulfillmentDialog';
+import { formatOrderStatusLabel, fulfillmentMethodLabel } from './salesOrderFulfillment';
+import {
+  orderStatusBadgeClass,
+  paymentStatusBadgeClass,
+} from './salesOrderUi';
 import {
   LIVE_ORDERS_DATASET,
   SALES_ORDER_COLUMNS,
@@ -176,33 +182,60 @@ export function SalesOrderDetailsPage() {
   return (
     <DashboardLayout title={pageTitle}>
       <div className="space-y-6">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div className="space-y-1">
+        <Card className="overflow-hidden shadow-sm">
+          <div className="h-0.5 bg-gradient-to-r from-emerald-500/80 via-teal-500/60 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between gap-4 border-b bg-muted/20 pb-5">
+            <div className="space-y-3">
               <Button variant="ghost" size="sm" className="-ml-2 h-8 px-2" asChild>
                 <Link to={listPath}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to {dataset.pageLabel.toLowerCase()}
                 </Link>
               </Button>
-              <CardTitle>
-                {dataset.entityNameTitle} #{orderId}
-              </CardTitle>
-              <CardDescription>
-                Review {dataset.entityName} details. All sections are shown below.
-              </CardDescription>
+              <div>
+                <CardTitle className="text-2xl">
+                  {dataset.entityNameTitle} #{orderId}
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {form?.customer_name
+                    ? `${form.customer_name} · ${form.customer_email || 'No email'}`
+                    : `Review ${dataset.entityName} details across all sections below.`}
+                </CardDescription>
+              </div>
+              {form ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className={orderStatusBadgeClass(form.status)}>
+                    {formatOrderStatusLabel(form.status)}
+                  </Badge>
+                  <Badge className={paymentStatusBadgeClass(form.payment.status)}>
+                    Payment: {form.payment.status.replace(/_/g, ' ')}
+                  </Badge>
+                  <Badge className="border-sky-200 bg-sky-500/10 text-sky-900 dark:text-sky-100">
+                    {fulfillmentMethodLabel(form.requested_fulfillment_method)}
+                  </Badge>
+                  <Badge className="border-violet-200 bg-violet-500/10 font-semibold tabular-nums text-violet-900 dark:text-violet-100">
+                    ${Number(form.grand_total).toFixed(2)}
+                  </Badge>
+                  {form.items.length > 0 ? (
+                    <Badge variant="outline" className="border-border/70">
+                      {form.items.length} item{form.items.length === 1 ? '' : 's'}
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             {order ? (
               <div className="flex shrink-0 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="border-border hover:bg-muted/50"
                   onClick={() => void openFulfill()}
                   disabled={saving || loading}
                   aria-label={`Fulfill order ${order.id}`}
                   title="Fulfill"
                 >
-                  <PackageCheck className="h-4 w-4" />
+                  <PackageCheck className="h-4 w-4 text-emerald-600" />
                 </Button>
                 <Button
                   variant="outline"
@@ -216,7 +249,7 @@ export function SalesOrderDetailsPage() {
               </div>
             ) : null}
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             {loading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

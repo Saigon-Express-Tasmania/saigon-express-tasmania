@@ -29,10 +29,10 @@ import {
   getCurrentTimelineNotice,
   getExpectedDeliveryLabel,
   getOrderStatusLabel,
-  isItemPacked,
   isPickupFulfillment,
   timelineNoticeRequiresAction,
   type TrackedOrder,
+  type TrackedOrderItem,
 } from "@/lib/supabase/order-tracking";
 import {
   formatOrderDate,
@@ -207,7 +207,6 @@ export default function OrderTrackingDetails({
   const isPickup = isPickupFulfillment(order);
   const expectedDelivery = getExpectedDeliveryLabel(order);
   const orderLabel = formatTrackedOrderId(order.id);
-  const packed = isItemPacked(order.status);
 
   const deliveryLines = !isPickup
     ? hasMeaningfulFlatShippingAddress(order.address)
@@ -657,64 +656,33 @@ export default function OrderTrackingDetails({
             <h2 className="mb-4 text-lg font-medium">{t("items.title")}</h2>
             <div className={`flex flex-1 flex-col justify-between p-5 ${MEMBER_PORTAL_LIGHT_ROUNDED_PANEL_CLASS}`}>
               <div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-gray-500">
-                        <th className="pb-2.5 font-normal">{t("items.sku")}</th>
-                        <th className="pb-2.5 font-normal">{t("items.name")}</th>
-                        <th className="pb-2.5 font-normal">{t("items.qty")}</th>
-                        <th className="pb-2.5 font-normal">{t("items.unit")}</th>
-                        <th className="pb-2.5 font-normal">{t("items.total")}</th>                        
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.items.map((item) => (
-                        <tr
-                          key={item.id}
-                          className="border-b border-gray-200 last:border-0"
-                        >
-                          <td className="py-4">{item.sku || item.menu_item_id}</td>
-                          <td className="py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-gray-100">
-                                {item.imageUrl ? (
-                                  <AppImage
-                                    src={item.imageUrl}
-                                    alt={item.item_name}
-                                    fill
-                                    className="object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-base opacity-60">
-                                    <Package className="h-4 w-4 text-gray-500" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <span>{item.item_name}</span>
-                                {item.customisation ? (
-                                  <CustomisationSummary
-                                    customisation={item.customisation}
-                                    catalog={customizationsCatalog}
-                                    variant="light"
-                                  />
-                                ) : null}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 text-gray-700">{item.qty}</td>
-                          <td className="py-4">
-                            {formatTrackedCurrency(item.unit_price)}
-                          </td>
-                          <td className="py-4 font-bold">
-                            {formatTrackedCurrency(item.line_total)}
-                          </td>                          
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mb-2 hidden border-b border-gray-200 pb-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_2.75rem_5rem_5.5rem] sm:gap-x-4">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    {t("items.sku")}
+                  </div>
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    {t("items.name")}
+                  </div>
+                  <div className="text-right text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    {t("items.qty")}
+                  </div>
+                  <div className="text-right text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    {t("items.unit")}
+                  </div>
+                  <div className="text-right text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    {t("items.total")}
+                  </div>
                 </div>
+                <ul className="space-y-2.5">
+                  {order.items.map((item) => (
+                    <li key={item.id}>
+                      <TrackedOrderLineItem
+                        item={item}
+                        customizationsCatalog={customizationsCatalog}
+                      />
+                    </li>
+                  ))}
+                </ul>
 
                 <div className="mt-6 border-t border-gray-200 pt-5">
                   <div className="ml-auto w-full max-w-sm">
@@ -795,6 +763,105 @@ function SummaryField({ label, value }: { label: string; value: string }) {
       <div className="mb-1 text-xs text-gray-500">{label}</div>
       <div className="text-base font-medium">{value}</div>
     </div>
+  );
+}
+
+function TrackedOrderLineItem({
+  item,
+  customizationsCatalog,
+}: {
+  item: TrackedOrderItem;
+  customizationsCatalog?: ProductCustomizationsCatalog;
+}) {
+  const t = useTranslations("OrderTrackingDetails");
+  const skuLabel = item.sku?.trim() || String(item.menu_item_id);
+
+  return (
+    <article className="rounded-xl border border-gray-200/80 bg-gray-50/60 p-3.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_2.75rem_5rem_5.5rem] sm:items-start sm:gap-x-4 sm:py-3.5">
+      <div className="hidden font-mono text-xs leading-snug text-gray-600 sm:block">
+        {skuLabel}
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex items-start gap-3">
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-200/80 bg-white shadow-sm">
+            {item.imageUrl ? (
+              <AppImage
+                src={item.imageUrl}
+                alt={item.item_name}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                <Package className="h-4 w-4 text-gray-400" />
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-sm font-semibold leading-snug text-gray-900">
+                {item.item_name}
+              </h3>
+              <p className="shrink-0 text-sm font-bold tabular-nums text-gray-900 sm:hidden">
+                {formatTrackedCurrency(item.line_total)}
+              </p>
+            </div>
+
+            {item.customisation ? (
+              <CustomisationSummary
+                customisation={item.customisation}
+                catalog={customizationsCatalog}
+                variant="light"
+                className="mt-1.5"
+              />
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden text-right text-sm tabular-nums text-gray-700 sm:block">
+        {item.qty}
+      </div>
+      <div className="hidden text-right text-sm tabular-nums text-gray-700 sm:block">
+        {formatTrackedCurrency(item.unit_price)}
+      </div>
+      <div className="hidden text-right text-sm font-semibold tabular-nums text-gray-900 sm:block">
+        {formatTrackedCurrency(item.line_total)}
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-gray-200/80 pt-3 text-xs sm:hidden">
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+            {t("items.sku")}
+          </dt>
+          <dd className="mt-0.5 font-mono text-gray-600">{skuLabel}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+            {t("items.qty")}
+          </dt>
+          <dd className="mt-0.5 tabular-nums text-gray-700">{item.qty}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+            {t("items.unit")}
+          </dt>
+          <dd className="mt-0.5 tabular-nums text-gray-700">
+            {formatTrackedCurrency(item.unit_price)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+            {t("items.total")}
+          </dt>
+          <dd className="mt-0.5 font-semibold tabular-nums text-gray-900">
+            {formatTrackedCurrency(item.line_total)}
+          </dd>
+        </div>
+      </dl>
+    </article>
   );
 }
 

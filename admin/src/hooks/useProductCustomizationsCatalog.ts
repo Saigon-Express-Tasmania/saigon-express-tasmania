@@ -14,6 +14,7 @@ type OptionRow = {
 type GroupRow = {
   id: number;
   key: string;
+  title: string;
   product_customization_options?: OptionRow[] | null;
 };
 
@@ -33,6 +34,7 @@ export function useProductCustomizationsCatalog() {
             `
             id,
             key,
+            title,
             product_customization_options (
               key,
               title,
@@ -55,6 +57,7 @@ export function useProductCustomizationsCatalog() {
           next[group.id] = {
             id: group.id,
             key: group.key,
+            title: group.title,
             options: options.map((option) => ({
               key: option.key,
               title: option.title,

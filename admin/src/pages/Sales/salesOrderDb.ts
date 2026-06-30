@@ -1,4 +1,5 @@
 import { parseStoredItemCustomisation } from '@/lib/order-item-customisation';
+import { parseGatewayData } from './SalesOrderGatewayDataPanel';
 import supabase from '@/lib/supabase/client';
 import type { OrderType } from './orderType';
 import type {
@@ -22,7 +23,7 @@ export const ORDER_ITEM_SELECT =
   'id, order_id, item_type, product_id, sku, name, quantity, uom, unit_price, line_total, customisation';
 
 export const ORDER_PAYMENT_SELECT =
-  'id, order_id, amount, status, mode, method, gateway, gateway_transaction_id, notes';
+  'id, order_id, amount, status, mode, method, gateway, gateway_transaction_id, gateway_data, notes';
 
 export function toDatetimeLocalValue(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -162,6 +163,7 @@ export async function fetchLatestPayment(
     method: String(row.method ?? 'other') as PaymentMethod,
     gateway: String(row.gateway ?? 'none') as PaymentGateway,
     gateway_transaction_id: String(row.gateway_transaction_id ?? ''),
+    gateway_data: parseGatewayData(row.gateway_data),
     amount: String(row.amount ?? '0.00'),
   };
 }

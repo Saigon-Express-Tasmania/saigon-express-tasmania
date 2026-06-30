@@ -1,5 +1,10 @@
 import { sendEmail } from "./send-email/index.ts";
 import { renderExtensionVariables } from "./send-email/render-template.ts";
+import { formatOrderItemSpecsForEmail } from "./order-item-email-specs.ts";
+import {
+  fetchCustomisationLabelCatalog,
+  type CustomisationLabelCatalog,
+} from "./order-item-customisation-catalog.ts";
 import { createServiceClient } from "./supabase.ts";
 
 const ORDER_CANCELLED_TEMPLATE = "order_cancelled";
@@ -56,6 +61,7 @@ type OrderItemRow = {
   uom: string;
   is_catch_weight: boolean;
   line_total: number | string;
+  customisation?: unknown;
 };
 
 type EmailTemplateRow = {
@@ -188,10 +194,11 @@ function formatShippingAddress(
   return formatDeliveryShippingAddress(order);
 }
 
-function formatItemSpecs(item: OrderItemRow): string {
-  const parts = [item.sku.trim(), item.uom.trim()];
-  if (item.is_catch_weight) parts.push("Catch weight");
-  return parts.filter(Boolean).join(" · ");
+function formatItemSpecs(
+  item: OrderItemRow,
+  catalog?: CustomisationLabelCatalog,
+): string {
+  return formatOrderItemSpecsForEmail(item, catalog);
 }
 
 function formatItemQuantity(quantity: number | string): string {
@@ -202,11 +209,12 @@ function formatItemQuantity(quantity: number | string): string {
 
 function buildOrderItemTemplateRows(
   items: OrderItemRow[],
+  catalog?: CustomisationLabelCatalog,
 ): Record<string, string | number | boolean>[] {
   return items.map((item) => ({
     quantity: formatItemQuantity(item.quantity),
     itemName: item.name,
-    itemSpecs: formatItemSpecs(item),
+    itemSpecs: formatItemSpecs(item, catalog),
     itemPrice: formatCurrency(item.line_total),
   }));
 }
@@ -275,7 +283,7 @@ async function fetchOrderItems(
 ): Promise<OrderItemRow[]> {
   const { data, error } = await supabase
     .from("order_items")
-    .select("name, quantity, sku, uom, is_catch_weight, line_total")
+    .select("name, quantity, sku, uom, is_catch_weight, line_total, customisation")
     .eq("order_id", orderId)
     .order("id", { ascending: true });
 
@@ -354,12 +362,13 @@ export async function sendOrderCancelledEmail(orderId: number): Promise<void> {
     ? resolvePickupStoreId(order)
     : null;
 
-  const [items, template, pickupStore] = await Promise.all([
+  const [items, template, pickupStore, customisationCatalog] = await Promise.all([
     fetchOrderItems(supabase, orderId),
     fetchOrderCancelledTemplate(supabase),
     pickupStoreId
       ? fetchPickupStore(supabase, pickupStoreId)
       : Promise.resolve(null),
+    fetchCustomisationLabelCatalog(supabase),
   ]);
 
   if (!template?.html_body?.trim()) {
@@ -372,7 +381,7 @@ export async function sendOrderCancelledEmail(orderId: number): Promise<void> {
     );
   }
 
-  const itemRows = buildOrderItemTemplateRows(items);
+  const itemRows = buildOrderItemTemplateRows(items, customisationCatalog);
   const extensionVariables = renderExtensionVariables(
     template.html_extensions,
     itemRows,

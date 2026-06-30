@@ -1,3 +1,5 @@
+import { resolveSiteAssetUrl } from '@/lib/blog-news-logos';
+
 export type ImageUrlsMap = Record<string, string>;
 
 export function normalizeImageUrls(value: unknown): ImageUrlsMap {
@@ -17,11 +19,14 @@ export function normalizeImageUrls(value: unknown): ImageUrlsMap {
 export function previewFromImageUrls(
   urls: ImageUrlsMap,
   preferredSizes: number[] = [1024, 1920, 512, 256],
+  siteUrl?: string | null,
 ): string | null {
   for (const size of preferredSizes) {
     const url = urls[String(size)]?.trim();
-    if (url) return url;
+    if (url) return resolveSiteAssetUrl(url, siteUrl);
   }
   const fallback = Object.values(urls).find((url) => url?.trim());
-  return fallback?.trim() ?? null;
+  return fallback?.trim()
+    ? resolveSiteAssetUrl(fallback.trim(), siteUrl)
+    : null;
 }

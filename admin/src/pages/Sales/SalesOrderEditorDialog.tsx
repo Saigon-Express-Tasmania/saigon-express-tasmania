@@ -7,11 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import type { OrderType } from './orderType';
 import { SalesOrderEditorContent } from './SalesOrderEditorContent';
 import { isSalesOrderItemPickerTarget } from './SalesOrderItemPicker';
 import type { SalesOrderForm, SalesOrdersDataset } from './salesOrderShared';
+import { SALES_ORDER_FULLSCREEN_DIALOG_CLASS } from './salesOrderUi';
 
 type SalesOrderEditorDialogProps = {
   dataset: SalesOrdersDataset;
@@ -45,7 +47,10 @@ export function SalesOrderEditorDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[90vh] w-[95vw] max-w-[calc(100%-2rem)] flex-col overflow-hidden sm:max-w-6xl [&_[data-slot=dialog-header]]:shrink-0 [&_[data-slot=dialog-footer]]:shrink-0"
+        className={cn(
+          SALES_ORDER_FULLSCREEN_DIALOG_CLASS,
+          '[&_[data-slot=dialog-header]]:shrink-0 [&_[data-slot=dialog-footer]]:shrink-0',
+        )}
         onPointerDownOutside={(event) => {
           if (isSalesOrderItemPickerTarget(event.target)) {
             event.preventDefault();
@@ -57,7 +62,7 @@ export function SalesOrderEditorDialog({
           }
         }}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>
             {readOnly
               ? `View ${dataset.entityName}`
@@ -72,19 +77,21 @@ export function SalesOrderEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <SalesOrderEditorContent
-          dataset={dataset}
-          orderType={orderType}
-          layout="tabs"
-          editingOrderId={editingOrderId}
-          readOnly={readOnly}
-          form={form}
-          onFormChange={onFormChange}
-          saving={saving}
-          isGstInclusive={isGstInclusive}
-        />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-4">
+          <SalesOrderEditorContent
+            dataset={dataset}
+            orderType={orderType}
+            layout="tabs"
+            editingOrderId={editingOrderId}
+            readOnly={readOnly}
+            form={form}
+            onFormChange={onFormChange}
+            saving={saving}
+            isGstInclusive={isGstInclusive}
+          />
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           {readOnly ? (
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
