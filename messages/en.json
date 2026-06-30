@@ -2304,6 +2304,8 @@
   },
   "ItemCustomiseModal": {
     "requiredBadge": "Required",
+    "requiredBadgeFulfilled": "Selected",
+    "tapToChoose": "Tap to choose",
     "chooseAny": "Choose any",
     "specialInstructions": {
       "title": "Special Instructions",
@@ -2312,6 +2314,9 @@
       "charCount": "{count}/200"
     },
     "addToCart": "Add to Cart",
+    "missingRequiredTitle": "Please select the following before adding to cart:",
+    "dismissMissingRequired": "Dismiss",
+    "readyToAdd": "Ready to add to cart",
     "proteinOptions": [
       {
         "id": "pork",

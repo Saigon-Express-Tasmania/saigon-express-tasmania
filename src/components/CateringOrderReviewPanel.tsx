@@ -5,9 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import DeliveryCitySelect from "@/components/DeliveryCitySelect";
+import { FormFieldLabel } from "@/components/FormFieldLabel";
 import PickupStorePicker from "@/components/PickupStorePicker";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
+import CustomisationSummary from "@/components/CustomisationSummary";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
+import { cateringCartLineUnitPrice } from "@/contexts/CateringCartContext";
 import {
   CATERING_FULFILLMENT_OPTIONS,
   cateringBillingFromShippingForm,
@@ -72,12 +75,20 @@ const selectContentClass =
 const selectItemClass =
   "text-white focus:bg-white/10 data-[highlighted]:bg-white/10";
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  required,
+  filled,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  filled?: boolean;
+  children: ReactNode;
+}) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
-        {label}
-      </span>
+      <FormFieldLabel label={label} required={required} filled={filled} />
       {children}
     </label>
   );
@@ -104,10 +115,14 @@ function ReviewDatePicker({
   label,
   value,
   onChange,
+  required,
+  filled,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  required?: boolean;
+  filled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const selectedDate = useMemo(() => {
@@ -129,7 +144,7 @@ function ReviewDatePicker({
   }, []);
 
   return (
-    <Field label={label}>
+    <Field label={label} required={required} filled={filled}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -174,15 +189,19 @@ function ReviewSelect({
   onValueChange,
   options,
   placeholder = "Select…",
+  required,
+  filled,
 }: {
   label: string;
   value: string;
   onValueChange: (value: string) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
+  required?: boolean;
+  filled?: boolean;
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} required={required} filled={filled}>
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger
           className={selectTriggerClass}
@@ -287,6 +306,19 @@ export default function CateringOrderReviewPanel({
     !pickupStores.some(
       (store) => store.id === review.requested_pick_up_store_id,
     );
+  const pickupStoreFilled =
+    hasCateringPickupStoreSelected(review) && !pickupStoreInvalid;
+  const contactNameFilled = review.customer_name.trim().length > 0;
+  const contactEmailFilled = review.customer_email.trim().length > 0;
+  const contactPhoneFilled = review.customer_phone.trim().length > 0;
+  const shippingAddressFilled = review.shipping_address.trim().length > 0;
+  const shippingStateFilled = review.shipping_state.trim().length > 0;
+  const billingLegalNameFilled = review.billing_legal_name.trim().length > 0;
+  const billingAddressFilled = review.billing_address.trim().length > 0;
+  const billingCityFilled = review.billing_city.trim().length > 0;
+  const billingPostalFilled = review.billing_postal_code.trim().length > 0;
+  const billingCountryFilled = review.billing_country.trim().length > 0;
+  const billingStateFilled = review.billing_state.trim().length > 0;
   const isProcessing = isPlacingOrder || isCheckingOut;
   const eventDateSelected = review.event_date.trim().length > 0;
   const deliveryAddressComplete =
@@ -505,14 +537,18 @@ export default function CateringOrderReviewPanel({
             }
           />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Your name">
+            <Field
+              label="Your name"
+              required
+              filled={contactNameFilled}
+            >
               <input
                 className={fieldClass}
                 value={review.customer_name}
                 onChange={(event) => patch({ customer_name: event.target.value })}
               />
             </Field>
-            <Field label="Email">
+            <Field label="Email" required filled={contactEmailFilled}>
               <input
                 type="email"
                 className={fieldClass}
@@ -520,7 +556,7 @@ export default function CateringOrderReviewPanel({
                 onChange={(event) => patch({ customer_email: event.target.value })}
               />
             </Field>
-            <Field label="Phone">
+            <Field label="Phone" required filled={contactPhoneFilled}>
               <input
                 type="tel"
                 className={fieldClass}
@@ -569,11 +605,17 @@ export default function CateringOrderReviewPanel({
               label="Event date"
               value={review.event_date}
               onChange={(value) => patch({ event_date: value })}
+              required
+              filled={eventDateSelected}
             />
           </div>
           {isPickup ? (
             <div className="space-y-2 pt-1">
-              <Field label="Pickup store (required)">
+              <Field
+                label="Pickup store"
+                required
+                filled={pickupStoreFilled}
+              >
                 <PickupStorePicker
                   stores={pickupStores}
                   selectedId={review.requested_pick_up_store_id}
@@ -635,7 +677,11 @@ export default function CateringOrderReviewPanel({
               />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="Street address">
+              <Field
+                label="Street address"
+                required
+                filled={shippingAddressFilled}
+              >
                 <input
                   className={fieldClass}
                   value={review.shipping_address}
@@ -658,6 +704,8 @@ export default function CateringOrderReviewPanel({
                 })
               }
               triggerClassName="focus:ring-emerald-400/40"
+              required
+              filled={deliveryAddressComplete}
             />
             <ReviewSelect
               label="State"
@@ -666,6 +714,8 @@ export default function CateringOrderReviewPanel({
                 patchShipping({ shipping_state: value as AustralianStateCode })
               }
               options={getDeliveryAustralianStateOptions()}
+              required
+              filled={shippingStateFilled}
             />
           </div>
         </section>
@@ -705,7 +755,11 @@ export default function CateringOrderReviewPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             {showFullBillingFields ? (
               <>
-                <Field label="Legal name">
+                <Field
+                  label="Legal name"
+                  required
+                  filled={billingLegalNameFilled}
+                >
                   <input
                     className={fieldClass}
                     value={review.billing_legal_name}
@@ -724,7 +778,11 @@ export default function CateringOrderReviewPanel({
                   />
                 </Field>
                 <div className="sm:col-span-2">
-                  <Field label="Street address">
+                  <Field
+                    label="Street address"
+                    required
+                    filled={billingAddressFilled}
+                  >
                     <input
                       className={fieldClass}
                       value={review.billing_address}
@@ -745,7 +803,7 @@ export default function CateringOrderReviewPanel({
                     />
                   </Field>
                 </div>
-                <Field label="City">
+                <Field label="City" required filled={billingCityFilled}>
                   <input
                     className={fieldClass}
                     value={review.billing_city}
@@ -763,8 +821,16 @@ export default function CateringOrderReviewPanel({
                   }
                   onStateChange={(state) => patch({ billing_state: state })}
                   disabled={isProcessing}
+                  countryRequired
+                  countryFilled={billingCountryFilled}
+                  stateRequired
+                  stateFilled={billingStateFilled}
                 />
-                <Field label="Postal code">
+                <Field
+                  label="Postal code"
+                  required
+                  filled={billingPostalFilled}
+                >
                   <input
                     className={fieldClass}
                     value={review.billing_postal_code}
@@ -776,7 +842,11 @@ export default function CateringOrderReviewPanel({
               </>
             ) : (
               <>
-                <Field label="Legal name">
+                <Field
+                  label="Legal name"
+                  required
+                  filled={billingLegalNameFilled}
+                >
                   <input
                     className={fieldClass}
                     value={review.billing_legal_name}
@@ -802,7 +872,9 @@ export default function CateringOrderReviewPanel({
         <section className="space-y-3">
           <SectionTitle title="Order items" />
           <div className="space-y-2">
-            {items.map((item) => (
+            {items.map((item) => {
+              const lineUnitPrice = cateringCartLineUnitPrice(item);
+              return (
               <div
                 key={item.lineKey}
                 className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
@@ -817,16 +889,20 @@ export default function CateringOrderReviewPanel({
                   {item.variantLabel ? (
                     <p className="mt-0.5 text-xs text-white/45">{item.variantLabel}</p>
                   ) : null}
+                  {item.customisation ? (
+                    <CustomisationSummary customisation={item.customisation} />
+                  ) : null}
                   <p className="mt-0.5 text-xs text-white/40">
-                    {item.qty} × ${Number(item.unitPrice).toFixed(2)}
+                    {item.qty} × ${Number(lineUnitPrice).toFixed(2)}
                     {!isGstInclusive ? " ex GST" : ""}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-semibold tabular-nums text-white">
-                  ${(Number(item.unitPrice) * item.qty).toFixed(2)}
+                  ${(Number(lineUnitPrice) * item.qty).toFixed(2)}
                 </p>
               </div>
-            ))}
+            );
+            })}
           </div>
         </section>
 

@@ -22,6 +22,7 @@ import {
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { isPublicCateringShopRoute } from "@/lib/catering-routes";
 import { clearCateringOrderRateLimit } from "@/lib/catering-order-rate-limit";
+import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import {
   fetchOrderByTrackingToken,
   type TrackedOrder,
@@ -103,7 +104,8 @@ function GuestCateringOrderCheckoutSync() {
     const checkout = searchParams.get("checkout");
     if (!checkout) return;
 
-    const key = `${checkout}:${searchParams.get("sessionId") ?? ""}`;
+    const sessionId = searchParams.get("sessionId")?.trim() ?? "";
+    const key = `${checkout}:${sessionId}`;
     if (handledCheckoutRef.current === key) return;
     handledCheckoutRef.current = key;
 
@@ -111,8 +113,64 @@ function GuestCateringOrderCheckoutSync() {
       clearCateringOrderRateLimit();
       clearGuestOrder();
       clearCart();
-      toast.success("Payment successful. Your catering order is confirmed.");
-    } else if (checkout === "cancelled") {
+
+      if (!sessionId) {
+        toast.success("Payment successful. Your catering order is confirmed.");
+        router.replace(pathname, { scroll: false });
+        return;
+      }
+
+      let cancelled = false;
+      let attempts = 0;
+      const maxAttempts = 12;
+
+      const pollTrackingToken = async () => {
+        try {
+          const result = await invokeEdgeFunction<{
+            trackingToken?: string | null;
+            invoiceNumber?: string | null;
+          }>("order-tracking-token", {
+            method: "GET",
+            searchParams: { sessionId },
+          });
+
+          if (cancelled) return;
+
+          const trackingToken = result.data?.trackingToken?.trim();
+          if (result.ok && trackingToken) {
+            toast.success("Payment successful. Opening your order…");
+            router.replace(
+              `/order-tracking/${encodeURIComponent(trackingToken)}?checkout=success`,
+              { scroll: false },
+            );
+            return;
+          }
+        } catch {
+          // retry below
+        }
+
+        attempts += 1;
+        if (!cancelled && attempts < maxAttempts) {
+          window.setTimeout(() => {
+            void pollTrackingToken();
+          }, 2500);
+          return;
+        }
+
+        if (!cancelled) {
+          toast.success("Payment successful. Your catering order is confirmed.");
+          router.replace(pathname, { scroll: false });
+        }
+      };
+
+      void pollTrackingToken();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (checkout === "cancelled") {
       toast.error("Payment was cancelled. You can try again when ready.");
       setLastOrderOpen(true);
     }

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { toast } from "sonner";
+import type { ItemCustomisation } from "@/lib/product-customizations";
 
 export type CateringCartItem = {
   lineKey: string;
@@ -17,6 +18,7 @@ export type CateringCartItem = {
   imageUrl: string | null;
   /** When true, line is GST-free (basic food, etc.). */
   gstFree?: boolean;
+  customisation?: ItemCustomisation;
   addedAt: number;
 };
 
@@ -30,9 +32,35 @@ export type CateringCartProductInput = {
   gstFree?: boolean;
 };
 
-function buildLineKey(productId: number, variantLabel?: string | null): string {
+export function cateringCartLineUnitPrice(item: CateringCartItem): number {
+  return item.unitPrice + (item.customisation?.extraPrice ?? 0);
+}
+
+export function cateringCartCheckoutLine(item: CateringCartItem) {
+  return {
+    productId: item.productId,
+    qty: item.qty,
+    unitPrice: Number(cateringCartLineUnitPrice(item)),
+    itemName: item.variantLabel
+      ? `${item.productName} (${item.variantLabel})`
+      : item.productName,
+    ...(item.customisation ? { customisation: item.customisation } : {}),
+  };
+}
+
+function generateLineId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function buildLineKey(
+  productId: number,
+  variantLabel?: string | null,
+  customisation?: ItemCustomisation,
+): string {
   const variant = variantLabel?.trim();
-  return variant ? `${productId}:${variant}` : String(productId);
+  const base = variant ? `${productId}:${variant}` : String(productId);
+  if (!customisation) return base;
+  return `${base}:${generateLineId()}`;
 }
 
 type CateringCartStore = {
@@ -43,7 +71,10 @@ type CateringCartStore = {
   clearCartHighlight: () => void;
   addToCart: (
     product: CateringCartProductInput,
-    options?: { silent?: boolean },
+    options?: {
+      silent?: boolean;
+      customisation?: ItemCustomisation;
+    },
   ) => void;
   updateQty: (lineKey: string, delta: number) => void;
   setCartQty: (lineKey: string, qty: number) => void;
@@ -65,8 +96,42 @@ const useCateringCartStore = create<CateringCartStore>()(
       clearCartHighlight: () => set({ highlightLineKey: null }),
       addToCart: (product, options) => {
         set((state) => {
-          const lineKey = buildLineKey(product.productId, product.variantLabel);
+          const customisation = options?.customisation;
+          const qty = customisation?.qty ?? 1;
+          const lineKey = buildLineKey(
+            product.productId,
+            product.variantLabel,
+            customisation,
+          );
           const now = Date.now();
+
+          if (customisation) {
+            return {
+              cart: [
+                ...state.cart,
+                {
+                  lineKey,
+                  productId: product.productId,
+                  productName: product.productName,
+                  variantLabel: product.variantLabel?.trim() || null,
+                  qty,
+                  unitPrice: product.unitPrice,
+                  catalogUnitPrice: product.catalogUnitPrice ?? null,
+                  imageUrl: product.imageUrl ?? null,
+                  gstFree: product.gstFree ?? false,
+                  customisation,
+                  addedAt: now,
+                },
+              ],
+              ...(options?.silent
+                ? {}
+                : {
+                    cartOpen: true,
+                    highlightLineKey: lineKey,
+                  }),
+            };
+          }
+
           const existing = state.cart.find((item) => item.lineKey === lineKey);
           const nextCart = existing
             ? state.cart.map((item) =>
@@ -168,7 +233,10 @@ type CateringCartContextValue = {
   clearCartHighlight: () => void;
   addToCart: (
     product: CateringCartProductInput,
-    options?: { silent?: boolean },
+    options?: {
+      silent?: boolean;
+      customisation?: ItemCustomisation;
+    },
   ) => void;
   updateQty: (lineKey: string, delta: number) => void;
   setCartQty: (lineKey: string, qty: number) => void;
@@ -189,7 +257,7 @@ export function CateringCartProvider({ children }: { children: React.ReactNode }
 
   const cartCount = store.cart.reduce((sum, item) => sum + item.qty, 0);
   const cartTotal = store.cart.reduce(
-    (sum, item) => sum + item.qty * item.unitPrice,
+    (sum, item) => sum + item.qty * cateringCartLineUnitPrice(item),
     0,
   );
 

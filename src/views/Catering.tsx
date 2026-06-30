@@ -5,6 +5,10 @@ import CateringPackOrderButton from "@/components/CateringPackOrderButton";
 import CateringProductHtml from "@/components/CateringProductHtml";
 import AppImage from "@/components/AppImage";
 import CateringTierSelect from "@/components/CateringTierSelect";
+import {
+  ItemCustomiseModal,
+  type ItemCustomisation,
+} from "@/components/ItemCustomiseModal";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -26,7 +30,9 @@ import {
 } from "@/lib/supabase/catering-packs";
 import { stringToSlug } from "@/lib/utils";
 import { useCateringCart } from "@/contexts/CateringCartContext";
+import { useProductCustomizations } from "@/contexts/ProductCustomizationsContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
+import { cateringPackToCustomiseItem } from "@/lib/catering-customise-item";
 import { useSiteSetting } from "@/contexts/SiteContentContext";
 import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import { shouldBlockGuestCateringCart } from "@/lib/guest-catering-order-session";
@@ -135,6 +141,7 @@ export default function Catering({ packs }: CateringProps) {
   const contactEmail = useSiteSetting("contact_us_email")?.trim();
   const { isSignedIn } = useSupabase();
   const { addToCart } = useCateringCart();
+  const { getOptionGroupsForItem } = useProductCustomizations();
   const { session, trackedOrder, setLastOrderOpen, isHydrated } =
     useGuestCateringOrder();
   const guestOrderBlocksCart =
@@ -142,6 +149,11 @@ export default function Catering({ packs }: CateringProps) {
     shouldBlockGuestCateringCart(session, trackedOrder, isSignedIn);
   const [resolveOrderWarning, setResolveOrderWarning] = useState(false);
   const [tierSelection, setTierSelection] = useState<Record<number, number>>({});
+  const [customiseTarget, setCustomiseTarget] = useState<{
+    pack: CateringPack;
+    tier: CateringTierPrice | null;
+    unitPrice: number;
+  } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
@@ -276,6 +288,17 @@ export default function Catering({ packs }: CateringProps) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const customiseItem = useMemo(
+    () =>
+      customiseTarget
+        ? cateringPackToCustomiseItem(
+            customiseTarget.pack,
+            customiseTarget.unitPrice,
+          )
+        : null,
+    [customiseTarget],
+  );
+
   const handleAddPack = (
     pack: CateringPack,
     tier: CateringTierPrice | null,
@@ -295,6 +318,12 @@ export default function Catering({ packs }: CateringProps) {
       return;
     }
 
+    const customiseMenuItem = cateringPackToCustomiseItem(pack, unitPrice);
+    if (getOptionGroupsForItem(customiseMenuItem).length > 0) {
+      setCustomiseTarget({ pack, tier, unitPrice });
+      return;
+    }
+
     addToCart({
       productId: pack.id,
       productName: pack.name,
@@ -304,6 +333,27 @@ export default function Catering({ packs }: CateringProps) {
       imageUrl: pack.img,
     });
   };
+
+  const handleCustomiseConfirm = useCallback(
+    (customisation: ItemCustomisation) => {
+      if (!customiseTarget) return;
+
+      const { pack, tier, unitPrice } = customiseTarget;
+      addToCart(
+        {
+          productId: pack.id,
+          productName: pack.name,
+          variantLabel: tier?.size ?? null,
+          unitPrice,
+          catalogUnitPrice: pack.catalogUnitPrice,
+          imageUrl: pack.img,
+        },
+        { customisation },
+      );
+      setCustomiseTarget(null);
+    },
+    [addToCart, customiseTarget],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1024,6 +1074,14 @@ export default function Catering({ packs }: CateringProps) {
           </div>
         </div>
       </section>
+
+      {customiseItem ? (
+        <ItemCustomiseModal
+          item={customiseItem}
+          onConfirm={handleCustomiseConfirm}
+          onClose={() => setCustomiseTarget(null)}
+        />
+      ) : null}
     </div>
   );
 }

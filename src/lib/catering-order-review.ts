@@ -20,6 +20,7 @@ import {
   type OrderFulfillmentMethod,
 } from "@/types/WholesaleB2BOrder";
 import type { CateringCartItem } from "@/contexts/CateringCartContext";
+import { cateringCartLineUnitPrice } from "@/contexts/CateringCartContext";
 
 export const CATERING_FULFILLMENT_OPTIONS: {
   value: Extract<OrderFulfillmentMethod, "delivery" | "pick_up">;
@@ -84,7 +85,13 @@ export function resolveCateringShippingFee(
 }
 
 function toPricingLines(items: CateringCartItem[]): CateringPricingLine[] {
-  return cartItemsToGstPricingLines(items);
+  return cartItemsToGstPricingLines(
+    items.map((item) => ({
+      qty: item.qty,
+      unitPrice: cateringCartLineUnitPrice(item),
+      gstFree: item.gstFree,
+    })),
+  );
 }
 
 export function buildCateringOrderTotals(

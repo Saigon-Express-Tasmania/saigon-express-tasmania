@@ -1,3 +1,4 @@
+import { parseStoredItemCustomisation } from '@/lib/order-item-customisation';
 import supabase from '@/lib/supabase/client';
 import type { OrderType } from './orderType';
 import type {
@@ -18,7 +19,7 @@ export const DRAFT_ORDER_COLUMNS = `${ORDER_HEADER_COLUMNS}, expires_at, updated
 export const ARCHIVED_ORDER_COLUMNS = `${ORDER_HEADER_COLUMNS}, archived_reason, archived_at, updated_at`;
 
 export const ORDER_ITEM_SELECT =
-  'id, order_id, item_type, product_id, sku, name, quantity, uom, unit_price, line_total';
+  'id, order_id, item_type, product_id, sku, name, quantity, uom, unit_price, line_total, customisation';
 
 export const ORDER_PAYMENT_SELECT =
   'id, order_id, amount, status, mode, method, gateway, gateway_transaction_id, notes';
@@ -75,6 +76,7 @@ export function isDraftOrderStale(
 
 export function mapDbItemToForm(row: SalesOrderItemRow): SalesOrderItemForm {
   const productId = Number(row.product_id ?? 0);
+  const customisation = parseStoredItemCustomisation(row.customisation);
   return {
     menu_item_id: productId,
     sku: row.sku,
@@ -82,6 +84,7 @@ export function mapDbItemToForm(row: SalesOrderItemRow): SalesOrderItemForm {
     unit_price: Number(row.unit_price),
     item_name: row.name,
     uom: row.uom,
+    ...(customisation ? { customisation } : {}),
   };
 }
 
@@ -103,6 +106,7 @@ export function buildOrderItemInsertRows(
       is_catch_weight: false,
       unit_price: item.unit_price.toFixed(2),
       line_total: lineTotal.toFixed(2),
+      ...(item.customisation ? { customisation: item.customisation } : {}),
     };
   });
 }

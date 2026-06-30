@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useId } from "react";
+import { FormFieldLabel } from "@/components/FormFieldLabel";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,10 @@ type BillingLocationFieldsProps = {
   onCountryChange: (country: string) => void;
   onStateChange: (state: string) => void;
   disabled?: boolean;
+  countryRequired?: boolean;
+  countryFilled?: boolean;
+  stateRequired?: boolean;
+  stateFilled?: boolean;
 };
 
 const variantStyles: Record<
@@ -61,12 +66,20 @@ const variantStyles: Record<
   },
 };
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  required,
+  filled,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  filled?: boolean;
+  children: ReactNode;
+}) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
-        {label}
-      </span>
+      <FormFieldLabel label={label} required={required} filled={filled} />
       {children}
     </label>
   );
@@ -79,6 +92,10 @@ export default function BillingLocationFields({
   onCountryChange,
   onStateChange,
   disabled = false,
+  countryRequired,
+  countryFilled,
+  stateRequired,
+  stateFilled,
 }: BillingLocationFieldsProps) {
   const styles = variantStyles[variant];
   const countryListId = useId();
@@ -99,7 +116,11 @@ export default function BillingLocationFields({
 
   return (
     <>
-      <Field label="Country">
+      <Field
+        label="Country"
+        required={countryRequired}
+        filled={countryFilled}
+      >
         <input
           className={styles.fieldClass}
           list={countryListId}
@@ -116,7 +137,7 @@ export default function BillingLocationFields({
       </Field>
 
       {isAustralia ? (
-        <Field label="State">
+        <Field label="State" required={stateRequired} filled={stateFilled}>
           <Select
             value={australiaStateValue}
             onValueChange={onStateChange}
@@ -142,7 +163,11 @@ export default function BillingLocationFields({
           </Select>
         </Field>
       ) : (
-        <Field label="State / province / region">
+        <Field
+          label="State / province / region"
+          required={stateRequired}
+          filled={stateFilled}
+        >
           <input
             className={styles.fieldClass}
             value={state}

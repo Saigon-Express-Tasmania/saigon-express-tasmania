@@ -1,5 +1,6 @@
-import type { OrderType } from './orderType';
+import type { ItemCustomisation } from '@/lib/order-item-customisation';
 import { normalizeAustralianStateForStorage } from '@/lib/australian-states';
+import type { OrderType } from './orderType';
 import {
   defaultOrderAddressFields,
   emptyB2BForm,
@@ -98,6 +99,7 @@ export type SalesOrderItemRow = {
   uom: ItemUom;
   unit_price: string;
   line_total: string;
+  customisation?: unknown;
 };
 
 export type SalesOrderPaymentForm = {
@@ -171,6 +173,7 @@ export type SalesOrderItemForm = {
   unit_price: number;
   item_name: string;
   uom: ItemUom;
+  customisation?: ItemCustomisation | null;
 };
 
 export type SalesOrdersDataset = {
@@ -441,6 +444,7 @@ export function validateOrderItems(items: SalesOrderItemForm[]): SalesOrderItemF
       unit_price,
       item_name,
       uom: item.uom ?? 'EACH',
+      ...(item.customisation ? { customisation: item.customisation } : {}),
     };
   });
 }

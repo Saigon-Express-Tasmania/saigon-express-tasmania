@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import OrderInvoiceDialog from "@/components/OrderInvoiceDialog";
 import Link from "@/components/link";
 import AppImage from "@/components/AppImage";
+import CustomisationSummary from "@/components/CustomisationSummary";
 import MemberHeader, {
   type MemberHeaderMember,
 } from "@/components/MemberHeader";
@@ -60,6 +61,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import type { ProductCustomizationsCatalog } from "@/lib/product-customizations";
 import type { StoreLocation } from "@/types";
 
 type OrderTrackingDetailsProps = {
@@ -67,6 +69,7 @@ type OrderTrackingDetailsProps = {
   trackingToken: string;
   pickupStore?: StoreLocation | null;
   invoiceCreatorStore?: StoreLocation | null;
+  customizationsCatalog?: ProductCustomizationsCatalog;
 };
 
 function statusBadgeClass(status: OrderStatus): string {
@@ -129,6 +132,7 @@ export default function OrderTrackingDetails({
   trackingToken,
   pickupStore = null,
   invoiceCreatorStore = null,
+  customizationsCatalog,
 }: OrderTrackingDetailsProps) {
   const t = useTranslations("OrderTrackingDetails");
   const router = useRouter();
@@ -687,7 +691,16 @@ export default function OrderTrackingDetails({
                                   </div>
                                 )}
                               </div>
-                              <span className="min-w-0">{item.item_name}</span>
+                              <div className="min-w-0">
+                                <span>{item.item_name}</span>
+                                {item.customisation ? (
+                                  <CustomisationSummary
+                                    customisation={item.customisation}
+                                    catalog={customizationsCatalog}
+                                    variant="light"
+                                  />
+                                ) : null}
+                              </div>
                             </div>
                           </td>
                           <td className="py-4 text-gray-700">{item.qty}</td>

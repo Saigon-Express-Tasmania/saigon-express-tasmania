@@ -8,6 +8,7 @@ import {
   parseTrackingTokenFromParam,
 } from "@/lib/supabase/order-tracking";
 import { resolveOrderTrackingStores } from "@/lib/supabase/order-tracking-stores";
+import { getProductCustomizationsCatalog } from "@/lib/supabase/product-customizations";
 import OrderTrackingDetails from "@/views/OrderTrackingDetails";
 
 type PageProps = {
@@ -49,6 +50,7 @@ export default async function LocaleOrderTrackingDetailsPage({
 
   const { pickupStore, invoiceCreatorStore } =
     await resolveOrderTrackingStores(order);
+  const customizationsCatalog = await getProductCustomizationsCatalog();
 
   return (
     <Suspense fallback={null}>
@@ -57,6 +59,7 @@ export default async function LocaleOrderTrackingDetailsPage({
         trackingToken={trackingToken}
         pickupStore={pickupStore}
         invoiceCreatorStore={invoiceCreatorStore}
+        customizationsCatalog={customizationsCatalog}
       />
     </Suspense>
   );

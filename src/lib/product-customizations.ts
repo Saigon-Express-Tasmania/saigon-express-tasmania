@@ -93,6 +93,23 @@ export function resolveOptionGroups(
     .map(mapGroupToOptionGroup);
 }
 
+export function resolveOptionGroupsForProduct(
+  catalog: ProductCustomizationsCatalog,
+  item: Pick<
+    MenuItem,
+    "customizationIds" | "customizationsDisabled" | "category"
+  >,
+  categoryCustomizationIds: number[],
+  kind: ProductCustomizationGroup["kind"] = "menu",
+): OptionGroup[] {
+  const ids = resolveCustomizationIdsForProduct(
+    item.customizationIds,
+    categoryCustomizationIds,
+    item.customizationsDisabled,
+  );
+  return resolveOptionGroups(catalog, ids, kind);
+}
+
 export function resolveOptionGroupsForMenuItem(
   catalog: ProductCustomizationsCatalog,
   item: Pick<
@@ -101,12 +118,12 @@ export function resolveOptionGroupsForMenuItem(
   >,
   categoryCustomizationIds: number[],
 ): OptionGroup[] {
-  const ids = resolveCustomizationIdsForProduct(
-    item.customizationIds,
+  return resolveOptionGroupsForProduct(
+    catalog,
+    item,
     categoryCustomizationIds,
-    item.customizationsDisabled,
+    "menu",
   );
-  return resolveOptionGroups(catalog, ids, "menu");
 }
 
 export function initialSelections(
@@ -153,4 +170,79 @@ export function isSpiceGroupKey(groupKey: string): boolean {
 
 export function isVeggieGroupKey(groupKey: string): boolean {
   return groupKey === "veggies" || groupKey.includes("veggie");
+}
+
+export function formatCustomisationOptionId(optionId: string): string {
+  return optionId
+    .replace(/^(no_|extra_|sauce_|well_|rare_)/, (match) => {
+      if (match === "no_") return "No ";
+      if (match === "extra_") return "Extra ";
+      if (match === "sauce_") return "";
+      if (match === "well_") return "Well ";
+      if (match === "rare_") return "Rare ";
+      return match;
+    })
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function getCustomisationSummaryLabels(
+  customisation: ItemCustomisation,
+  catalog?: ProductCustomizationsCatalog,
+): string[] {
+  const groupsByKey = catalog
+    ? Object.values(catalog).reduce<Record<string, ProductCustomizationGroup>>(
+        (acc, group) => {
+          acc[group.key] = group;
+          return acc;
+        },
+        {},
+      )
+    : null;
+
+  const labels: string[] = [];
+  Object.entries(customisation.selections).forEach(([groupKey, ids]) => {
+    const group = groupsByKey?.[groupKey];
+    ids.forEach((id) => {
+      const option = group?.options.find((entry) => entry.key === id);
+      labels.push(option?.title ?? formatCustomisationOptionId(id));
+    });
+  });
+  return labels;
+}
+
+export function parseStoredItemCustomisation(
+  value: unknown,
+): ItemCustomisation | null {
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const selections = row.selections;
+  if (!selections || typeof selections !== "object" || Array.isArray(selections)) {
+    return null;
+  }
+
+  const parsedSelections: Record<string, string[]> = {};
+  for (const [groupId, ids] of Object.entries(selections)) {
+    if (!Array.isArray(ids)) continue;
+    parsedSelections[groupId] = ids.filter((id): id is string => typeof id === "string");
+  }
+
+  const extraPrice = Number(row.extraPrice ?? 0);
+  const qty = Number(row.qty ?? 1);
+  const note = typeof row.note === "string" ? row.note : "";
+
+  if (
+    Object.values(parsedSelections).every((ids) => ids.length === 0) &&
+    !note.trim()
+  ) {
+    return null;
+  }
+
+  return {
+    selections: parsedSelections,
+    qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
+    note,
+    extraPrice: Number.isFinite(extraPrice) && extraPrice >= 0 ? extraPrice : 0,
+  };
 }

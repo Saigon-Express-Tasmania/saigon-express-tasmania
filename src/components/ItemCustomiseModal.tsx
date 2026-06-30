@@ -5,10 +5,12 @@ import { MenuItem } from "@/contexts/CartContext";
 import { useOptionGroupsForItem } from "@/lib/item-customise-options";
 import {
   computeExtraPrice,
+  getMissingRequiredOptionGroups,
   initialSelections,
   isSpiceGroupKey,
   isVeggieGroupKey,
   type ItemCustomisation,
+  type OptionGroup,
 } from "@/lib/product-customizations";
 import {
   X,
@@ -16,13 +18,14 @@ import {
   Minus,
   ChevronDown,
   ChevronUp,
+  CheckCircle2,
   MessageSquare,
   Flame,
   Leaf,
   ShoppingCart,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export type {
   CustomOption,
@@ -34,6 +37,21 @@ interface Props {
   item: MenuItem;
   onConfirm: (customisation: ItemCustomisation) => void;
   onClose: () => void;
+}
+
+function initialExpandedGroups(groups: OptionGroup[]): Record<string, boolean> {
+  const init: Record<string, boolean> = {};
+  groups.forEach((group) => {
+    init[group.id] = true;
+  });
+  return init;
+}
+
+function selectedOptionLabels(group: OptionGroup, ids: string[]): string {
+  return ids
+    .map((id) => group.options.find((option) => option.id === id)?.label)
+    .filter((label): label is string => Boolean(label))
+    .join(" · ");
 }
 
 export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
@@ -48,14 +66,9 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
   const [note, setNote] = useState("");
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    () => {
-      const init: Record<string, boolean> = {};
-      groups.forEach((group) => {
-        init[group.id] = true;
-      });
-      return init;
-    },
+    () => initialExpandedGroups(groups),
   );
+  const [showMissingRequiredHint, setShowMissingRequiredHint] = useState(false);
 
   const toggleGroup = (id: string) =>
     setExpandedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -67,18 +80,21 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
   ) => {
     setSelections((prev) => {
       const current = prev[groupId] ?? [];
+      let nextIds: string[];
+
       if (type === "single") {
-        return {
-          ...prev,
-          [groupId]: current.includes(optionId) ? [] : [optionId],
-        };
-      }
-      return {
-        ...prev,
-        [groupId]: current.includes(optionId)
+        nextIds = current.includes(optionId) ? [] : [optionId];
+      } else {
+        nextIds = current.includes(optionId)
           ? current.filter((id) => id !== optionId)
-          : [...current, optionId],
-      };
+          : [...current, optionId];
+      }
+
+      if (nextIds.length > 0) {
+        setExpandedGroups((expanded) => ({ ...expanded, [groupId]: false }));
+      }
+
+      return { ...prev, [groupId]: nextIds };
     });
   };
 
@@ -87,10 +103,51 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
     [selections, groups],
   );
 
+  const missingRequiredGroups = useMemo(
+    () => getMissingRequiredOptionGroups(groups, selections),
+    [groups, selections],
+  );
+
+  const canAddToCart = missingRequiredGroups.length === 0;
+
+  useLayoutEffect(() => {
+    if (canAddToCart) {
+      setShowMissingRequiredHint(false);
+    }
+  }, [canAddToCart]);
+
+  const isGroupFulfilled = (groupId: string) =>
+    (selections[groupId] ?? []).length > 0;
+
   const basePrice = parseFloat(item.price);
   const lineTotal = (basePrice + extraPrice) * qty;
 
-  const handleConfirm = () => onConfirm({ selections, qty, note, extraPrice });
+  const panelRef = useRef<HTMLDivElement>(null);
+  const heightLockedRef = useRef(false);
+  const [lockedPanelHeight, setLockedPanelHeight] = useState<number>();
+
+  useLayoutEffect(() => {
+    if (heightLockedRef.current) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    heightLockedRef.current = true;
+    setLockedPanelHeight(panel.offsetHeight);
+  }, []);
+
+  const handleConfirm = () => {
+    if (!canAddToCart) {
+      setShowMissingRequiredHint(true);
+      setExpandedGroups((prev) => {
+        const next = { ...prev };
+        for (const group of missingRequiredGroups) {
+          next[group.id] = true;
+        }
+        return next;
+      });
+      return;
+    }
+    onConfirm({ selections, qty, note, extraPrice });
+  };
 
   return (
     <div
@@ -104,7 +161,13 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div
+        ref={panelRef}
+        className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
+        style={
+          lockedPanelHeight != null ? { height: lockedPanelHeight } : undefined
+        }
+      >
         <div className="flex items-start gap-3 p-4 border-b border-gray-100 bg-white sticky top-0 z-10">
           {item.imageUrl && (
             <AppImage
@@ -136,45 +199,81 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-          {groups.map((group) => (
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          {groups.map((group) => {
+            const selectedIds = selections[group.id] ?? [];
+            const selectedSummary = selectedOptionLabels(group, selectedIds);
+            const fulfilled = group.required && isGroupFulfilled(group.id);
+            const isExpanded = expandedGroups[group.id];
+            return (
             <div
               key={group.id}
-              className="border border-gray-100 rounded-xl overflow-hidden"
+              className={`border rounded-xl overflow-hidden transition-colors ${
+                group.required
+                  ? fulfilled
+                    ? "border-green-300 bg-green-50/40"
+                    : "border-red-200 bg-red-50/30"
+                  : "border-gray-100"
+              }`}
             >
               <button
+                type="button"
                 onClick={() => toggleGroup(group.id)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                className={`w-full flex items-start justify-between gap-3 px-4 py-3 transition-colors text-left ${
+                  group.required
+                    ? fulfilled
+                      ? "bg-green-50 hover:bg-green-100/80"
+                      : "bg-red-50 hover:bg-red-100/70"
+                    : "bg-gray-50 hover:bg-gray-100"
+                }`}
               >
-                <div className="flex items-center gap-2">
-                  {isSpiceGroupKey(group.id) && (
-                    <Flame className="w-4 h-4 text-red-500" />
-                  )}
-                  {isVeggieGroupKey(group.id) && (
-                    <Leaf className="w-4 h-4 text-green-500" />
-                  )}
-                  <span className="font-semibold text-gray-800 text-sm">
-                    {group.title}
-                  </span>
-                  {group.required && (
-                    <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-medium">
-                      {t("requiredBadge")}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isSpiceGroupKey(group.id) && (
+                      <Flame className="w-4 h-4 text-red-500 shrink-0" />
+                    )}
+                    {isVeggieGroupKey(group.id) && (
+                      <Leaf className="w-4 h-4 text-green-500 shrink-0" />
+                    )}
+                    <span className="font-semibold text-gray-800 text-sm">
+                      {group.title}
                     </span>
-                  )}
-                  {group.type === "multi" && (
-                    <span className="text-xs text-gray-400">
-                      {t("chooseAny")}
-                    </span>
-                  )}
+                    {group.required &&
+                      (fulfilled ? (
+                        <span className="inline-flex items-center gap-1 text-xs bg-green-600 text-white px-2 py-0.5 rounded-full font-semibold shadow-sm">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {t("requiredBadgeFulfilled")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-semibold shadow-sm">
+                          {t("requiredBadge")}
+                        </span>
+                      ))}
+                    {group.type === "multi" && (
+                      <span className="text-xs text-gray-400">
+                        {t("chooseAny")}
+                      </span>
+                    )}
+                  </div>
+                  {!isExpanded && selectedSummary ? (
+                    <p className="mt-1 text-sm font-medium text-gray-700 leading-snug">
+                      {selectedSummary}
+                    </p>
+                  ) : null}
+                  {!isExpanded && !selectedSummary && group.required ? (
+                    <p className="mt-1 text-sm text-gray-400">
+                      {t("tapToChoose")}
+                    </p>
+                  ) : null}
                 </div>
-                {expandedGroups[group.id] ? (
-                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                {isExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                  <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
                 )}
               </button>
 
-              {expandedGroups[group.id] && (
+              {isExpanded && (
                 <div className="divide-y divide-gray-50">
                   {group.options.map((opt) => {
                     const selected = (selections[group.id] ?? []).includes(
@@ -233,7 +332,8 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
                 </div>
               )}
             </div>
-          ))}
+          );
+          })}
 
           <div className="border border-gray-100 rounded-xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 bg-gray-50">
@@ -261,7 +361,37 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 p-4 bg-white sticky bottom-0">
+        <div className="border-t border-gray-100 p-4 bg-white sticky bottom-0 space-y-3">
+          {showMissingRequiredHint && missingRequiredGroups.length > 0 ? (
+            <div
+              className="relative rounded-xl border border-red-200 bg-red-50 px-4 py-3 pr-10 text-sm text-red-800"
+              role="alert"
+            >
+              <button
+                type="button"
+                onClick={() => setShowMissingRequiredHint(false)}
+                className="absolute right-2 top-2 rounded-full p-1 text-red-600/70 transition-colors hover:bg-red-100 hover:text-red-800"
+                aria-label={t("dismissMissingRequired")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <p className="font-semibold pr-4">{t("missingRequiredTitle")}</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {missingRequiredGroups.map((group) => (
+                  <li key={group.id}>{group.title}</li>
+                ))}
+              </ul>
+            </div>
+          ) : canAddToCart ? (
+            <p
+              className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-800"
+              role="status"
+            >
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {t("readyToAdd")}
+            </p>
+          ) : null}
+
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-gray-100 rounded-full px-1 py-1">
               <button
@@ -282,8 +412,13 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
             </div>
 
             <button
+              type="button"
               onClick={handleConfirm}
-              className="flex-1 flex items-center justify-between bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-full px-5 py-3 font-semibold transition-colors"
+              className={`flex-1 flex items-center justify-between rounded-full px-5 py-3 font-semibold transition-colors ${
+                canAddToCart
+                  ? "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white"
+                  : "border-2 border-red-600 bg-transparent text-red-600 hover:bg-red-50 active:bg-red-100"
+              }`}
             >
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4" />

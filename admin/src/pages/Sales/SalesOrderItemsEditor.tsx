@@ -8,9 +8,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useProductCustomizationsCatalog } from '@/hooks/useProductCustomizationsCatalog';
 import { ImageIcon, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import type { OrderType } from './orderType';
+import { SalesOrderItemCustomisationSummary } from './SalesOrderItemCustomisationSummary';
 import { SalesOrderItemPicker } from './SalesOrderItemPicker';
 import {
   getOrderItemIdColumnLabel,
@@ -53,6 +55,7 @@ export function SalesOrderItemsEditor({
   compact = false,
 }: SalesOrderItemsEditorProps) {
   const { options, loading, error } = useSalesOrderCatalog(orderType);
+  const { catalog: customizationsCatalog } = useProductCustomizationsCatalog();
   const itemIdLabel = getOrderItemIdColumnLabel(orderType);
   const fieldsDisabled = disabled || readOnly;
   const cellClass = compact ? 'px-2 py-1.5' : 'px-3 py-2';
@@ -213,28 +216,44 @@ export function SalesOrderItemsEditor({
                     </td>
                     <td className={`${cellClass} min-w-0 align-top text-sm`}>
                       {readOnly ? (
-                        <span className="block truncate" title={item.item_name || undefined}>
-                          {item.item_name || '—'}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="block truncate" title={item.item_name || undefined}>
+                            {item.item_name || '—'}
+                          </span>
+                          {item.customisation ? (
+                            <SalesOrderItemCustomisationSummary
+                              customisation={item.customisation}
+                              catalog={customizationsCatalog}
+                            />
+                          ) : null}
+                        </div>
                       ) : (
-                        <SalesOrderItemPicker
-                          id={`${idPrefix}-item-${index}-name`}
-                          options={options}
-                          selectedId={item.menu_item_id}
-                          selectedName={item.item_name}
-                          disabled={fieldsDisabled}
-                          loading={loading}
-                          onSelect={(option) =>
-                            onItemsChange(
-                              updateItem(items, index, {
-                                menu_item_id: option.id,
-                                item_name: option.name,
-                                unit_price: option.unitPrice,
-                                sku: item.sku || String(option.id),
-                              }),
-                            )
-                          }
-                        />
+                        <div className="min-w-0 space-y-1">
+                          <SalesOrderItemPicker
+                            id={`${idPrefix}-item-${index}-name`}
+                            options={options}
+                            selectedId={item.menu_item_id}
+                            selectedName={item.item_name}
+                            disabled={fieldsDisabled}
+                            loading={loading}
+                            onSelect={(option) =>
+                              onItemsChange(
+                                updateItem(items, index, {
+                                  menu_item_id: option.id,
+                                  item_name: option.name,
+                                  unit_price: option.unitPrice,
+                                  sku: item.sku || String(option.id),
+                                }),
+                              )
+                            }
+                          />
+                          {item.customisation ? (
+                            <SalesOrderItemCustomisationSummary
+                              customisation={item.customisation}
+                              catalog={customizationsCatalog}
+                            />
+                          ) : null}
+                        </div>
                       )}
                     </td>
                     <td className={`${cellClass} align-top text-sm`}>

@@ -26,11 +26,55 @@ export type OrderType = "pickup" | "wholesale" | "catering";
 
 export type OrderFulfillmentType = "pick_up" | "delivery" | "shipping";
 
+export type OrderItemCustomisation = {
+  selections: Record<string, string[]>;
+  qty: number;
+  note: string;
+  extraPrice: number;
+};
+
+function parseOrderItemCustomisation(
+  value: unknown,
+): OrderItemCustomisation | null {
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const selections = row.selections;
+  if (!selections || typeof selections !== "object" || Array.isArray(selections)) {
+    return null;
+  }
+
+  const parsedSelections: Record<string, string[]> = {};
+  for (const [groupId, ids] of Object.entries(selections)) {
+    if (!Array.isArray(ids)) continue;
+    parsedSelections[groupId] = ids.filter((id): id is string => typeof id === "string");
+  }
+
+  const extraPrice = Number(row.extraPrice ?? 0);
+  const qty = Number(row.qty ?? 1);
+  const note = typeof row.note === "string" ? row.note : "";
+
+  if (
+    Object.values(parsedSelections).every((ids) => ids.length === 0) &&
+    !note.trim()
+  ) {
+    return null;
+  }
+
+  return {
+    selections: parsedSelections,
+    qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
+    note,
+    extraPrice: Number.isFinite(extraPrice) && extraPrice >= 0 ? extraPrice : 0,
+  };
+}
+
 export type OrderCheckoutItem = {
   productId: number;
   qty: number;
   unitPrice: number;
   itemName: string;
+  customisation?: OrderItemCustomisation | null;
 };
 
 export type WholesaleOrderBuyer = {
@@ -121,6 +165,7 @@ type DraftOrderItemRow = {
   sku: string;
   uom: string;
   isCatchWeight: boolean;
+  customisation?: OrderItemCustomisation | null;
 };
 
 type ProductOrderFields = {
@@ -472,6 +517,7 @@ function buildOrderItemInsertRows(
       is_catch_weight: product.isCatchWeight,
       unit_price: formatMoney(item.unitPrice),
       line_total: formatMoney(lineTotal),
+      ...(item.customisation ? { customisation: item.customisation } : {}),
     };
   });
 }
@@ -500,7 +546,9 @@ async function fetchDraftOrderItems(
 ): Promise<DraftOrderItemRow[]> {
   const { data, error } = await supabase
     .from("order_items")
-    .select("product_id, quantity, unit_price, name, sku, uom, is_catch_weight")
+    .select(
+      "product_id, quantity, unit_price, name, sku, uom, is_catch_weight, customisation",
+    )
     .eq("order_id", orderId);
 
   if (error) {
@@ -532,6 +580,7 @@ async function fetchDraftOrderItems(
       sku,
       uom,
       isCatchWeight,
+      customisation: parseOrderItemCustomisation(record.customisation),
     });
   }
 
@@ -550,6 +599,7 @@ function mapCheckoutItemsToPayload(items: DraftOrderItemRow[]) {
       is_catch_weight: item.isCatchWeight,
       unit_price: item.unitPrice,
       line_total: lineTotal,
+      ...(item.customisation ? { customisation: item.customisation } : {}),
     };
   });
 }
@@ -1255,7 +1305,13 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
         if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error("Invalid price");
         if (!itemName) throw new Error("Invalid item name");
 
-        return { productId: menuItemId, qty, unitPrice, itemName };
+        return {
+          productId: menuItemId,
+          qty,
+          unitPrice,
+          itemName,
+          customisation: parseOrderItemCustomisation(row.customisation),
+        };
       })
       : [];
 

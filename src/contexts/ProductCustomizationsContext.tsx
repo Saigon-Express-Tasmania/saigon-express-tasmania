@@ -5,7 +5,7 @@ import type {
   OptionGroup,
   ProductCustomizationsCatalog,
 } from "@/lib/product-customizations";
-import { resolveOptionGroupsForMenuItem } from "@/lib/product-customizations";
+import { resolveOptionGroupsForProduct } from "@/lib/product-customizations";
 import type { SiteCategory } from "@/types";
 import {
   createContext,
@@ -25,31 +25,37 @@ const ProductCustomizationsContext =
 
 type ProviderProps = {
   catalog: ProductCustomizationsCatalog;
-  categories: Pick<SiteCategory, "alias" | "customizationIds">[];
+  categories: Pick<SiteCategory, "alias" | "name" | "customizationIds">[];
+  categoryKey?: "alias" | "name";
+  kind?: "menu" | "wholesale" | "catering";
   children: ReactNode;
 };
 
 export function ProductCustomizationsProvider({
   catalog,
   categories,
+  categoryKey = "alias",
+  kind = "menu",
   children,
 }: ProviderProps) {
-  const categoryCustomizationIdsByAlias = useMemo(() => {
+  const categoryCustomizationIdsByKey = useMemo(() => {
     const map: Record<string, number[]> = {};
     for (const category of categories) {
-      map[category.alias] = category.customizationIds ?? [];
+      const key = categoryKey === "name" ? category.name : category.alias;
+      map[key] = category.customizationIds ?? [];
     }
     return map;
-  }, [categories]);
+  }, [categories, categoryKey]);
 
   const getOptionGroupsForItem = useCallback(
     (item: MenuItem) =>
-      resolveOptionGroupsForMenuItem(
+      resolveOptionGroupsForProduct(
         catalog,
         item,
-        categoryCustomizationIdsByAlias[item.category] ?? [],
+        categoryCustomizationIdsByKey[item.category] ?? [],
+        kind,
       ),
-    [catalog, categoryCustomizationIdsByAlias],
+    [catalog, categoryCustomizationIdsByKey, kind],
   );
 
   const value = useMemo(

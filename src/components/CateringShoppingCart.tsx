@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import CateringOrderReviewPanel from "@/components/CateringOrderReviewPanel";
 import WholesaleCartItemThumbnail from "@/components/WholesaleCartItemThumbnail";
-import { useCateringCart } from "@/contexts/CateringCartContext";
+import CustomisationSummary from "@/components/CustomisationSummary";
+import { useCateringCart, cateringCartLineUnitPrice, cateringCartCheckoutLine } from "@/contexts/CateringCartContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import {
@@ -339,14 +340,7 @@ export default function CateringShoppingCart({
             ? { customerAccount: profile.id }
             : {}),
           ...placementFields,
-          items: cart.map((item) => ({
-            productId: item.productId,
-            qty: item.qty,
-            unitPrice: Number(item.unitPrice),
-            itemName: item.variantLabel
-              ? `${item.productName} (${item.variantLabel})`
-              : item.productName,
-          })),
+          items: cart.map((item) => cateringCartCheckoutLine(item)),
         },
       });
 
@@ -493,14 +487,7 @@ export default function CateringShoppingCart({
           returnTo: pathname,
           successReturnTo,
           ...checkoutFields,
-          items: cart.map((item) => ({
-            productId: item.productId,
-            qty: item.qty,
-            unitPrice: Number(item.unitPrice),
-            itemName: item.variantLabel
-              ? `${item.productName} (${item.variantLabel})`
-              : item.productName,
-          })),
+          items: cart.map((item) => cateringCartCheckoutLine(item)),
         },
       });
 
@@ -647,13 +634,20 @@ export default function CateringShoppingCart({
                                   {item.variantLabel}
                                 </p>
                               ) : null}
+                              {item.customisation ? (
+                                <CustomisationSummary
+                                  customisation={item.customisation}
+                                />
+                              ) : null}
                               <p className="mt-0.5 text-xs text-white/40">
-                                {formatAud(item.unitPrice)} each
+                                {formatAud(cateringCartLineUnitPrice(item))} each
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
                               <div className="text-sm font-bold text-white">
-                                {formatAud(item.unitPrice * item.qty)}
+                                {formatAud(
+                                  cateringCartLineUnitPrice(item) * item.qty,
+                                )}
                               </div>
                               <button
                                 type="button"

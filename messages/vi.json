@@ -2304,6 +2304,8 @@
   },
   "ItemCustomiseModal": {
     "requiredBadge": "Bắt buộc",
+    "requiredBadgeFulfilled": "Đã chọn",
+    "tapToChoose": "Chạm để chọn",
     "chooseAny": "Chọn tuỳ ý",
     "specialInstructions": {
       "title": "Yêu cầu đặc biệt",
@@ -2312,6 +2314,9 @@
       "charCount": "{count}/200"
     },
     "addToCart": "Thêm vào giỏ",
+    "missingRequiredTitle": "Vui lòng chọn các mục sau trước khi thêm vào giỏ:",
+    "dismissMissingRequired": "Đóng",
+    "readyToAdd": "Sẵn sàng thêm vào giỏ",
     "proteinOptions": [
       {
         "id": "pork",

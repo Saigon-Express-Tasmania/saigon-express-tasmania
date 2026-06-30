@@ -1,5 +1,5 @@
 import { createServiceClient } from "./supabase.ts";
-import type { OrderCheckoutItem, OrderFulfillmentType } from "./order.ts";
+import type { OrderCheckoutItem, OrderFulfillmentType, OrderItemCustomisation } from "./order.ts";
 import {
   formatOrderInvoiceNumber,
   type StripePaymentMode,
@@ -27,6 +27,7 @@ export type CateringOrderItemInput = {
   qty: number;
   unitPrice: number;
   itemName: string;
+  customisation?: OrderItemCustomisation | null;
 };
 
 export type CateringFinancialDetails = {
@@ -304,8 +305,50 @@ function parseItems(value: unknown): CateringOrderItemInput[] {
       throw new Error("Invalid item name");
     }
 
-    return { productId, qty, unitPrice, itemName };
+    return {
+      productId,
+      qty,
+      unitPrice,
+      itemName,
+      customisation: parseCateringItemCustomisation(row.customisation),
+    };
   });
+}
+
+function parseCateringItemCustomisation(
+  value: unknown,
+): OrderItemCustomisation | null {
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const selections = row.selections;
+  if (!selections || typeof selections !== "object" || Array.isArray(selections)) {
+    return null;
+  }
+
+  const parsedSelections: Record<string, string[]> = {};
+  for (const [groupId, ids] of Object.entries(selections)) {
+    if (!Array.isArray(ids)) continue;
+    parsedSelections[groupId] = ids.filter((id): id is string => typeof id === "string");
+  }
+
+  const extraPrice = Number(row.extraPrice ?? 0);
+  const qty = Number(row.qty ?? 1);
+  const note = typeof row.note === "string" ? row.note : "";
+
+  if (
+    Object.values(parsedSelections).every((ids) => ids.length === 0) &&
+    !note.trim()
+  ) {
+    return null;
+  }
+
+  return {
+    selections: parsedSelections,
+    qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
+    note,
+    extraPrice: Number.isFinite(extraPrice) && extraPrice >= 0 ? extraPrice : 0,
+  };
 }
 
 export async function validateCateringOrderInput(
@@ -455,6 +498,7 @@ function buildItemsPayload(
       is_catch_weight: product.isCatchWeight,
       unit_price: formatMoney(item.unitPrice),
       line_total: formatMoney(lineTotal),
+      ...(item.customisation ? { customisation: item.customisation } : {}),
     };
   });
 }
@@ -522,6 +566,7 @@ export async function createPendingCateringOrder(
       qty: item.qty,
       unitPrice: item.unitPrice,
       itemName: item.itemName,
+      customisation: item.customisation ?? null,
     })),
     productsById,
   );

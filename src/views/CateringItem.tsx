@@ -16,10 +16,16 @@ import { toast } from "sonner";
 import CateringPackOrderButton from "@/components/CateringPackOrderButton";
 import CateringProductHtml from "@/components/CateringProductHtml";
 import CateringTierSelect from "@/components/CateringTierSelect";
+import {
+  ItemCustomiseModal,
+  type ItemCustomisation,
+} from "@/components/ItemCustomiseModal";
 import LazyImage from "@/components/LazyImage";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import { useCateringCart } from "@/contexts/CateringCartContext";
+import { useProductCustomizations } from "@/contexts/ProductCustomizationsContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
+import { cateringPackToCustomiseItem } from "@/lib/catering-customise-item";
 import { cateringItemDetailPath, cateringListPath } from "@/lib/catering-item-routes";
 import { getRelatedCateringItems } from "@/lib/catering-related-items";
 import { parseCateringPrice, formatAud } from "@/lib/catering-price";
@@ -46,6 +52,7 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
 
   const { isSignedIn } = useSupabase();
   const { addToCart, cartCount, cartTotal, setCartOpen } = useCateringCart();
+  const { getOptionGroupsForItem } = useProductCustomizations();
   const { session, trackedOrder, setLastOrderOpen, isHydrated } =
     useGuestCateringOrder();
 
@@ -55,6 +62,7 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
 
   const [selectedGalleryId, setSelectedGalleryId] = useState("primary");
   const [selectedTierIndex, setSelectedTierIndex] = useState(0);
+  const [customiseOpen, setCustomiseOpen] = useState(false);
   const [resolveOrderWarning, setResolveOrderWarning] = useState(false);
 
   const selectedTier: CateringTierPrice | null =
@@ -158,6 +166,12 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
       return;
     }
 
+    const customiseMenuItem = cateringPackToCustomiseItem(item, unitPrice);
+    if (getOptionGroupsForItem(customiseMenuItem).length > 0) {
+      setCustomiseOpen(true);
+      return;
+    }
+
     addToCart({
       productId: item.id,
       productName: item.name,
@@ -168,16 +182,50 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
     });
   }, [
     addToCart,
+    getOptionGroupsForItem,
     guestOrderBlocksCart,
     handleBlockedAddToOrder,
-    item.id,
-    item.img,
-    item.isAvailable,
-    item.name,
-    item.price,
+    item,
     selectedTier,
     t,
   ]);
+
+  const customiseItem = useMemo(
+    () => {
+      if (!customiseOpen) return null;
+      const unitPrice =
+        selectedTier != null
+          ? parseCateringPrice(selectedTier.price)
+          : parseCateringPrice(item.price);
+      if (unitPrice == null) return null;
+      return cateringPackToCustomiseItem(item, unitPrice);
+    },
+    [customiseOpen, item, selectedTier],
+  );
+
+  const handleCustomiseConfirm = useCallback(
+    (customisation: ItemCustomisation) => {
+      const unitPrice =
+        selectedTier != null
+          ? parseCateringPrice(selectedTier.price)
+          : parseCateringPrice(item.price);
+      if (unitPrice == null) return;
+
+      addToCart(
+        {
+          productId: item.id,
+          productName: item.name,
+          variantLabel: selectedTier?.size ?? null,
+          unitPrice,
+          catalogUnitPrice: item.catalogUnitPrice,
+          imageUrl: item.img,
+        },
+        { customisation },
+      );
+      setCustomiseOpen(false);
+    },
+    [addToCart, item, selectedTier],
+  );
 
   const backHref =
     item.category === FEATURED_CATERING_PACK_CATEGORY
@@ -442,6 +490,14 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
             </button>
           </div>
         </div>
+      ) : null}
+
+      {customiseItem ? (
+        <ItemCustomiseModal
+          item={customiseItem}
+          onConfirm={handleCustomiseConfirm}
+          onClose={() => setCustomiseOpen(false)}
+        />
       ) : null}
     </div>
   );

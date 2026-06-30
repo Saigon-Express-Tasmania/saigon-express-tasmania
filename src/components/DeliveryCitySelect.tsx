@@ -22,6 +22,7 @@ import {
   formatDeliveryPostalCode,
 } from "@/lib/delivery-cities";
 import { cn } from "@/lib/utils";
+import { FormFieldLabel } from "@/components/FormFieldLabel";
 import type { DeliveryCity } from "@/types";
 
 type DeliveryCitySelectProps = {
@@ -35,6 +36,8 @@ type DeliveryCitySelectProps = {
   triggerClassName?: string;
   contentClassName?: string;
   accentClassName?: string;
+  required?: boolean;
+  filled?: boolean;
 };
 
 export default function DeliveryCitySelect({
@@ -48,6 +51,8 @@ export default function DeliveryCitySelect({
   triggerClassName,
   contentClassName,
   accentClassName = "text-emerald-400",
+  required,
+  filled,
 }: DeliveryCitySelectProps) {
   const listboxId = useId();
   const [open, setOpen] = useState(false);
@@ -63,9 +68,7 @@ export default function DeliveryCitySelect({
 
   return (
     <label className="block space-y-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
-        {label}
-      </span>
+      <FormFieldLabel label={label} required={required} filled={filled} />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button

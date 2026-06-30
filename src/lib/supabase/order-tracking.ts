@@ -13,6 +13,8 @@ import {
   type OrderFlatAddress,
 } from "@/lib/wholesale-b2b-order";
 import { getClientStripeMode } from "@/lib/stripe-mode";
+import { parseStoredItemCustomisation } from "@/lib/product-customizations";
+import type { ItemCustomisation } from "@/lib/product-customizations";
 import { formatRequestedTargetDate } from "@/lib/supabase/wholesale-orders";
 import {
   normalizeWholesaleImageUrls,
@@ -69,6 +71,7 @@ export type TrackedOrderItem = {
   line_total: number;
   item_name: string;
   imageUrl: string | null;
+  customisation: ItemCustomisation | null;
 };
 
 export type TrackedOrder = {
@@ -131,6 +134,43 @@ function isTestingOrders(): boolean {
   return getClientStripeMode() === "test";
 }
 
+const TRACKED_ORDER_ITEM_SELECT_BASE =
+  "id, product_id, sku, quantity, uom, is_catch_weight, unit_price, line_total, name";
+
+const TRACKED_ORDER_ITEM_SELECT_WITH_CUSTOMISATION = `${TRACKED_ORDER_ITEM_SELECT_BASE}, customisation`;
+
+async function fetchTrackedOrderItems(
+  supabase: SupabaseClient,
+  orderId: number,
+): Promise<Record<string, unknown>[]> {
+  const withCustomisation = await supabase
+    .from("order_items")
+    .select(TRACKED_ORDER_ITEM_SELECT_WITH_CUSTOMISATION)
+    .eq("order_id", orderId);
+
+  if (!withCustomisation.error) {
+    return (withCustomisation.data ?? []) as Record<string, unknown>[];
+  }
+
+  if (
+    withCustomisation.error.message.includes("customisation") &&
+    withCustomisation.error.message.includes("does not exist")
+  ) {
+    const fallback = await supabase
+      .from("order_items")
+      .select(TRACKED_ORDER_ITEM_SELECT_BASE)
+      .eq("order_id", orderId);
+
+    if (fallback.error) {
+      throw new Error(`order_items: ${fallback.error.message}`);
+    }
+
+    return (fallback.data ?? []) as Record<string, unknown>[];
+  }
+
+  throw new Error(`order_items: ${withCustomisation.error.message}`);
+}
+
 const TRACKED_ORDER_SELECT =
   "id, invoice_number, order_type, customer_name, customer_email, customer_phone, subtotal, coupon_code, coupon_discount, wholesale_discount, tax_total, shipping_fee, grand_total, status, requested_target_date, requested_fulfillment_method, requested_pick_up_store_id, store_id, created_at, status_updated_at, notes, shipping_dba_name, shipping_special_instructions, shipping_preferred_window, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_legal_name, billing_tax_id, billing_address, billing_city, billing_state, billing_postal_code, billing_country, payment_terms";
 
@@ -174,6 +214,7 @@ function mapTrackedOrderItem(
       productId > 0
         ? pickWholesaleImageUrl(productImages.get(productId), [512, 256, 1448])
         : null,
+    customisation: parseStoredItemCustomisation(item.customisation),
   };
 }
 
@@ -272,18 +313,7 @@ async function fetchTrackedOrderForMode(
   }
 
   const orderRow = data as Record<string, unknown>;
-  const { data: items, error: itemsError } = await supabase
-    .from("order_items")
-    .select(
-      "id, product_id, sku, quantity, uom, is_catch_weight, unit_price, line_total, name",
-    )
-    .eq("order_id", Number(orderRow.id));
-
-  if (itemsError) {
-    throw new Error(`order_items: ${itemsError.message}`);
-  }
-
-  const rawItems = (items ?? []) as Record<string, unknown>[];
+  const rawItems = await fetchTrackedOrderItems(supabase, Number(orderRow.id));
   const productIds = rawItems.map((item) => Number(item.product_id ?? 0));
   const productImages = await fetchProductImageMap(supabase, productIds);
 

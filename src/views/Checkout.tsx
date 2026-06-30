@@ -168,6 +168,7 @@ export default function Checkout({
             unitPrice:
               parseFloat(c.item.price) + (c.customisation?.extraPrice ?? 0),
             itemName: c.item.name,
+            ...(c.customisation ? { customisation: c.customisation } : {}),
           })),
           origin: window.location.origin,
         },
