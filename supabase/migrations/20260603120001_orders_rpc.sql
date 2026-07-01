@@ -84,7 +84,8 @@ begin
     uom,
     is_catch_weight,
     unit_price,
-    line_total
+    line_total,
+    customisation
   )
   select
     p_order_id,
@@ -99,7 +100,12 @@ begin
     coalesce(
       (item ->> 'line_total')::numeric(10, 2),
       (item ->> 'quantity')::numeric(10, 2) * (item ->> 'unit_price')::numeric(10, 2)
-    )
+    ),
+    case
+      when item ? 'customisation' and jsonb_typeof(item -> 'customisation') = 'object'
+        then item -> 'customisation'
+      else null
+    end
   from jsonb_array_elements(p_items) as item
   cross join lateral (
     select nullif(item ->> 'product_id', '')::bigint as product_id
@@ -115,7 +121,7 @@ end;
 $$;
 
 comment on function public.insert_order_items_from_payload(bigint, public.order_type, jsonb) is
-  'Bulk-inserts order_items for an order from a jsonb array. Each item must include product_id.';
+  'Bulk-inserts order_items for an order from a jsonb array. Each item must include product_id; optional customisation object is persisted when present.';
 
 -- Promotes a draft_orders row into public.orders, preserving the shared id and any
 -- order_items already linked to that id. Address and B2B fields come from the draft;

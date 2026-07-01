@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { formatCateringDisplayPrice } from "@/lib/catering-price";
 import type { CateringTierPrice } from "@/lib/supabase/catering-packs";
 import { cn } from "@/lib/utils";
 
@@ -84,7 +85,7 @@ export default function CateringTierSelect({
                   {tier.size}
                 </span>
                 <span className={cn("shrink-0 text-xs", styles.optionMeta)}>
-                  {tier.price} · {tier.serves}
+                  {formatCateringDisplayPrice(tier.price) ?? tier.price} · {tier.serves}
                 </span>
               </span>
             </SelectItem>

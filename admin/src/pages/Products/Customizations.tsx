@@ -77,6 +77,9 @@ type CustomizationRecord = {
   type: SelectionType;
   required: boolean;
   sort_order: number;
+  is_multi_limited: boolean;
+  min_options: number;
+  max_options: number;
   options: OptionRecord[];
 };
 
@@ -94,6 +97,9 @@ type CustomizationInput = {
   type: SelectionType;
   required: boolean;
   sort_order: number;
+  is_multi_limited: boolean;
+  min_options: number;
+  max_options: number;
   options: OptionInput[];
 };
 
@@ -104,6 +110,9 @@ const emptyCustomizationInput = (): CustomizationInput => ({
   type: 'single',
   required: false,
   sort_order: 0,
+  is_multi_limited: false,
+  min_options: 0,
+  max_options: 0,
   options: [],
 });
 
@@ -137,6 +146,9 @@ function normalizeCustomizationRow(row: {
   type: SelectionType;
   required: boolean;
   sort_order: number;
+  is_multi_limited: boolean;
+  min_options: number;
+  max_options: number;
   options?: OptionRecord[] | null;
 }): CustomizationRecord {
   return {
@@ -194,6 +206,9 @@ export function Customizations() {
           type,
           required,
           sort_order,
+          is_multi_limited,
+          min_options,
+          max_options,
           options:product_customization_options (
             id,
             key,
@@ -274,6 +289,9 @@ export function Customizations() {
       type: row.type,
       required: row.required,
       sort_order: row.sort_order,
+      is_multi_limited: row.is_multi_limited,
+      min_options: row.min_options,
+      max_options: row.max_options,
       options: row.options.map((opt) => ({
         id: opt.id,
         key: opt.key,
@@ -360,6 +378,23 @@ export function Customizations() {
       }
     }
 
+    if (form.type === 'multi' && form.is_multi_limited) {
+      const min = Number(form.min_options) || 0;
+      const max = Number(form.max_options) || 0;
+      if (min < 0 || max < 0) {
+        toast.error('Min and max options must be zero or greater.');
+        return false;
+      }
+      if (max > 0 && min > max) {
+        toast.error('Min options cannot exceed max options.');
+        return false;
+      }
+      if (form.required && min === 0 && max === 0) {
+        toast.error('Set min or max options when limiting a required multi group.');
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -426,6 +461,15 @@ export function Customizations() {
         type: form.type,
         required: form.required,
         sort_order: Number(form.sort_order) || 0,
+        is_multi_limited: form.type === 'multi' ? form.is_multi_limited : false,
+        min_options:
+          form.type === 'multi' && form.is_multi_limited
+            ? Number(form.min_options) || 0
+            : 0,
+        max_options:
+          form.type === 'multi' && form.is_multi_limited
+            ? Number(form.max_options) || 0
+            : 0,
       };
 
       if (editingId != null) {
@@ -708,6 +752,13 @@ export function Customizations() {
                       setForm((prev) => ({
                         ...prev,
                         type: value as SelectionType,
+                        ...(value === 'single'
+                          ? {
+                              is_multi_limited: false,
+                              min_options: 0,
+                              max_options: 0,
+                            }
+                          : {}),
                       }))
                     }
                   >
@@ -762,6 +813,82 @@ export function Customizations() {
                     </p>
                   </div>
                 </label>
+
+                {form.type === 'multi' ? (
+                  <>
+                    <label
+                      htmlFor="customization-multi-limited"
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border bg-background px-4 py-3 sm:col-span-2"
+                    >
+                      <input
+                        id="customization-multi-limited"
+                        type="checkbox"
+                        checked={form.is_multi_limited}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            is_multi_limited: e.target.checked,
+                            ...(e.target.checked
+                              ? {}
+                              : { min_options: 0, max_options: 0 }),
+                          }))
+                        }
+                        className="h-4 w-4 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium">
+                          Limit selection count
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Enforce min and max number of options (e.g. choose
+                          3–4 fillings).
+                        </p>
+                      </div>
+                    </label>
+
+                    {form.is_multi_limited ? (
+                      <>
+                        <div className="grid min-w-0 gap-2">
+                          <Label htmlFor="customization-min-options">
+                            Min options
+                          </Label>
+                          <Input
+                            id="customization-min-options"
+                            type="number"
+                            min="0"
+                            value={form.min_options}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                min_options: Number(e.target.value) || 0,
+                              }))
+                            }
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div className="grid min-w-0 gap-2">
+                          <Label htmlFor="customization-max-options">
+                            Max options
+                          </Label>
+                          <Input
+                            id="customization-max-options"
+                            type="number"
+                            min="0"
+                            value={form.max_options}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                max_options: Number(e.target.value) || 0,
+                              }))
+                            }
+                            className="w-full"
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             </section>
 
@@ -1008,6 +1135,17 @@ function GroupTableRows({
             ) : (
               <Badge variant="ghost">Optional</Badge>
             )}
+            {row.type === 'multi' && row.is_multi_limited ? (
+              <Badge variant="outline">
+                {row.min_options > 0 && row.max_options > 0
+                  ? `${row.min_options}–${row.max_options}`
+                  : row.max_options > 0
+                    ? `≤${row.max_options}`
+                    : row.min_options > 0
+                      ? `≥${row.min_options}`
+                      : 'Limited'}
+              </Badge>
+            ) : null}
           </div>
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">

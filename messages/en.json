@@ -2307,6 +2307,9 @@
     "requiredBadgeFulfilled": "Selected",
     "tapToChoose": "Tap to choose",
     "chooseAny": "Choose any",
+    "chooseRange": "Choose {min}–{max}",
+    "chooseAtLeast": "Choose at least {min}",
+    "chooseUpTo": "Choose up to {max}",
     "pickOne": "Pick one",
     "selectedSummaryTitle": "Your selections",
     "specialInstructions": {

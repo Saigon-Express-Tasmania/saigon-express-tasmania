@@ -3,7 +3,10 @@
 import type { MenuItem } from "@/contexts/CartContext";
 import { useItemCustomisationState } from "@/lib/item-customise-options";
 import {
+  getEffectiveMaxOptions,
+  getEffectiveMinOptions,
   getMissingRequiredOptionGroups,
+  isOptionSelectionDisabled,
   isSpiceGroupKey,
   isVeggieGroupKey,
   type ItemCustomisation,
@@ -49,6 +52,29 @@ type ItemCustomiseInlineFieldsProps = {
   ) => void;
   className?: string;
 };
+
+function multiSelectionHint(
+  group: OptionGroup,
+  t: ReturnType<typeof useTranslations<"ItemCustomiseModal">>,
+): string | null {
+  if (group.type !== "multi") return null;
+  const min = getEffectiveMinOptions(group);
+  const max = getEffectiveMaxOptions(group);
+  if (min > 0 && max != null) {
+    return t("chooseRange", { min, max });
+  }
+  if (min > 1) {
+    return t("chooseAtLeast", { min });
+  }
+  if (max != null) {
+    return t("chooseUpTo", { max });
+  }
+  return t("chooseAny");
+}
+
+function isGroupFulfilled(group: OptionGroup, selectedIds: string[]): boolean {
+  return selectedIds.length >= getEffectiveMinOptions(group);
+}
 
 function getSelectedOptions(group: OptionGroup, ids: string[]) {
   return ids
@@ -128,6 +154,8 @@ export function ItemCustomiseInlineFields({
         const selectedIds = selections[group.id] ?? [];
         const selectedOptions = getSelectedOptions(group, selectedIds);
         const hasSelection = selectedOptions.length > 0;
+        const fulfilled = isGroupFulfilled(group, selectedIds);
+        const selectionHint = multiSelectionHint(group, t);
 
         return (
           <div key={group.id} className="space-y-2.5">
@@ -141,7 +169,7 @@ export function ItemCustomiseInlineFields({
               <span className="text-sm font-semibold text-brand-dark">
                 {group.title}
               </span>
-              {group.required && !hasSelection ? (
+              {group.required && !fulfilled ? (
                 <span className="rounded-full bg-brand-red px-2 py-0.5 text-xs font-semibold text-white">
                   {t("requiredBadge")}
                 </span>
@@ -171,15 +199,15 @@ export function ItemCustomiseInlineFields({
                     </span>
                   ))}
                 </span>
-              ) : group.type === "multi" ? (
+              ) : group.type === "multi" && selectionHint ? (
                 <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800">
-                  {t("chooseAny")}
+                  {selectionHint}
                 </span>
-              ) : (
+              ) : group.type === "single" ? (
                 <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800">
                   {t("pickOne")}
                 </span>
-              )}
+              ) : null}
             </div>
 
             <div
@@ -190,6 +218,11 @@ export function ItemCustomiseInlineFields({
             >
               {group.options.map((option) => {
                 const selected = selectedIds.includes(option.id);
+                const disabled = isOptionSelectionDisabled(
+                  group,
+                  option.id,
+                  selectedIds,
+                );
                 const isMulti = group.type === "multi";
                 return (
                   <button
@@ -198,7 +231,11 @@ export function ItemCustomiseInlineFields({
                     onClick={() =>
                       onToggleOption(group.id, option.id, group.type)
                     }
-                    className={inlineOptionButtonClass(selected, group.type)}
+                    disabled={disabled}
+                    className={cn(
+                      inlineOptionButtonClass(selected, group.type),
+                      disabled && "cursor-not-allowed opacity-50",
+                    )}
                   >
                     {isMulti && selected ? (
                       <Check

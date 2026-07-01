@@ -6,10 +6,14 @@ import { useOptionGroupsForItem } from "@/lib/item-customise-options";
 import {
   buildCustomisationGroups,
   computeExtraPrice,
+  getEffectiveMaxOptions,
+  getEffectiveMinOptions,
   getMissingRequiredOptionGroups,
   initialSelections,
+  isOptionSelectionDisabled,
   isSpiceGroupKey,
   isVeggieGroupKey,
+  toggleOptionSelection,
   type ItemCustomisation,
   type OptionGroup,
 } from "@/lib/product-customizations";
@@ -80,16 +84,10 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
     type: "single" | "multi",
   ) => {
     setSelections((prev) => {
+      const group = groups.find((entry) => entry.id === groupId);
+      if (!group) return prev;
       const current = prev[groupId] ?? [];
-      let nextIds: string[];
-
-      if (type === "single") {
-        nextIds = current.includes(optionId) ? [] : [optionId];
-      } else {
-        nextIds = current.includes(optionId)
-          ? current.filter((id) => id !== optionId)
-          : [...current, optionId];
-      }
+      const nextIds = toggleOptionSelection(group, current, optionId);
 
       if (type === "single" && nextIds.length > 0) {
         setExpandedGroups((expanded) => ({ ...expanded, [groupId]: false }));
@@ -117,8 +115,26 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
     }
   }, [canAddToCart]);
 
-  const isGroupFulfilled = (groupId: string) =>
-    (selections[groupId] ?? []).length > 0;
+  const isGroupFulfilled = (group: OptionGroup) => {
+    const count = (selections[group.id] ?? []).length;
+    return count >= getEffectiveMinOptions(group);
+  };
+
+  const multiSelectionHint = (group: OptionGroup): string | null => {
+    if (group.type !== "multi") return null;
+    const min = getEffectiveMinOptions(group);
+    const max = getEffectiveMaxOptions(group);
+    if (min > 0 && max != null) {
+      return t("chooseRange", { min, max });
+    }
+    if (min > 1) {
+      return t("chooseAtLeast", { min });
+    }
+    if (max != null) {
+      return t("chooseUpTo", { max });
+    }
+    return t("chooseAny");
+  };
 
   const basePrice = parseFloat(item.price);
   const lineTotal = (basePrice + extraPrice) * qty;
@@ -210,13 +226,14 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
           {groups.map((group) => {
             const selectedIds = selections[group.id] ?? [];
             const selectedSummary = selectedOptionLabels(group, selectedIds);
-            const fulfilled = group.required && isGroupFulfilled(group.id);
+            const fulfilled = isGroupFulfilled(group);
             const isExpanded = expandedGroups[group.id];
+            const selectionHint = multiSelectionHint(group);
             return (
             <div
               key={group.id}
               className={`border rounded-xl overflow-hidden transition-colors ${
-                group.required
+                group.required || (group.isMultiLimited && getEffectiveMinOptions(group) > 0)
                   ? fulfilled
                     ? "border-green-300 bg-green-50/40"
                     : "border-red-200 bg-red-50/30"
@@ -227,7 +244,7 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
                 type="button"
                 onClick={() => toggleGroup(group.id)}
                 className={`w-full flex items-start justify-between gap-3 px-4 py-3 transition-colors text-left ${
-                  group.required
+                  group.required || (group.isMultiLimited && getEffectiveMinOptions(group) > 0)
                     ? fulfilled
                       ? "bg-green-50 hover:bg-green-100/80"
                       : "bg-red-50 hover:bg-red-100/70"
@@ -256,18 +273,18 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
                           {t("requiredBadge")}
                         </span>
                       ))}
-                    {group.type === "multi" && (
+                    {group.type === "multi" && selectionHint ? (
                       <span className="text-xs text-gray-400">
-                        {t("chooseAny")}
+                        {selectionHint}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   {!isExpanded && selectedSummary ? (
                     <p className="mt-1 text-sm font-medium text-gray-700 leading-snug">
                       {selectedSummary}
                     </p>
                   ) : null}
-                  {!isExpanded && !selectedSummary && group.required ? (
+                  {!isExpanded && !selectedSummary && (group.required || getEffectiveMinOptions(group) > 0) ? (
                     <p className="mt-1 text-sm text-gray-400">
                       {t("tapToChoose")}
                     </p>
@@ -286,14 +303,24 @@ export function ItemCustomiseModal({ item, onConfirm, onClose }: Props) {
                     const selected = (selections[group.id] ?? []).includes(
                       opt.id,
                     );
+                    const disabled = isOptionSelectionDisabled(
+                      group,
+                      opt.id,
+                      selectedIds,
+                    );
                     return (
                       <button
                         key={opt.id}
                         onClick={() =>
                           toggleOption(group.id, opt.id, group.type)
                         }
+                        disabled={disabled}
                         className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left ${
-                          selected ? "bg-red-50" : "bg-white hover:bg-gray-50"
+                          disabled
+                            ? "cursor-not-allowed bg-gray-50 opacity-50"
+                            : selected
+                              ? "bg-red-50"
+                              : "bg-white hover:bg-gray-50"
                         }`}
                       >
                         <div className="flex items-center gap-3">

@@ -30,7 +30,7 @@ import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { cateringPackToCustomiseItem } from "@/lib/catering-customise-item";
 import { cateringItemDetailPath, cateringListPath } from "@/lib/catering-item-routes";
 import { getRelatedCateringItems } from "@/lib/catering-related-items";
-import { parseCateringPrice, formatAud } from "@/lib/catering-price";
+import { parseCateringPrice, formatAud, formatCateringDisplayPrice } from "@/lib/catering-price";
 import { shouldBlockGuestCateringCart } from "@/lib/guest-catering-order-session";
 import {
   FEATURED_CATERING_PACK_CATEGORY,
@@ -68,8 +68,11 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
   const selectedTier: CateringTierPrice | null =
     item.prices[selectedTierIndex] ?? null;
 
-  const displayPrice =
-    selectedTier?.price ?? item.price ?? item.prices[0]?.price ?? null;
+  const displayPrice = useMemo(() => {
+    const raw =
+      selectedTier?.price ?? item.price ?? item.prices[0]?.price ?? null;
+    return formatCateringDisplayPrice(raw);
+  }, [item.price, item.prices, selectedTier?.price]);
 
   const unitPrice = useMemo(() => {
     if (selectedTier != null) {
@@ -92,13 +95,19 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
   const orderPriceLabel = useMemo(() => {
     if (unitPrice == null) return null;
     return (
-      selectedTier?.price?.trim() ||
-      item.price?.trim() ||
+      formatCateringDisplayPrice(selectedTier?.price) ||
+      formatCateringDisplayPrice(item.price) ||
       formatAud(unitPrice)
     );
-  }, [item.price, selectedTier, unitPrice]);
+  }, [item.price, selectedTier?.price, unitPrice]);
 
-  const hasOrderPrice = unitPrice != null;
+  const hasOrderPrice = useMemo(() => {
+    if (item.prices.length > 0) {
+      const tierPrice = selectedTier?.price ?? item.prices[0]?.price;
+      return parseCateringPrice(tierPrice) != null;
+    }
+    return parseCateringPrice(item.price) != null;
+  }, [item.price, item.prices, selectedTier?.price]);
 
   const handleBlockedAddToOrder = useCallback(() => {
     const message = tCatering("guestOrder.resolveFirst");

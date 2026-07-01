@@ -13,6 +13,7 @@ import {
   assertCateringShippingFeeMatches,
   resolveCateringShippingFee,
 } from "./self-delivery-fee-settings.ts";
+import { validateCateringCatalogUnitPrices } from "./catering-catalog-price.ts";
 
 const ORDER_TOKEN_LENGTH = 12;
 const CROCKFORD_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -28,6 +29,7 @@ export type CateringOrderItemInput = {
   qty: number;
   unitPrice: number;
   itemName: string;
+  variantLabel?: string | null;
   customisation?: OrderItemCustomisation | null;
 };
 
@@ -292,6 +294,9 @@ function parseItems(value: unknown): CateringOrderItemInput[] {
     const qty = Number(row.qty);
     const unitPrice = Number(row.unitPrice);
     const itemName = String(row.itemName ?? "").trim();
+    const variantLabelRaw = row.variantLabel;
+    const variantLabel =
+      variantLabelRaw != null ? String(variantLabelRaw).trim() || null : null;
 
     if (!Number.isFinite(productId) || productId <= 0) {
       throw new Error("Invalid product");
@@ -311,6 +316,7 @@ function parseItems(value: unknown): CateringOrderItemInput[] {
       qty,
       unitPrice,
       itemName,
+      variantLabel,
       customisation: parseOrderItemCustomisation(row.customisation),
     };
   });
@@ -472,6 +478,9 @@ export async function createPendingCateringOrder(
   input: CateringOrderInput,
 ): Promise<CateringOrderResult> {
   const supabase = createServiceClient();
+
+  await validateCateringCatalogUnitPrices(input.items);
+
   const productsById = await fetchProductsForOrderItems(
     input.items.map((item) => item.productId),
   );

@@ -44,6 +44,7 @@ export function cateringCartCheckoutLine(item: CateringCartItem) {
     itemName: item.variantLabel
       ? `${item.productName} (${item.variantLabel})`
       : item.productName,
+    variantLabel: item.variantLabel?.trim() || null,
     ...(item.customisation ? { customisation: item.customisation } : {}),
   };
 }

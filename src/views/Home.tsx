@@ -55,22 +55,22 @@ const FEATURED_IN_LOGOS: Array<{
   alt: string;
   className: string;
 }> = [
-  { src: "/images/themercury.svg", alt: "The Mercury", className: "h-8 md:h-9" },
+  { src: "/images/themercury.png", alt: "The Mercury", className: "h-9 md:h-11" },
   {
-    src: "/images/pulse-tasmania.png",
+    src: "/images/pulse-tasmania-blue.png",
     alt: "Pulse Tasmania",
-    className: "h-10 md:h-11",
+    className: "h-12 md:h-18",
   },
-  { src: "/images/urban-list.svg", alt: "Urban List", className: "h-7 md:h-8" },
+  { src: "/images/urban-list.svg", alt: "Urban List", className: "h-9 md:h-12" },
   {
-    src: "/images/delicious-logo.svg",
+    src: "/images/delicious-100-runner.png",
     alt: "delicious.",
-    className: "h-8 md:h-9",
+    className: "h-12 md:h-18",
   },
   {
-    src: "/images/agfg-logo.png",
+    src: "/images/agfg-recommended.png",
     alt: "Australian Good Food Guide",
-    className: "h-8 md:h-9",
+    className: "h-12 md:h-18",
   },
 ];
 
@@ -443,7 +443,7 @@ export default async function Home() {
             {FEATURED_IN_LOGOS.map((logo) => (
               <div
                 key={logo.src}
-                className="flex shrink-0 items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-300"
+                className="flex shrink-0 items-center justify-center opacity-100 hover:opacity-70 transition-opacity duration-300"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -502,7 +502,7 @@ export default async function Home() {
                     </div>
                     <div className="flex flex-1 flex-col px-5 py-4">
                       <div className="flex items-start gap-4 sm:gap-6">
-                        <div className="flex w-[68px] shrink-0 flex-col gap-3 sm:w-[76px]">
+                        <div className="flex w-[72px] shrink-0 flex-col gap-3 sm:w-[96px]">
                           {newsLogoUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img

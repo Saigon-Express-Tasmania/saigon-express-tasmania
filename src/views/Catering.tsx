@@ -721,10 +721,12 @@ export default function Catering({ packs }: CateringProps) {
                   {group.items.map((item) => {
                     const selectedTierIndex = tierSelection[item.id] ?? 0;
                     const selectedTier = item.prices[selectedTierIndex] ?? null;
-                    const hasOrderPrice =
-                      parseCateringPrice(
-                        selectedTier?.price ?? item.price ?? item.prices[0]?.price,
-                      ) != null;
+                    const hasTierPricing = item.prices.length > 0;
+                    const hasOrderPrice = hasTierPricing
+                      ? parseCateringPrice(
+                          selectedTier?.price ?? item.prices[0]?.price,
+                        ) != null
+                      : parseCateringPrice(item.price) != null;
 
                     const cardPriceLabel = formatCateringPackCardPriceLabel(
                       item.price,

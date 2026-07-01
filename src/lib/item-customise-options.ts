@@ -7,6 +7,7 @@ import {
   computeExtraPrice,
   getMissingRequiredOptionGroups,
   initialSelections,
+  toggleOptionSelection,
   type ItemCustomisation,
   type OptionGroup,
 } from "@/lib/product-customizations";
@@ -53,18 +54,12 @@ export function useItemCustomisationState(item: MenuItem) {
     type: "single" | "multi",
   ) => {
     setSelections((prev) => {
+      const group = groups.find((entry) => entry.id === groupId);
+      if (!group) return prev;
       const current = prev[groupId] ?? [];
-      if (type === "single") {
-        return {
-          ...prev,
-          [groupId]: current.includes(optionId) ? [] : [optionId],
-        };
-      }
       return {
         ...prev,
-        [groupId]: current.includes(optionId)
-          ? current.filter((id) => id !== optionId)
-          : [...current, optionId],
+        [groupId]: toggleOptionSelection(group, current, optionId),
       };
     });
   };

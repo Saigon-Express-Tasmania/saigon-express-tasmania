@@ -7,6 +7,9 @@ export type OptionGroup = {
   title: string;
   type: "single" | "multi";
   required?: boolean;
+  isMultiLimited?: boolean;
+  minOptions?: number;
+  maxOptions?: number;
   options: CustomOption[];
 };
 
@@ -40,6 +43,9 @@ export type ProductCustomizationGroup = {
   type: "single" | "multi";
   required: boolean;
   sortOrder: number;
+  isMultiLimited: boolean;
+  minOptions: number;
+  maxOptions: number;
   options: ProductCustomizationOption[];
 };
 
@@ -71,12 +77,62 @@ export function mapGroupToOptionGroup(
     title: normalizeCustomisationLabel(group.title),
     type: group.type,
     required: group.required,
+    isMultiLimited: group.isMultiLimited,
+    minOptions: group.minOptions,
+    maxOptions: group.maxOptions,
     options: sortOptions(group.options).map((opt) => ({
       id: opt.key,
       label: normalizeCustomisationLabel(opt.title),
       price: Number(opt.price) || 0,
     })),
   };
+}
+
+export function getEffectiveMinOptions(group: OptionGroup): number {
+  if (group.type !== "multi") {
+    return group.required ? 1 : 0;
+  }
+  if (group.isMultiLimited && (group.minOptions ?? 0) > 0) {
+    return group.minOptions ?? 0;
+  }
+  return group.required ? 1 : 0;
+}
+
+export function getEffectiveMaxOptions(group: OptionGroup): number | null {
+  if (group.type !== "multi" || !group.isMultiLimited) return null;
+  const max = group.maxOptions ?? 0;
+  return max > 0 ? max : null;
+}
+
+export function isOptionSelectionDisabled(
+  group: OptionGroup,
+  optionId: string,
+  selectedIds: string[],
+): boolean {
+  if (group.type !== "multi") return false;
+  if (selectedIds.includes(optionId)) return false;
+  const max = getEffectiveMaxOptions(group);
+  return max != null && selectedIds.length >= max;
+}
+
+export function toggleOptionSelection(
+  group: OptionGroup,
+  selectedIds: string[],
+  optionId: string,
+): string[] {
+  if (group.type === "single") {
+    return selectedIds.includes(optionId) ? [] : [optionId];
+  }
+
+  if (selectedIds.includes(optionId)) {
+    return selectedIds.filter((id) => id !== optionId);
+  }
+
+  if (isOptionSelectionDisabled(group, optionId, selectedIds)) {
+    return selectedIds;
+  }
+
+  return [...selectedIds, optionId];
 }
 
 export function resolveCustomizationIdsForProduct(
@@ -157,9 +213,11 @@ export function getMissingRequiredOptionGroups(
   groups: OptionGroup[],
   selections: Record<string, string[]>,
 ): OptionGroup[] {
-  return groups.filter(
-    (group) => group.required && (selections[group.id] ?? []).length === 0,
-  );
+  return groups.filter((group) => {
+    const count = (selections[group.id] ?? []).length;
+    const min = getEffectiveMinOptions(group);
+    return min > 0 && count < min;
+  });
 }
 
 export function computeExtraPrice(

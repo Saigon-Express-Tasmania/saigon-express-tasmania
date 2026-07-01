@@ -19,6 +19,7 @@ import {
 } from "./stripe.ts";
 import { sendOrderConfirmationEmail } from "./order-confirmation-email.ts";
 import { sendOrderPaymentReceivedEmail } from "./order-payment-received-email.ts";
+import { validateCateringCatalogUnitPrices } from "./catering-catalog-price.ts";
 
 export type { StripePaymentMode };
 
@@ -42,6 +43,7 @@ export type OrderCheckoutItem = {
   qty: number;
   unitPrice: number;
   itemName: string;
+  variantLabel?: string | null;
   customisation?: OrderItemCustomisation | null;
 };
 
@@ -1267,6 +1269,9 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
         const qty = Number(row.qty);
         const unitPrice = Number(row.unitPrice);
         const itemName = String(row.itemName ?? "").trim();
+        const variantLabelRaw = row.variantLabel;
+        const variantLabel =
+          variantLabelRaw != null ? String(variantLabelRaw).trim() || null : null;
 
         if (!Number.isFinite(menuItemId) || menuItemId <= 0) throw new Error("Invalid product");
         if (!Number.isFinite(qty) || qty < 1) throw new Error("Invalid quantity");
@@ -1278,6 +1283,7 @@ export function validateOrderCheckoutInput(body: unknown): OrderCheckoutInput {
           qty,
           unitPrice,
           itemName,
+          variantLabel,
           customisation: parseOrderItemCustomisation(row.customisation),
         };
       })
@@ -1496,60 +1502,6 @@ async function fetchWholesaleTiers(
   });
 }
 
-async function validateCateringCatalogUnitPrices(
-  supabase: ReturnType<typeof createServiceClient>,
-  items: OrderCheckoutItem[],
-): Promise<void> {
-  const productIds = [...new Set(items.map((item) => item.productId))];
-  if (productIds.length === 0) return;
-
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, unit_price, product_type")
-    .in("id", productIds)
-    .eq("product_type", "catering");
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const rowsById = new Map<number, { unit_price: string | null }>();
-  for (const row of data ?? []) {
-    const record = row as Record<string, unknown>;
-    const id = Number(record.id);
-    if (!Number.isFinite(id) || id <= 0) continue;
-    rowsById.set(id, {
-      unit_price:
-        record.unit_price != null ? String(record.unit_price).trim() : null,
-    });
-  }
-
-  for (const item of items) {
-    const row = rowsById.get(item.productId);
-    if (!row) {
-      throw new Error(`${item.itemName} is not available for catering checkout.`);
-    }
-
-    const catalogueUnitPrice = row.unit_price?.trim() ?? "";
-    if (!catalogueUnitPrice) {
-      throw new Error(
-        `${item.itemName} requires a custom quote and cannot be paid online.`,
-      );
-    }
-
-    const catalogueAmount = Number(catalogueUnitPrice);
-    if (!Number.isFinite(catalogueAmount) || catalogueAmount <= 0) {
-      throw new Error(`Invalid catalogue price for ${item.itemName}.`);
-    }
-
-    if (Math.abs(catalogueAmount - item.unitPrice) > 0.01) {
-      throw new Error(
-        `The price for ${item.itemName} has changed. Please refresh and try again.`,
-      );
-    }
-  }
-}
-
 async function validateWholesaleInventoryAvailability(
   supabase: ReturnType<typeof createServiceClient>,
   customerAccount: string,
@@ -1712,7 +1664,7 @@ export async function createOrderCheckoutSession(
   }
 
   if (input.orderType === "catering") {
-    await validateCateringCatalogUnitPrices(supabase, input.items);
+    await validateCateringCatalogUnitPrices(input.items);
     if (input.fulfillmentType !== "pick_up") {
       if (!input.shippingAddress) {
         throw new Error("Delivery address is required");

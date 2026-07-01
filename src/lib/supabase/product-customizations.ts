@@ -26,6 +26,9 @@ type GroupRow = {
   type: "single" | "multi";
   required: boolean;
   sort_order: number;
+  is_multi_limited: boolean;
+  min_options: number;
+  max_options: number;
   product_customization_options?: OptionRow[] | null;
 };
 
@@ -49,6 +52,9 @@ function mapGroupRow(row: GroupRow): ProductCustomizationGroup {
     type: row.type,
     required: row.required,
     sortOrder: row.sort_order,
+    isMultiLimited: row.is_multi_limited,
+    minOptions: row.min_options,
+    maxOptions: row.max_options,
     options,
   };
 }
@@ -66,6 +72,9 @@ async function loadProductCustomizationsCatalog(): Promise<ProductCustomizations
       type,
       required,
       sort_order,
+      is_multi_limited,
+      min_options,
+      max_options,
       product_customization_options (
         id,
         key,

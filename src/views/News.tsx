@@ -45,7 +45,7 @@ function PostCardBody({
         <div
           className={cn(
             "flex shrink-0 flex-col gap-3",
-            featured ? "w-[76px] sm:w-[88px]" : "w-[68px] sm:w-[76px]",
+            featured ? "w-[96px] sm:w-[128px]" : "w-[72px] sm:w-[96px]",
           )}
         >
           {newsLogoUrl ? (
@@ -56,7 +56,7 @@ function PostCardBody({
               className={cn(
                 "block w-full object-contain object-top",
                 featured
-                  ? "max-h-14 sm:max-h-16"
+                  ? "max-h-16 sm:max-h-18"
                   : "max-h-12 sm:max-h-14",
               )}
             />

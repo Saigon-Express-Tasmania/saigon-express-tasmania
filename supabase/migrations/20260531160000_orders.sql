@@ -115,6 +115,7 @@ create table public.order_items (
   is_catch_weight boolean not null default false, -- TRUE if price adjusts based on final weight.
   unit_price numeric(10, 2) not null,
   line_total numeric(10, 2) not null,
+  customisation jsonb,
   created_at timestamptz not null default now()
 );
 
@@ -178,6 +179,8 @@ comment on column public.order_items.order_id is
   'References an order id from orders, draft_orders, or archived_orders (no FK).';
 comment on column public.order_items.product_id is
   'References public.products. Primary product link for all order types.';
+comment on column public.order_items.customisation is
+  'Customer customisation payload: selections, note, extraPrice, qty.';
 
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;

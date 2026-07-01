@@ -2307,6 +2307,9 @@
     "requiredBadgeFulfilled": "Đã chọn",
     "tapToChoose": "Chạm để chọn",
     "chooseAny": "Chọn tuỳ ý",
+    "chooseRange": "Chọn {min}–{max}",
+    "chooseAtLeast": "Chọn ít nhất {min}",
+    "chooseUpTo": "Chọn tối đa {max}",
     "pickOne": "Chọn một",
     "selectedSummaryTitle": "Lựa chọn của bạn",
     "specialInstructions": {

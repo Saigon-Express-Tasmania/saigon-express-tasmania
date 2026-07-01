@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { formatAud, parseCateringPrice } from "@/lib/catering-price";
+import { formatAud, formatCateringDisplayPrice, parseCateringPrice } from "@/lib/catering-price";
 import type {
   CateringPack,
   CateringTierPrice,
@@ -20,8 +20,8 @@ function resolveOrderButtonPriceLabel(
   unitPrice: number,
 ): string {
   return (
-    selectedTier?.price?.trim() ||
-    pack.price?.trim() ||
+    formatCateringDisplayPrice(selectedTier?.price) ||
+    formatCateringDisplayPrice(pack.price) ||
     formatAud(unitPrice)
   );
 }
