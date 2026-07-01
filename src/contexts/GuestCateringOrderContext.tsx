@@ -136,14 +136,16 @@ function GuestCateringOrderCheckoutSync() {
 
           if (cancelled) return;
 
-          const trackingToken = result.data?.trackingToken?.trim();
-          if (result.ok && trackingToken) {
-            toast.success("Payment successful. Opening your order…");
-            router.replace(
-              `/order-tracking/${encodeURIComponent(trackingToken)}?checkout=success`,
-              { scroll: false },
-            );
-            return;
+          if (result.ok) {
+            const trackingToken = result.data?.trackingToken?.trim();
+            if (trackingToken) {
+              toast.success("Payment successful. Opening your order…");
+              router.replace(
+                `/order-tracking/${encodeURIComponent(trackingToken)}?checkout=success`,
+                { scroll: false },
+              );
+              return;
+            }
           }
         } catch {
           // retry below

@@ -265,10 +265,8 @@ export function FranchiseResourceAdminPage({
   const listFilterLabel =
     listFilterTaxonomyKind === 'folder' ? 'Folder' : 'Category';
   const legacyTableTaxonomyKind: TaxonomyListKind | null =
-    usesLegacyTaxonomyFilter
-      ? listFilterTaxonomyKind === 'folder'
-        ? 'folder'
-        : 'category'
+    usesLegacyTaxonomyFilter && listFilterTaxonomyKind === 'category'
+      ? 'category'
       : null;
   const visibleTableTaxonomyColumns = listTableTaxonomyColumns.filter(
     (kind) => kind !== legacyTableTaxonomyKind,

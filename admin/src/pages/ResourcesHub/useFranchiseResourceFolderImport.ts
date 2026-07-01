@@ -47,6 +47,17 @@ function defaultPreviewBuildOptions(
   };
 }
 
+function getDirectoryPicker():
+  | (() => Promise<FileSystemDirectoryHandle>)
+  | null {
+  const candidate = window as Window & {
+    showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+  };
+  return typeof candidate.showDirectoryPicker === 'function'
+    ? candidate.showDirectoryPicker
+    : null;
+}
+
 type PreviewContext = {
   parsed: ParsedFolderImportFile[];
   existingCategoryIdByAlias: Map<string, number>;
@@ -532,9 +543,10 @@ export function useFranchiseResourceFolderImport({
     if (importing || preparingPreview) return;
 
     void (async () => {
-      if ('showDirectoryPicker' in window) {
+      const showDirectoryPicker = getDirectoryPicker();
+      if (showDirectoryPicker) {
         try {
-          const handle = await window.showDirectoryPicker();
+          const handle = await showDirectoryPicker();
           const { files, selectedRootName } =
             await readFolderImportFilesFromDirectoryHandle(handle);
           if (files.length === 0) {
