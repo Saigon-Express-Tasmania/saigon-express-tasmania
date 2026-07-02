@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "@/components/link";
 import {
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
-import { menuItemDetailPath } from "@/lib/menu-item-routes";
+import { menuItemDetailPath, MENU_CATEGORIES_ANCHOR } from "@/lib/menu-item-routes";
 import AddOnSuggestionModal, {
   type SuggestedItem,
 } from "@/components/AddOnSuggestionModal";
@@ -27,17 +27,15 @@ import PickLocationModal from "@/components/PickLocationModal";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
 import LazyImage from "@/components/LazyImage";
 import FoodContentLabels from "@/components/FoodContentLabels";
+import CategoryGroupBar from "@/components/CategoryGroupBar";
+import {
+  filterCategoriesWithItems,
+  getPopulatedCategoryIds,
+} from "@/lib/category-bar";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { pickMenuImageUrl } from "@/types";
-import type { SiteCategory, StoreLocation } from "@/types";
+import type { SiteCategory, SiteCategoryGroup, StoreLocation } from "@/types";
 // 1. Import Fuse
 import Fuse from "fuse.js";
 
@@ -65,12 +63,14 @@ type MenuProps = {
   menuItems: MenuItem[];
   storeLocations: StoreLocation[];
   categoriesContent: SiteCategory[];
+  categoryGroups: SiteCategoryGroup[];
 };
 
 export default function Menu({
   menuItems,
   storeLocations,
   categoriesContent,
+  categoryGroups,
 }: MenuProps) {
   const t = useTranslations("Menu");
   const locale = useLocale();
@@ -117,6 +117,34 @@ export default function Menu({
     [searchParams, pathname, router, allLabel],
   );
 
+  useEffect(() => {
+    if (!urlCategory) {
+      setActiveCategory(allLabel);
+      return;
+    }
+
+    const matched = categoriesContent.find(
+      (category) => category.name === urlCategory,
+    );
+    setActiveCategory(matched ? urlCategory : allLabel);
+  }, [urlCategory, categoriesContent, allLabel]);
+
+  useEffect(() => {
+    const scrollToCategories = () => {
+      if (window.location.hash !== `#${MENU_CATEGORIES_ANCHOR}`) return;
+      requestAnimationFrame(() => {
+        document.getElementById(MENU_CATEGORIES_ANCHOR)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    };
+
+    scrollToCategories();
+    window.addEventListener("hashchange", scrollToCategories);
+    return () => window.removeEventListener("hashchange", scrollToCategories);
+  }, [urlCategory]);
+
   // ─── Shared cart ─────────────────────────────────────────────────────────
   const {
     cart,
@@ -162,10 +190,10 @@ export default function Menu({
     );
   }, [activeCategory, allLabel, categoriesContent]);
 
-  const navCategories = useMemo(
-    () => [allLabel, ...categoriesContent.map((category) => category.name)],
-    [allLabel, categoriesContent],
-  );
+  const barCategories = useMemo(() => {
+    const populatedCategoryIds = getPopulatedCategoryIds(menuItems);
+    return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
+  }, [categoriesContent, menuItems]);
 
   // 2. Initialize Fuse instance with configuration keys and thresholds
   const fuse = useMemo(() => {
@@ -245,18 +273,11 @@ export default function Menu({
 
   const cartIds = new Set(cart.map((c) => c.item.id));
 
-  const categoryButtonClass = (cat: string) =>
-    `shrink-0 px-4 py-2 text-sm font-semibold transition-colors border ${
-      activeCategory === cat
-        ? "bg-brand-red text-white border-brand-red"
-        : "bg-transparent text-brand-dark/60 border-gray-200 hover:border-brand-red/40 hover:text-brand-dark"
-    }`;
+  const getCategoryIcon = (categoryName: string) =>
+    categoryName === allLabel ? null : categoryIconMap[categoryName];
 
-  const getCategoryIcon = (cat: string) =>
-    cat === allLabel ? null : categoryIconMap[cat];
-
-  const getCategoryIconFallback = (cat: string): "all" | "category" =>
-    cat === allLabel ? "all" : "category";
+  const getCategoryIconFallback = (categoryName: string): "all" | "category" =>
+    categoryName === allLabel ? "all" : "category";
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
@@ -317,72 +338,30 @@ export default function Menu({
 
       {/* Category strip */}
       <div
-        id="categories"
-        className="bg-white border-b border-gray-100 sticky top-16 z-40"
+        id={MENU_CATEGORIES_ANCHOR}
+        className="sticky top-16 z-40 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]"
       >
         <div className="max-w-[1280px] mx-auto px-6 py-3">
-          <div className="md:hidden">
-            <Label
-              htmlFor="menu-category-select"
-              className="mb-2 block text-xs font-bold uppercase tracking-wider text-brand-dark/60"
-            >
-              {t("categories.label")}
-            </Label>
-            <Select value={activeCategory} onValueChange={handleCategoryClick}>
-              <SelectTrigger
-                id="menu-category-select"
-                className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-semibold text-brand-dark shadow-sm hover:border-brand-red/30 focus-visible:border-brand-red focus-visible:ring-brand-red/20 [&>svg]:text-brand-red/70"
-                iconClassName="text-brand-red/70"
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-3">                  
-                  <SelectValue />
-                </span>
-              </SelectTrigger>
-              <SelectContent
-                position="popper"
-                sideOffset={6}
-                viewportClassName="grid grid-cols-2 gap-2"
-                className="max-h-[min(24rem,70vh)] border-gray-200 shadow-xl"
-              >
-                {navCategories.map((cat) => (
-                  <SelectItem
-                    key={cat}
-                    value={cat}
-                    className="min-w-0 rounded-lg px-3 py-3 data-[highlighted]:bg-brand-red/5 data-[state=checked]:bg-brand-red data-[state=checked]:text-white data-[state=checked]:[&_.category-icon]:text-white data-[state=checked]:[&_.category-icon_svg]:fill-white data-[state=checked]:[&_.category-icon_svg]:stroke-white [&>span>span:first-child]:hidden [&>span]:gap-0"
-                  >
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <CategoryIcon
-                        icon={getCategoryIcon(cat)}
-                        fallback={getCategoryIconFallback(cat)}
-                        accent
-                        className="size-8 shrink-0 text-2xl"
-                        fallbackClassName="size-5"
-                      />
-                      <span className="truncate text-sm font-semibold leading-snug">
-                        {cat}
-                      </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div
-            id="menu-category-list"
-            className="hidden flex-wrap gap-2 md:flex"
-          >
-            {navCategories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => handleCategoryClick(cat)}
-                className={categoryButtonClass(cat)}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+          <Label className="mb-2 block text-xs font-bold uppercase tracking-wider text-brand-dark/60 md:sr-only">
+            {t("categories.label")}
+          </Label>
+          <CategoryGroupBar
+            allLabel={allLabel}
+            activeCategory={activeCategory}
+            onCategorySelect={handleCategoryClick}
+            categories={barCategories}
+            categoryGroups={categoryGroups}
+            variant="brand"
+            renderCategoryLeading={(category) => (
+              <CategoryIcon
+                icon={getCategoryIcon(category.name)}
+                fallback={getCategoryIconFallback(category.name)}
+                accent
+                className="size-6 shrink-0 text-lg"
+                fallbackClassName="size-4"
+              />
+            )}
+          />
         </div>
       </div>
 

@@ -10,7 +10,7 @@ import {
   type ItemCustomisation,
 } from "@/components/ItemCustomiseModal";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { invokeEdgeFunction } from "@/lib/supabase/edge-functions";
 import { toast } from "sonner";
@@ -41,16 +41,24 @@ import {
   formatCateringPackCardPriceLabel,
   parseCateringPrice,
 } from "@/lib/catering-price";
-import { cateringItemDetailPath } from "@/lib/catering-item-routes";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { SiteCategory } from "@/types";
+  CATERING_CATEGORIES_ANCHOR,
+  cateringItemDetailPath,
+} from "@/lib/catering-item-routes";
+import {
+  buildCateringCategoryQuery,
+  resolveCateringCategoryFromUrlParam,
+} from "@/lib/catering-category-url";
+import {
+  categoryDisplaySortRank,
+  sortCategoriesByDisplayOrder,
+} from "@/lib/category-sort";
+import CategoryGroupBar from "@/components/CategoryGroupBar";
+import {
+  filterCategoriesWithItems,
+  getPopulatedCategoryIds,
+} from "@/lib/category-bar";
+import type { SiteCategory, SiteCategoryGroup } from "@/types";
 
 type CateringMenuGroup = {
   categoryId: number | null;
@@ -63,8 +71,11 @@ function buildCateringMenuGroups(
   packs: CateringPack[],
   categoriesContent: SiteCategory[],
 ): CateringMenuGroup[] {
-  const categoryOrder = new Map(
-    categoriesContent.map((category, index) => [category.id, index]),
+  const categoryMeta = new Map(
+    categoriesContent.map((category) => [
+      category.id,
+      { sortOrder: category.sortOrder, name: category.name },
+    ]),
   );
 
   const groups = packs
@@ -91,16 +102,20 @@ function buildCateringMenuGroups(
   return groups
     .filter((group) => group.items.length > 0)
     .sort((a, b) => {
-      const aOrder =
-        a.categoryId != null
-          ? (categoryOrder.get(a.categoryId) ?? Number.MAX_SAFE_INTEGER)
-          : Number.MAX_SAFE_INTEGER;
-      const bOrder =
-        b.categoryId != null
-          ? (categoryOrder.get(b.categoryId) ?? Number.MAX_SAFE_INTEGER)
-          : Number.MAX_SAFE_INTEGER;
+      const aMeta =
+        a.categoryId != null ? categoryMeta.get(a.categoryId) : undefined;
+      const bMeta =
+        b.categoryId != null ? categoryMeta.get(b.categoryId) : undefined;
+      const aRank = aMeta
+        ? categoryDisplaySortRank(aMeta.sortOrder)
+        : Number.MAX_SAFE_INTEGER;
+      const bRank = bMeta
+        ? categoryDisplaySortRank(bMeta.sortOrder)
+        : Number.MAX_SAFE_INTEGER;
+
       return (
-        aOrder - bOrder ||
+        aRank - bRank ||
+        (aMeta?.name ?? a.category).localeCompare(bMeta?.name ?? b.category) ||
         a.sortOrder - b.sortOrder ||
         a.category.localeCompare(b.category)
       );
@@ -110,6 +125,7 @@ function buildCateringMenuGroups(
 type CateringProps = {
   packs: CateringPack[];
   categoriesContent: SiteCategory[];
+  categoryGroups: SiteCategoryGroup[];
 };
 
 interface WhyUsItem {
@@ -154,11 +170,11 @@ const SHOW_CATERING_PACKS_SECTION = false;
 export default function Catering({
   packs,
   categoriesContent,
+  categoryGroups,
 }: CateringProps) {
   const t = useTranslations("Catering");
   const locale = useLocale();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const allLabel = t("menu.allCategory");
   const urlCategory = searchParams.get("category");
@@ -191,7 +207,13 @@ export default function Catering({
     guestCount: "",
     message: "",
   });
-  const [activeCategory, setActiveCategory] = useState(urlCategory || allLabel);
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const resolved = resolveCateringCategoryFromUrlParam(
+      urlCategory,
+      categoriesContent,
+    );
+    return resolved?.name ?? allLabel;
+  });
 
   const availablePacks = useMemo(
     () => packs.filter((pack) => pack.isAvailable),
@@ -206,59 +228,111 @@ export default function Catering({
     [availablePacks],
   );
 
-  const menuGroups = useMemo(
-    () => buildCateringMenuGroups(availablePacks, categoriesContent),
-    [availablePacks, categoriesContent],
+  const sortedCategories = useMemo(
+    () => sortCategoriesByDisplayOrder(categoriesContent),
+    [categoriesContent],
   );
 
-  const categories = useMemo(
-    () => [allLabel, ...categoriesContent.map((category) => category.name)],
-    [allLabel, categoriesContent],
+  const barCategories = useMemo(() => {
+    const populatedCategoryIds = getPopulatedCategoryIds(availablePacks);
+    return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
+  }, [availablePacks, categoriesContent]);
+
+  const menuGroups = useMemo(
+    () => buildCateringMenuGroups(availablePacks, sortedCategories),
+    [availablePacks, sortedCategories],
   );
+
+  const activeCategoryId = useMemo(() => {
+    if (activeCategory === allLabel) return null;
+    return (
+      categoriesContent.find((category) => category.name === activeCategory)
+        ?.id ?? null
+    );
+  }, [activeCategory, allLabel, categoriesContent]);
 
   const visibleMenuGroups = useMemo(() => {
-    if (activeCategory === allLabel) return menuGroups;
-    return menuGroups.filter((group) => group.category === activeCategory);
-  }, [activeCategory, allLabel, menuGroups]);
+    if (activeCategoryId == null) return menuGroups;
+    return menuGroups.filter((group) => group.categoryId === activeCategoryId);
+  }, [activeCategoryId, menuGroups]);
+
+  const replaceCategoryInUrl = useCallback(
+    (categoryName: string) => {
+      const query = buildCateringCategoryQuery(
+        categoryName,
+        allLabel,
+        categoriesContent,
+      );
+      const nextUrl = query ? `${pathname}?${query}` : pathname;
+      window.history.replaceState(window.history.state, "", nextUrl);
+    },
+    [pathname, allLabel, categoriesContent],
+  );
 
   const handleCategoryClick = useCallback(
     (cat: string) => {
       setActiveCategory(cat);
-
-      const params = new URLSearchParams(searchParams.toString());
-      if (cat === allLabel) {
-        params.delete("category");
-      } else {
-        params.set("category", cat);
-      }
-
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      replaceCategoryInUrl(cat);
     },
-    [searchParams, pathname, router, allLabel],
+    [replaceCategoryInUrl],
   );
-
-  const categoryButtonClass = (cat: string) =>
-    `shrink-0 px-4 py-2 text-sm font-semibold transition-colors border ${
-      activeCategory === cat
-        ? "bg-brand-red text-white border-brand-red"
-        : "bg-transparent text-brand-dark/60 border-gray-200 hover:border-brand-red/40 hover:text-brand-dark"
-    }`;
 
   // Load configuration arrays from translation files
   const whyUsList: WhyUsItem[] = t.raw("whyUs.items");
   const statsList: StatItem[] = t.raw("stats");
 
   useEffect(() => {
-    if (!urlCategory) {
-      setActiveCategory(allLabel);
-      return;
-    }
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const param = params.get("category");
+      if (!param) {
+        setActiveCategory(allLabel);
+        return;
+      }
 
-    const matchedCategory = menuGroups.find(
-      (group) => group.category === urlCategory,
-    );
-    setActiveCategory(matchedCategory ? urlCategory : allLabel);
-  }, [urlCategory, menuGroups, allLabel]);
+      const resolved = resolveCateringCategoryFromUrlParam(
+        param,
+        categoriesContent,
+      );
+      if (!resolved) {
+        setActiveCategory(allLabel);
+        return;
+      }
+
+      setActiveCategory(resolved.name);
+
+      if (param !== resolved.alias) {
+        params.set("category", resolved.alias);
+        const query = params.toString();
+        const hash = window.location.hash;
+        window.history.replaceState(
+          window.history.state,
+          "",
+          query ? `${pathname}?${query}${hash}` : `${pathname}${hash}`,
+        );
+      }
+    };
+
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, [urlCategory, categoriesContent, allLabel, pathname]);
+
+  useEffect(() => {
+    const scrollToCategories = () => {
+      if (window.location.hash !== `#${CATERING_CATEGORIES_ANCHOR}`) return;
+      requestAnimationFrame(() => {
+        document.getElementById(CATERING_CATEGORIES_ANCHOR)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    };
+
+    scrollToCategories();
+    window.addEventListener("hashchange", scrollToCategories);
+    return () => window.removeEventListener("hashchange", scrollToCategories);
+  }, [urlCategory, menuGroups.length]);
 
   useEffect(() => {
     if (!guestOrderBlocksCart) {
@@ -667,62 +741,27 @@ export default function Catering({
               {t("menu.descriptionEnd")}
             </p>
           </div>
+        </div>
 
           {menuGroups.length > 0 ? (
             <div
-              id="catering-categories"
-              className="sticky top-16 z-40 mb-10 -mx-6 border-y border-gray-100 bg-white px-6 py-3 md:mx-0 md:rounded-lg md:border md:shadow-sm"
+              id={CATERING_CATEGORIES_ANCHOR}
+              className="sticky top-16 z-40 mb-10 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]"
             >
-              <div className="md:hidden">
-                <Label
-                  htmlFor="catering-category-select"
-                  className="mb-2 block text-xs font-bold uppercase tracking-wider text-brand-dark/60"
-                >
-                  {t("menu.categories.label")}
-                </Label>
-                <Select
-                  value={activeCategory}
-                  onValueChange={handleCategoryClick}
-                >
-                  <SelectTrigger
-                    id="catering-category-select"
-                    className="h-14 rounded-lg border-gray-200 bg-white px-4 text-base font-semibold text-brand-dark shadow-sm hover:border-brand-red/30 focus-visible:border-brand-red focus-visible:ring-brand-red/20 [&>svg]:text-brand-red/70"
-                    iconClassName="text-brand-red/70"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    sideOffset={6}
-                    className="max-h-[min(24rem,70vh)] border-gray-200 shadow-xl"
-                  >
-                    {categories.map((cat) => (
-                      <SelectItem
-                        key={cat}
-                        value={cat}
-                        className="rounded-lg px-3 py-3 data-[highlighted]:bg-brand-red/5 data-[state=checked]:bg-brand-red data-[state=checked]:text-white"
-                      >
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="hidden flex-wrap gap-2 md:flex">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => handleCategoryClick(cat)}
-                    className={categoryButtonClass(cat)}
-                  >
-                    {cat}
-                  </button>
-                ))}
+              <div className="max-w-[1280px] mx-auto px-6 py-3">
+                <CategoryGroupBar
+                  allLabel={allLabel}
+                  activeCategory={activeCategory}
+                  onCategorySelect={handleCategoryClick}
+                  categories={barCategories}
+                  categoryGroups={categoryGroups}
+                  variant="brand"
+                />
               </div>
             </div>
           ) : null}
+
+        <div className="max-w-[1280px] mx-auto px-6">
 
           {menuGroups.length === 0 ? (
             <div className="text-center text-sm text-brand-dark/55 py-6">

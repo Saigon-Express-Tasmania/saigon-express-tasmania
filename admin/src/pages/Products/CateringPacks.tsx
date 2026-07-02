@@ -507,12 +507,12 @@ export function CateringPacks() {
       if (!term) return true;
       const categoryName = pack.category_name ?? '';
       return (
-        pack.name.toLowerCase().includes(term) ||
+        (pack.name ?? '').toLowerCase().includes(term) ||
         categoryName.toLowerCase().includes(term) ||
-        pack.serves.toLowerCase().includes(term) ||
-        pack.price.toLowerCase().includes(term) ||
-        pack.description.toLowerCase().includes(term) ||
-        pack.tag.toLowerCase().includes(term) ||
+        (pack.serves ?? '').toLowerCase().includes(term) ||
+        (pack.price ?? '').toLowerCase().includes(term) ||
+        (pack.description ?? '').toLowerCase().includes(term) ||
+        (pack.tag ?? '').toLowerCase().includes(term) ||
         (pack.note ?? '').toLowerCase().includes(term) ||
         (pack.image_url ?? '').toLowerCase().includes(term)
       );

@@ -37,6 +37,7 @@ import Taxonomies from './pages/ResourcesHub/Taxonomies';
 import MenuAcademy from './pages/ResourcesHub/MenuAcademy';
 import Announcements from './pages/ResourcesHub/Announcements';
 import { Customizations } from './pages/Products/Customizations';
+import { CategoryGroups } from './pages/Products/CategoryGroups';
 
 export function App() {
   const { user, isLoading } = useSupabaseAuth();
@@ -62,6 +63,7 @@ export function App() {
             <Route path="/localization" element={<LocalizationPage />} />
             <Route path="/menu" element={<Menu />} />
             <Route path="/categories" element={<Categories />} />
+            <Route path="/category-groups" element={<CategoryGroups />} />
             <Route path="/promotions" element={<Promotions />} />
             <Route path="/catering-packs" element={<CateringPacks />} />
             <Route path="/store-locations" element={<StoreLocations />} />

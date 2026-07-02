@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { ProductCustomizationsProvider } from "@/contexts/ProductCustomizationsContext";
-import { getCategoriesByKind } from "@/lib/supabase/categories";
+import { getCategoryCatalogByKind } from "@/lib/supabase/categories";
 import { getMenuItems } from "@/lib/supabase/menu";
 import { getProductCustomizationsCatalog } from "@/lib/supabase/product-customizations";
 import { getActiveStoreLocations } from "@/lib/supabase/store-locations";
@@ -10,13 +10,14 @@ import Menu from "@/views/Menu";
 export const metadata = pageMetadata("menu");
 
 export default async function LocaleMenuPage() {
-  const [menuItems, storeLocations, categoriesContent, customizationsCatalog] =
+  const [menuItems, storeLocations, categoryCatalog, customizationsCatalog] =
     await Promise.all([
       getMenuItems(),
       getActiveStoreLocations(),
-      getCategoriesByKind("menu"),
+      getCategoryCatalogByKind("menu"),
       getProductCustomizationsCatalog(),
     ]);
+  const { categories: categoriesContent, categoryGroups } = categoryCatalog;
   return (
     <ProductCustomizationsProvider
       catalog={customizationsCatalog}
@@ -27,6 +28,7 @@ export default async function LocaleMenuPage() {
           menuItems={menuItems}
           storeLocations={storeLocations}
           categoriesContent={categoriesContent}
+          categoryGroups={categoryGroups}
         />
       </Suspense>
     </ProductCustomizationsProvider>

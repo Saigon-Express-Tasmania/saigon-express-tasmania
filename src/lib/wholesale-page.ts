@@ -1,4 +1,4 @@
-import { getCategoriesByKind } from "@/lib/supabase/categories";
+import { getCategoryCatalogByKind } from "@/lib/supabase/categories";
 import { mergeWholesaleProductsWithAvailability } from "@/lib/supabase/wholesale-availability";
 import { getWholesaleInventorySnapshot } from "@/lib/supabase/wholesale-inventory-snapshot";
 import {
@@ -12,6 +12,7 @@ import { getWholesaleTiers } from "@/lib/supabase/wholesale-tiers";
 import { categoryMapById } from "@/lib/product-category";
 import type {
   SiteCategory,
+  SiteCategoryGroup,
   WholesalePricingTier,
   WholesaleProduct,
   WholesaleProductAvailabilityRow,
@@ -21,6 +22,7 @@ export type WholesalePageData = {
   products: WholesaleProduct[];
   inventory: WholesaleProductAvailabilityRow[];
   categoriesContent: SiteCategory[];
+  categoryGroups: SiteCategoryGroup[];
   pricingTiers: WholesalePricingTier[];
   minimumWholesaleOrderValue: number;
   gstTaxRate: number;
@@ -49,13 +51,15 @@ export async function loadWholesaleCartConfig(): Promise<WholesaleCartConfig> {
 }
 
 export async function loadWholesalePageData(): Promise<WholesalePageData> {
-  const [productRows, inventory, categoriesContent, cartConfig] =
+  const [productRows, inventory, categoryCatalog, cartConfig] =
     await Promise.all([
       fetchWholesaleProductRows(),
       getWholesaleInventorySnapshot(),
-      getCategoriesByKind("wholesale"),
+      getCategoryCatalogByKind("wholesale"),
       loadWholesaleCartConfig(),
     ]);
+
+  const { categories: categoriesContent, categoryGroups } = categoryCatalog;
 
   return {
     products: mergeWholesaleProductsWithAvailability(
@@ -65,6 +69,7 @@ export async function loadWholesalePageData(): Promise<WholesalePageData> {
     ),
     inventory,
     categoriesContent,
+    categoryGroups,
     ...cartConfig,
   };
 }

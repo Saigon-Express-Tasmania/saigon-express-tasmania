@@ -1,6 +1,7 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { SearchableMultiSelect } from '@/components/SearchableMultiSelect';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -153,7 +154,7 @@ function CategoryFormField({
   );
 }
 
-type SortColumn = 'id' | 'alias' | 'kind';
+type SortColumn = 'id' | 'alias' | 'kind' | 'sort_order';
 type SortDirection = 'asc' | 'desc';
 
 type CustomizationOption = {
@@ -163,9 +164,19 @@ type CustomizationOption = {
   title: string;
 };
 
+type CategoryGroupOption = {
+  id: number;
+  name: string;
+  alias: string;
+  sortOrder: number;
+};
+
 type CategoryRow = {
   id: number;
   kind: CategoryKind;
+  sortOrder: number;
+  categoryGroupId: number | null;
+  categoryGroupName: string | null;
   alias: string;
   name: string;
   description: string | null;
@@ -178,6 +189,8 @@ type CategoryRow = {
 
 type CategoryInput = {
   kind: CategoryKind;
+  sortOrder: number;
+  categoryGroupId: number | null;
   name: string;
   description: string;
   imageUrl: string;
@@ -189,6 +202,8 @@ type CategoryInput = {
 
 const emptyCategoryInput = (): CategoryInput => ({
   kind: 'menu',
+  sortOrder: 0,
+  categoryGroupId: null,
   name: '',
   description: '',
   imageUrl: '',
@@ -228,6 +243,8 @@ async function nextCategoryId(): Promise<number> {
 
 type CategoryPayload = {
   kind: CategoryKind;
+  sort_order: number;
+  category_group_id: number | null;
   alias: string;
   name: string;
   description: string | null;
@@ -237,6 +254,69 @@ type CategoryPayload = {
   icon: string | null;
   customization_ids: number[];
 };
+
+function InlineSortOrderInput({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: number;
+  disabled?: boolean;
+  onCommit: (sortOrder: number) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = async () => {
+    const parsed = Number.parseInt(draft, 10);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setDraft(String(value));
+      toast.error('Sort order must be a non-negative integer.');
+      return;
+    }
+    if (parsed === value) return;
+
+    setSaving(true);
+    try {
+      await onCommit(parsed);
+    } catch {
+      setDraft(String(value));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Input
+      type="number"
+      min={0}
+      step={1}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        }
+      }}
+      disabled={disabled || saving}
+      className="h-8 w-20 font-mono text-sm"
+      aria-label="Sort order"
+    />
+  );
+}
+
+function resolveCategoryGroupName(
+  group: { name: string } | { name: string }[] | null | undefined,
+): string | null {
+  if (!group) return null;
+  if (Array.isArray(group)) return group[0]?.name ?? null;
+  return group.name ?? null;
+}
 
 function SortableHeader({
   label,
@@ -278,6 +358,7 @@ export function Categories() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroupOption[]>([]);
   const [customizations, setCustomizations] = useState<CustomizationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -291,8 +372,11 @@ export function Categories() {
   const [deleteTarget, setDeleteTarget] = useState<CategoryRow | null>(null);
   const [search, setSearch] = useState('');
   const [kindFilter, setKindFilter] = useState<string>('all');
-  const [sortColumn, setSortColumn] = useState<SortColumn>('alias');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(
+    null,
+  );
 
   const loadCategories = useCallback(async () => {
     try {
@@ -301,26 +385,39 @@ export function Categories() {
       const { data, error: fetchError } = await supabase
         .from('categories')
         .select(
-          'id, kind, alias, name, description, imageUrl, addon, style, icon, customization_ids',
+          'id, kind, sort_order, category_group_id, alias, name, description, imageUrl, addon, style, icon, customization_ids, category_groups(name)',
         )
+        .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
       if (fetchError) throw fetchError;
       setCategories(
-        (data ?? []).map((row) => ({
-          id: row.id,
-          kind: row.kind as CategoryKind,
-          alias: row.alias,
-          name: row.name,
-          description: row.description,
-          imageUrl: row.imageUrl,
-          addon: row.addon ?? [],
-          style: row.style,
-          icon: row.icon,
-          customizationIds: Array.isArray(row.customization_ids)
-            ? row.customization_ids.map((id) => Number(id))
-            : [],
-        })),
+        (data ?? []).map((row) => {
+          const group = row.category_groups as
+            | { name: string }
+            | { name: string }[]
+            | null;
+          return {
+            id: row.id,
+            kind: row.kind as CategoryKind,
+            sortOrder: Number(row.sort_order ?? 0),
+            categoryGroupId:
+              row.category_group_id != null
+                ? Number(row.category_group_id)
+                : null,
+            categoryGroupName: resolveCategoryGroupName(group),
+            alias: row.alias,
+            name: row.name,
+            description: row.description,
+            imageUrl: row.imageUrl,
+            addon: row.addon ?? [],
+            style: row.style,
+            icon: row.icon,
+            customizationIds: Array.isArray(row.customization_ids)
+              ? row.customization_ids.map((id) => Number(id))
+              : [],
+          };
+        }),
       );
     } catch (err) {
       const message =
@@ -329,6 +426,28 @@ export function Categories() {
       setCategories([]);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const loadCategoryGroups = useCallback(async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('category_groups')
+        .select('id, name, alias, sort_order')
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (fetchError) throw fetchError;
+      setCategoryGroups(
+        (data ?? []).map((row) => ({
+          id: row.id,
+          name: row.name,
+          alias: row.alias,
+          sortOrder: Number(row.sort_order ?? 0),
+        })),
+      );
+    } catch {
+      setCategoryGroups([]);
     }
   }, []);
 
@@ -350,11 +469,21 @@ export function Categories() {
   useEffect(() => {
     if (isAdmin) {
       void loadCategories();
+      void loadCategoryGroups();
       void loadCustomizations();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadCategories, loadCustomizations]);
+  }, [isAdmin, loadCategories, loadCategoryGroups, loadCustomizations]);
+
+  const categoryGroupSelectOptions = useMemo(
+    () =>
+      categoryGroups.map((group) => ({
+        value: String(group.id),
+        label: group.name,
+      })),
+    [categoryGroups],
+  );
 
   const customizationSelectOptions = useMemo(
     () =>
@@ -389,6 +518,7 @@ export function Categories() {
         cat.kind.toLowerCase().includes(term) ||
         cat.alias.toLowerCase().includes(term) ||
         cat.name.toLowerCase().includes(term) ||
+        (cat.categoryGroupName ?? '').toLowerCase().includes(term) ||
         (cat.description ?? '').toLowerCase().includes(term) ||
         (cat.imageUrl ?? '').toLowerCase().includes(term) ||
         (cat.style ?? '').toLowerCase().includes(term) ||
@@ -402,9 +532,41 @@ export function Categories() {
       if (sortColumn === 'id') {
         return (a.id - b.id) * direction;
       }
+      if (sortColumn === 'sort_order') {
+        return (a.sortOrder - b.sortOrder || a.id - b.id) * direction;
+      }
       return a[sortColumn].localeCompare(b[sortColumn]) * direction;
     });
   }, [categories, search, kindFilter, sortColumn, sortDirection]);
+
+  const handleInlineSortOrderSave = useCallback(
+    async (categoryId: number, sortOrder: number) => {
+      setInlineSortSavingId(categoryId);
+      try {
+        const { error: updateError } = await supabase
+          .from('categories')
+          .update({ sort_order: sortOrder })
+          .eq('id', categoryId);
+
+        if (updateError) throw updateError;
+
+        setCategories((prev) =>
+          prev.map((cat) =>
+            cat.id === categoryId ? { ...cat, sortOrder } : cat,
+          ),
+        );
+        toast.success('Sort order updated.');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to update sort order.',
+        );
+        throw err;
+      } finally {
+        setInlineSortSavingId(null);
+      }
+    },
+    [],
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -412,6 +574,7 @@ export function Categories() {
       ...emptyCategoryInput(),
       kind:
         kindFilter !== 'all' ? (kindFilter as CategoryKind) : 'menu',
+      sortOrder: categories.length,
     });
     setImagePreviewUrl(null);
     setDialogOpen(true);
@@ -421,6 +584,8 @@ export function Categories() {
     setEditing(category);
     setForm({
       kind: category.kind,
+      sortOrder: category.sortOrder,
+      categoryGroupId: category.categoryGroupId,
       name: category.name,
       description: category.description ?? '',
       imageUrl: category.imageUrl ?? '',
@@ -482,6 +647,8 @@ export function Categories() {
     try {
       const payload: CategoryPayload = {
         kind: form.kind,
+        sort_order: Number(form.sortOrder) || 0,
+        category_group_id: form.categoryGroupId,
         alias,
         name: form.name.trim(),
         description: form.description.trim() || null,
@@ -619,7 +786,7 @@ export function Categories() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Input
-                placeholder="Search kind, alias, name, style, icon or add-ons…"
+                placeholder="Search kind, alias, name, group, style, icon or add-ons…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-sm"
@@ -675,6 +842,13 @@ export function Categories() {
                         onSort={handleSort}
                       />
                       <SortableHeader
+                        label="Sort"
+                        column="sort_order"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
                         label="Alias"
                         column="alias"
                         sortColumn={sortColumn}
@@ -683,6 +857,9 @@ export function Categories() {
                       />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Group
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Style
@@ -711,11 +888,23 @@ export function Categories() {
                         <td className="px-4 py-3 text-sm capitalize text-muted-foreground">
                           {cat.kind}
                         </td>
+                        <td className="px-4 py-3">
+                          <InlineSortOrderInput
+                            value={cat.sortOrder}
+                            disabled={inlineSortSavingId === cat.id || saving}
+                            onCommit={(sortOrder) =>
+                              handleInlineSortOrderSave(cat.id, sortOrder)
+                            }
+                          />
+                        </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {cat.alias}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {cat.name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {cat.categoryGroupName ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {cat.style ?? '—'}
@@ -837,11 +1026,55 @@ export function Categories() {
 
             <CategoryFormSection
               title="Display"
-              description="Optional CSS class and icon token for the storefront."
+              description="Storefront grouping, ordering, and optional presentation tokens."
               icon={Palette}
               accentClass="border-fuchsia-200/70 bg-gradient-to-br from-fuchsia-50/80 to-background dark:border-fuchsia-900/50 dark:from-fuchsia-950/30"
             >
               <div className="grid gap-4 sm:grid-cols-2">
+                <CategoryFormField
+                  label="Category group"
+                  htmlFor="cat-group"
+                  description="Optional menu group for storefront navigation."
+                  className="sm:col-span-2"
+                >
+                  <SearchableSelect
+                    id="cat-group"
+                    options={categoryGroupSelectOptions}
+                    value={
+                      form.categoryGroupId != null
+                        ? String(form.categoryGroupId)
+                        : ''
+                    }
+                    onValueChange={(value) =>
+                      setForm((f) => ({
+                        ...f,
+                        categoryGroupId: value ? Number(value) : null,
+                      }))
+                    }
+                    placeholder="Search category groups…"
+                    emptyOption={{ value: '', label: 'None' }}
+                    disabled={saving}
+                  />
+                </CategoryFormField>
+                <CategoryFormField
+                  label="Sort order"
+                  htmlFor="cat-sort-order"
+                  description="Lower numbers appear first in category lists."
+                >
+                  <Input
+                    id="cat-sort-order"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.sortOrder}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        sortOrder: Number(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                </CategoryFormField>
                 <CategoryFormField label="Style" htmlFor="cat-style">
                   <Input
                     id="cat-style"

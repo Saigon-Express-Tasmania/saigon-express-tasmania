@@ -22,16 +22,24 @@ import {
 } from "@/types";
 // 1. Import Fuse
 import Fuse from "fuse.js";
+import CategoryGroupBar from "@/components/CategoryGroupBar";
+import {
+  filterCategoriesWithItems,
+  getPopulatedCategoryIds,
+} from "@/lib/category-bar";
+import type { SiteCategoryGroup } from "@/types";
 
 const ALL_CATEGORY = "All";
 
 export default function WholesaleLandingShop({
   products,
   categoriesContent,
+  categoryGroups,
   pricingTiers,
 }: {
   products: WholesaleProduct[];
   categoriesContent: SiteCategory[];
+  categoryGroups: SiteCategoryGroup[];
   pricingTiers: WholesalePricingTier[];
 }) {
   const t = useTranslations("WholesaleShop");
@@ -48,6 +56,11 @@ export default function WholesaleLandingShop({
     isSignedIn && hasPrivilege(authMetadata.privileges, "wholesale");
 
   const bannerPerks = (t.raw("banner.perks") || []) as string[];
+
+  const barCategories = useMemo(() => {
+    const populatedCategoryIds = getPopulatedCategoryIds(products);
+    return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
+  }, [categoriesContent, products]);
 
   const categoryStyleMap = useMemo(
     () =>
@@ -240,39 +253,27 @@ export default function WholesaleLandingShop({
               </button>
             )}
           </div>
+        </div>
 
-          {/* Category filter pills */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            <button
-              type="button"
-              onClick={() => handleCategoryClick(ALL_CATEGORY)}
-              className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                selectedCategory === ALL_CATEGORY
-                  ? "bg-foreground text-background border-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary bg-transparent"
-              }`}
-            >
-              {ALL_CATEGORY}
-            </button>
-            {categoriesContent.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => handleCategoryClick(category.name)}
-                className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                  selectedCategory === category.name
-                    ? "bg-foreground text-background border-foreground"
-                    : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary bg-transparent"
-                }`}
-              >
-                {category.name}
-              </button>
-            ))}
-            <span className="ml-2 text-sm text-muted-foreground self-center">
-              {t("search.itemsCount", { count: filtered.length })}
-            </span>
+        <div className="sticky top-16 z-40 mb-10 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]">
+          <div className="max-w-[1280px] mx-auto px-6 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <CategoryGroupBar
+                allLabel={ALL_CATEGORY}
+                activeCategory={selectedCategory}
+                onCategorySelect={handleCategoryClick}
+                categories={barCategories}
+                categoryGroups={categoryGroups}
+                variant="wholesale"
+              />
+              <span className="ml-auto text-sm text-muted-foreground">
+                {t("search.itemsCount", { count: filtered.length })}
+              </span>
+            </div>
           </div>
+        </div>
 
+        <div className="container">
           {/* Product grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filtered.map((p, i) => {

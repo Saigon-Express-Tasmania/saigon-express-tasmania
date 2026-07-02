@@ -1,6 +1,8 @@
 export type SiteCategory = {
   id: number;
   kind: string;
+  categoryGroupId: number | null;
+  sortOrder: number;
   alias: string;
   name: string;
   description: string | null;

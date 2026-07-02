@@ -436,7 +436,7 @@ export function WholesaleProducts() {
       if (!term) return true;
       const categoryName = p.category_name ?? '';
       return (
-        p.name.toLowerCase().includes(term) ||
+        (p.name ?? '').toLowerCase().includes(term) ||
         (p.sku ?? '').toLowerCase().includes(term) ||
         (p.description ?? '').toLowerCase().includes(term) ||
         categoryName.toLowerCase().includes(term)
@@ -451,7 +451,7 @@ export function WholesaleProducts() {
       if (sortColumn === 'unit_price') {
         return (Number(a.unit_price) - Number(b.unit_price)) * direction;
       }
-      return a.name.localeCompare(b.name) * direction;
+      return (a.name ?? '').localeCompare(b.name ?? '') * direction;
     });
   }, [products, search, categoryFilter, sortColumn, sortDirection]);
 

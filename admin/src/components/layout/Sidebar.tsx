@@ -12,6 +12,7 @@ import {
   FilePen,
   FileUser,
   FolderArchive,
+  FolderOpen,
   FolderTree,
   Gift,
   GraduationCap,
@@ -104,6 +105,12 @@ const navItems: NavItem[] = [
     title: "Categories",
     href: "/categories",
     icon: Tags,
+    group: "Products",
+  },
+  {
+    title: "Category Groups",
+    href: "/category-groups",
+    icon: FolderOpen,
     group: "Products",
   },
   {

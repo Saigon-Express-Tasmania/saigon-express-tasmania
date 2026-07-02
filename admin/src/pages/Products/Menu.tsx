@@ -327,7 +327,7 @@ export function Menu() {
       if (!term) return true;
       const categoryName = item.category_name ?? '';
       return (
-        item.name.toLowerCase().includes(term) ||
+        (item.name ?? '').toLowerCase().includes(term) ||
         (item.description ?? '').toLowerCase().includes(term) ||
         categoryName.toLowerCase().includes(term)
       );
@@ -344,7 +344,7 @@ export function Menu() {
       if (sortColumn === 'price') {
         return (Number(a.price) - Number(b.price)) * direction;
       }
-      return a.name.localeCompare(b.name) * direction;
+      return (a.name ?? '').localeCompare(b.name ?? '') * direction;
     });
   }, [items, search, categoryFilter, sortColumn, sortDirection]);
 

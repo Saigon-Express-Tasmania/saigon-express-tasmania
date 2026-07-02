@@ -28,7 +28,11 @@ import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
 import { cateringPackToCustomiseItem } from "@/lib/catering-customise-item";
-import { cateringItemDetailPath, cateringListPath } from "@/lib/catering-item-routes";
+import {
+  CATERING_CATEGORIES_ANCHOR,
+  cateringItemDetailPath,
+  cateringListPath,
+} from "@/lib/catering-item-routes";
 import { getRelatedCateringItems } from "@/lib/catering-related-items";
 import { parseCateringPrice, formatAud, formatCateringDisplayPrice } from "@/lib/catering-price";
 import { shouldBlockGuestCateringCart } from "@/lib/guest-catering-order-session";
@@ -229,8 +233,12 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
 
   const backHref =
     item.category === FEATURED_CATERING_PACK_CATEGORY
-      ? cateringListPath(locale)
-      : cateringListPath(locale, item.category);
+      ? cateringListPath(locale, null, CATERING_CATEGORIES_ANCHOR)
+      : cateringListPath(
+          locale,
+          item.categoryAlias ?? item.category,
+          CATERING_CATEGORIES_ANCHOR,
+        );
 
   return (
     <div className="min-h-screen bg-brand-cream pb-28 font-sans">

@@ -24,6 +24,12 @@ import type { SiteCategory, UserProfile, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
 import { Plus, Package, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
+import CategoryGroupBar from "@/components/CategoryGroupBar";
+import {
+  filterCategoriesWithItems,
+  getPopulatedCategoryIds,
+} from "@/lib/category-bar";
+import type { SiteCategoryGroup } from "@/types";
 
 const ALL_CATEGORY = "All";
 
@@ -76,10 +82,12 @@ export default function WholesaleShop({
   products,
   inventory,
   categoriesContent,
+  categoryGroups,
 }: {
   products: WholesaleProduct[];
   inventory: WholesaleProductAvailabilityRow[];
   categoriesContent: SiteCategory[];
+  categoryGroups: SiteCategoryGroup[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -90,6 +98,11 @@ export default function WholesaleShop({
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
   const [shopProducts, setShopProducts] = useState(products);
+
+  const barCategories = useMemo(() => {
+    const populatedCategoryIds = getPopulatedCategoryIds(shopProducts);
+    return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
+  }, [categoriesContent, shopProducts]);
 
   const categoryStyleMap = useMemo(
     () =>
@@ -264,7 +277,20 @@ export default function WholesaleShop({
       </div>
 
       {/* Products section */}
-      <div className="container py-8">
+      <div className="sticky top-16 z-40 mb-4 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]">
+        <div className="max-w-[1280px] mx-auto px-6 py-3">
+          <CategoryGroupBar
+            allLabel={ALL_CATEGORY}
+            activeCategory={selectedCategory}
+            onCategorySelect={setSelectedCategory}
+            categories={barCategories}
+            categoryGroups={categoryGroups}
+            variant="member"
+          />
+        </div>
+      </div>
+
+      <div className="container pt-3 pb-8">
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -276,34 +302,6 @@ export default function WholesaleShop({
               className={`${MEMBER_PORTAL_LIGHT_FILTER_INPUT_CLASS} pl-11 pr-4 py-3`}
             />
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory(ALL_CATEGORY)}
-            className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-              selectedCategory === ALL_CATEGORY
-                ? "bg-primary text-white border-primary"
-                : "border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-900"
-            }`}
-          >
-            {ALL_CATEGORY}
-          </button>
-          {categoriesContent.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => setSelectedCategory(category.name)}
-              className={`text-xs font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
-                selectedCategory === category.name
-                  ? "bg-primary text-white border-primary"
-                  : "border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-900"
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
         </div>
 
         {/* Product grid */}

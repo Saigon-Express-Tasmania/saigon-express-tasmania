@@ -36,6 +36,7 @@ export type CateringPack = {
   name: string;
   categoryId: number | null;
   category: string;
+  categoryAlias: string | null;
   serves: string | null;
   price: string | null;
   catalogUnitPrice: string | null;
@@ -80,15 +81,19 @@ export function mapCateringPackRow(
     null;
 
   const categoryId = row.category_id ?? null;
+  const categoryLookup =
+    categoryId != null ? categoryById.get(categoryId) : undefined;
   const category =
-    resolveCategoryName(categoryId, categoryById, row.category ?? "") ||
-    FEATURED_CATERING_PACK_CATEGORY;
+    categoryLookup?.name ??
+    (resolveCategoryName(categoryId, categoryById, row.category ?? "") ||
+      FEATURED_CATERING_PACK_CATEGORY);
 
   return {
     id: Number(row.id),
     name: row.name,
     categoryId,
     category,
+    categoryAlias: categoryLookup?.alias ?? null,
     serves: row.serves?.trim() || null,
     price: row.price?.trim() || null,
     catalogUnitPrice: row.unit_price?.trim() || null,

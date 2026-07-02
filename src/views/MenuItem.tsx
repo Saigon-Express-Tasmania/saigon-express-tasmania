@@ -12,7 +12,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { menuItemDetailPath } from "@/lib/menu-item-routes";
+import { menuItemDetailPath, menuListPath, MENU_CATEGORIES_ANCHOR } from "@/lib/menu-item-routes";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import FoodContentLabels from "@/components/FoodContentLabels";
 import LazyImage from "@/components/LazyImage";
@@ -78,6 +78,8 @@ export default function MenuItemView({
     (menuItem: MenuItem) => menuItemDetailPath(menuItem, locale),
     [locale],
   );
+
+  const backHref = menuListPath(locale, item.category, MENU_CATEGORIES_ANCHOR);
 
   const relatedItems = useMemo(
     () => getRelatedMenuItems(item, menuItems),
@@ -268,7 +270,7 @@ export default function MenuItemView({
       <div className="mx-auto max-w-[1200px] px-5 py-8 md:px-6">
         <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:gap-12">
           <div className="flex-[1.2]">
-            <Link href="/menu" className="inline-block mb-4">
+            <Link href={backHref} className="inline-block mb-4">
               <div className="flex items-center justify-between bg-brand-dark px-8 py-2 text-white transition-colors hover:bg-brand-dark/90 rounded">
                 <ChevronLeft size={18} className="text-white/50 mr-2" />
                 <div>
