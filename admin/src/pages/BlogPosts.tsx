@@ -1,5 +1,6 @@
 import { BlogPostAssetReferencesDialog } from '@/components/BlogPostAssetReferencesDialog';
 import { HtmlRichTextEditor } from '@/components/HtmlRichTextEditor';
+import { ImageUpload } from '@/components/ImageUpload';
 import { DashboardLayout } from '@/components/layout';
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { generateExcerptFromBlogPost } from '@/lib/blog-excerpt';
 import {
   BLOG_NEWS_LOGO_CUSTOM_VALUE,
@@ -50,6 +52,8 @@ import {
 } from '@/lib/blog-news-logos';
 import { generateTagsFromBlogPost } from '@/lib/blog-tag-keywords';
 import { fetchSettingsByKeys } from '@/lib/settings';
+import { generateStorageFileName } from '@/lib/storage-file-name';
+import { cn } from '@/lib/utils';
 import supabase from '@/lib/supabase/client';
 import {
   appendUploadedAsset,
@@ -63,22 +67,27 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Calendar,
   ImageIcon,
+  Link2,
   Loader2,
   Newspaper,
   Pencil,
   Plus,
   Sparkles,
+  Tag,
   Trash2,
+  Type,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 const DEFAULT_EDITOR_SIDEBAR_WIDTH = 384;
 const MIN_EDITOR_SIDEBAR_WIDTH = 240;
 const MAX_EDITOR_SIDEBAR_WIDTH = 640;
 const CONTENT_AUTO_SAVE_MS = 3000;
+const BLOG_IMAGE_UPLOAD_FOLDER = 'blog-posts';
 
 const BLOG_POST_COLUMNS =
   'id, slug, title, excerpt, content, category, featured_image_url, news_logo_image_url, tags, published_at, view_count, is_published, show_wholesale_cta, reference, created_at, updated_at';
@@ -290,8 +299,49 @@ async function saveRelatedPosts(
   if (insertError) throw insertError;
 }
 
+function BlogPostFormSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+  accentClass,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: ReactNode;
+  accentClass?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        'rounded-xl border p-3.5 shadow-sm',
+        accentClass ?? 'border-border/70 bg-muted/20',
+      )}
+    >
+      <div className="mb-3 flex items-start gap-2.5 border-b border-border/30 pb-2.5">
+        {Icon ? (
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-background/90 shadow-xs ring-1 ring-border/40">
+            <Icon className="size-3.5 text-foreground/75" aria-hidden />
+          </span>
+        ) : null}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          {description ? (
+            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      <div className="grid gap-3">{children}</div>
+    </section>
+  );
+}
+
 export function BlogPosts() {
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const { uploadMedia } = useSupabaseStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -311,6 +361,7 @@ export function BlogPosts() {
   const [deleteTarget, setDeleteTarget] = useState<BlogPost | null>(null);
   const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
   const [siteUrl, setSiteUrl] = useState('https://saigonexpress.com.au');
+  const [isUploadingFeaturedImage, setIsUploadingFeaturedImage] = useState(false);
 
   const formRef = useRef(form);
   formRef.current = form;
@@ -615,6 +666,49 @@ export function BlogPosts() {
     },
     [autoSaveReference],
   );
+
+  const handleFeaturedImageUpload = async (fileInput: File | File[]) => {
+    const file = Array.isArray(fileInput) ? fileInput[0] : fileInput;
+    if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    setIsUploadingFeaturedImage(true);
+    try {
+      const fileName = generateStorageFileName(ext);
+      const { path, publicUrl } = await uploadMedia(file, {
+        folder: BLOG_IMAGE_UPLOAD_FOLDER,
+        fileName,
+        upsert: true,
+      });
+
+      setForm((current) => ({
+        ...current,
+        featured_image_url: publicUrl,
+        reference: appendUploadedAsset(current.reference, {
+          path,
+          publicUrl,
+          fileName,
+        }),
+      }));
+      toast.success('Featured image uploaded.');
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to upload featured image.',
+      );
+      throw err;
+    } finally {
+      setIsUploadingFeaturedImage(false);
+    }
+  };
+
+  const handleFeaturedImageClear = () => {
+    setForm((current) => ({
+      ...current,
+      featured_image_url: '',
+    }));
+  };
 
   const handleReferenceChange = useCallback(
     async (reference: BlogPostReference) => {
@@ -1046,149 +1140,262 @@ export function BlogPosts() {
             className="relative z-30 flex min-h-0 flex-1 overflow-hidden"
           >
             <aside
-              className="shrink-0 overflow-y-auto px-4 py-4"
+              className="shrink-0 overflow-y-auto border-r border-border/50 bg-gradient-to-b from-violet-50/40 via-background to-sky-50/30 px-3 py-4 dark:from-violet-950/25 dark:via-background dark:to-sky-950/15"
               style={{ width: sidebarWidth }}
             >
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="post-title">Title</Label>
-                  <Input
-                    id="post-title"
-                    value={form.title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                  />
-                </div>
+              <div className="grid gap-3">
+                <BlogPostFormSection
+                  title="Post details"
+                  description="Title, URL slug, and category badge."
+                  icon={Type}
+                  accentClass="border-violet-200/70 bg-gradient-to-br from-violet-50/90 to-background dark:border-violet-900/50 dark:from-violet-950/35"
+                >
+                  <div className="grid gap-2">
+                    <Label htmlFor="post-title">Title</Label>
+                    <Input
+                      id="post-title"
+                      value={form.title}
+                      onChange={(e) => handleTitleChange(e.target.value)}
+                    />
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="post-slug">Slug</Label>
-                  <Input
-                    id="post-slug"
-                    value={form.slug}
-                    onChange={(e) => {
-                      setSlugTouched(true);
-                      setForm((current) => ({
-                        ...current,
-                        slug: e.target.value,
-                      }));
-                    }}
-                    placeholder="my-blog-post"
-                  />
-                </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="post-slug">Slug</Label>
+                    <Input
+                      id="post-slug"
+                      value={form.slug}
+                      onChange={(e) => {
+                        setSlugTouched(true);
+                        setForm((current) => ({
+                          ...current,
+                          slug: e.target.value,
+                        }));
+                      }}
+                      placeholder="my-blog-post"
+                    />
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="post-category">Category</Label>
-                  <Input
-                    id="post-category"
-                    value={form.category}
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        category: e.target.value,
-                      }))
+                  <div className="grid gap-2">
+                    <Label htmlFor="post-category">Category</Label>
+                    <Input
+                      id="post-category"
+                      value={form.category}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          category: e.target.value,
+                        }))
+                      }
+                      placeholder="News"
+                    />
+                  </div>
+                </BlogPostFormSection>
+
+                <BlogPostFormSection
+                  title="Publication branding"
+                  description="Optional outlet logo on news cards."
+                  icon={Newspaper}
+                  accentClass="border-rose-200/70 bg-gradient-to-br from-rose-50/90 to-background dark:border-rose-900/50 dark:from-rose-950/35"
+                >
+                  <div className="grid gap-2">
+                    <Label htmlFor="post-news-logo">Publication logo URL</Label>
+                    <Input
+                      id="post-news-logo"
+                      value={form.news_logo_image_url}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          news_logo_image_url: e.target.value,
+                        }))
+                      }
+                      placeholder="/images/themercury.svg or https://…"
+                    />
+                    <div className="grid gap-1.5">
+                      <Label
+                        htmlFor="post-news-logo-preset"
+                        className="text-xs text-muted-foreground"
+                      >
+                        Quick pick
+                      </Label>
+                      <Select
+                        value={newsLogoSelectValue}
+                        onValueChange={handleNewsLogoSelectChange}
+                      >
+                        <SelectTrigger
+                          id="post-news-logo-preset"
+                          className="w-full bg-background/80"
+                        >
+                          <SelectValue placeholder="Choose a preset logo" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                          {BLOG_NEWS_LOGO_PRESETS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paths like /images/themercury.svg resolve against site
+                      URL ({siteUrl}).
+                    </p>
+                    {newsLogoPreviewUrl && (
+                      <div className="rounded-lg border border-rose-200/50 bg-background/70 p-3 dark:border-rose-900/40">
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">
+                          Preview
+                        </p>
+                        <img
+                          src={newsLogoPreviewUrl}
+                          alt="Publication logo preview"
+                          className="h-8 w-auto max-w-full object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </BlogPostFormSection>
+
+                <BlogPostFormSection
+                  title="Featured image"
+                  description="Hero image on listing cards and the article page."
+                  icon={ImageIcon}
+                  accentClass="border-amber-200/70 bg-gradient-to-br from-amber-50/90 to-background dark:border-amber-900/50 dark:from-amber-950/35"
+                >
+                  <ImageUpload
+                    label="Upload image"
+                    value={form.featured_image_url || null}
+                    onFileSelect={handleFeaturedImageUpload}
+                    onClear={
+                      form.featured_image_url
+                        ? handleFeaturedImageClear
+                        : undefined
                     }
-                    placeholder="News"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="post-news-logo">Publication logo URL</Label>
-                  <Input
-                    id="post-news-logo"
-                    value={form.news_logo_image_url}
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        news_logo_image_url: e.target.value,
-                      }))
-                    }
-                    placeholder="/images/themercury.svg or https://…"
+                    isUploading={isUploadingFeaturedImage}
+                    disabled={saving}
+                    shape="square"
+                    className="rounded-lg border border-amber-200/40 bg-background/60 p-2 dark:border-amber-900/30"
                   />
                   <div className="grid gap-1.5">
                     <Label
-                      htmlFor="post-news-logo-preset"
+                      htmlFor="post-featured-image-url"
                       className="text-xs text-muted-foreground"
                     >
-                      Quick pick
+                      Or paste image URL
                     </Label>
-                    <Select
-                      value={newsLogoSelectValue}
-                      onValueChange={handleNewsLogoSelectChange}
-                    >
-                      <SelectTrigger
-                        id="post-news-logo-preset"
-                        className="w-full"
-                      >
-                        <SelectValue placeholder="Choose a preset logo" />
-                      </SelectTrigger>
-                      <SelectContent className="z-[200]">
-                        {BLOG_NEWS_LOGO_PRESETS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="post-featured-image-url"
+                      value={form.featured_image_url}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          featured_image_url: e.target.value,
+                        }))
+                      }
+                      placeholder="/manus-storage/… or https://…"
+                      disabled={saving || isUploadingFeaturedImage}
+                      className="bg-background/80"
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Optional logo shown on news cards instead of the category
-                    badge. Paths like /images/themercury.svg resolve against
-                    site URL ({siteUrl}).
-                  </p>
-                  {newsLogoPreviewUrl && (
-                    <div className="rounded-md border bg-muted/30 p-3">
-                      <p className="mb-2 text-xs text-muted-foreground">
-                        Preview
-                      </p>
-                      <img
-                        src={newsLogoPreviewUrl}
-                        alt="Publication logo preview"
-                        className="h-8 w-auto max-w-full object-contain"
+                </BlogPostFormSection>
+
+                <BlogPostFormSection
+                  title="Publish settings"
+                  description="Schedule, visibility, and engagement."
+                  icon={Calendar}
+                  accentClass="border-sky-200/70 bg-gradient-to-br from-sky-50/90 to-background dark:border-sky-900/50 dark:from-sky-950/35"
+                >
+                  <div className="grid gap-2">
+                    <Label htmlFor="post-published">Published at</Label>
+                    <Input
+                      id="post-published"
+                      type="datetime-local"
+                      value={toDatetimeLocalValue(form.published_at)}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          published_at: fromDatetimeLocalValue(e.target.value),
+                        }))
+                      }
+                      className="bg-background/80"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="post-views">View count</Label>
+                    <Input
+                      id="post-views"
+                      type="number"
+                      min={0}
+                      value={form.view_count}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          view_count: Number(e.target.value) || 0,
+                        }))
+                      }
+                      className="bg-background/80"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-sky-200/60 bg-background/70 px-3 py-2.5 text-sm transition-colors hover:bg-background dark:border-sky-900/40">
+                      <Input
+                        type="checkbox"
+                        checked={form.is_published}
+                        onChange={(e) =>
+                          setForm((current) => ({
+                            ...current,
+                            is_published: e.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4"
                       />
-                    </div>
-                  )}
-                </div>
+                      <span>
+                        <span className="font-medium">Published on site</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          Visible when publish date has passed
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-sky-200/60 bg-background/70 px-3 py-2.5 text-sm transition-colors hover:bg-background dark:border-sky-900/40">
+                      <Input
+                        type="checkbox"
+                        checked={form.show_wholesale_cta}
+                        onChange={(e) =>
+                          setForm((current) => ({
+                            ...current,
+                            show_wholesale_cta: e.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4"
+                      />
+                      <span>
+                        <span className="font-medium">Wholesale CTA</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          Show registration block on article page
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                </BlogPostFormSection>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="post-published">Published at</Label>
-                  <Input
-                    id="post-published"
-                    type="datetime-local"
-                    value={toDatetimeLocalValue(form.published_at)}
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        published_at: fromDatetimeLocalValue(e.target.value),
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="post-image">Featured image URL</Label>
-                  <Input
-                    id="post-image"
-                    value={form.featured_image_url}
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        featured_image_url: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-2">
+                <BlogPostFormSection
+                  title="Tags"
+                  description="Topics for filtering and related-post suggestions."
+                  icon={Tag}
+                  accentClass="border-emerald-200/70 bg-gradient-to-br from-emerald-50/90 to-background dark:border-emerald-900/50 dark:from-emerald-950/35"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <Label htmlFor="post-tags">Tags (comma-separated)</Label>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8"
+                      className="h-8 border-emerald-200/70 bg-background/80 hover:bg-emerald-50/80 dark:border-emerald-900/50"
                       onClick={handleSuggestTags}
                     >
                       <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                      Suggest tags
+                      Suggest
                     </Button>
                   </div>
                   <Input
@@ -1198,65 +1405,24 @@ export function BlogPosts() {
                       setForm((current) => ({ ...current, tags: e.target.value }))
                     }
                     placeholder="Sorell, NewStore"
+                    className="bg-background/80"
                   />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="post-views">View count</Label>
-                  <Input
-                    id="post-views"
-                    type="number"
-                    min={0}
-                    value={form.view_count}
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        view_count: Number(e.target.value) || 0,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <label className="flex items-center gap-2 text-sm">
-                    <Input
-                      type="checkbox"
-                      checked={form.is_published}
-                      onChange={(e) =>
-                        setForm((current) => ({
-                          ...current,
-                          is_published: e.target.checked,
-                        }))
-                      }
-                      className="h-4 w-4"
-                    />
-                    Published on site
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Input
-                      type="checkbox"
-                      checked={form.show_wholesale_cta}
-                      onChange={(e) =>
-                        setForm((current) => ({
-                          ...current,
-                          show_wholesale_cta: e.target.checked,
-                        }))
-                      }
-                      className="h-4 w-4"
-                    />
-                    Show wholesale CTA on article page
-                  </label>
-                </div>
+                </BlogPostFormSection>
 
                 {posts.length > (editingId !== null ? 1 : 0) && (
-                  <div className="grid gap-2">
+                  <BlogPostFormSection
+                    title="Related posts"
+                    description="Curated links shown at the bottom of the article."
+                    icon={Link2}
+                    accentClass="border-indigo-200/70 bg-gradient-to-br from-indigo-50/90 to-background dark:border-indigo-900/50 dark:from-indigo-950/35"
+                  >
                     <div className="flex items-center justify-between gap-2">
-                      <Label>Related posts</Label>
+                      <span className="text-sm font-medium">Suggestions</span>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="h-8 border-indigo-200/70 bg-background/80 hover:bg-indigo-50/80 dark:border-indigo-900/50"
                         onClick={handleSuggestRelatedPosts}
                       >
                         <Sparkles className="mr-1.5 h-3.5 w-3.5" />
@@ -1265,7 +1431,7 @@ export function BlogPosts() {
                     </div>
 
                     {selectedRelatedPosts.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 rounded-md border bg-muted/30 p-2">
+                      <div className="flex flex-wrap gap-1.5 rounded-lg border border-indigo-200/50 bg-background/70 p-2 dark:border-indigo-900/40">
                         {selectedRelatedPosts.map((post) => (
                           <Badge
                             key={post.id}
@@ -1290,9 +1456,10 @@ export function BlogPosts() {
                       placeholder="Search posts to add…"
                       value={relatedSearch}
                       onChange={(e) => setRelatedSearch(e.target.value)}
+                      className="bg-background/80"
                     />
 
-                    <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-2">
+                    <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-indigo-200/50 bg-background/70 p-2 dark:border-indigo-900/40">
                       {searchableRelatedPosts.length === 0 ? (
                         <p className="px-1 py-2 text-xs text-muted-foreground">
                           No posts match your search.
@@ -1305,7 +1472,7 @@ export function BlogPosts() {
                           return (
                             <label
                               key={post.id}
-                              className="flex cursor-pointer items-start gap-2 rounded-sm px-1 py-1.5 text-sm hover:bg-muted/50"
+                              className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1.5 text-sm transition-colors hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30"
                             >
                               <Input
                                 type="checkbox"
@@ -1334,7 +1501,7 @@ export function BlogPosts() {
                       Showing up to 10 results, newest first. Selected posts
                       stay listed above.
                     </p>
-                  </div>
+                  </BlogPostFormSection>
                 )}
               </div>
             </aside>
