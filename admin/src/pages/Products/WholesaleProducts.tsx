@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { nextProductId } from '@/lib/products';
+import { loadAdminCategoriesByKind } from '@/lib/categories';
 import {
   emptyProductShippingInput,
   PRODUCT_SHIPPING_SELECT,
@@ -165,7 +167,8 @@ type WholesaleProductRow = {
   id: number;
   name: string;
   sku: string | null;
-  category: string;
+  category_id: number | null;
+  category_name: string | null;
   description: string | null;
   unit: string;
   uom: ItemUom;
@@ -207,17 +210,17 @@ function previewFromImageUrls(
 
 type WholesaleProductInput = Omit<
   WholesaleProductRow,
-  'created_at' | 'updated_at' | keyof ProductShippingRow
+  'created_at' | 'updated_at' | 'category_name' | keyof ProductShippingRow
 > & ProductShippingInput;
 
 const SELECT_COLUMNS =
-  `id, name, sku, category, description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
+  `id, name, sku, category_id, categories(name), description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
   name: '',
   sku: '',
-  category: '',
+  category_id: null,
   description: '',
   unit: '',
   uom: 'EACH',
@@ -240,6 +243,9 @@ export function WholesaleProducts() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [products, setProducts] = useState<WholesaleProductRow[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<
+    { id: number; name: string }[]
+  >([]);
   const [todayGlobalPaidByProductId, setTodayGlobalPaidByProductId] = useState<
     Record<number, number>
   >({});
@@ -290,7 +296,7 @@ export function WholesaleProducts() {
           .from('products')
           .select(SELECT_COLUMNS)
           .eq('product_type', 'wholesale')
-          .order('category', { ascending: true })
+          .order('category_id', { ascending: true })
           .order('id', { ascending: true }),
         saleDate
           ? supabase
@@ -303,7 +309,21 @@ export function WholesaleProducts() {
       if (productsResult.error) throw productsResult.error;
       if (usageResult.error) throw usageResult.error;
 
-      setProducts((productsResult.data ?? []) as WholesaleProductRow[]);
+      setProducts(
+        (productsResult.data ?? []).map((row) => {
+          const product = row as WholesaleProductRow & {
+            categories: { name: string } | { name: string }[] | null;
+          };
+          const categoryJoin = product.categories;
+          const categoryName = Array.isArray(categoryJoin)
+            ? categoryJoin[0]?.name ?? null
+            : categoryJoin?.name ?? null;
+          return {
+            ...product,
+            category_name: categoryName,
+          };
+        }),
+      );
       setTodayGlobalPaidByProductId(
         Object.fromEntries(
           (usageResult.data ?? []).map((row) => [
@@ -333,13 +353,42 @@ export function WholesaleProducts() {
     void loadProducts({ silent: true });
   }, [loadProducts]);
 
+  const loadCategoryOptions = useCallback(async () => {
+    try {
+      const categories = await loadAdminCategoriesByKind('wholesale');
+      setCategoryOptions(categories.map(({ id, name }) => ({ id, name })));
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load wholesale categories.',
+      );
+      setCategoryOptions([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAdmin) {
       void loadProducts();
+      void loadCategoryOptions();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadProducts]);
+  }, [isAdmin, loadProducts, loadCategoryOptions]);
+
+  const categoryNameById = useMemo(
+    () => new Map(categoryOptions.map((category) => [category.id, category.name])),
+    [categoryOptions],
+  );
+
+  const categorySelectOptions = useMemo(
+    () =>
+      categoryOptions.map((category) => ({
+        value: String(category.id),
+        label: category.name,
+      })),
+    [categoryOptions],
+  );
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -375,35 +424,22 @@ export function WholesaleProducts() {
     };
   }, [isAdmin, stockRefillSecondsLeft, loadProducts]);
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((p) => {
-      if (p.category) set.add(p.category);
-    });
-    return Array.from(set).sort();
-  }, [products]);
-
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-    setSortColumn(column);
-    setSortDirection('asc');
-  };
-
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = products.filter((p) => {
-      if (categoryFilter !== 'all' && p.category !== categoryFilter) {
-        return false;
+      if (categoryFilter !== 'all') {
+        const filterId = Number(categoryFilter);
+        if (!Number.isFinite(filterId) || p.category_id !== filterId) {
+          return false;
+        }
       }
       if (!term) return true;
+      const categoryName = p.category_name ?? '';
       return (
         p.name.toLowerCase().includes(term) ||
+        (p.sku ?? '').toLowerCase().includes(term) ||
         (p.description ?? '').toLowerCase().includes(term) ||
-        p.category.toLowerCase().includes(term) ||
-        (p.sku ?? '').toLowerCase().includes(term)
+        categoryName.toLowerCase().includes(term)
       );
     });
 
@@ -418,6 +454,15 @@ export function WholesaleProducts() {
       return a.name.localeCompare(b.name) * direction;
     });
   }, [products, search, categoryFilter, sortColumn, sortDirection]);
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection('asc');
+  };
 
   const {
     selectedIds,
@@ -455,7 +500,7 @@ export function WholesaleProducts() {
       id: product.id,
       name: product.name,
       sku: product.sku ?? '',
-      category: product.category,
+      category_id: product.category_id,
       description: product.description ?? '',
       unit: product.unit,
       uom: product.uom ?? 'EACH',
@@ -528,10 +573,6 @@ export function WholesaleProducts() {
       toast.error('Name is required.');
       return;
     }
-    if (!form.category.trim()) {
-      toast.error('Category is required.');
-      return;
-    }
     if (!form.unit.trim()) {
       toast.error('Unit is required.');
       return;
@@ -547,6 +588,10 @@ export function WholesaleProducts() {
       return;
     }
 
+    const selectedCategoryName = form.category_id
+      ? categoryNameById.get(form.category_id) ?? ''
+      : '';
+
     setSaving(true);
     try {
       const nowIso = new Date().toISOString();
@@ -555,7 +600,8 @@ export function WholesaleProducts() {
         id: form.id,
         name: form.name.trim(),
         sku: form.sku?.trim() || null,
-        category: form.category.trim(),
+        category_id: form.category_id,
+        category: selectedCategoryName,
         description: form.description?.trim() || '',
         unit: form.unit.trim(),
         uom: form.uom,
@@ -755,9 +801,9 @@ export function WholesaleProducts() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
+                      {categoryOptions.map((category) => (
+                        <SelectItem key={category.id} value={String(category.id)}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -897,7 +943,7 @@ export function WholesaleProducts() {
                           {p.sku ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {p.category}
+                          {p.category_name ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {p.unit}
@@ -1028,12 +1074,18 @@ export function WholesaleProducts() {
 
             <div className="grid gap-2">
               <Label htmlFor="wp-category">Category</Label>
-              <Input
+              <SearchableSelect
                 id="wp-category"
-                value={form.category}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, category: e.target.value }))
+                options={categorySelectOptions}
+                value={form.category_id != null ? String(form.category_id) : ''}
+                onValueChange={(value) =>
+                  setForm((f) => ({
+                    ...f,
+                    category_id: value ? Number(value) : null,
+                  }))
                 }
+                placeholder="Search categories…"
+                emptyOption={{ value: '', label: 'No category' }}
               />
             </div>
             <div className="grid gap-2">

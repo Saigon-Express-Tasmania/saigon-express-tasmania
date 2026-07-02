@@ -130,7 +130,7 @@ export default function Menu({
   const categoryImageMap = useMemo<Record<string, string>>(
     () =>
       categoriesContent.reduce<Record<string, string>>((acc, category) => {
-        if (category.imageUrl) acc[category.imageUrl] = category.imageUrl; // Quick bugfix placeholder, kept original fallback schema
+        if (category.imageUrl) acc[category.name] = category.imageUrl;
         return acc;
       }, {}),
     [categoriesContent],
@@ -148,27 +148,24 @@ export default function Menu({
   const addOnCategoriesMap = useMemo<Record<string, string[]>>(
     () =>
       categoriesContent.reduce<Record<string, string[]>>((acc, category) => {
-        acc[category.alias] = category.addon ?? [];
+        acc[category.name] = category.addon ?? [];
         return acc;
       }, {}),
     [categoriesContent],
   );
 
-  // Build category sort order from sortOrder field on items (set in DB)
-  const catOrderMap = new Map<string, number>();
-  (menuItems ?? []).forEach((m: MenuItem) => {
-    if (!catOrderMap.has(m.category))
-      catOrderMap.set(m.category, m.sortOrder ?? 99);
-  });
-  const rawCats = Array.from(
-    new Set((menuItems ?? []).map((m: MenuItem) => m.category)),
-  ) as string[];
-  const sortedCats = [...rawCats].sort(
-    (a: string, b: string) =>
-      (catOrderMap.get(a) ?? 99) - (catOrderMap.get(b) ?? 99),
-  );
+  const activeCategoryId = useMemo(() => {
+    if (activeCategory === allLabel) return null;
+    return (
+      categoriesContent.find((category) => category.name === activeCategory)
+        ?.id ?? null
+    );
+  }, [activeCategory, allLabel, categoriesContent]);
 
-  const categories = [allLabel, ...sortedCats];
+  const navCategories = useMemo(
+    () => [allLabel, ...categoriesContent.map((category) => category.name)],
+    [allLabel, categoriesContent],
+  );
 
   // 2. Initialize Fuse instance with configuration keys and thresholds
   const fuse = useMemo(() => {
@@ -191,8 +188,8 @@ export default function Menu({
 
     // First, filter by category if a specific one is selected
     let baseItems = menuItems ?? [];
-    if (activeCategory !== allLabel) {
-      baseItems = baseItems.filter((m) => m.category === activeCategory);
+    if (activeCategoryId != null) {
+      baseItems = baseItems.filter((m) => m.categoryId === activeCategoryId);
     }
 
     if (!q) return baseItems;
@@ -202,12 +199,12 @@ export default function Menu({
     // and just filter the results against the category selection.
     const searchResults = fuse.search(q).map((result) => result.item);
 
-    if (activeCategory !== allLabel) {
-      return searchResults.filter((m) => m.category === activeCategory);
+    if (activeCategoryId != null) {
+      return searchResults.filter((m) => m.categoryId === activeCategoryId);
     }
 
     return searchResults;
-  }, [search, activeCategory, allLabel, menuItems, fuse]);
+  }, [search, activeCategoryId, menuItems, fuse]);
 
   const handleOpenCustomise = useCallback((item: MenuItem) => {
     if (!item.isAvailable) return;
@@ -347,7 +344,7 @@ export default function Menu({
                 viewportClassName="grid grid-cols-2 gap-2"
                 className="max-h-[min(24rem,70vh)] border-gray-200 shadow-xl"
               >
-                {categories.map((cat) => (
+                {navCategories.map((cat) => (
                   <SelectItem
                     key={cat}
                     value={cat}
@@ -375,7 +372,7 @@ export default function Menu({
             id="menu-category-list"
             className="hidden flex-wrap gap-2 md:flex"
           >
-            {categories.map((cat) => (
+            {navCategories.map((cat) => (
               <button
                 key={cat}
                 type="button"

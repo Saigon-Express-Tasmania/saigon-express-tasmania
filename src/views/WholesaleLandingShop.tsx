@@ -103,14 +103,24 @@ export default function WholesaleLandingShop({
     return new Fuse(products ?? [], options);
   }, [products]);
 
+  const selectedCategoryId = useMemo(() => {
+    if (selectedCategory === ALL_CATEGORY) return null;
+    return (
+      categoriesContent.find((category) => category.name === selectedCategory)
+        ?.id ?? null
+    );
+  }, [selectedCategory, categoriesContent]);
+
   // 3. Compute fuzzy matching coupled with category constraints using useMemo
   const filtered = useMemo(() => {
     const normalizedSearch = search.trim();
 
     // If there is no search phrase, simply filter down raw data based on category mapping
     if (!normalizedSearch) {
-      if (selectedCategory === ALL_CATEGORY) return products ?? [];
-      return (products ?? []).filter((p) => p.category === selectedCategory);
+      if (selectedCategoryId === null) return products ?? [];
+      return (products ?? []).filter(
+        (p) => p.categoryId === selectedCategoryId,
+      );
     }
 
     // Query across the indexed global data subset
@@ -119,12 +129,12 @@ export default function WholesaleLandingShop({
       .map((result) => result.item);
 
     // Apply category isolation on top of search hits
-    if (selectedCategory !== ALL_CATEGORY) {
-      return searchResults.filter((p) => p.category === selectedCategory);
+    if (selectedCategoryId !== null) {
+      return searchResults.filter((p) => p.categoryId === selectedCategoryId);
     }
 
     return searchResults;
-  }, [search, selectedCategory, products, fuse]);
+  }, [search, selectedCategoryId, products, fuse]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

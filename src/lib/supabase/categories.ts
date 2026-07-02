@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import type { SiteCategory } from "@/types";
+import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { createServerSupabaseClient } from "./server";
 
 const CACHE_TAG = CACHE_TAGS.categories;
@@ -53,10 +54,14 @@ async function loadCategories(): Promise<SiteCategory[]> {
 /**
  * Categories for menu/category metadata, loaded per menu page usage.
  */
-export const getCategories = unstable_cache(loadCategories, [CACHE_TAG], {
-  revalidate: SHORT_REVALIDATE_SECONDS,
-  tags: [CACHE_TAG],
-});
+export const getCategories = unstable_cache(
+  loadCategories,
+  [CACHE_TAG, SERVER_CACHE_INSTANCE_ID],
+  {
+    revalidate: SHORT_REVALIDATE_SECONDS,
+    tags: [CACHE_TAG],
+  },
+);
 
 export async function getCategoriesByKind(
   kind: string,

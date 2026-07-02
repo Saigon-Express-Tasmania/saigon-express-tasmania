@@ -13,6 +13,7 @@ export type MenuItem = {
   id: number;
   name: string;
   slug?: string;
+  categoryId?: number | null;
   category: string;
   price: string;
   description?: string | null;

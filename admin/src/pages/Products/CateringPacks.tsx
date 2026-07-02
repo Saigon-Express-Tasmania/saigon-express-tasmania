@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
 import { SearchableMultiSelect } from '@/components/SearchableMultiSelect';
@@ -59,6 +60,7 @@ import {
 } from '@/lib/menu-image-urls';
 import { slugFromName } from '@/lib/slug';
 import { nextProductId } from '@/lib/products';
+import { loadAdminCategoriesByKind } from '@/lib/categories';
 import {
   emptyProductShippingInput,
   PRODUCT_SHIPPING_SELECT,
@@ -234,7 +236,8 @@ type CateringPackRow = {
   tag_bg: string;
   image_url: string | null;
   image_urls: Record<string, unknown>;
-  category: string;
+  category_id: number | null;
+  category_name: string | null;
   note: string | null;
   prices: CateringTierPrice[];
   sort_order: number;
@@ -253,7 +256,7 @@ type CateringPackInput = {
   includesText: string;
   tag: string;
   tag_bg: string;
-  category: string;
+  category_id: number | null;
   note: string;
   image_sizes: ImageUrlsMap;
   additional_images: MenuImageMoreEntry[];
@@ -280,7 +283,7 @@ const emptyCateringPackInput = (): CateringPackInput => ({
   includesText: '',
   tag: '',
   tag_bg: '',
-  category: 'Catering Packs',
+  category_id: null,
   note: '',
   image_sizes: {},
   additional_images: [],
@@ -359,6 +362,9 @@ export function CateringPacks() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [packs, setPacks] = useState<CateringPackRow[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<
+    { id: number; name: string }[]
+  >([]);
   const [customizations, setCustomizations] = useState<CustomizationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -386,7 +392,7 @@ export function CateringPacks() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, category, note, prices, sort_order, is_available, customization_ids, customizations_disabled, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, category_id, categories(name), note, prices, sort_order, is_available, customization_ids, customizations_disabled, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'catering')
         .order('sort_order', { ascending: true })
@@ -397,11 +403,17 @@ export function CateringPacks() {
       setPacks(
         (data ?? []).map((row) => {
           const pack = row as CateringPackRow & {
+            categories: { name: string } | { name: string }[] | null;
             customization_ids: number[] | null;
             customizations_disabled: boolean;
           };
+          const categoryJoin = pack.categories;
+          const categoryName = Array.isArray(categoryJoin)
+            ? categoryJoin[0]?.name ?? null
+            : categoryJoin?.name ?? null;
           return {
             ...pack,
+            category_name: categoryName,
             prices: parseTierPrices(pack.prices),
             customizationIds: Array.isArray(pack.customization_ids)
               ? pack.customization_ids.map((id) => Number(id))
@@ -436,14 +448,43 @@ export function CateringPacks() {
     }
   }, []);
 
+  const loadCategoryOptions = useCallback(async () => {
+    try {
+      const categories = await loadAdminCategoriesByKind('catering');
+      setCategoryOptions(categories.map(({ id, name }) => ({ id, name })));
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load catering categories.',
+      );
+      setCategoryOptions([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAdmin) {
       void loadCateringPacks();
       void loadCustomizations();
+      void loadCategoryOptions();
     } else {
       setLoading(false);
     }
-  }, [isAdmin, loadCateringPacks, loadCustomizations]);
+  }, [isAdmin, loadCateringPacks, loadCustomizations, loadCategoryOptions]);
+
+  const categoryNameById = useMemo(
+    () => new Map(categoryOptions.map((category) => [category.id, category.name])),
+    [categoryOptions],
+  );
+
+  const categorySelectOptions = useMemo(
+    () =>
+      categoryOptions.map((category) => ({
+        value: String(category.id),
+        label: category.name,
+      })),
+    [categoryOptions],
+  );
 
   const customizationSelectOptions = useMemo(
     () =>
@@ -454,34 +495,20 @@ export function CateringPacks() {
     [customizations],
   );
 
-  const categoryOptions = useMemo(() => {
-    const values = new Set<string>();
-    for (const pack of packs) {
-      const category = pack.category?.trim();
-      if (category) values.add(category);
-    }
-    return [...values].sort((a, b) => a.localeCompare(b));
-  }, [packs]);
-
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-    setSortColumn(column);
-    setSortDirection('asc');
-  };
-
   const filteredPacks = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = packs.filter((pack) => {
-      if (categoryFilter !== 'all' && pack.category !== categoryFilter) {
-        return false;
+      if (categoryFilter !== 'all') {
+        const filterId = Number(categoryFilter);
+        if (!Number.isFinite(filterId) || pack.category_id !== filterId) {
+          return false;
+        }
       }
       if (!term) return true;
+      const categoryName = pack.category_name ?? '';
       return (
         pack.name.toLowerCase().includes(term) ||
-        pack.category.toLowerCase().includes(term) ||
+        categoryName.toLowerCase().includes(term) ||
         pack.serves.toLowerCase().includes(term) ||
         pack.price.toLowerCase().includes(term) ||
         pack.description.toLowerCase().includes(term) ||
@@ -496,9 +523,21 @@ export function CateringPacks() {
       if (sortColumn === 'id') {
         return (a.id - b.id) * direction;
       }
-      return a[sortColumn].localeCompare(b[sortColumn]) * direction;
+      if (sortColumn === 'category') {
+        return (a.category_name ?? '').localeCompare(b.category_name ?? '') * direction;
+      }
+      return a.name.localeCompare(b.name) * direction;
     });
   }, [packs, search, categoryFilter, sortColumn, sortDirection]);
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection('asc');
+  };
 
   const {
     selectedIds,
@@ -549,7 +588,7 @@ export function CateringPacks() {
       includesText: pack.includes.join('\n'),
       tag: pack.tag ?? '',
       tag_bg: pack.tag_bg ?? '',
-      category: pack.category ?? 'Catering Packs',
+      category_id: pack.category_id,
       note: pack.note ?? '',
       image_sizes: legacySizes,
       additional_images: parsedImages.more,
@@ -675,10 +714,9 @@ export function CateringPacks() {
       toast.error('Name is required.');
       return;
     }
-    if (!form.category.trim()) {
-      toast.error('Category is required.');
-      return;
-    }
+    const selectedCategoryName = form.category_id
+      ? categoryNameById.get(form.category_id) ?? ''
+      : '';
 
     const tierPrices = serializeTierPrices(form.prices);
     const includesValues = form.includesText
@@ -754,7 +792,8 @@ export function CateringPacks() {
         tag_bg: form.tag_bg.trim(),
         image_url,
         image_urls,
-        category: form.category.trim(),
+        category_id: form.category_id,
+        category: selectedCategoryName,
         note: form.note.trim() || null,
         prices: tierPrices,
         sort_order: Number(form.sort_order) || 0,
@@ -947,8 +986,8 @@ export function CateringPacks() {
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
                       {categoryOptions.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                        <SelectItem key={category.id} value={String(category.id)}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1055,7 +1094,7 @@ export function CateringPacks() {
                         </td>
                         <td className="px-4 py-3 font-mono text-sm">{pack.id}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {pack.category}
+                          {pack.category_name ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {pack.name}
@@ -1240,13 +1279,18 @@ export function CateringPacks() {
                   htmlFor="pack-category"
                   className="md:col-span-2"
                 >
-                  <Input
+                  <SearchableSelect
                     id="pack-category"
-                    value={form.category}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, category: e.target.value }))
+                    options={categorySelectOptions}
+                    value={form.category_id != null ? String(form.category_id) : ''}
+                    onValueChange={(value) =>
+                      setForm((f) => ({
+                        ...f,
+                        category_id: value ? Number(value) : null,
+                      }))
                     }
-                    placeholder="Catering Packs"
+                    placeholder="Search categories…"
+                    emptyOption={{ value: '', label: 'No category' }}
                   />
                 </CateringPackFormField>
                 <CateringPackFormField

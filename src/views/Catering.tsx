@@ -50,26 +50,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { SiteCategory } from "@/types";
 
 type CateringMenuGroup = {
+  categoryId: number | null;
   category: string;
   items: CateringPack[];
   sortOrder: number;
 };
 
-function buildCateringMenuGroups(packs: CateringPack[]): CateringMenuGroup[] {
+function buildCateringMenuGroups(
+  packs: CateringPack[],
+  categoriesContent: SiteCategory[],
+): CateringMenuGroup[] {
+  const categoryOrder = new Map(
+    categoriesContent.map((category, index) => [category.id, index]),
+  );
+
   const groups = packs
     .filter(
       (pack) =>
         pack.isAvailable && pack.category !== FEATURED_CATERING_PACK_CATEGORY,
     )
     .reduce<CateringMenuGroup[]>((acc, item) => {
-      const existing = acc.find((group) => group.category === item.category);
+      const existing = acc.find((group) => group.categoryId === item.categoryId);
       if (existing) {
         existing.items.push(item);
         existing.sortOrder = Math.min(existing.sortOrder, item.sortOrder);
       } else {
         acc.push({
+          categoryId: item.categoryId,
           category: item.category,
           items: [item],
           sortOrder: item.sortOrder,
@@ -80,14 +90,26 @@ function buildCateringMenuGroups(packs: CateringPack[]): CateringMenuGroup[] {
 
   return groups
     .filter((group) => group.items.length > 0)
-    .sort(
-      (a, b) =>
-        a.sortOrder - b.sortOrder || a.category.localeCompare(b.category),
-    );
+    .sort((a, b) => {
+      const aOrder =
+        a.categoryId != null
+          ? (categoryOrder.get(a.categoryId) ?? Number.MAX_SAFE_INTEGER)
+          : Number.MAX_SAFE_INTEGER;
+      const bOrder =
+        b.categoryId != null
+          ? (categoryOrder.get(b.categoryId) ?? Number.MAX_SAFE_INTEGER)
+          : Number.MAX_SAFE_INTEGER;
+      return (
+        aOrder - bOrder ||
+        a.sortOrder - b.sortOrder ||
+        a.category.localeCompare(b.category)
+      );
+    });
 }
 
 type CateringProps = {
   packs: CateringPack[];
+  categoriesContent: SiteCategory[];
 };
 
 interface WhyUsItem {
@@ -129,7 +151,10 @@ const CATERING_ENQUIRY_SUBMIT_COOLDOWN_MS = 2 * 60 * 1000;
 const CATERING_ENQUIRY_LAST_SUBMIT_KEY = "catering_enquiry_last_submit_at";
 const SHOW_CATERING_PACKS_SECTION = false;
 
-export default function Catering({ packs }: CateringProps) {
+export default function Catering({
+  packs,
+  categoriesContent,
+}: CateringProps) {
   const t = useTranslations("Catering");
   const locale = useLocale();
   const searchParams = useSearchParams();
@@ -182,13 +207,13 @@ export default function Catering({ packs }: CateringProps) {
   );
 
   const menuGroups = useMemo(
-    () => buildCateringMenuGroups(availablePacks),
-    [availablePacks],
+    () => buildCateringMenuGroups(availablePacks, categoriesContent),
+    [availablePacks, categoriesContent],
   );
 
   const categories = useMemo(
-    () => [allLabel, ...menuGroups.map((group) => group.category)],
-    [allLabel, menuGroups],
+    () => [allLabel, ...categoriesContent.map((category) => category.name)],
+    [allLabel, categoriesContent],
   );
 
   const visibleMenuGroups = useMemo(() => {

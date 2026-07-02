@@ -8,7 +8,8 @@ export type WholesaleProductRow = {
   id: number;
   name: string;
   sku: string | null;
-  category: string;
+  category_id: number | null;
+  category?: string;
   description: string | null;
   unit: string;
   unit_price: string;
@@ -37,6 +38,7 @@ export type WholesaleProduct = {
   id: number;
   name: string;
   sku: string | null;
+  categoryId: number | null;
   category: string;
   description: string | null;
   unit: string;
@@ -88,12 +90,16 @@ export function pickWholesaleImageUrl(
     : null;
 }
 
-export function mapWholesaleProductRow(row: WholesaleProductRow): WholesaleProduct {
+export function mapWholesaleProductRow(
+  row: WholesaleProductRow,
+  categoryName = row.category ?? "",
+): WholesaleProduct {
   return {
     id: row.id,
     name: row.name,
     sku: row.sku,
-    category: row.category,
+    categoryId: row.category_id ?? null,
+    category: categoryName,
     description: row.description,
     unit: row.unit,
     unitPrice: row.unit_price,

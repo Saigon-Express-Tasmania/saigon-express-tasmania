@@ -202,6 +202,42 @@ function formatCustomizationLabel(row: CustomizationOption): string {
   return `#${row.id} — ${row.title} (${row.key})`;
 }
 
+function isAliasDuplicateError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const row = error as { code?: string; message?: string; details?: string };
+  if (row.code !== '23505') return false;
+  const haystack = `${row.message ?? ''} ${row.details ?? ''}`.toLowerCase();
+  return haystack.includes('alias') || haystack.includes('categories');
+}
+
+function aliasWithIdSuffix(alias: string, id: number): string {
+  return `${alias}-${id}`;
+}
+
+async function nextCategoryId(): Promise<number> {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id')
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Number(data?.id ?? 0) + 1;
+}
+
+type CategoryPayload = {
+  kind: CategoryKind;
+  alias: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  addon: string[];
+  style: string | null;
+  icon: string | null;
+  customization_ids: number[];
+};
+
 function SortableHeader({
   label,
   column,
@@ -444,7 +480,7 @@ export function Categories() {
 
     setSaving(true);
     try {
-      const payload = {
+      const payload: CategoryPayload = {
         kind: form.kind,
         alias,
         name: form.name.trim(),
@@ -457,17 +493,36 @@ export function Categories() {
       };
 
       if (editing) {
-        const { error: updateError } = await supabase
+        let { error: updateError } = await supabase
           .from('categories')
           .update(payload)
           .eq('id', editing.id);
 
+        if (updateError && isAliasDuplicateError(updateError)) {
+          const retryPayload = {
+            ...payload,
+            alias: aliasWithIdSuffix(alias, editing.id),
+          };
+          ({ error: updateError } = await supabase
+            .from('categories')
+            .update(retryPayload)
+            .eq('id', editing.id));
+        }
+
         if (updateError) throw updateError;
         toast.success('Category updated.');
       } else {
-        const { error: insertError } = await supabase
+        let { error: insertError } = await supabase
           .from('categories')
           .insert(payload);
+
+        if (insertError && isAliasDuplicateError(insertError)) {
+          const nextId = await nextCategoryId();
+          ({ error: insertError } = await supabase.from('categories').insert({
+            ...payload,
+            alias: aliasWithIdSuffix(alias, nextId),
+          }));
+        }
 
         if (insertError) throw insertError;
         toast.success('Category created.');

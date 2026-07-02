@@ -136,7 +136,8 @@ export type MenuItemRow = {
   description: string | null;
   price: string;
   wholesale_price: string | null;
-  category: string;
+  category_id: number | null;
+  category?: string;
   image_urls: MenuImageUrls;
   is_available: boolean;
   is_popular: boolean;
@@ -176,14 +177,18 @@ export function pickMenuImageUrl(
   return fallback?.trim() ?? null;
 }
 
-export function mapMenuItemRow(row: MenuItemRow): MenuItem {
+export function mapMenuItemRow(
+  row: MenuItemRow,
+  categoryName = row.category ?? "",
+): MenuItem {
   const imageUrls = normalizeMenuImageUrls(row.image_urls);
   const moreImages = parseMenuImageMore(row.image_urls);
   return {
     id: row.id,
     name: row.name,
     slug: row.slug?.trim() ?? "",
-    category: row.category,
+    categoryId: row.category_id ?? null,
+    category: categoryName,
     price: row.price,
     description: row.description,
     isAvailable: row.is_available,

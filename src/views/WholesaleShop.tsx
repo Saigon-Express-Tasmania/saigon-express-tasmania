@@ -30,6 +30,7 @@ const ALL_CATEGORY = "All";
 type DashboardProduct = {
   id: number;
   name: string;
+  categoryId: number | null;
   category: string;
   description: string;
   priceExGst: number;
@@ -48,6 +49,7 @@ function mapProduct(p: WholesaleProduct): DashboardProduct {
   return {
     id: p.id,
     name: p.name,
+    categoryId: p.categoryId,
     category: p.category,
     description: p.description ?? "",
     priceExGst: Number(p.unitPrice ?? 0),
@@ -187,18 +189,26 @@ export default function WholesaleShop({
 
   const allProducts = useMemo(() => shopProducts.map(mapProduct), [shopProducts]);
 
+  const selectedCategoryId = useMemo(() => {
+    if (selectedCategory === ALL_CATEGORY) return null;
+    return (
+      categoriesContent.find((category) => category.name === selectedCategory)
+        ?.id ?? null
+    );
+  }, [selectedCategory, categoriesContent]);
+
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase();
     return allProducts.filter((p) => {
       const matchesCategory =
-        selectedCategory === ALL_CATEGORY || p.category === selectedCategory;
+        selectedCategoryId === null || p.categoryId === selectedCategoryId;
       const matchesSearch =
         !normalizedSearch ||
         p.name.toLowerCase().includes(normalizedSearch) ||
         p.description.toLowerCase().includes(normalizedSearch);
       return matchesCategory && matchesSearch;
     });
-  }, [allProducts, search, selectedCategory]);
+  }, [allProducts, search, selectedCategoryId]);
 
   const handleLogout = async () => {
     await signOut();

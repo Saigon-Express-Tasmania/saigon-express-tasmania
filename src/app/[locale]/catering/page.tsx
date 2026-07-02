@@ -22,7 +22,7 @@ export default async function LocalizedCateringPage() {
       kind="catering"
     >
       <Suspense fallback={null}>
-        <Catering packs={packs} />
+        <Catering packs={packs} categoriesContent={categoriesContent} />
       </Suspense>
     </ProductCustomizationsProvider>
   );

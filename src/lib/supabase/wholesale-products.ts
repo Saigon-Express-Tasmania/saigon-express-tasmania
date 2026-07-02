@@ -1,14 +1,28 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapWholesaleProductRow, type WholesaleProduct } from "@/types";
+import {
+  categoryMapById,
+  resolveCategoryName,
+} from "@/lib/product-category";
 import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
+import { getCategoriesByKind } from "./categories";
 import { fetchWholesaleProductRows } from "./products";
 
 const CACHE_TAG = CACHE_TAGS.wholesaleProducts;
 
 async function loadWholesaleProducts(): Promise<WholesaleProduct[]> {
-  const rows = await fetchWholesaleProductRows();
-  return rows.map(mapWholesaleProductRow);
+  const [rows, categories] = await Promise.all([
+    fetchWholesaleProductRows(),
+    getCategoriesByKind("wholesale"),
+  ]);
+  const categoryById = categoryMapById(categories);
+  return rows.map((row) =>
+    mapWholesaleProductRow(
+      row,
+      resolveCategoryName(row.category_id, categoryById, row.category ?? ""),
+    ),
+  );
 }
 
 /**

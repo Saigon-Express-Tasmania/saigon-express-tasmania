@@ -9,6 +9,7 @@ import {
 } from "@/lib/supabase/settings";
 import { fetchWholesaleProductRows } from "@/lib/supabase/products";
 import { getWholesaleTiers } from "@/lib/supabase/wholesale-tiers";
+import { categoryMapById } from "@/lib/product-category";
 import type {
   SiteCategory,
   WholesalePricingTier,
@@ -57,7 +58,11 @@ export async function loadWholesalePageData(): Promise<WholesalePageData> {
     ]);
 
   return {
-    products: mergeWholesaleProductsWithAvailability(productRows, inventory),
+    products: mergeWholesaleProductsWithAvailability(
+      productRows,
+      inventory,
+      categoryMapById(categoriesContent),
+    ),
     inventory,
     categoriesContent,
     ...cartConfig,

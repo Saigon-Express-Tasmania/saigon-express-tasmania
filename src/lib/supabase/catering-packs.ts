@@ -1,6 +1,10 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
-import { parseNumericCateringItemId } from "@/lib/catering-item-routes";
+import {
+  categoryMapById,
+  resolveCategoryName,
+  type CategoryLookup,
+} from "@/lib/product-category";
 import {
   normalizeMenuImageUrls,
   parseMenuImageMore,
@@ -8,7 +12,9 @@ import {
   type MenuImageMoreEntry,
   type MenuImageUrls,
 } from "@/types";
+import { parseNumericCateringItemId } from "@/lib/catering-item-routes";
 import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
+import { getCategoriesByKind } from "./categories";
 import {
   fetchCateringProductRowById,
   fetchCateringProductRows,
@@ -28,6 +34,7 @@ export type CateringTierPrice = {
 export type CateringPack = {
   id: number;
   name: string;
+  categoryId: number | null;
   category: string;
   serves: string | null;
   price: string | null;
@@ -61,7 +68,10 @@ function mapTierPrices(input: CateringProductRow["prices"]): CateringTierPrice[]
     .filter((item) => item.size && item.price && item.serves);
 }
 
-export function mapCateringPackRow(row: CateringProductRow): CateringPack {
+export function mapCateringPackRow(
+  row: CateringProductRow,
+  categoryById: Map<number, CategoryLookup> = new Map(),
+): CateringPack {
   const imageUrls = normalizeMenuImageUrls(row.image_urls);
   const moreImages = parseMenuImageMore(row.image_urls);
   const img =
@@ -69,10 +79,16 @@ export function mapCateringPackRow(row: CateringProductRow): CateringPack {
     row.image_url?.trim() ??
     null;
 
+  const categoryId = row.category_id ?? null;
+  const category =
+    resolveCategoryName(categoryId, categoryById, row.category ?? "") ||
+    FEATURED_CATERING_PACK_CATEGORY;
+
   return {
     id: Number(row.id),
     name: row.name,
-    category: row.category?.trim() || FEATURED_CATERING_PACK_CATEGORY,
+    categoryId,
+    category,
     serves: row.serves?.trim() || null,
     price: row.price?.trim() || null,
     catalogUnitPrice: row.unit_price?.trim() || null,
@@ -97,13 +113,21 @@ export function mapCateringPackRow(row: CateringProductRow): CateringPack {
 }
 
 async function loadCateringPacks(): Promise<CateringPack[]> {
-  const rows = await fetchCateringProductRows();
-  return rows.map(mapCateringPackRow);
+  const [rows, categories] = await Promise.all([
+    fetchCateringProductRows(),
+    getCategoriesByKind("catering"),
+  ]);
+  const categoryById = categoryMapById(categories);
+  return rows.map((row) => mapCateringPackRow(row, categoryById));
 }
 
 async function loadCateringItemById(id: number): Promise<CateringPack | null> {
-  const row = await fetchCateringProductRowById(id);
-  return row ? mapCateringPackRow(row) : null;
+  const [row, categories] = await Promise.all([
+    fetchCateringProductRowById(id),
+    getCategoriesByKind("catering"),
+  ]);
+  if (!row) return null;
+  return mapCateringPackRow(row, categoryMapById(categories));
 }
 
 export const getCateringPacks = unstable_cache(

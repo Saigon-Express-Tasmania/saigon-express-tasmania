@@ -7,13 +7,13 @@ import { createServerSupabaseClient } from "./server";
 export type ProductType = "alacarte" | "wholesale" | "catering";
 
 const ALACARTE_SELECT =
-  "id, name, slug, description, price, wholesale_price, category, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
+  "id, name, slug, description, price, wholesale_price, category_id, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
 
 const WHOLESALE_SELECT =
-  "id, name, sku, category, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at";
+  "id, name, sku, category_id, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at";
 
 export const CATERING_SELECT =
-  "id, name, category, serves, price, unit_price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available, customization_ids, customizations_disabled";
+  "id, name, category_id, serves, price, unit_price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available, customization_ids, customizations_disabled";
 
 const PRODUCT_CACHE_TAGS: Record<ProductType, string> = {
   alacarte: CACHE_TAGS.menu,
@@ -151,7 +151,7 @@ export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]
     "wholesale",
     WHOLESALE_SELECT,
     [
-      { column: "category", ascending: true },
+      { column: "category_id", ascending: true },
       { column: "id", ascending: true },
     ],
   );
@@ -160,7 +160,8 @@ export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]
 export type CateringProductRow = {
   id: number;
   name: string;
-  category: string;
+  category_id: number | null;
+  category?: string;
   serves: string | null;
   price: string | null;
   unit_price: string | null;
