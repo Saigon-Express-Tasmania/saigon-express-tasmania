@@ -38,6 +38,7 @@ import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, SiteCategoryGroup, StoreLocation } from "@/types";
 // 1. Import Fuse
 import Fuse from "fuse.js";
+import Image from "next/image";
 
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
 
@@ -282,20 +283,22 @@ export default function Menu({
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
-      <section className="relative aspect-[5/1.6] overflow-hidden min-h-[500px] w-full">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('/manus-storage/menu__hero.jpg')`,
-          }}
+      <section className="relative aspect-[5/1] overflow-hidden min-h-[500px] w-full xl:min-h-[400px] flex justify-start items-end">
+        {/* use Next/Image for this */}
+        <Image
+          src="/manus-storage/menu__hero.png"
+          alt={t("hero.heading")}
+          fill
+          priority
+          className="absolute inset-0 object-cover w-full h-full object-[70%_50%]"
         />
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="w-full h-full mx-auto px-6 md:px-16 py-12 md:py-16 grid lg:grid-cols-2 gap-10 items-center">
-          <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+        <div className="w-full mx-auto px-6 lg:px-16 gap-10 pb-8 md:pb-12 lg:pb-16">
+          <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 lg:px-20 max-w-[1280px] md:max-w-2xl mx-auto md: ml-4 lg:ml-12 xl:ml-20">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-3">
               {t("hero.eyebrow")}
             </p>
-            <h1 className="font-serif text-white text-4xl md:text-5xl leading-tight mb-4">
+            <h1 className="font-serif text-white text-4xl lg:text-5xl leading-tight mb-4">
               {t("hero.heading")}
             </h1>
             <p className="text-white/60 text-base leading-relaxed mb-8">
@@ -321,17 +324,6 @@ export default function Menu({
                 {t("hero.ctaDelivery")}
               </Link>
             </div>
-          </div>
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-video md:aspect-[4/3]">
-            <video
-              src="/manus-storage/saigon-food-hero_53c731c9.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10 pointer-events-none" />
           </div>
         </div>
       </section>

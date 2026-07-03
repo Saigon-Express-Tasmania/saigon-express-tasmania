@@ -59,6 +59,7 @@ import {
   getPopulatedCategoryIds,
 } from "@/lib/category-bar";
 import type { SiteCategory, SiteCategoryGroup } from "@/types";
+import Image from "next/image";
 
 type CateringMenuGroup = {
   categoryId: number | null;
@@ -525,7 +526,14 @@ export default function Catering({
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
       <section className="relative h-[480px] overflow-hidden">
-        <div className="absolute inset-0 bg-black" />
+        <Image
+          src="/manus-storage/catering__hero.png"
+          alt={t("hero.titleLine1")}
+          fill
+          priority
+          className="absolute inset-0 object-cover object-[75%] w-full h-full"
+        />
+        <div className="absolute inset-0 bg-black/55" />
         <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-4">
             {t("hero.badge")}

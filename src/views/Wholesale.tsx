@@ -24,6 +24,7 @@ import {
   Users,
   Phone,
 } from "lucide-react";
+import Image from "next/image";
 
 const WHOLESALE_INQUIRY_LAST_SUBMIT_KEY = "wholesale_inquiry_last_submit_at";
 const WHOLESALE_INQUIRY_SUBMIT_COOLDOWN_MS = 60 * 1000;
@@ -161,11 +162,12 @@ export default function Wholesale({
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero Section - on mobile screen, make sure it has enough height to display the content */}
       <section className="relative w-full aspect-5/2 overflow-hidden lg:aspect-5/2 min-h-[500px]">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('/manus-storage/wholesale__hero.jpg')`,
-          }}
+        <Image
+          src="/manus-storage/wholesale__hero.png"
+          alt={t("hero.heading")}
+          fill
+          priority
+          className="absolute inset-0 object-cover w-full h-full"
         />
         <div className="absolute inset-0 bg-black/55" />
         <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">

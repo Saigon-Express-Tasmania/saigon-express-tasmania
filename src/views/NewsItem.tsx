@@ -9,8 +9,7 @@ import { ArrowLeft, ArrowRight, Calendar, Eye } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-const FALLBACK_IMAGE =
-  "/manus-storage/news-story-began_47dbdf79.jpg";
+const FALLBACK_IMAGE = "/manus-storage/news-story-began_47dbdf79.jpg";
 
 const viewedStorageKey = (slug: string) => `blog-viewed:${slug}`;
 
@@ -188,9 +187,10 @@ export default function NewsItem({ post }: { post: BlogPostDetail }) {
           </div>
         )}
 
+        {/* make text paragraphs wrap word-wrap and align  */}
         <div
-          className="article-prose mb-12 space-y-4 text-brand-dark/80 leading-relaxed [&_a]:text-brand-red [&_a]:no-underline hover:[&_a]:underline [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-brand-dark [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-brand-dark [&_li]:ml-4 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-4"
-          dangerouslySetInnerHTML={{ __html: post.content }}
+          className="break-words hyphens-auto article-prose mb-12 space-y-4 text-brand-dark/80 leading-relaxed [&_a]:text-brand-red [&_a]:no-underline hover:[&_a]:underline [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-brand-dark [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-brand-dark [&_li]:ml-4 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-4"
+          dangerouslySetInnerHTML={{ __html: post.content.replaceAll('&nbsp;', ' ') }}
         />
 
         {post.showWholesaleCta && (

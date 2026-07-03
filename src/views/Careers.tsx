@@ -16,6 +16,7 @@ import { useFormattedContactPhone } from "@/hooks/useFormattedContactPhone";
 import Jobs from "@/components/Jobs";
 import JobApplicationForm from "@/components/JobApplicationForm";
 import type { JobListing } from "@/types/JobListing";
+import Image from "next/image";
 
 const BENEFITS_CONFIG = [
   { icon: Star, key: "discount" },
@@ -35,8 +36,16 @@ export default function Careers({ jobs }: { jobs: JobListing[] }) {
     <div className="min-h-screen bg-background text-foreground">
       {/* Hero */}
       <section className="relative min-h-[52vh] overflow-hidden py-16 md:py-20 lg:py-24">
-        <div className="absolute inset-0 bg-black" />
-        <div className="relative flex flex-col items-center justify-center text-center px-6">
+        <Image
+            src="/manus-storage/careers__hero.png"
+            alt={t("hero.titleLine1")}
+            fill
+            priority
+            className="absolute inset-0 object-cover object-[50%_45%] w-full h-full"
+          />
+        <div className="absolute inset-0 bg-black/50" />
+
+        <div className="relative flex flex-col items-center justify-center text-right px-6 mt-30 h-fit max-h-[300px]">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="inline-block text-xs font-bold tracking-[0.25em] uppercase px-4 py-1.5 rounded-full mb-5 text-white border border-white/30 bg-white/10 backdrop-blur-sm">
               {t("hero.badge")}

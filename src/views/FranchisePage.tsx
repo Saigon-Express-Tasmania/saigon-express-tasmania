@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimationOnScroll } from "@/components/AnimationOnScroll";
+import Image from "next/image";
 
 // Lucide icon dictionary mapping
 const ICON_MAP: Record<
@@ -288,12 +289,14 @@ export default function FranchisePage() {
       <AnimationOnScroll />
       <div className="min-h-screen bg-brand-cream font-sans overflow-hidden">
         {/* Hero Section */}
-        <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden py-20 md:py-28 lg:py-32 pt-28 md:pt-32">
-          <div
-            className="absolute inset-0 bg-cover bg-center transform scale-105 animate-slow-zoom"
-            style={{
-              backgroundImage: `url('/manus-storage/franchise__hero.jpg')`,
-            }}
+        <section className="relative min-h-[500px] flex items-center justify-center overflow-hidden py-16 md:py-24 lg:py-30 pt-8">
+          {/* use Next/Image for this */}
+          <Image
+            src="/manus-storage/franchise__hero.png"
+            alt={t("hero.titleLine1")}
+            fill
+            priority
+            className="absolute inset-0 object-cover w-full h-full"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
 
