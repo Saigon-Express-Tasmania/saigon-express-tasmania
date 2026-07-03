@@ -42,6 +42,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { cleanBlogPostContent } from '@/lib/blog-content-cleaner';
 import { generateExcerptFromBlogPost } from '@/lib/blog-excerpt';
 import {
   BLOG_NEWS_LOGO_CUSTOM_VALUE,
@@ -805,6 +806,22 @@ export function BlogPosts() {
     toast.success('Excerpt generated from content.');
   };
 
+  const handleCleanContent = () => {
+    if (!form.content.trim()) {
+      toast.error('Add content first.');
+      return;
+    }
+
+    const cleaned = cleanBlogPostContent(form.content);
+    if (cleaned === form.content.trim()) {
+      toast.message('Content is already clean.');
+      return;
+    }
+
+    handleContentChange(cleaned);
+    toast.success('Content cleaned.');
+  };
+
   const handleSuggestTags = () => {
     if (
       !form.title.trim() &&
@@ -1547,7 +1564,19 @@ export function BlogPosts() {
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-                <Label htmlFor="post-content">Content</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="post-content">Content</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={handleCleanContent}
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Clean content
+                  </Button>
+                </div>
                 <HtmlRichTextEditor
                   key={editingId ?? 'new'}
                   id="post-content"
