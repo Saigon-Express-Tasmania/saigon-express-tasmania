@@ -174,6 +174,7 @@
       "getTheApp": "Get the App",
       "privacyPolicy": "Privacy Policy",
       "termsOfService": "Terms of Service",
+      "foodSafety": "Food Safety",
       "cookieSettings": "Cookie settings",
       "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "findStore": "Find a Store",
@@ -448,6 +449,12 @@
       "heading": "View catering cart",
       "summary": "{count, plural, one {# item · {total}} other {# items · {total}}}"
     }
+  },
+  "ItemFoodSafety": {
+    "link": "Food Safety Information",
+    "hotFoodNote": "Hot food availability is subject to delivery location and logistics. Where available, please select a delivery window within 30 minutes of your event commencing to ensure the best experience. All food is heated immediately prior to dispatch and will be delivered warm. For optimal quality and food safety, we recommend that all items are consumed within 1 hour of delivery. If you have any questions about timing or suitability for your event, please feel free to get in touch — we're happy to help!",
+    "boxesNote": "Boxes cannot be split or combined.",
+    "packagingNote": "Packaging displayed in the photo may vary but the same great food will be supplied."
   },
   "Checkout": {
     "steps": {

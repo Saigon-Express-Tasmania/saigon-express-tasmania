@@ -142,6 +142,14 @@ export default function MainFooter() {
                 </Link>
               </li>
               <li>
+                <Link
+                  href="/terms-of-service#food-safety"
+                  className="hover:text-white transition-colors"
+                >
+                  {t("footer.foodSafety")}
+                </Link>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={openCookieSettings}

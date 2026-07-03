@@ -15,6 +15,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { menuItemDetailPath, menuListPath, MENU_CATEGORIES_ANCHOR } from "@/lib/menu-item-routes";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import FoodContentLabels from "@/components/FoodContentLabels";
+import ItemFoodSafetyNotice from "@/components/ItemFoodSafetyNotice";
 import LazyImage from "@/components/LazyImage";
 import { getRelatedMenuItems } from "@/lib/menu-related-items";
 import { pickMenuImageUrl } from "@/types";
@@ -268,8 +269,8 @@ export default function MenuItemView({
   return (
     <div className="min-h-screen bg-brand-cream pb-28 font-sans">      
       <div className="mx-auto max-w-[1200px] px-5 py-8 md:px-6">
-        <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:gap-12">
-          <div className="flex-[1.2]">
+        <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12">
+          <div className="flex-[1.2] lg:sticky lg:top-20 lg:self-start">
             <Link href={backHref} className="inline-block mb-4">
               <div className="flex items-center justify-between bg-brand-dark px-8 py-2 text-white transition-colors hover:bg-brand-dark/90 rounded">
                 <ChevronLeft size={18} className="text-white/50 mr-2" />
@@ -385,7 +386,8 @@ export default function MenuItemView({
               </section>
             ) : null}
 
-            <div className="flex items-center gap-4 border-t border-gray-200 pt-5">
+            <div className="space-y-4 border-t border-gray-200 pt-5">
+              <div className="flex items-center gap-4">
               {/* TODO: currently using external order POS, will consider adding quantity selector back in the future */}
               {/* <div className="flex items-center overflow-hidden rounded border border-gray-200 bg-white">
                 <button
@@ -424,6 +426,9 @@ export default function MenuItemView({
                   Order Now
                 </span>
               </button>
+              </div>
+
+              <ItemFoodSafetyNotice />
             </div>
           </div>
         </div>

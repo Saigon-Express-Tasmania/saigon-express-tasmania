@@ -24,6 +24,7 @@ import {
 } from "@/components/ItemCustomiseInline";
 import type { ItemCustomisation } from "@/lib/product-customizations";
 import LazyImage from "@/components/LazyImage";
+import ItemFoodSafetyNotice from "@/components/ItemFoodSafetyNotice";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
@@ -253,8 +254,8 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
           </div>
         ) : null}
 
-        <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:gap-12">
-          <div className="flex-[1.2]">
+        <div className="mb-10 flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12">
+          <div className="flex-[1.2] lg:sticky lg:top-20 lg:self-start">
             <Link href={backHref} className="mb-4 inline-block">
               <div className="flex items-center justify-between rounded bg-brand-dark px-8 py-2 text-white transition-colors hover:bg-brand-dark/90">
                 <ChevronLeft size={18} className="mr-2 text-white/50" />
@@ -443,6 +444,8 @@ export default function CateringItemView({ item, packs }: CateringItemViewProps)
                   {tCatering("menu.customPrice")}
                 </p>
               ) : null}
+
+              <ItemFoodSafetyNotice />
             </div>
           </div>
         </div>

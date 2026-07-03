@@ -174,6 +174,7 @@
       "getTheApp": "Tải Ứng Dụng",
       "privacyPolicy": "Chính Sách Bảo Mật",
       "termsOfService": "Điều Khoản Dịch Vụ",
+      "foodSafety": "An Toàn Thực Phẩm",
       "cookieSettings": "Cài đặt cookie",
       "copyright": "© {year} Saigon Express Franchise Management / TTH Enterprises Pty Ltd · ABN 60 650 289 991",
       "findStore": "Tìm Cửa Hàng",
@@ -448,6 +449,12 @@
       "heading": "Xem giỏ hàng tiệc",
       "summary": "{count, plural, one {# món · {total}} other {# món · {total}}}"
     }
+  },
+  "ItemFoodSafety": {
+    "link": "Thông Tin An Toàn Thực Phẩm",
+    "hotFoodNote": "Khả năng cung cấp món nóng phụ thuộc vào địa điểm giao hàng và logistics. Khi có thể, vui lòng chọn khung giờ giao trong vòng 30 phút trước khi sự kiện bắt đầu để có trải nghiệm tốt nhất. Tất cả món ăn được hâm nóng ngay trước khi giao và sẽ được giao ấm. Để đảm bảo chất lượng và an toàn thực phẩm, chúng tôi khuyên nên dùng trong vòng 1 giờ sau khi giao. Nếu bạn có câu hỏi về thời gian hoặc phù hợp với sự kiện, hãy liên hệ — chúng tôi sẵn sàng hỗ trợ!",
+    "boxesNote": "Không thể tách hoặc gộp hộp.",
+    "packagingNote": "Bao bì trong ảnh có thể khác nhưng món ăn vẫn giữ nguyên chất lượng."
   },
   "Checkout": {
     "steps": {
