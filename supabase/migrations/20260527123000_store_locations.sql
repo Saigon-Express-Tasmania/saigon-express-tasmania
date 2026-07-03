@@ -4,6 +4,7 @@
 
 create table public.store_locations (
   id bigint primary key,
+  sort_order integer not null default 0,
   name text not null,
   address text not null,
   suburb text,

@@ -38,17 +38,36 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 import {
   SalesOrderFormField,
-  SalesOrderFormSection,
   salesOrderFormGridClass,
 } from '@/pages/Sales/SalesOrderFormField';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CreditCard,
+  Link2,
+  Loader2,
+  MapPin,
+  Pencil,
+  Plus,
+  Store,
+  Trash2,
+} from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { toast } from 'sonner';
 
 type StoreLocationRow = {
   id: number;
+  sort_order: number;
   name: string;
   address: string;
   suburb: string | null;
@@ -70,11 +89,147 @@ type StoreLocationRow = {
   platform_fee_percent: string | null;
 };
 
+type SortColumn = 'id' | 'sort_order' | 'name';
+type SortDirection = 'asc' | 'desc';
+
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+}) {
+  const isActive = sortColumn === column;
+  const Icon = isActive
+    ? sortDirection === 'asc'
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+
+  return (
+    <th className="px-4 py-3 text-left text-sm font-semibold">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-foreground/80"
+        onClick={() => onSort(column)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </th>
+  );
+}
+
 const SELECT_COLUMNS =
-  'id, name, address, suburb, lat, lng, phone, email, hours, is_active, is_invoice_creator, is_shipping, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
+  'id, sort_order, name, address, suburb, lat, lng, phone, email, hours, is_active, is_invoice_creator, is_shipping, delivery_url, google_map_url, is_franchise, franchise_owner_name, franchise_owner_email, stripe_connect_account_id, stripe_connect_status, platform_fee_percent';
+
+function StoreFormSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className,
+  accentClass,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: ReactNode;
+  className?: string;
+  accentClass?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        'rounded-xl border p-4 shadow-xs',
+        accentClass ?? 'border-border/70 bg-muted/20',
+        className,
+      )}
+    >
+      <div className="mb-4 flex items-start gap-3 border-b border-border/40 pb-3">
+        {Icon ? (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background/80 shadow-xs ring-1 ring-border/50">
+            <Icon className="size-4 text-foreground/70" aria-hidden />
+          </span>
+        ) : null}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          {description ? (
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function InlineSortOrderInput({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: number;
+  disabled?: boolean;
+  onCommit: (sortOrder: number) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = async () => {
+    const parsed = Number.parseInt(draft, 10);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setDraft(String(value));
+      toast.error('Sort order must be a non-negative integer.');
+      return;
+    }
+    if (parsed === value) return;
+
+    setSaving(true);
+    try {
+      await onCommit(parsed);
+    } catch {
+      setDraft(String(value));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Input
+      type="number"
+      min={0}
+      step={1}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        }
+      }}
+      disabled={disabled || saving}
+      className="h-8 w-20 font-mono text-sm"
+      aria-label="Sort order"
+    />
+  );
+}
 
 const emptyStoreLocationInput = (): StoreLocationRow => ({
   id: 0,
+  sort_order: 0,
   name: '',
   address: '',
   suburb: '',
@@ -120,6 +275,7 @@ function formatHoursForEdit(hours: string | null): string {
 function rowToForm(row: StoreLocationRow): StoreLocationRow {
   return {
     id: row.id,
+    sort_order: row.sort_order,
     name: row.name,
     address: row.address,
     suburb: row.suburb ?? '',
@@ -154,6 +310,7 @@ function formToPayload(form: StoreLocationRow): StoreLocationRow {
 
   return {
     id: form.id,
+    sort_order: Number(form.sort_order) || 0,
     name: form.name.trim(),
     address: form.address.trim(),
     suburb: form.suburb?.trim() || null,
@@ -193,6 +350,11 @@ export function StoreLocations() {
     null,
   );
   const [search, setSearch] = useState('');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(
+    null,
+  );
 
   const loadLocations = useCallback(async () => {
     try {
@@ -201,6 +363,7 @@ export function StoreLocations() {
       const { data, error: fetchError } = await supabase
         .from('store_locations')
         .select(SELECT_COLUMNS)
+        .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
       if (fetchError) throw fetchError;
@@ -237,13 +400,72 @@ export function StoreLocations() {
     });
   }, [locations, search]);
 
+  const displayLocations = useMemo(() => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return [...filteredLocations].sort((a, b) => {
+      if (sortColumn === 'id') {
+        return (a.id - b.id) * direction;
+      }
+      if (sortColumn === 'sort_order') {
+        return (
+          ((a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id) * direction
+        );
+      }
+      return a.name.localeCompare(b.name) * direction;
+    });
+  }, [filteredLocations, sortColumn, sortDirection]);
+
+  const handleSort = useCallback((column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection('asc');
+  }, [sortColumn]);
+
+  const handleInlineSortOrderSave = useCallback(
+    async (locationId: number, sortOrder: number) => {
+      setInlineSortSavingId(locationId);
+      try {
+        const { error: updateError } = await supabase
+          .from('store_locations')
+          .update({ sort_order: sortOrder })
+          .eq('id', locationId);
+
+        if (updateError) throw updateError;
+
+        setLocations((prev) =>
+          prev.map((loc) =>
+            loc.id === locationId ? { ...loc, sort_order: sortOrder } : loc,
+          ),
+        );
+        toast.success('Sort order updated.');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to update sort order.',
+        );
+        throw err;
+      } finally {
+        setInlineSortSavingId(null);
+      }
+    },
+    [],
+  );
+
   const openCreate = async () => {
     try {
       const id = await nextStoreLocationId();
+      const nextSortOrder =
+        locations.reduce(
+          (max, loc) => Math.max(max, loc.sort_order ?? 0),
+          0,
+        ) + 1;
       setEditingId(null);
       setForm({
         ...emptyStoreLocationInput(),
         id,
+        sort_order: nextSortOrder,
       });
       setDialogOpen(true);
     } catch (err) {
@@ -288,6 +510,7 @@ export function StoreLocations() {
         const { error: updateError } = await supabase
           .from('store_locations')
           .update({
+            sort_order: payload.sort_order,
             name: payload.name,
             address: payload.address,
             suburb: payload.suburb,
@@ -317,6 +540,7 @@ export function StoreLocations() {
           .from('store_locations')
           .insert({
             id: payload.id,
+            sort_order: payload.sort_order,
             name: payload.name,
             address: payload.address,
             suburb: payload.suburb,
@@ -441,7 +665,7 @@ export function StoreLocations() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : filteredLocations.length === 0 ? (
+            ) : displayLocations.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No store locations found. Add one to get started.
               </p>
@@ -450,12 +674,27 @@ export function StoreLocations() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Name
-                      </th>
+                      <SortableHeader
+                        label="ID"
+                        column="id"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Sort"
+                        column="sort_order"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Name"
+                        column="name"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Suburb
                       </th>
@@ -477,13 +716,22 @@ export function StoreLocations() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLocations.map((loc) => (
+                    {displayLocations.map((loc) => (
                       <tr
                         key={loc.id}
                         className="border-b transition-colors hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 font-mono text-sm">
                           {loc.id}
+                        </td>
+                        <td className="px-4 py-3">
+                          <InlineSortOrderInput
+                            value={loc.sort_order ?? 0}
+                            disabled={inlineSortSavingId === loc.id || saving}
+                            onCommit={(sortOrder) =>
+                              handleInlineSortOrderSave(loc.id, sortOrder)
+                            }
+                          />
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           <div className="flex flex-wrap items-center gap-2">
@@ -563,22 +811,48 @@ export function StoreLocations() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
-          <DialogHeader className="border-b px-6 py-5 text-left">
-            <DialogTitle>
-              {editingId !== null ? 'Edit store location' : 'Add store location'}
-            </DialogTitle>
-            <DialogDescription>
-              Active locations appear on the public store finder. Invoice creator
-              locations supply company details on wholesale order invoices.
-            </DialogDescription>
-          </DialogHeader>
+          <div className="shrink-0 border-b bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-sky-500/10 px-6 py-5">
+            <DialogHeader className="space-y-2 text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 border-emerald-300/70 bg-background/70 text-emerald-900 dark:text-emerald-200"
+                >
+                  <Store className="size-3.5" aria-hidden />
+                  Store location
+                </Badge>
+                {editingId !== null ? (
+                  <Badge variant="secondary" className="font-mono">
+                    #{editingId}
+                  </Badge>
+                ) : null}
+                {form.name.trim() ? (
+                  <Badge
+                    variant="outline"
+                    className="border-teal-300/60 bg-teal-500/10 text-teal-900 dark:text-teal-200"
+                  >
+                    {form.name.trim()}
+                  </Badge>
+                ) : null}
+              </div>
+              <DialogTitle className="text-xl">
+                {editingId !== null ? 'Edit store location' : 'Add store location'}
+              </DialogTitle>
+              <DialogDescription>
+                Active locations appear on the public store finder. Invoice creator
+                locations supply company details on wholesale order invoices.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
-            <SalesOrderFormSection
+          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-5 lg:grid-cols-2">
+            <StoreFormSection
               title="Basics"
-              description="Core identity and visibility on the public site."
+              description="Identity, display order, and visibility on the public site."
+              icon={Store}
+              accentClass="border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-background dark:border-emerald-900/50 dark:from-emerald-950/30 lg:col-span-2"
             >
-              <div className={salesOrderFormGridClass}>
+              <div className="grid gap-4 md:grid-cols-3">
                 <SalesOrderFormField label="ID" htmlFor="loc-id">
                   <Input
                     id="loc-id"
@@ -587,6 +861,21 @@ export function StoreLocations() {
                     disabled={editingId !== null}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, id: Number(e.target.value) || 0 }))
+                    }
+                  />
+                </SalesOrderFormField>
+                <SalesOrderFormField label="Sort order" htmlFor="loc-sort-order">
+                  <Input
+                    id="loc-sort-order"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.sort_order}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        sort_order: Number(e.target.value) || 0,
+                      }))
                     }
                   />
                 </SalesOrderFormField>
@@ -606,10 +895,24 @@ export function StoreLocations() {
                     </SelectContent>
                   </Select>
                 </SalesOrderFormField>
+              </div>
+              <div className={`${salesOrderFormGridClass} mt-4`}>
+                <SalesOrderFormField
+                  label="Name"
+                  htmlFor="loc-name"
+                  className="md:col-span-2"
+                >
+                  <Input
+                    id="loc-name"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                  />
+                </SalesOrderFormField>
                 <SalesOrderFormField
                   label="Invoice creator"
                   htmlFor="loc-invoice-creator"
-                  className="md:col-span-2"
                 >
                   <Select
                     value={form.is_invoice_creator ? 'yes' : 'no'}
@@ -625,7 +928,7 @@ export function StoreLocations() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="yes">
-                        Yes — use this location on order invoices
+                        Yes — use on order invoices
                       </SelectItem>
                       <SelectItem value="no">No</SelectItem>
                     </SelectContent>
@@ -634,7 +937,6 @@ export function StoreLocations() {
                 <SalesOrderFormField
                   label="Shipping origin"
                   htmlFor="loc-shipping"
-                  className="md:col-span-2"
                 >
                   <Select
                     value={form.is_shipping ? 'yes' : 'no'}
@@ -650,31 +952,20 @@ export function StoreLocations() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="yes">
-                        Yes — use as wholesale freight dispatch point
+                        Yes — wholesale freight dispatch
                       </SelectItem>
                       <SelectItem value="no">No</SelectItem>
                     </SelectContent>
                   </Select>
                 </SalesOrderFormField>
-                <SalesOrderFormField
-                  label="Name"
-                  htmlFor="loc-name"
-                  className="md:col-span-2"
-                >
-                  <Input
-                    id="loc-name"
-                    value={form.name}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, name: e.target.value }))
-                    }
-                  />
-                </SalesOrderFormField>
               </div>
-            </SalesOrderFormSection>
+            </StoreFormSection>
 
-            <SalesOrderFormSection
+            <StoreFormSection
               title="Location & contact"
-              description="Street address, suburb, and map coordinates."
+              description="Street address, suburb, coordinates, and contact details."
+              icon={MapPin}
+              accentClass="border-sky-200/70 bg-gradient-to-br from-sky-50/80 to-background dark:border-sky-900/50 dark:from-sky-950/30 lg:col-span-2"
             >
               <div className={salesOrderFormGridClass}>
                 <SalesOrderFormField
@@ -738,11 +1029,13 @@ export function StoreLocations() {
                   />
                 </SalesOrderFormField>
               </div>
-            </SalesOrderFormSection>
+            </StoreFormSection>
 
-            <SalesOrderFormSection
+            <StoreFormSection
               title="Links & hours"
               description="Delivery partners, map links, and opening hours."
+              icon={Link2}
+              accentClass="border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-background dark:border-amber-900/50 dark:from-amber-950/30 lg:col-span-2"
             >
               <div className="space-y-4">
                 <div className={salesOrderFormGridClass}>
@@ -791,11 +1084,13 @@ export function StoreLocations() {
                   />
                 </SalesOrderFormField>
               </div>
-            </SalesOrderFormSection>
+            </StoreFormSection>
 
-            <SalesOrderFormSection
+            <StoreFormSection
               title="Franchise & payments"
               description="Franchise ownership and Stripe Connect settings."
+              icon={CreditCard}
+              accentClass="border-violet-200/70 bg-gradient-to-br from-violet-50/80 to-background dark:border-violet-900/50 dark:from-violet-950/30 lg:col-span-2"
             >
               <div className={salesOrderFormGridClass}>
                 <SalesOrderFormField label="Franchise location" htmlFor="loc-franchise">
@@ -888,10 +1183,10 @@ export function StoreLocations() {
                   />
                 </SalesOrderFormField>
               </div>
-            </SalesOrderFormSection>
+            </StoreFormSection>
           </div>
 
-          <DialogFooter className="border-t bg-muted/20 px-6 py-4">
+          <DialogFooter className="shrink-0 border-t bg-muted/20 px-6 py-4">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}

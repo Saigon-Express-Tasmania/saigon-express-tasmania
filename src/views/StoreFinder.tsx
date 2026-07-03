@@ -8,6 +8,7 @@ import {
   TASMANIA_MAP_EMBED_URL,
   resolvePickupStoreMapEmbedUrl,
 } from "@/lib/google-maps-embed";
+import { categoryDisplaySortRank } from "@/lib/category-sort";
 import type { StoreLocation } from "@/types";
 
 // Parse hours JSON from DB: { mon: "11:00 AM - 8:30 PM", ... }
@@ -56,6 +57,16 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
     null,
   );
 
+  const sortedStores = useMemo(() => {
+    return [...stores].sort((a, b) => {
+      const rankDiff =
+        categoryDisplaySortRank(a.sortOrder) -
+        categoryDisplaySortRank(b.sortOrder);
+      if (rankDiff !== 0) return rankDiff;
+      return a.name.localeCompare(b.name);
+    });
+  }, [stores]);
+
   const mapEmbedUrl = useMemo(() => {
     if (!selectedStore) return TASMANIA_MAP_EMBED_URL;
     return resolvePickupStoreMapEmbedUrl(selectedStore) ?? TASMANIA_MAP_EMBED_URL;
@@ -91,12 +102,12 @@ export default function StoreFinder({ stores }: StoreFinderProps) {
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Store list */}
           <div className="lg:col-span-2 space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
-            {stores.length === 0 ? (
+            {sortedStores.length === 0 ? (
               <div className="p-6 bg-white border border-gray-200 rounded">
                 {t("list.empty")}
               </div>
             ) : (
-              stores.map((store: StoreLocation) => {
+              sortedStores.map((store: StoreLocation) => {
                 const hours = formatHours(store.hours);
                 const open = isOpenNow(store.hours);
                 const isSelected = selectedId === store.id;
