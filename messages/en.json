@@ -384,7 +384,19 @@
       "emptyCategory": "No items in this category.",
       "allCategory": "All",
       "categories": {
-        "label": "Category"
+        "label": "Category",
+        "placeholder": "Select a category…",
+        "searchPlaceholder": "Search categories…",
+        "empty": "No categories found."
+      },
+      "search": {
+        "placeholder": "Search catering menu…",
+        "clearLabel": "✕ Clear"
+      },
+      "emptySearch": {
+        "heading": "No results for \"{query}\"",
+        "hint": "Try a different keyword or clear the search.",
+        "clearSearch": "Clear search"
       },
       "caters": "Caters {serves}",
       "enquire": "Enquire Now",
@@ -1373,7 +1385,10 @@
     },
     "allCategory": "All",
     "categories": {
-      "label": "Category"
+      "label": "Category",
+      "placeholder": "Select a category…",
+      "searchPlaceholder": "Search categories…",
+      "empty": "No categories found."
     },
     "empty": {
       "headingSearch": "No results for \"{query}\"",
@@ -2009,6 +2024,12 @@
       "clear": "✕ Clear",
       "itemsCount": "{count} items"
     },
+    "categories": {
+      "label": "Category",
+      "placeholder": "Select a category…",
+      "searchPlaceholder": "Search categories…",
+      "empty": "No categories found."
+    },
     "productCard": {
       "unitLabel": "Unit",
       "priceLabel": "Price (ex GST)",
@@ -2063,48 +2084,6 @@
         "min": "100+ units",
         "discount": "25% off",
         "color": "from-primary/30 to-primary/20"
-      }
-    ],
-    "categories": [
-      {
-        "key": "All",
-        "label": "All"
-      },
-      {
-        "key": "Dough",
-        "label": "Dough"
-      },
-      {
-        "key": "Dried Foods",
-        "label": "Dried Foods"
-      },
-      {
-        "key": "Equipment",
-        "label": "Equipment"
-      },
-      {
-        "key": "Fresh Food",
-        "label": "Fresh Food"
-      },
-      {
-        "key": "Frozen Food",
-        "label": "Frozen Food"
-      },
-      {
-        "key": "Frozen Marinated Meat",
-        "label": "Frozen Marinated Meat"
-      },
-      {
-        "key": "Packaging",
-        "label": "Packaging"
-      },
-      {
-        "key": "Sauce",
-        "label": "Sauce"
-      },
-      {
-        "key": "Pastry",
-        "label": "Pastry"
       }
     ]
   },

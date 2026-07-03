@@ -15,6 +15,12 @@ import {
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
 import { menuItemDetailPath, MENU_CATEGORIES_ANCHOR } from "@/lib/menu-item-routes";
+import {
+  CATEGORY_LIST_ANCHOR,
+  getCategorySectionId,
+  scrollToCategoryInList,
+} from "@/lib/category-list-scroll";
+import { cn } from "@/lib/utils";
 import AddOnSuggestionModal, {
   type SuggestedItem,
 } from "@/components/AddOnSuggestionModal";
@@ -27,13 +33,16 @@ import PickLocationModal from "@/components/PickLocationModal";
 import StoreLocationsDialog from "@/components/StoreLocationsDialog";
 import LazyImage from "@/components/LazyImage";
 import FoodContentLabels from "@/components/FoodContentLabels";
-import CategoryGroupBar from "@/components/CategoryGroupBar";
+import CategorySelect from "@/components/CategorySelect";
+import CategorySidebar, {
+  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CATEGORY_SIDEBAR_COLUMN_CLASS,
+} from "@/components/CategorySidebar";
 import {
   filterCategoriesWithItems,
   getPopulatedCategoryIds,
 } from "@/lib/category-bar";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { Label } from "@/components/ui/label";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, SiteCategoryGroup, StoreLocation } from "@/types";
 // 1. Import Fuse
@@ -114,6 +123,7 @@ export default function Menu({
       }
 
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      scrollToCategoryInList(cat, allLabel);
     },
     [searchParams, pathname, router, allLabel],
   );
@@ -169,6 +179,16 @@ export default function Menu({
     () =>
       categoriesContent.reduce<Record<string, string | null>>((acc, category) => {
         acc[category.name] = category.icon;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const categoryDescriptionMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        const description = category.description?.trim();
+        if (description) acc[category.name] = description;
         return acc;
       }, {}),
     [categoriesContent],
@@ -290,7 +310,7 @@ export default function Menu({
           alt={t("hero.heading")}
           fill
           priority
-          className="absolute inset-0 object-cover w-full h-full object-[70%_50%]"
+          className="absolute inset-0 object-cover w-full h-full object-[70%_35%]"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
         <div className="w-full mx-auto px-6 lg:px-16 gap-10 pb-8 md:pb-12 lg:pb-16">
@@ -328,37 +348,60 @@ export default function Menu({
         </div>
       </section>
 
-      {/* Category strip */}
-      <div
-        id={MENU_CATEGORIES_ANCHOR}
-        className="sticky top-16 z-40 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]"
-      >
+      <div id={MENU_CATEGORIES_ANCHOR} className="scroll-mt-20" aria-hidden />
+
+      {/* Mobile category select */}
+      <div className="sticky top-16 z-40 border-b border-gray-100 bg-white/95 backdrop-blur-sm shadow-[0_4px_12px_-2px_rgba(0,0,0,0.06)] lg:hidden">
         <div className="max-w-[1280px] mx-auto px-6 py-3">
-          <Label className="mb-2 block text-xs font-bold uppercase tracking-wider text-brand-dark/60 md:sr-only">
-            {t("categories.label")}
-          </Label>
-          <CategoryGroupBar
+          <CategorySelect
             allLabel={allLabel}
             activeCategory={activeCategory}
             onCategorySelect={handleCategoryClick}
             categories={barCategories}
             categoryGroups={categoryGroups}
-            variant="brand"
-            renderCategoryLeading={(category) => (
-              <CategoryIcon
-                icon={getCategoryIcon(category.name)}
-                fallback={getCategoryIconFallback(category.name)}
-                accent
-                className="size-6 shrink-0 text-lg"
-                fallbackClassName="size-4"
-              />
-            )}
+            label={t("categories.label")}
+            placeholder={t("categories.placeholder")}
+            searchPlaceholder={t("categories.searchPlaceholder")}
+            emptyMessage={t("categories.empty")}
+            getCategoryIcon={getCategoryIcon}
+            getCategoryIconFallback={getCategoryIconFallback}
           />
         </div>
       </div>
 
-      {/* Grid */}
-      <main id="menu-grid" className="max-w-[1280px] mx-auto px-6 py-10">
+      <div className="lg:flex lg:items-start">
+        <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
+          <aside
+            aria-label={t("categories.label")}
+            className={cn(
+              CATEGORY_SIDEBAR_ASIDE_CLASS,
+              "border-r border-gray-100 bg-white px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)]",
+            )}
+          >
+            <CategorySidebar
+              allLabel={allLabel}
+              activeCategory={activeCategory}
+              onCategorySelect={handleCategoryClick}
+              categories={barCategories}
+              categoryGroups={categoryGroups}
+              renderCategoryLeading={(category) => (
+                <CategoryIcon
+                  icon={getCategoryIcon(category.name)}
+                  fallback={getCategoryIconFallback(category.name)}
+                  accent
+                  className="size-5 shrink-0 text-base"
+                  fallbackClassName="size-3.5"
+                />
+              )}
+            />
+          </aside>
+        </div>
+
+        {/* Grid */}
+        <main
+          id="menu-grid"
+          className="min-w-0 flex-1 w-full mx-auto px-6 py-10"
+        >
         {/* Search bar */}
         <div className="relative mb-8 max-w-xl">
           <svg
@@ -388,6 +431,24 @@ export default function Menu({
           )}
         </div>
 
+        <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
+
+        {activeCategory !== allLabel ? (
+          <div
+            id={getCategorySectionId(activeCategory)}
+            className="scroll-mt-24 mb-6"
+          >
+            <h2 className="font-serif text-brand-dark text-2xl mb-3 pb-2 border-b border-brand-cream">
+              {activeCategory}
+            </h2>
+            {categoryDescriptionMap[activeCategory] ? (
+              <p className="text-sm leading-relaxed text-brand-dark/55">
+                {categoryDescriptionMap[activeCategory]}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {filtered.length === 0 ? (
           <div className="text-center py-24 text-brand-dark/40">
             <p className="font-serif text-2xl mb-2">
@@ -408,7 +469,7 @@ export default function Menu({
             )}
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 lg:gap-5 xl:gap-6">
             {filtered.map((item) => {
               const cartEntries = cart.filter((c) => c.item.id === item.id);
               const totalQtyInCart = cartEntries.reduce((s, c) => s + c.qty, 0);
@@ -560,7 +621,8 @@ export default function Menu({
             <ChevronRight size={18} className="text-white/50" />
           </div>
         </Link>
-      </main>
+        </main>
+      </div>
 
       {/* Order location picker (compact store list) */}
       <StoreLocationsDialog

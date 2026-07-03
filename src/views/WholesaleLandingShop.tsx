@@ -7,6 +7,12 @@ import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
 import Link from "@/components/link";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
+import { cn } from "@/lib/utils";
+import {
+  CATEGORY_LIST_ANCHOR,
+  getCategorySectionId,
+  scrollToCategoryInList,
+} from "@/lib/category-list-scroll";
 import { hasPrivilege } from "@/lib/privileges";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -22,7 +28,12 @@ import {
 } from "@/types";
 // 1. Import Fuse
 import Fuse from "fuse.js";
-import CategoryGroupBar from "@/components/CategoryGroupBar";
+import CategorySelect from "@/components/CategorySelect";
+import CategorySidebar, {
+  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CATEGORY_SIDEBAR_COLUMN_CLASS,
+} from "@/components/CategorySidebar";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   filterCategoriesWithItems,
   getPopulatedCategoryIds,
@@ -80,6 +91,28 @@ export default function WholesaleLandingShop({
     [categoriesContent],
   );
 
+  const categoryDescriptionMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        const description = category.description?.trim();
+        if (description) acc[category.name] = description;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const getCategoryIcon = useCallback(
+    (categoryName: string) =>
+      categoryName === ALL_CATEGORY ? null : categoryIconMap[categoryName] ?? null,
+    [categoryIconMap],
+  );
+
+  const getCategoryIconFallback = useCallback(
+    (categoryName: string): "all" | "category" =>
+      categoryName === ALL_CATEGORY ? "all" : "category",
+    [],
+  );
+
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(
     urlCategory || ALL_CATEGORY,
@@ -99,6 +132,7 @@ export default function WholesaleLandingShop({
       }
 
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      scrollToCategoryInList(cat, ALL_CATEGORY);
     },
     [searchParams, pathname, router],
   );
@@ -233,9 +267,59 @@ export default function WholesaleLandingShop({
 
       {/* Search + product grid */}
       <section className="py-8">
-        <div className="container">
+        <div id="wholesale-categories" className="scroll-mt-20" aria-hidden />
+
+        <div className="sticky top-16 z-40 border-b border-border/60 bg-background/95 backdrop-blur-sm shadow-sm lg:hidden">
+          <div className="container py-3">
+            <CategorySelect
+              allLabel={ALL_CATEGORY}
+              activeCategory={selectedCategory}
+              onCategorySelect={handleCategoryClick}
+              categories={barCategories}
+              categoryGroups={categoryGroups}
+              label={t("categories.label")}
+              placeholder={t("categories.placeholder")}
+              searchPlaceholder={t("categories.searchPlaceholder")}
+              emptyMessage={t("categories.empty")}
+              getCategoryIcon={getCategoryIcon}
+              getCategoryIconFallback={getCategoryIconFallback}
+              variant="wholesale"
+            />
+          </div>
+        </div>
+
+        <div className="lg:flex lg:items-start">
+          <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
+            <aside
+              aria-label={t("categories.label")}
+              className={cn(
+                CATEGORY_SIDEBAR_ASIDE_CLASS,
+                "border-r border-border bg-background px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.04)]",
+              )}
+            >
+              <CategorySidebar
+                allLabel={ALL_CATEGORY}
+                activeCategory={selectedCategory}
+                onCategorySelect={handleCategoryClick}
+                categories={barCategories}
+                categoryGroups={categoryGroups}
+                variant="wholesale"
+                renderCategoryLeading={(category) => (
+                  <CategoryIcon
+                    icon={getCategoryIcon(category.name)}
+                    fallback={getCategoryIconFallback(category.name)}
+                    className="size-5 shrink-0 text-base"
+                    fallbackClassName="size-3.5"
+                  />
+                )}
+              />
+            </aside>
+          </div>
+
+          <div className="min-w-0 flex-1">
+        <div className="px-6">
           {/* Search bar */}
-          <div className="relative mb-6">
+          <div className="relative mb-2">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
@@ -253,29 +337,35 @@ export default function WholesaleLandingShop({
               </button>
             )}
           </div>
-        </div>
 
-        <div className="sticky top-16 z-40 mb-10 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]">
-          <div className="max-w-[1280px] mx-auto px-6 py-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <CategoryGroupBar
-                allLabel={ALL_CATEGORY}
-                activeCategory={selectedCategory}
-                onCategorySelect={handleCategoryClick}
-                categories={barCategories}
-                categoryGroups={categoryGroups}
-                variant="wholesale"
-              />
-              <span className="ml-auto text-sm text-muted-foreground">
-                {t("search.itemsCount", { count: filtered.length })}
-              </span>
-            </div>
+          <div className="mb-2 flex justify-end">
+            <span className="text-sm text-muted-foreground">
+              {t("search.itemsCount", { count: filtered.length })}
+            </span>
           </div>
         </div>
 
-        <div className="container">
+        <div className="min-w-0 flex-1 w-full mx-auto px-6 py-8">
+          <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
+
+          {selectedCategory !== ALL_CATEGORY ? (
+            <div
+              id={getCategorySectionId(selectedCategory)}
+              className="scroll-mt-24 mb-6"
+            >
+              <h2 className="font-serif text-foreground text-2xl mb-2">
+                {selectedCategory}
+              </h2>
+              {categoryDescriptionMap[selectedCategory] ? (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {categoryDescriptionMap[selectedCategory]}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* Product grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 lg:gap-5 xl:gap-6">
             {filtered.map((p, i) => {
               const img = pickWholesaleImageUrl(
                 p.imageUrls,
@@ -393,6 +483,8 @@ export default function WholesaleLandingShop({
               <p className="text-sm mt-1">{t("noProducts.desc")}</p>
             </div>
           )}
+        </div>
+          </div>
         </div>
       </section>
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import AppImage from "@/components/AppImage";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
@@ -17,6 +18,12 @@ import {
   applyWholesaleProductAvailability,
   type WholesaleProductAvailabilityRow,
 } from "@/types";
+import { cn } from "@/lib/utils";
+import {
+  CATEGORY_LIST_ANCHOR,
+  getCategorySectionId,
+  scrollToCategoryInList,
+} from "@/lib/category-list-scroll";
 import { buildWholesaleProductsAvailabilityRpcArgs } from "@/lib/wholesale-availability-rpc";
 import { resolvePortalType } from "@/lib/privileges";
 import { isWholesaleMemberConfirmed } from "@/lib/wholesale-registration-status";
@@ -24,7 +31,12 @@ import type { SiteCategory, UserProfile, WholesaleProduct } from "@/types";
 import { pickWholesaleImageUrl } from "@/types";
 import { Plus, Package, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
-import CategoryGroupBar from "@/components/CategoryGroupBar";
+import CategorySelect from "@/components/CategorySelect";
+import CategorySidebar, {
+  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CATEGORY_SIDEBAR_COLUMN_CLASS,
+} from "@/components/CategorySidebar";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   filterCategoriesWithItems,
   getPopulatedCategoryIds,
@@ -89,6 +101,7 @@ export default function WholesaleShop({
   categoriesContent: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
 }) {
+  const t = useTranslations("WholesaleShop");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -120,6 +133,28 @@ export default function WholesaleShop({
         return acc;
       }, {}),
     [categoriesContent],
+  );
+
+  const categoryDescriptionMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        const description = category.description?.trim();
+        if (description) acc[category.name] = description;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const getCategoryIcon = useCallback(
+    (categoryName: string) =>
+      categoryName === ALL_CATEGORY ? null : categoryIconMap[categoryName] ?? null,
+    [categoryIconMap],
+  );
+
+  const getCategoryIconFallback = useCallback(
+    (categoryName: string): "all" | "category" =>
+      categoryName === ALL_CATEGORY ? "all" : "category",
+    [],
   );
 
   const me = useMemo(() => {
@@ -223,6 +258,11 @@ export default function WholesaleShop({
     });
   }, [allProducts, search, selectedCategoryId]);
 
+  const handleCategoryClick = useCallback((cat: string) => {
+    setSelectedCategory(cat);
+    scrollToCategoryInList(cat, ALL_CATEGORY);
+  }, []);
+
   const handleLogout = async () => {
     await signOut();
     toast.success("Signed out.");
@@ -276,21 +316,56 @@ export default function WholesaleShop({
         </div>
       </div>
 
-      {/* Products section */}
-      <div className="sticky top-16 z-40 mb-4 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]">
+      <div className="scroll-mt-20" aria-hidden />
+
+      <div className="sticky top-16 z-40 border-b border-gray-100 bg-white/95 backdrop-blur-sm shadow-[0_4px_12px_-2px_rgba(0,0,0,0.06)] lg:hidden">
         <div className="max-w-[1280px] mx-auto px-6 py-3">
-          <CategoryGroupBar
+          <CategorySelect
             allLabel={ALL_CATEGORY}
             activeCategory={selectedCategory}
-            onCategorySelect={setSelectedCategory}
+            onCategorySelect={handleCategoryClick}
             categories={barCategories}
             categoryGroups={categoryGroups}
+            label={t("categories.label")}
+            placeholder={t("categories.placeholder")}
+            searchPlaceholder={t("categories.searchPlaceholder")}
+            emptyMessage={t("categories.empty")}
+            getCategoryIcon={getCategoryIcon}
+            getCategoryIconFallback={getCategoryIconFallback}
             variant="member"
           />
         </div>
       </div>
 
-      <div className="container pt-3 pb-8">
+      <div className="lg:flex lg:items-start">
+        <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
+          <aside
+            aria-label={t("categories.label")}
+            className={cn(
+              CATEGORY_SIDEBAR_ASIDE_CLASS,
+              "border-r border-gray-100 bg-white px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)]",
+            )}
+          >
+            <CategorySidebar
+              allLabel={ALL_CATEGORY}
+              activeCategory={selectedCategory}
+              onCategorySelect={handleCategoryClick}
+              categories={barCategories}
+              categoryGroups={categoryGroups}
+              variant="member"
+              renderCategoryLeading={(category) => (
+                <CategoryIcon
+                  icon={getCategoryIcon(category.name)}
+                  fallback={getCategoryIconFallback(category.name)}
+                  className="size-5 shrink-0 text-base"
+                  fallbackClassName="size-3.5"
+                />
+              )}
+            />
+          </aside>
+        </div>
+
+      <div className="min-w-0 w-full flex-1 pt-3 pb-8 px-6 py-10">
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -304,8 +379,26 @@ export default function WholesaleShop({
           </div>
         </div>
 
+        <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
+
+        {selectedCategory !== ALL_CATEGORY ? (
+          <div
+            id={getCategorySectionId(selectedCategory)}
+            className="scroll-mt-24 mb-6"
+          >
+            <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">
+              {selectedCategory}
+            </h2>
+            {categoryDescriptionMap[selectedCategory] ? (
+              <p className="text-sm leading-relaxed text-gray-500">
+                {categoryDescriptionMap[selectedCategory]}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* Product grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 lg:gap-5 xl:gap-6">
           {filtered.map((product) => {
             const gradientClass =
               categoryStyleMap[product.category] ?? "from-gray-800 to-gray-600";
@@ -421,6 +514,7 @@ export default function WholesaleShop({
             <p className="font-medium">No products found</p>
           </div>
         ) : null}
+        </div>
       </div>
     </MemberPortalBackground>
   );

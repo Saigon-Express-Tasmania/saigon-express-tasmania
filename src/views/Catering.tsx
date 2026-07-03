@@ -28,7 +28,7 @@ import {
   type CateringPack,
   type CateringTierPrice,
 } from "@/lib/supabase/catering-packs";
-import { stringToSlug } from "@/lib/utils";
+import { cn, stringToSlug } from "@/lib/utils";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useProductCustomizations } from "@/contexts/ProductCustomizationsContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
@@ -50,14 +50,25 @@ import {
   resolveCateringCategoryFromUrlParam,
 } from "@/lib/catering-category-url";
 import {
+  CATEGORY_LIST_ANCHOR,
+  scrollToCategoryInList,
+} from "@/lib/category-list-scroll";
+import {
   categoryDisplaySortRank,
   sortCategoriesByDisplayOrder,
 } from "@/lib/category-sort";
-import CategoryGroupBar from "@/components/CategoryGroupBar";
+import CategorySelect from "@/components/CategorySelect";
+import CategorySidebar, {
+  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CATEGORY_SIDEBAR_COLUMN_CLASS,
+} from "@/components/CategorySidebar";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   filterCategoriesWithItems,
   getPopulatedCategoryIds,
+  sortGroupsByCategoryBarOrder,
 } from "@/lib/category-bar";
+import Fuse from "fuse.js";
 import type { SiteCategory, SiteCategoryGroup } from "@/types";
 import Image from "next/image";
 
@@ -208,6 +219,7 @@ export default function Catering({
     guestCount: "",
     message: "",
   });
+  const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(() => {
     const resolved = resolveCateringCategoryFromUrlParam(
       urlCategory,
@@ -239,6 +251,58 @@ export default function Catering({
     return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
   }, [availablePacks, categoriesContent]);
 
+  const categoryIconMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string | null>>((acc, category) => {
+        acc[category.name] = category.icon;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const getCategoryIcon = useCallback(
+    (categoryName: string) =>
+      categoryName === allLabel ? null : categoryIconMap[categoryName] ?? null,
+    [allLabel, categoryIconMap],
+  );
+
+  const getCategoryIconFallback = useCallback(
+    (categoryName: string): "all" | "category" =>
+      categoryName === allLabel ? "all" : "category",
+    [allLabel],
+  );
+
+  const categoryDescriptionMap = useMemo(
+    () =>
+      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+        const description = category.description?.trim();
+        if (description) acc[category.name] = description;
+        return acc;
+      }, {}),
+    [categoriesContent],
+  );
+
+  const searchablePacks = useMemo(
+    () =>
+      availablePacks.filter(
+        (pack) => pack.category !== FEATURED_CATERING_PACK_CATEGORY,
+      ),
+    [availablePacks],
+  );
+
+  const fuse = useMemo(
+    () =>
+      new Fuse(searchablePacks, {
+        keys: [
+          { name: "name", weight: 0.6 },
+          { name: "description", weight: 0.3 },
+          { name: "category", weight: 0.1 },
+        ],
+        threshold: 0.35,
+      }),
+    [searchablePacks],
+  );
+
   const menuGroups = useMemo(
     () => buildCateringMenuGroups(availablePacks, sortedCategories),
     [availablePacks, sortedCategories],
@@ -253,9 +317,38 @@ export default function Catering({
   }, [activeCategory, allLabel, categoriesContent]);
 
   const visibleMenuGroups = useMemo(() => {
-    if (activeCategoryId == null) return menuGroups;
-    return menuGroups.filter((group) => group.categoryId === activeCategoryId);
-  }, [activeCategoryId, menuGroups]);
+    const categoryFiltered =
+      activeCategoryId == null
+        ? menuGroups
+        : menuGroups.filter((group) => group.categoryId === activeCategoryId);
+
+    const orderedGroups = sortGroupsByCategoryBarOrder(
+      categoryFiltered,
+      barCategories,
+      categoryGroups,
+    );
+
+    const query = search.trim();
+    if (!query) return orderedGroups;
+
+    const matchingIds = new Set(
+      fuse.search(query).map((result) => result.item.id),
+    );
+
+    return orderedGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => matchingIds.has(item.id)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [
+    activeCategoryId,
+    menuGroups,
+    barCategories,
+    categoryGroups,
+    search,
+    fuse,
+  ]);
 
   const replaceCategoryInUrl = useCallback(
     (categoryName: string) => {
@@ -274,8 +367,9 @@ export default function Catering({
     (cat: string) => {
       setActiveCategory(cat);
       replaceCategoryInUrl(cat);
+      scrollToCategoryInList(cat, allLabel);
     },
-    [replaceCategoryInUrl],
+    [replaceCategoryInUrl, allLabel],
   );
 
   // Load configuration arrays from translation files
@@ -752,43 +846,132 @@ export default function Catering({
         </div>
 
           {menuGroups.length > 0 ? (
-            <div
-              id={CATERING_CATEGORIES_ANCHOR}
-              className="sticky top-16 z-40 mb-10 scroll-mt-20 border-b border-gray-100 bg-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)]"
-            >
-              <div className="max-w-[1280px] mx-auto px-6 py-3">
-                <CategoryGroupBar
-                  allLabel={allLabel}
-                  activeCategory={activeCategory}
-                  onCategorySelect={handleCategoryClick}
-                  categories={barCategories}
-                  categoryGroups={categoryGroups}
-                  variant="brand"
-                />
+            <>
+              <div
+                id={CATERING_CATEGORIES_ANCHOR}
+                className="scroll-mt-20"
+                aria-hidden
+              />
+
+              <div className="sticky top-16 z-40 border-b border-gray-100 bg-white/95 backdrop-blur-sm shadow-[0_4px_12px_-2px_rgba(0,0,0,0.06)] lg:hidden">
+                <div className="max-w-[1280px] mx-auto px-6 py-3">
+                  <CategorySelect
+                    allLabel={allLabel}
+                    activeCategory={activeCategory}
+                    onCategorySelect={handleCategoryClick}
+                    categories={barCategories}
+                    categoryGroups={categoryGroups}
+                    label={t("menu.categories.label")}
+                    placeholder={t("menu.categories.placeholder")}
+                    searchPlaceholder={t("menu.categories.searchPlaceholder")}
+                    emptyMessage={t("menu.categories.empty")}
+                    getCategoryIcon={getCategoryIcon}
+                    getCategoryIconFallback={getCategoryIconFallback}
+                    variant="brand"
+                  />
+                </div>
               </div>
-            </div>
-          ) : null}
 
-        <div className="max-w-[1280px] mx-auto px-6">
+              <div className="lg:flex lg:items-start">
+                <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
+                  <aside
+                    aria-label={t("menu.categories.label")}
+                    className={cn(
+                      CATEGORY_SIDEBAR_ASIDE_CLASS,
+                      "border-r border-gray-100 bg-white px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)]",
+                    )}
+                  >
+                    <CategorySidebar
+                      allLabel={allLabel}
+                      activeCategory={activeCategory}
+                      onCategorySelect={handleCategoryClick}
+                      categories={barCategories}
+                      categoryGroups={categoryGroups}
+                      variant="brand"
+                      renderCategoryLeading={(category) => (
+                        <CategoryIcon
+                          icon={getCategoryIcon(category.name)}
+                          fallback={getCategoryIconFallback(category.name)}
+                          accent
+                          className="size-5 shrink-0 text-base"
+                          fallbackClassName="size-3.5"
+                        />
+                      )}
+                    />
+                  </aside>
+                </div>
 
-          {menuGroups.length === 0 ? (
-            <div className="text-center text-sm text-brand-dark/55 py-6">
-              {t("menu.empty")}
-            </div>
-          ) : visibleMenuGroups.length === 0 ? (
-            <div className="text-center text-sm text-brand-dark/55 py-6">
-              {t("menu.emptyCategory")}
+                <div className="min-w-0 flex-1 w-full mx-auto px-6">
+                  <div className="relative mb-8 max-w-xl">
+                    <svg
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-dark/40"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.35-4.35" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder={t("menu.search.placeholder")}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full pl-11 pr-10 py-3 border border-gray-200 bg-white text-brand-dark text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red/40 transition-colors shadow-sm"
+                    />
+                    {search ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearch("")}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-dark/40 hover:text-brand-dark transition-colors text-xs"
+                      >
+                        {t("menu.search.clearLabel")}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
+
+          {visibleMenuGroups.length === 0 ? (
+            <div className="text-center py-12 text-brand-dark/55">
+              <p className="font-serif text-2xl mb-2 text-brand-dark/70">
+                {search.trim()
+                  ? t("menu.emptySearch.heading", { query: search.trim() })
+                  : t("menu.emptyCategory")}
+              </p>
+              {search.trim() ? (
+                <>
+                  <p className="text-sm">{t("menu.emptySearch.hint")}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="mt-4 text-brand-red text-sm font-semibold hover:underline"
+                  >
+                    {t("menu.emptySearch.clearSearch")}
+                  </button>
+                </>
+              ) : null}
             </div>
           ) : (
             visibleMenuGroups.map((group, groupIndex) => (
-              <div key={group.category} id={stringToSlug(group.category)}>
-                <div className="mb-4">
-                  <h3 className="font-serif text-brand-dark text-2xl mb-6 pb-2 border-b border-brand-cream">
+              <div
+                key={group.category}
+                id={stringToSlug(group.category)}
+                className="scroll-mt-24"
+              >
+                <div className="mb-6">
+                  <h3 className="font-serif text-brand-dark text-2xl mb-3 pb-2 border-b border-brand-cream">
                     {group.category}
                   </h3>
+                  {categoryDescriptionMap[group.category] ? (
+                    <p className="mt-3 text-sm leading-relaxed text-brand-dark/55">
+                      {categoryDescriptionMap[group.category]}
+                    </p>
+                  ) : null}
                 </div>
                 <div
-                  className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${groupIndex === visibleMenuGroups.length - 1 ? "mb-10" : "mb-12"}`}
+                  className={`grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-4 xl:gap-6 ${groupIndex === visibleMenuGroups.length - 1 ? "mb-10" : "mb-12"}`}
                 >
                   {group.items.map((item) => {
                     const selectedTierIndex = tierSelection[item.id] ?? 0;
@@ -922,7 +1105,16 @@ export default function Catering({
               {t("menu.proteinNote")}
             </p>
           </div>
-        </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="max-w-[1280px] mx-auto px-6">
+              <div className="text-center text-sm text-brand-dark/55 py-6">
+                {t("menu.empty")}
+              </div>
+            </div>
+          )}
       </section>
 
       {/* Testimonial */}

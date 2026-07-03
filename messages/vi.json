@@ -384,7 +384,19 @@
       "emptyCategory": "Không có món nào trong danh mục này.",
       "allCategory": "Tất cả",
       "categories": {
-        "label": "Danh mục"
+        "label": "Danh mục",
+        "placeholder": "Chọn danh mục…",
+        "searchPlaceholder": "Tìm danh mục…",
+        "empty": "Không tìm thấy danh mục."
+      },
+      "search": {
+        "placeholder": "Tìm kiếm thực đơn tiệc…",
+        "clearLabel": "✕ Xoá"
+      },
+      "emptySearch": {
+        "heading": "Không có kết quả cho \"{query}\"",
+        "hint": "Thử từ khoá khác hoặc xoá tìm kiếm.",
+        "clearSearch": "Xoá tìm kiếm"
       },
       "caters": "Phục vụ {serves} khách",
       "enquire": "Yêu Cầu Ngay",
@@ -1373,7 +1385,10 @@
     },
     "allCategory": "Tất cả",
     "categories": {
-      "label": "Danh mục"
+      "label": "Danh mục",
+      "placeholder": "Chọn danh mục…",
+      "searchPlaceholder": "Tìm danh mục…",
+      "empty": "Không tìm thấy danh mục."
     },
     "empty": {
       "headingSearch": "Không có kết quả cho \"{query}\"",
@@ -2009,6 +2024,12 @@
       "clear": "✕ Xóa",
       "itemsCount": "{count} mặt hàng"
     },
+    "categories": {
+      "label": "Danh mục",
+      "placeholder": "Chọn danh mục…",
+      "searchPlaceholder": "Tìm danh mục…",
+      "empty": "Không tìm thấy danh mục."
+    },
     "productCard": {
       "unitLabel": "Đơn vị",
       "priceLabel": "Giá (chưa thuế GST)",
@@ -2063,48 +2084,6 @@
         "min": "100+ sản phẩm",
         "discount": "Giảm 25%",
         "color": "from-primary/30 to-primary/20"
-      }
-    ],
-    "categories": [
-      {
-        "key": "All",
-        "label": "Tất Cả"
-      },
-      {
-        "key": "Dough",
-        "label": "Bột Bánh"
-      },
-      {
-        "key": "Dried Foods",
-        "label": "Đồ Khô"
-      },
-      {
-        "key": "Equipment",
-        "label": "Thiết Bị"
-      },
-      {
-        "key": "Fresh Food",
-        "label": "Thực Phẩm Tươi"
-      },
-      {
-        "key": "Frozen Food",
-        "label": "Thực Phẩm Đông Lạnh"
-      },
-      {
-        "key": "Frozen Marinated Meat",
-        "label": "Thịt Ướp Đông Lạnh"
-      },
-      {
-        "key": "Packaging",
-        "label": "Bao Bì"
-      },
-      {
-        "key": "Sauce",
-        "label": "Nước Sốt"
-      },
-      {
-        "key": "Pastry",
-        "label": "Bánh Ngọt"
       }
     ]
   },
