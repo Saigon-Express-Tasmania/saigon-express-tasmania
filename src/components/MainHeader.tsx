@@ -297,13 +297,17 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
           </nav>
 
           <div className="flex items-center gap-3">
+            {/* My Account */}
             <Link
               href={myAccountHref}
               className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-amber/35 bg-brand-amber/10 px-4 py-2 text-sm font-semibold text-brand-dark transition-all hover:border-brand-red/35 hover:bg-brand-red/10 hover:text-brand-red"
             >
               <User size={15} className="text-brand-red" />
-              {tLinks("my_account")}
+              {/* on screen below lg, hide the label and show the icon only */}
+              <span className="hidden xl:inline">{tLinks("my_account")}</span>
             </Link>
+
+            {/* Order buttons */}
             {showGuestLastOrder ? (
               <button
                 type="button"
@@ -311,7 +315,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
                 className="flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/20"
               >
                 <ClipboardList size={15} />
-                Last order
+                <span className="hidden xl:inline">Last order</span>
               </button>
             ) : activeCartCount > 0 ? (
               <button
@@ -323,9 +327,9 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
                 }`}
               >
                 <ShoppingCart size={15} />
-                {showCateringCart
+                <span className="hidden xl:inline">{showCateringCart
                   ? `Catering (${activeCartCount})`
-                  : tLinks("order", { count: activeCartCount })}
+                  : tLinks("order", { count: activeCartCount })}</span>
               </button>
             ) : showCateringCart && isCateringCartHydrated ? (
               <button
@@ -334,7 +338,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
                 className="flex items-center gap-1.5 rounded-md border border-brand-dark/15 px-4 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:border-emerald-500/40 hover:text-emerald-700"
               >
                 <ShoppingCart size={15} />
-                Catering cart
+                <span className="hidden xl:inline">Catering cart</span>
               </button>
             ) : (
               <button
@@ -343,7 +347,7 @@ export default function MainHeader({ storeLocations }: MainHeaderProps) {
                 className="btn-red text-sm py-2 px-4 flex items-center gap-1.5"
               >
                 <ShoppingCart size={15} />
-                {tLinks("order_online")}
+                <span className="hidden xl:inline">{tLinks("order_online")}</span>
               </button>
             )}
             <button

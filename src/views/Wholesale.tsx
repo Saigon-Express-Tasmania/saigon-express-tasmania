@@ -159,8 +159,8 @@ export default function Wholesale({
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
-      {/* Hero Section */}
-      <section className="relative w-full aspect-5/2 overflow-hidden">
+      {/* Hero Section - on mobile screen, make sure it has enough height to display the content */}
+      <section className="relative w-full aspect-5/2 overflow-hidden lg:aspect-5/2 min-h-[500px]">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{

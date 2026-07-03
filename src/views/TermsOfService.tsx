@@ -243,7 +243,7 @@ export default function TermsOfService() {
         <Section id="food-safety" title="Food Safety Information">
           <p>
             Tognini&rsquo;s Catering follows all relevant food safety guidelines
-            as outlined by Queensland Health and Food Standards Australia New
+            as outlined by Tasmania Health and Food Standards Australia New
             Zealand (FSANZ) to ensure all food is prepared and delivered under
             safe, hygienic conditions.
           </p>

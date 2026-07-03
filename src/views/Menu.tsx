@@ -282,7 +282,7 @@ export default function Menu({
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
       {/* Hero */}
-      <section className="relative aspect-[5/1.6] overflow-hidden">
+      <section className="relative aspect-[5/1.6] overflow-hidden min-h-[500px] w-full">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -290,7 +290,7 @@ export default function Menu({
           }}
         />
         <div className="absolute inset-0 bg-black/55" />
-        <div className="max-w-[1280px] h-full mx-auto px-6 md:px-16 py-12 md:py-16 grid md:grid-cols-2 gap-10 items-center">
+        <div className="w-full h-full mx-auto px-6 md:px-16 py-12 md:py-16 grid lg:grid-cols-2 gap-10 items-center">
           <div className="relative z-10 h-full flex flex-col items-start justify-center px-6 md:px-20 max-w-[1280px] mx-auto">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-3">
               {t("hero.eyebrow")}
