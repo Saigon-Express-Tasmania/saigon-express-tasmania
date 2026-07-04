@@ -42,6 +42,7 @@ import {
   filterCategoriesWithItems,
   getPopulatedCategoryIds,
 } from "@/lib/category-bar";
+import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, SiteCategoryGroup, StoreLocation } from "@/types";
@@ -50,6 +51,8 @@ import Fuse from "fuse.js";
 import Image from "next/image";
 
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
+const MENU_CARD_SIZES =
+  "(max-width: 1024px) 50vw, (max-width: 1280px) 33vw, (max-width: 1536px) 25vw, 20vw";
 
 function getSuggestions(
   item: MenuItem,
@@ -241,7 +244,9 @@ export default function Menu({
       baseItems = baseItems.filter((m) => m.categoryId === activeCategoryId);
     }
 
-    if (!q) return baseItems;
+    if (!q) {
+      return moveZeroSortOrderToEnd(baseItems, (item) => item.sortOrder);
+    }
 
     // If activeCategory is specific, we temporarily search within those specific items
     // or instantiate fuse dynamically. For high performance, we query the precomputed global fuse instance
@@ -249,10 +254,13 @@ export default function Menu({
     const searchResults = fuse.search(q).map((result) => result.item);
 
     if (activeCategoryId != null) {
-      return searchResults.filter((m) => m.categoryId === activeCategoryId);
+      return moveZeroSortOrderToEnd(
+        searchResults.filter((m) => m.categoryId === activeCategoryId),
+        (item) => item.sortOrder,
+      );
     }
 
-    return searchResults;
+    return moveZeroSortOrderToEnd(searchResults, (item) => item.sortOrder);
   }, [search, activeCategoryId, menuItems, fuse]);
 
   const handleOpenCustomise = useCallback((item: MenuItem) => {
@@ -480,7 +488,7 @@ export default function Menu({
               return (
                 <div
                   key={item.id}
-                  className={`flex flex-direction-column group bg-white overflow-hidden card-lift ${!item.isAvailable ? "opacity-60" : ""}`}
+                  className={`flex flex-direction-column group overflow-hidden bg-white card-lift [contain-intrinsic-size:420px] [content-visibility:auto] ${!item.isAvailable ? "opacity-60" : ""}`}
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                     <Link
@@ -500,6 +508,8 @@ export default function Menu({
                         }
                         alt=""
                         wrapperClassName="size-full"
+                        sizes={MENU_CARD_SIZES}
+                        unmountWhenHidden
                         className="group-hover:scale-105 transition-transform duration-500"
                       />
                     </Link>

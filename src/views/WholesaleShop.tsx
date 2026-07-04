@@ -3,9 +3,10 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import AppImage from "@/components/AppImage";
+import LazyImage from "@/components/LazyImage";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
+import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
 import {
   MEMBER_PORTAL_LIGHT_BANNER_CLASS,
   MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS,
@@ -44,6 +45,8 @@ import {
 import type { SiteCategoryGroup } from "@/types";
 
 const ALL_CATEGORY = "All";
+const WHOLESALE_CARD_SIZES =
+  "(max-width: 1024px) 50vw, (max-width: 1280px) 33vw, (max-width: 1536px) 25vw, 20vw";
 
 type DashboardProduct = {
   id: number;
@@ -57,6 +60,7 @@ type DashboardProduct = {
   imageUrl: string | null;
   isAvailable: boolean;
   minOrderQty: number;
+  sortOrder: number;
   effectiveRemaining: number;
   globalRemaining: number;
   customerRemaining: number | null;
@@ -73,9 +77,10 @@ function mapProduct(p: WholesaleProduct): DashboardProduct {
     priceExGst: Number(p.unitPrice ?? 0),
     unit: p.unit,
     badge: null,
-    imageUrl: pickWholesaleImageUrl(p.imageUrls, [512, 1024, 256, 1448]),
+    imageUrl: pickWholesaleImageUrl(p.imageUrls, [256, 512, 1024, 1448]),
     isAvailable: p.isAvailable,
     minOrderQty: p.minOrderQty ?? 1,
+    sortOrder: p.sortOrder,
     effectiveRemaining: p.effectiveRemaining,
     globalRemaining: p.globalRemaining,
     customerRemaining: p.customerRemaining,
@@ -247,15 +252,18 @@ export default function WholesaleShop({
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase();
-    return allProducts.filter((p) => {
-      const matchesCategory =
-        selectedCategoryId === null || p.categoryId === selectedCategoryId;
-      const matchesSearch =
-        !normalizedSearch ||
-        p.name.toLowerCase().includes(normalizedSearch) ||
-        p.description.toLowerCase().includes(normalizedSearch);
-      return matchesCategory && matchesSearch;
-    });
+    return moveZeroSortOrderToEnd(
+      allProducts.filter((p) => {
+        const matchesCategory =
+          selectedCategoryId === null || p.categoryId === selectedCategoryId;
+        const matchesSearch =
+          !normalizedSearch ||
+          p.name.toLowerCase().includes(normalizedSearch) ||
+          p.description.toLowerCase().includes(normalizedSearch);
+        return matchesCategory && matchesSearch;
+      }),
+      (item) => item.sortOrder,
+    );
   }, [allProducts, search, selectedCategoryId]);
 
   const handleCategoryClick = useCallback((cat: string) => {
@@ -417,14 +425,16 @@ export default function WholesaleShop({
             return (
               <div
                 key={product.id}
-                className={`group ${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
+                className={`group [contain-intrinsic-size:420px] [content-visibility:auto] ${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
               >
                 <div className="relative h-44 overflow-hidden">
                   {product.imageUrl ? (
-                    <AppImage
+                    <LazyImage
                       src={product.imageUrl}
                       alt={product.name}
-                      fill
+                      wrapperClassName="size-full"
+                      sizes={WHOLESALE_CARD_SIZES}
+                      unmountWhenHidden
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (

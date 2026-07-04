@@ -1,13 +1,14 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import AppImage from "@/components/AppImage";
+import LazyImage from "@/components/LazyImage";
 import { motion } from "framer-motion";
 import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
 import Link from "@/components/link";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
 import { cn } from "@/lib/utils";
+import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
 import {
   CATEGORY_LIST_ANCHOR,
   getCategorySectionId,
@@ -41,6 +42,8 @@ import {
 import type { SiteCategoryGroup } from "@/types";
 
 const ALL_CATEGORY = "All";
+const WHOLESALE_CARD_SIZES =
+  "(max-width: 1024px) 50vw, (max-width: 1280px) 33vw, (max-width: 1536px) 25vw, 20vw";
 
 export default function WholesaleLandingShop({
   products,
@@ -164,9 +167,12 @@ export default function WholesaleLandingShop({
 
     // If there is no search phrase, simply filter down raw data based on category mapping
     if (!normalizedSearch) {
-      if (selectedCategoryId === null) return products ?? [];
-      return (products ?? []).filter(
-        (p) => p.categoryId === selectedCategoryId,
+      if (selectedCategoryId === null) {
+        return moveZeroSortOrderToEnd(products ?? [], (item) => item.sortOrder);
+      }
+      return moveZeroSortOrderToEnd(
+        (products ?? []).filter((p) => p.categoryId === selectedCategoryId),
+        (item) => item.sortOrder,
       );
     }
 
@@ -177,10 +183,13 @@ export default function WholesaleLandingShop({
 
     // Apply category isolation on top of search hits
     if (selectedCategoryId !== null) {
-      return searchResults.filter((p) => p.categoryId === selectedCategoryId);
+      return moveZeroSortOrderToEnd(
+        searchResults.filter((p) => p.categoryId === selectedCategoryId),
+        (item) => item.sortOrder,
+      );
     }
 
-    return searchResults;
+    return moveZeroSortOrderToEnd(searchResults, (item) => item.sortOrder);
   }, [search, selectedCategoryId, products, fuse]);
 
   return (
@@ -369,7 +378,7 @@ export default function WholesaleLandingShop({
             {filtered.map((p, i) => {
               const img = pickWholesaleImageUrl(
                 p.imageUrls,
-                [512, 1024, 256, 1448],
+                [256, 512, 1024, 1448],
               );
               const gradientClass =
                 categoryStyleMap[p.category] ?? "from-gray-800 to-gray-600";
@@ -401,14 +410,16 @@ export default function WholesaleLandingShop({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: (i % 4) * 0.07 }}
-                  className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                  className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 [contain-intrinsic-size:420px] [content-visibility:auto]"
                 >
                   <div className="relative h-44 overflow-hidden bg-muted">
                     {img ? (
-                      <AppImage
+                      <LazyImage
                         src={img}
                         alt={p.name}
-                        fill
+                        wrapperClassName="size-full"
+                        sizes={WHOLESALE_CARD_SIZES}
+                        unmountWhenHidden
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (

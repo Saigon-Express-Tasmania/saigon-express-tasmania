@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import { MenuFoodContentEditor } from '@/components/MenuFoodContentEditor';
@@ -230,6 +231,7 @@ export function Menu() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(null);
 
   const loadItems = useCallback(async () => {
     try {
@@ -358,6 +360,39 @@ export function Menu() {
     clearSelection,
     removeFromSelection,
   } = useBulkRowSelection(filteredItems);
+
+  const handleInlineSortOrderSave = useCallback(
+    async (itemId: number, sortOrder: number) => {
+      setInlineSortSavingId(itemId);
+      try {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            sort_order: sortOrder,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', itemId)
+          .eq('product_type', 'alacarte');
+
+        if (updateError) throw updateError;
+
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === itemId ? { ...item, sort_order: sortOrder } : item,
+          ),
+        );
+        toast.success('Sort order updated.');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to update sort order.',
+        );
+        throw err;
+      } finally {
+        setInlineSortSavingId(null);
+      }
+    },
+    [],
+  );
 
   const openCreate = async () => {
     try {
@@ -900,8 +935,14 @@ export function Menu() {
                             {item.is_available ? 'Yes' : 'No'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {item.sort_order}
+                        <td className="px-4 py-3">
+                          <InlineSortOrderInput
+                            value={item.sort_order}
+                            disabled={inlineSortSavingId === item.id || saving}
+                            onCommit={(sortOrder) =>
+                              handleInlineSortOrderSave(item.id, sortOrder)
+                            }
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">

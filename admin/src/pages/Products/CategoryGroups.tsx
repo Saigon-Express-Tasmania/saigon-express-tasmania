@@ -30,6 +30,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -58,11 +65,15 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-type SortColumn = 'id' | 'alias' | 'sort_order';
+const CATEGORY_KINDS = ['menu', 'wholesale', 'catering'] as const;
+type CategoryKind = (typeof CATEGORY_KINDS)[number];
+
+type SortColumn = 'id' | 'kind' | 'alias' | 'sort_order';
 type SortDirection = 'asc' | 'desc';
 
 type CategoryGroupRow = {
   id: number;
+  kind: CategoryKind;
   name: string;
   description: string | null;
   imageUrl: string | null;
@@ -71,6 +82,7 @@ type CategoryGroupRow = {
 };
 
 type CategoryGroupInput = {
+  kind: CategoryKind;
   name: string;
   description: string;
   imageUrl: string;
@@ -78,6 +90,7 @@ type CategoryGroupInput = {
 };
 
 const emptyCategoryGroupInput = (): CategoryGroupInput => ({
+  kind: 'menu',
   name: '',
   description: '',
   imageUrl: '',
@@ -265,6 +278,7 @@ async function nextCategoryGroupId(): Promise<number> {
 }
 
 type CategoryGroupPayload = {
+  kind: CategoryKind;
   name: string;
   description: string | null;
   imageUrl: string | null;
@@ -289,6 +303,7 @@ export function CategoryGroups() {
 
   const [deleteTarget, setDeleteTarget] = useState<CategoryGroupRow | null>(null);
   const [search, setSearch] = useState('');
+  const [kindFilter, setKindFilter] = useState<string>('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(
@@ -301,7 +316,7 @@ export function CategoryGroups() {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('category_groups')
-        .select('id, name, description, imageUrl, sort_order, alias')
+        .select('id, kind, name, description, imageUrl, sort_order, alias')
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true })
         .order('id', { ascending: true });
@@ -310,6 +325,7 @@ export function CategoryGroups() {
       setGroups(
         (data ?? []).map((row) => ({
           id: row.id,
+          kind: row.kind as CategoryKind,
           name: row.name,
           description: row.description,
           imageUrl: row.imageUrl,
@@ -349,8 +365,12 @@ export function CategoryGroups() {
   const filteredGroups = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = groups.filter((group) => {
+      if (kindFilter !== 'all' && group.kind !== kindFilter) {
+        return false;
+      }
       if (!term) return true;
       return (
+        group.kind.toLowerCase().includes(term) ||
         group.alias.toLowerCase().includes(term) ||
         group.name.toLowerCase().includes(term) ||
         (group.description ?? '').toLowerCase().includes(term) ||
@@ -368,7 +388,7 @@ export function CategoryGroups() {
       }
       return a[sortColumn].localeCompare(b[sortColumn]) * direction;
     });
-  }, [groups, search, sortColumn, sortDirection]);
+  }, [groups, search, kindFilter, sortColumn, sortDirection]);
 
   const handleInlineSortOrderSave = useCallback(
     async (groupId: number, sortOrder: number) => {
@@ -403,6 +423,7 @@ export function CategoryGroups() {
     setEditing(null);
     setForm({
       ...emptyCategoryGroupInput(),
+      kind: kindFilter !== 'all' ? (kindFilter as CategoryKind) : 'menu',
       sortOrder: groups.length,
     });
     setImagePreviewUrl(null);
@@ -412,6 +433,7 @@ export function CategoryGroups() {
   const openEdit = (group: CategoryGroupRow) => {
     setEditing(group);
     setForm({
+      kind: group.kind,
       name: group.name,
       description: group.description ?? '',
       imageUrl: group.imageUrl ?? '',
@@ -464,6 +486,7 @@ export function CategoryGroups() {
     setSaving(true);
     try {
       const payload: CategoryGroupPayload = {
+        kind: form.kind,
         name: form.name.trim(),
         description: form.description.trim() || null,
         imageUrl: form.imageUrl.trim() || null,
@@ -596,12 +619,35 @@ export function CategoryGroups() {
               </div>
             ) : null}
 
-            <Input
-              placeholder="Search alias, name, description or image URL…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                placeholder="Search kind, alias, name, description or image URL…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="group-kind-filter" className="whitespace-nowrap">
+                  Kind
+                </Label>
+                <Select
+                  value={kindFilter}
+                  onValueChange={(value) => setKindFilter(value)}
+                >
+                  <SelectTrigger id="group-kind-filter" className="w-40">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {CATEGORY_KINDS.map((kind) => (
+                      <SelectItem key={kind} value={kind}>
+                        {kind}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -619,6 +665,13 @@ export function CategoryGroups() {
                       <SortableHeader
                         label="ID"
                         column="id"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        label="Kind"
+                        column="kind"
                         sortColumn={sortColumn}
                         sortDirection={sortDirection}
                         onSort={handleSort}
@@ -658,6 +711,9 @@ export function CategoryGroups() {
                         className="border-b transition-colors hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 font-mono text-sm">{group.id}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground capitalize">
+                          {group.kind}
+                        </td>
                         <td className="px-4 py-3">
                           <InlineSortOrderInput
                             value={group.sortOrder}
@@ -732,6 +788,9 @@ export function CategoryGroups() {
                     {generatedAlias}
                   </Badge>
                 ) : null}
+                <Badge variant="secondary" className="capitalize">
+                  {form.kind}
+                </Badge>
               </div>
               <DialogTitle className="text-xl">
                 {editing ? 'Edit category group' : 'Add category group'}
@@ -792,6 +851,25 @@ export function CategoryGroups() {
               accentClass="border-violet-200/70 bg-gradient-to-br from-violet-50/80 to-background dark:border-violet-900/50 dark:from-violet-950/30"
             >
               <div className="grid gap-4">
+                <GroupFormField label="Kind" htmlFor="group-kind">
+                  <Select
+                    value={form.kind}
+                    onValueChange={(value) =>
+                      setForm((f) => ({ ...f, kind: value as CategoryKind }))
+                    }
+                  >
+                    <SelectTrigger id="group-kind">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_KINDS.map((kind) => (
+                        <SelectItem key={kind} value={kind}>
+                          {kind}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </GroupFormField>
                 <GroupFormField label="Name" htmlFor="group-name">
                   <Input
                     id="group-name"

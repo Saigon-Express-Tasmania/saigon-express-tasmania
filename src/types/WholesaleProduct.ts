@@ -17,6 +17,7 @@ export type WholesaleProductRow = {
   daily_customer_limit: number | null;
   is_available: boolean;
   min_order_qty: number;
+  sort_order: number;
   image_urls: WholesaleImageUrls;
   created_at: string;
   updated_at: string;
@@ -52,6 +53,7 @@ export type WholesaleProduct = {
   effectiveRemaining: number;
   isAvailable: boolean;
   minOrderQty: number;
+  sortOrder: number;
   imageUrls: WholesaleImageUrls;
   createdAt: string;
   updatedAt: string;
@@ -112,6 +114,7 @@ export function mapWholesaleProductRow(
     effectiveRemaining: row.daily_global_limit,
     isAvailable: row.is_available,
     minOrderQty: row.min_order_qty,
+    sortOrder: row.sort_order ?? 0,
     imageUrls: normalizeWholesaleImageUrls(row.image_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at,

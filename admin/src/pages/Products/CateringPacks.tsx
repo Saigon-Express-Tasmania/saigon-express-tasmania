@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
@@ -170,7 +171,7 @@ function CateringPackFormField({
   );
 }
 
-type SortColumn = 'id' | 'category' | 'name';
+type SortColumn = 'id' | 'category' | 'name' | 'sort_order';
 type SortDirection = 'asc' | 'desc';
 
 type CateringTierPrice = {
@@ -382,8 +383,9 @@ export function CateringPacks() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sortColumn, setSortColumn] = useState<SortColumn>('id');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(null);
 
   const loadCateringPacks = useCallback(async () => {
     try {
@@ -523,6 +525,9 @@ export function CateringPacks() {
       if (sortColumn === 'id') {
         return (a.id - b.id) * direction;
       }
+      if (sortColumn === 'sort_order') {
+        return (a.sort_order - b.sort_order || a.id - b.id) * direction;
+      }
       if (sortColumn === 'category') {
         return (a.category_name ?? '').localeCompare(b.category_name ?? '') * direction;
       }
@@ -549,6 +554,36 @@ export function CateringPacks() {
     clearSelection,
     removeFromSelection,
   } = useBulkRowSelection(filteredPacks);
+
+  const handleInlineSortOrderSave = useCallback(
+    async (packId: number, sortOrder: number) => {
+      setInlineSortSavingId(packId);
+      try {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ sort_order: sortOrder })
+          .eq('id', packId)
+          .eq('product_type', 'catering');
+
+        if (updateError) throw updateError;
+
+        setPacks((prev) =>
+          prev.map((pack) =>
+            pack.id === packId ? { ...pack, sort_order: sortOrder } : pack,
+          ),
+        );
+        toast.success('Sort order updated.');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to update sort order.',
+        );
+        throw err;
+      } finally {
+        setInlineSortSavingId(null);
+      }
+    },
+    [],
+  );
 
   const openCreate = async () => {
     try {
@@ -1066,9 +1101,13 @@ export function CateringPacks() {
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Available
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Sort
-                      </th>
+                      <SortableHeader
+                        label="Sort"
+                        column="sort_order"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-right text-sm font-semibold">
                         Actions
                       </th>
@@ -1137,8 +1176,14 @@ export function CateringPacks() {
                             {pack.is_available ? 'Yes' : 'No'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {pack.sort_order}
+                        <td className="px-4 py-3">
+                          <InlineSortOrderInput
+                            value={pack.sort_order}
+                            disabled={inlineSortSavingId === pack.id || saving}
+                            onCommit={(sortOrder) =>
+                              handleInlineSortOrderSave(pack.id, sortOrder)
+                            }
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">

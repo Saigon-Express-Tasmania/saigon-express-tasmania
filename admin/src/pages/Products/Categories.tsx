@@ -166,6 +166,7 @@ type CustomizationOption = {
 
 type CategoryGroupOption = {
   id: number;
+  kind: CategoryKind;
   name: string;
   alias: string;
   sortOrder: number;
@@ -433,7 +434,7 @@ export function Categories() {
     try {
       const { data, error: fetchError } = await supabase
         .from('category_groups')
-        .select('id, name, alias, sort_order')
+        .select('id, kind, name, alias, sort_order')
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
 
@@ -441,6 +442,7 @@ export function Categories() {
       setCategoryGroups(
         (data ?? []).map((row) => ({
           id: row.id,
+          kind: row.kind as CategoryKind,
           name: row.name,
           alias: row.alias,
           sortOrder: Number(row.sort_order ?? 0),
@@ -478,11 +480,13 @@ export function Categories() {
 
   const categoryGroupSelectOptions = useMemo(
     () =>
-      categoryGroups.map((group) => ({
-        value: String(group.id),
-        label: group.name,
-      })),
-    [categoryGroups],
+      categoryGroups
+        .filter((group) => group.kind === form.kind)
+        .map((group) => ({
+          value: String(group.id),
+          label: group.name,
+        })),
+    [categoryGroups, form.kind],
   );
 
   const customizationSelectOptions = useMemo(
@@ -1034,7 +1038,7 @@ export function Categories() {
                 <CategoryFormField
                   label="Category group"
                   htmlFor="cat-group"
-                  description="Optional menu group for storefront navigation."
+                  description="Optional same-kind group for storefront navigation."
                   className="sm:col-span-2"
                 >
                   <SearchableSelect
@@ -1051,7 +1055,7 @@ export function Categories() {
                         categoryGroupId: value ? Number(value) : null,
                       }))
                     }
-                    placeholder="Search category groups…"
+                    placeholder={`Search ${form.kind} category groups…`}
                     emptyOption={{ value: '', label: 'None' }}
                     disabled={saving}
                   />
@@ -1114,6 +1118,11 @@ export function Categories() {
                     value={form.kind}
                     onValueChange={(value) => {
                       const nextKind = value as CategoryKind;
+                      const allowedGroupIds = new Set(
+                        categoryGroups
+                          .filter((group) => group.kind === nextKind)
+                          .map((group) => group.id),
+                      );
                       const allowedIds = new Set(
                         customizations
                           .filter((row) => row.kind === nextKind)
@@ -1122,6 +1131,11 @@ export function Categories() {
                       setForm((f) => ({
                         ...f,
                         kind: nextKind,
+                        categoryGroupId:
+                          f.categoryGroupId != null &&
+                          allowedGroupIds.has(f.categoryGroupId)
+                            ? f.categoryGroupId
+                            : null,
                         customizationIds: f.customizationIds.filter((id) =>
                           allowedIds.has(id),
                         ),

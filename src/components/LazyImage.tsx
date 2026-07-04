@@ -13,6 +13,8 @@ interface LazyImageProps {
   wrapperClassName?: string;
   eager?: boolean;
   sizes?: string;
+  /** Unmount the image again after it leaves the viewport to reduce memory usage. */
+  unmountWhenHidden?: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ export default function LazyImage({
   wrapperClassName = "",
   eager = false,
   sizes,
+  unmountWhenHidden = false,
 }: LazyImageProps) {
   const [navKey, setNavKey] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -77,8 +80,9 @@ export default function LazyImage({
   }, [resetForReveal, markInViewIfVisible]);
 
   useEffect(() => {
+    if (unmountWhenHidden) return;
     if (inView) wasInViewRef.current = true;
-  }, [inView]);
+  }, [inView, unmountWhenHidden]);
 
   useEffect(() => {
     if (eager) return;
@@ -86,6 +90,10 @@ export default function LazyImage({
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
+        if (unmountWhenHidden) {
+          setInView(entry.isIntersecting);
+          return;
+        }
         if (entry.isIntersecting) {
           wasInViewRef.current = true;
           setInView(true);
@@ -96,9 +104,9 @@ export default function LazyImage({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [eager, src, navKey]);
+  }, [eager, src, navKey, unmountWhenHidden]);
 
-  const showImage = (wasInViewRef.current || inView) && !error;
+  const showImage = (unmountWhenHidden ? inView : wasInViewRef.current || inView) && !error;
 
   return (
     <div

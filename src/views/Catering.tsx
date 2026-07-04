@@ -3,7 +3,7 @@
 import Link from "@/components/link";
 import CateringPackOrderButton from "@/components/CateringPackOrderButton";
 import CateringProductHtml from "@/components/CateringProductHtml";
-import AppImage from "@/components/AppImage";
+import LazyImage from "@/components/LazyImage";
 import CateringTierSelect from "@/components/CateringTierSelect";
 import {
   ItemCustomiseModal,
@@ -178,6 +178,9 @@ function PackOrderButton({
 const CATERING_ENQUIRY_SUBMIT_COOLDOWN_MS = 2 * 60 * 1000;
 const CATERING_ENQUIRY_LAST_SUBMIT_KEY = "catering_enquiry_last_submit_at";
 const SHOW_CATERING_PACKS_SECTION = false;
+const CATERING_PACK_CARD_SIZES = "(max-width: 768px) 100vw, 50vw";
+const CATERING_MENU_CARD_SIZES =
+  "(max-width: 1024px) 50vw, (max-width: 1280px) 50vw, (max-width: 1536px) 33vw, 25vw";
 
 export default function Catering({
   packs,
@@ -743,13 +746,15 @@ export default function Catering({
               featuredPacks.map((pack) => (
                 <div
                   key={pack.id}
-                  className="flex h-full flex-col overflow-hidden bg-white transition-shadow duration-300 hover:shadow-lg"
+                  className="flex h-full flex-col overflow-hidden bg-white transition-shadow duration-300 hover:shadow-lg [contain-intrinsic-size:520px] [content-visibility:auto]"
                 >
                   <div className="relative aspect-[16/7] overflow-hidden">
-                    <AppImage
+                    <LazyImage
                       src={pack.img ?? "/placeholder.svg"}
                       alt={pack.name}
-                      fill
+                      wrapperClassName="size-full"
+                      sizes={CATERING_PACK_CARD_SIZES}
+                      unmountWhenHidden
                       className="object-cover hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-brand-dark/25" />
@@ -991,17 +996,19 @@ export default function Catering({
                     return (
                     <div
                       key={item.id}
-                      className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full"
+                      className="bg-brand-cream overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full [contain-intrinsic-size:520px] [content-visibility:auto]"
                     >
                       <Link
                         href={cateringItemDetailPath(item, locale)}
                         className="block"
                       >
                         <div className="relative aspect-square overflow-hidden">
-                          <AppImage
+                          <LazyImage
                             src={item.img ?? "/placeholder.svg"}
                             alt={item.name}
-                            fill
+                            wrapperClassName="size-full"
+                            sizes={CATERING_MENU_CARD_SIZES}
+                            unmountWhenHidden
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                           {cardPriceLabel ? (

@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
 import {
@@ -76,7 +77,7 @@ const WHOLESALE_IMAGE_UPLOAD_RESIZES = [256, 512, 1024, 1448] as const;
 const WHOLESALE_BUSINESS_TIMEZONE = 'Australia/Hobart';
 const STOCK_REFILL_SYNC_DELAY_MS = 2000;
 
-type SortColumn = 'id' | 'name' | 'unit_price';
+type SortColumn = 'id' | 'name' | 'unit_price' | 'sort_order';
 type SortDirection = 'asc' | 'desc';
 
 function SortableHeader({
@@ -177,6 +178,7 @@ type WholesaleProductRow = {
   daily_customer_limit: number | null;
   is_available: boolean;
   min_order_qty: number;
+  sort_order: number;
   image_urls: WholesaleImageUrls;
   created_at: string;
   updated_at: string;
@@ -214,7 +216,7 @@ type WholesaleProductInput = Omit<
 > & ProductShippingInput;
 
 const SELECT_COLUMNS =
-  `id, name, sku, category_id, categories(name), description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
+  `id, name, sku, category_id, categories(name), description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, sort_order, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
@@ -272,8 +274,9 @@ export function WholesaleProducts() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [sortColumn, setSortColumn] = useState<SortColumn>('id');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(null);
 
   const loadProducts = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -296,7 +299,7 @@ export function WholesaleProducts() {
           .from('products')
           .select(SELECT_COLUMNS)
           .eq('product_type', 'wholesale')
-          .order('category_id', { ascending: true })
+          .order('sort_order', { ascending: true })
           .order('id', { ascending: true }),
         saleDate
           ? supabase
@@ -448,6 +451,9 @@ export function WholesaleProducts() {
       if (sortColumn === 'id') {
         return (a.id - b.id) * direction;
       }
+      if (sortColumn === 'sort_order') {
+        return (a.sort_order - b.sort_order || a.id - b.id) * direction;
+      }
       if (sortColumn === 'unit_price') {
         return (Number(a.unit_price) - Number(b.unit_price)) * direction;
       }
@@ -474,6 +480,41 @@ export function WholesaleProducts() {
     clearSelection,
     removeFromSelection,
   } = useBulkRowSelection(filteredProducts);
+
+  const handleInlineSortOrderSave = useCallback(
+    async (productId: number, sortOrder: number) => {
+      setInlineSortSavingId(productId);
+      try {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            sort_order: sortOrder,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', productId)
+          .eq('product_type', 'wholesale');
+
+        if (updateError) throw updateError;
+
+        setProducts((prev) =>
+          prev.map((product) =>
+            product.id === productId
+              ? { ...product, sort_order: sortOrder }
+              : product,
+          ),
+        );
+        toast.success('Sort order updated.');
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to update sort order.',
+        );
+        throw err;
+      } finally {
+        setInlineSortSavingId(null);
+      }
+    },
+    [],
+  );
 
   const openCreate = async () => {
     try {
@@ -882,6 +923,13 @@ export function WholesaleProducts() {
                         sortDirection={sortDirection}
                         onSort={handleSort}
                       />
+                      <SortableHeader
+                        label="Sort"
+                        column="sort_order"
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Daily global
                       </th>
@@ -953,6 +1001,15 @@ export function WholesaleProducts() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           ${Number(p.unit_price).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <InlineSortOrderInput
+                            value={p.sort_order}
+                            disabled={inlineSortSavingId === p.id || saving}
+                            onCommit={(sortOrder) =>
+                              handleInlineSortOrderSave(p.id, sortOrder)
+                            }
+                          />
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
                           {todayGlobalPaidByProductId[p.id] ?? 0}/

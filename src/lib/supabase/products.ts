@@ -10,7 +10,7 @@ const ALACARTE_SELECT =
   "id, name, slug, description, price, wholesale_price, category_id, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
 
 const WHOLESALE_SELECT =
-  "id, name, sku, category_id, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, image_urls, created_at, updated_at";
+  "id, name, sku, category_id, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, sort_order, image_urls, created_at, updated_at";
 
 export const CATERING_SELECT =
   "id, name, category_id, serves, price, unit_price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available, customization_ids, customizations_disabled";
@@ -151,7 +151,7 @@ export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]
     "wholesale",
     WHOLESALE_SELECT,
     [
-      { column: "category_id", ascending: true },
+      { column: "sort_order", ascending: true },
       { column: "id", ascending: true },
     ],
   );
