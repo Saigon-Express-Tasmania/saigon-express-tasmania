@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimationOnScroll } from "@/components/AnimationOnScroll";
+import { FranchiseMapBanner } from "@/components/FranchiseMapBanner";
 import Image from "next/image";
 
 interface StripItem {
@@ -1336,6 +1337,8 @@ export default function FranchisePage() {
         {/* Application Form */}
         <section id="franchise-form" className="py-24 bg-brand-cream relative">
           <div className="max-w-[1280px] mx-auto px-6">
+            <FranchiseMapBanner />
+
             <div className="bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col lg:flex-row">
               {/* Info Column */}
               <div className="lg:w-5/12 p-10 lg:p-16 bg-gradient-to-br from-brand-dark to-black text-white relative overflow-hidden">
