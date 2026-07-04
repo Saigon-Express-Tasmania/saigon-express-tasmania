@@ -9,6 +9,7 @@
     "build:netlify": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "images:optimize": "node scripts/optimize-images.mjs",
     "admin:dev": "npm exec -- vite admin",
     "admin:build": "npm exec -- tsc -b admin/tsconfig.json && npm exec -- vite build admin",
     "admin:lint": "eslint admin",
@@ -97,6 +98,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "sharp": "^0.35.2",
+    "svgo": "^4.0.1",
     "vitest": "^4.1.7"
   }
 }
