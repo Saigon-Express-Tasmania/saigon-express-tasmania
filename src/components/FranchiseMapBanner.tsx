@@ -405,12 +405,38 @@ function MapGraphic({
 export function FranchiseMapBanner() {
   const [selectedLocation, setSelectedLocation] =
     useState<FranchiseMapLocation | null>(null);
+  const [hasOpenedLocation, setHasOpenedLocation] = useState(false);
+  const handleSelectLocation = (location: FranchiseMapLocation) => {
+    setHasOpenedLocation(true);
+    setSelectedLocation(location);
+  };
+  const bannerAosProps = hasOpenedLocation
+    ? {}
+    : {
+        "data-aos": "fade-up",
+        "data-aos-duration": "900",
+      };
+  const headlineAosProps = hasOpenedLocation
+    ? {}
+    : {
+        "data-aos": "fade-right",
+        "data-aos-delay": "100",
+        "data-aos-duration": "900",
+      };
+  const mapAosProps = hasOpenedLocation
+    ? {}
+    : {
+        "data-aos": "zoom-in",
+        "data-aos-delay": "180",
+        "data-aos-duration": "1000",
+      };
 
   return (
     <div
       className={`relative mb-10 rounded-[2.5rem] min-h-[200px] sm:min-h-[320px] lg:mb-12 lg:min-h-[380px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] ${
         selectedLocation ? "overflow-visible lg:overflow-hidden" : "overflow-hidden"
       }`}
+      {...bannerAosProps}
     >
       <Image
         src="/images/franchise_map_background.jpg"
@@ -421,6 +447,25 @@ export function FranchiseMapBanner() {
       />
       <div className="absolute inset-0 bg-brand-dark/10" />
 
+      <div
+        className="pointer-events-none absolute right-4 top-4 z-20 max-w-[320px] sm:right-6 sm:top-6 sm:max-w-[480px] lg:right-8 lg:top-8 lg:max-w-[520px] xl:right-10 xl:top-10"
+        {...headlineAosProps}
+      >
+        <p
+          className="text-right text-lg font-bold leading-tight text-white sm:text-2xl lg:text-3xl"
+          style={{
+            WebkitTextStroke: "4px rgba(138,90,13,0.95)",
+            paintOrder: "stroke fill",
+            letterSpacing: 1.2,
+            textShadow:
+              "0 4px 18px rgba(0,0,0,0.42), 0 2px 0 rgba(0,0,0,0.28), 0 0 14px rgba(0,0,0,0.18)",
+          }}
+        >
+          Franchise opportunities are available in major cities across
+          Australia
+        </p>
+      </div>
+
       <div className="relative z-10 flex min-h-[200px] items-center justify-center px-4 py-6 sm:min-h-[320px] sm:px-6 sm:py-10 lg:min-h-[380px] lg:justify-start lg:px-8 lg:py-12 xl:px-12">
         <div
           className={`w-full transition-all duration-500 ${
@@ -428,6 +473,7 @@ export function FranchiseMapBanner() {
               ? "pointer-events-none opacity-0 blur-[2px]"
               : "opacity-100"
           }`}
+          {...mapAosProps}
         >
           <div className="mx-auto w-[80vw] max-w-[560px] lg:hidden">
             <MapGraphic
@@ -437,7 +483,7 @@ export function FranchiseMapBanner() {
               labels="mobileLabel"
               showCallouts={false}
               activeLocationName={selectedLocation?.name ?? null}
-              onSelectLocation={setSelectedLocation}
+              onSelectLocation={handleSelectLocation}
               fitMapToImage
             />
           </div>
@@ -449,7 +495,7 @@ export function FranchiseMapBanner() {
               canvasAspectRatio={1}
               labels="desktopLabel"
               activeLocationName={selectedLocation?.name ?? null}
-              onSelectLocation={setSelectedLocation}
+              onSelectLocation={handleSelectLocation}
             />
           </div>
         </div>
