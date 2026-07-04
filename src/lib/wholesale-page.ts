@@ -1,5 +1,4 @@
 import { getCategoryCatalogByKind } from "@/lib/supabase/categories";
-import { mergeWholesaleProductsWithAvailability } from "@/lib/supabase/wholesale-availability";
 import { getWholesaleInventorySnapshot } from "@/lib/supabase/wholesale-inventory-snapshot";
 import {
   getGstTaxRate,
@@ -7,9 +6,8 @@ import {
   getMinimumWholesaleOrderValue,
   getSettings,
 } from "@/lib/supabase/settings";
-import { fetchWholesaleProductRows } from "@/lib/supabase/products";
+import { getWholesaleProducts } from "@/lib/supabase/wholesale-products";
 import { getWholesaleTiers } from "@/lib/supabase/wholesale-tiers";
-import { categoryMapById } from "@/lib/product-category";
 import type {
   SiteCategory,
   SiteCategoryGroup,
@@ -17,6 +15,7 @@ import type {
   WholesaleProduct,
   WholesaleProductAvailabilityRow,
 } from "@/types";
+import { applyWholesaleProductAvailability } from "@/types";
 
 export type WholesalePageData = {
   products: WholesaleProduct[];
@@ -51,21 +50,24 @@ export async function loadWholesaleCartConfig(): Promise<WholesaleCartConfig> {
 }
 
 export async function loadWholesalePageData(): Promise<WholesalePageData> {
-  const [productRows, inventory, categoryCatalog, cartConfig] =
-    await Promise.all([
-      fetchWholesaleProductRows(),
-      getWholesaleInventorySnapshot(),
-      getCategoryCatalogByKind("wholesale"),
-      loadWholesaleCartConfig(),
-    ]);
+  const [products, inventory, categoryCatalog, cartConfig] = await Promise.all([
+    getWholesaleProducts(),
+    getWholesaleInventorySnapshot(),
+    getCategoryCatalogByKind("wholesale"),
+    loadWholesaleCartConfig(),
+  ]);
 
   const { categories: categoriesContent, categoryGroups } = categoryCatalog;
+  const availabilityByProductId = new Map(
+    inventory.map((row) => [row.product_id, row]),
+  );
 
   return {
-    products: mergeWholesaleProductsWithAvailability(
-      productRows,
-      inventory,
-      categoryMapById(categoriesContent),
+    products: products.map((product) =>
+      applyWholesaleProductAvailability(
+        product,
+        availabilityByProductId.get(product.id),
+      ),
     ),
     inventory,
     categoriesContent,

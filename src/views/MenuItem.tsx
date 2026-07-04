@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { menuItemDetailPath, menuListPath, MENU_CATEGORIES_ANCHOR } from "@/lib/menu-item-routes";
+import { menuCategoryUrlParam } from "@/lib/menu-category-url";
 import MenuItemImageZoom from "@/components/MenuItemImageZoom";
 import FoodContentLabels from "@/components/FoodContentLabels";
 import ItemFoodSafetyNotice from "@/components/ItemFoodSafetyNotice";
@@ -80,7 +81,11 @@ export default function MenuItemView({
     [locale],
   );
 
-  const backHref = menuListPath(locale, item.category, MENU_CATEGORIES_ANCHOR);
+  const backHref = menuListPath(
+    locale,
+    menuCategoryUrlParam(categoriesContent, item.category) ?? item.category,
+    MENU_CATEGORIES_ANCHOR,
+  );
 
   const relatedItems = useMemo(
     () => getRelatedMenuItems(item, menuItems),

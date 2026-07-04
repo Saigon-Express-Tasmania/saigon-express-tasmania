@@ -20,6 +20,10 @@ import {
   getCategorySectionId,
   scrollToCategoryInList,
 } from "@/lib/category-list-scroll";
+import {
+  buildMenuCategoryQuery,
+  resolveMenuCategoryFromUrlParam,
+} from "@/lib/menu-category-url";
 import { cn } from "@/lib/utils";
 import AddOnSuggestionModal, {
   type SuggestedItem,
@@ -101,8 +105,11 @@ export default function Menu({
     [locale],
   );
 
-  // Set initial state from URL, fallback to allLabel
-  const [activeCategory, setActiveCategory] = useState(urlCategory || allLabel);
+  const resolvedUrlCategory = useMemo(
+    () => resolveMenuCategoryFromUrlParam(urlCategory, categoriesContent),
+    [urlCategory, categoriesContent],
+  );
+  const activeCategory = resolvedUrlCategory?.name ?? allLabel;
   const [search, setSearch] = useState("");
   const [addonTrigger, setAddonTrigger] = useState<{
     item: SuggestedItem;
@@ -115,33 +122,26 @@ export default function Menu({
   // Handle category clicks by updating state AND the URL
   const handleCategoryClick = useCallback(
     (cat: string) => {
-      setActiveCategory(cat);
-
-      // Update the URL search parameters seamlessly
-      const params = new URLSearchParams(searchParams.toString());
-      if (cat === allLabel) {
-        params.delete("category");
-      } else {
-        params.set("category", cat);
-      }
-
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      const query = buildMenuCategoryQuery(cat, allLabel, categoriesContent);
+      const nextUrl = query ? `${pathname}?${query}` : pathname;
+      router.replace(nextUrl, { scroll: false });
       scrollToCategoryInList(cat, allLabel);
     },
-    [searchParams, pathname, router, allLabel],
+    [pathname, router, allLabel, categoriesContent],
   );
 
   useEffect(() => {
-    if (!urlCategory) {
-      setActiveCategory(allLabel);
-      return;
+    if (urlCategory && resolvedUrlCategory && urlCategory !== resolvedUrlCategory.alias) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("category", resolvedUrlCategory.alias);
+      const query = params.toString();
+      const hash = window.location.hash;
+      router.replace(
+        query ? `${pathname}?${query}${hash}` : `${pathname}${hash}`,
+        { scroll: false },
+      );
     }
-
-    const matched = categoriesContent.find(
-      (category) => category.name === urlCategory,
-    );
-    setActiveCategory(matched ? urlCategory : allLabel);
-  }, [urlCategory, categoriesContent, allLabel]);
+  }, [urlCategory, resolvedUrlCategory, searchParams, pathname, router]);
 
   useEffect(() => {
     const scrollToCategories = () => {

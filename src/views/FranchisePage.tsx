@@ -66,7 +66,7 @@ interface FaqItem {
 const EXISTING_STORE_OPPORTUNITIES: OpportunityItem[] = [
   {
     name: "Saigon Express North Hobart",
-    imageSrc: "/images/franchise-opportunity-north-hobart.png",
+    imageSrc: "/manus-storage/news-story-began_47dbdf79.jpg",
     imageAlt: "Saigon Express North Hobart opportunity",
     description:
       "Situated in Hobart's undisputed culinary heart. Unbeatable foot traffic and a proven local hunger for premium Asian cuisine guarantee a steady stream of dine-in, takeaway, and delivery orders seven days a week.",

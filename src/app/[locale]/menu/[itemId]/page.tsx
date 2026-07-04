@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductCustomizationsProvider } from "@/contexts/ProductCustomizationsContext";
-import { loadMenuItemPageData } from "@/lib/menu-item-page";
-import { getMenuItemFromParam } from "@/lib/supabase/menu-item";
+import { loadMenuItemForRequest, loadMenuItemPageData } from "@/lib/menu-item-page";
 import MenuItemView from "@/views/MenuItem";
 
 type PageProps = {
@@ -13,7 +12,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { itemId } = await params;
-  const item = await getMenuItemFromParam(itemId);
+  const item = await loadMenuItemForRequest(itemId);
   if (!item) return { title: "Menu Item Not Found" };
 
   return {

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { loadCateringItemPageData } from "@/lib/catering-item-page";
-import { getCateringItemFromParam } from "@/lib/supabase/catering-packs";
+import {
+  loadCateringItemForRequest,
+  loadCateringItemPageData,
+} from "@/lib/catering-item-page";
 import { ProductCustomizationsProvider } from "@/contexts/ProductCustomizationsContext";
 import CateringItemView from "@/views/CateringItem";
 
@@ -13,7 +15,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { itemId } = await params;
-  const item = await getCateringItemFromParam(itemId);
+  const item = await loadCateringItemForRequest(itemId);
   if (!item) return { title: "Catering Item Not Found" };
 
   return {
