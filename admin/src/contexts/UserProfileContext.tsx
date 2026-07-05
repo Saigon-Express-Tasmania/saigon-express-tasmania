@@ -2,6 +2,7 @@
 
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { isAuthFailureError, notifyAuthFailure } from '@/lib/auth-session';
 import { parsePrivileges } from '@/lib/privileges';
 import supabase from '@/lib/supabase/client';
 import type { UserProfile, UserProfileUpdate } from '@/types/UserProfile';
@@ -111,6 +112,11 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
       setProfile(row);
       setAvatarPreviewUrl(await resolveAvatarPreview(row.avatar_url, getSignedUrl));
     } catch (err) {
+      if (isAuthFailureError(err)) {
+        notifyAuthFailure();
+        return;
+      }
+
       const message =
         err instanceof Error ? err.message : 'Failed to load your profile.';
       setError(message);

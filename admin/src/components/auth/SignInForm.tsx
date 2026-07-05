@@ -2,7 +2,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useState } from 'react';
+import {
+  consumeSessionExpiredNotice,
+  SESSION_EXPIRED_MESSAGE,
+} from '@/lib/auth-session';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface SignInFormProps {
@@ -13,9 +17,14 @@ export function SignInForm({ onForgotPassword }: SignInFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useSupabaseAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setSessionExpiredNotice(consumeSessionExpiredNotice());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +84,12 @@ export function SignInForm({ onForgotPassword }: SignInFormProps) {
           />
         </div>
       </div>
+
+      {sessionExpiredNotice && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {SESSION_EXPIRED_MESSAGE}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">

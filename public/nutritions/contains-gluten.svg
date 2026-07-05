@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+  <g transform="translate(2 2)">
+    <path fill="#d49a2e" d="m 5,5 c 0,4 1,5 5,5 C 10,7 8,5 5,5 Z" />
+    <path fill="#E8B14C" d="m 5,10 c 0,4 1,5 5,5 0,-3 -2,-5 -5,-5 z" />
+    <path fill="#c89430" d="m 5,15 c 0,4 1,5 5,5 0,-3 -2,-5 -5,-5 z" />
+    <path fill="#E8B14C" d="m 15,5 c 0,4 -1,5 -5,5 0,-3 2,-5 5,-5 z" />
+    <path fill="#d49a2e" d="m 15,10 c 0,4 -1,5 -5,5 0,-3 2,-5 5,-5 z" />
+    <path fill="#f5d078" d="m 15,15 c 0,4 -1,5 -5,5 0,-3 2,-5 5,-5 z" />
+    <path fill="#c89430" d="M 10,0 C 7.87868,2.1213203 7.87868,4.9497475 10,7.0710679 12.12132,4.9497475 12.12132,2.1213203 10,0 Z" />
+  </g>
+</svg>

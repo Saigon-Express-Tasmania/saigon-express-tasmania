@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+  <path
+    fill="#ffffff"
+    stroke="#000000"
+    stroke-width="0.85"
+    stroke-linejoin="round"
+    d="M 9.5566406 5 C 9.0607403 7.2675789 7 8.3604051 7 11 L 7 21.027344 C 7 22.000785 7.000962 22 7.7363281 22 L 15 22 C 15.888889 22 15.888672 22 15.888672 21 L 15.888672 11 C 15.888672 8.3604051 13.827932 7.2675789 13.332031 5 L 9.5566406 5 z M 8 11 L 9 11 L 9 21 L 8 21 L 8 11 z"
+  />
+  <path
+    fill="#ffffff"
+    stroke="#000000"
+    stroke-width="0.85"
+    stroke-linejoin="round"
+    fill-rule="evenodd"
+    d="m 10.555555,2 h 1.777779 c 0.888888,0 0.888888,0 0.888888,2 H 9.6666667 c 0,-2 0,-2 0.8888883,-2 z"
+  />
+</svg>

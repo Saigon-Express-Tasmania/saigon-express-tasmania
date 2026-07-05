@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+  <defs>
+    <linearGradient id="egg-fill" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f5c25a" />
+      <stop offset="55%" stop-color="#e8a33d" />
+      <stop offset="100%" stop-color="#c98628" />
+    </linearGradient>
+  </defs>
+  <path fill="url(#egg-fill)" d="M 12.000001,22.000001 C 8.1399993,21.999999 4.9999993,18.860001 4.9999993,15 4.9999983,9.7500007 8.0000003,1.9999994 12,1.9999993 c 4.000001,-1e-7 7,7.7500004 7.000001,13.0000017 0,3.859999 -3.14,7 -7,7 z" />
+</svg>

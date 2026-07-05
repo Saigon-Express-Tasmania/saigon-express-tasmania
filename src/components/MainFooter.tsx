@@ -28,6 +28,13 @@ export default function MainFooter() {
     { href: "/faq", label: t("footer.quickLinks.faq") },
   ] as const;
 
+  const nutritionLinks = [
+    { href: "/nutrition", label: "Nutrition" },
+    { href: "/terms-of-service#food-safety", label: t("footer.foodSafety") },
+    // { href: "/dietary", label: "Dietary" },
+    // { href: "/allergen", label: "Allergen" },
+  ] as const;
+
   return (
     <footer className="relative z-10 bg-brand-dark text-white/70">
       <div
@@ -91,6 +98,24 @@ export default function MainFooter() {
             </ul>
           </div>
 
+          <div>
+            <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">
+              Nutrition, Dietry and Allergen
+            </h3>
+            <ul className="space-y-2.5 text-sm">
+              {nutritionLinks.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className="hover:text-white transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {/* Portals */}
           <div>
             <h3 className="text-white font-semibold text-sm mb-4 uppercase tracking-wider">
@@ -140,15 +165,7 @@ export default function MainFooter() {
                 >
                   {t("footer.termsOfService")}
                 </Link>
-              </li>
-              <li>
-                <Link
-                  href="/terms-of-service#food-safety"
-                  className="hover:text-white transition-colors"
-                >
-                  {t("footer.foodSafety")}
-                </Link>
-              </li>
+              </li>              
               <li>
                 <button
                   type="button"

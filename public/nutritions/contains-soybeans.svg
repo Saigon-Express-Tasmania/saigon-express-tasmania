@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+  <path fill="#5a8f3a" d="M 2.6308594 6.4160156 C -0.21615019 17.0412 9.8048932 12.481347 21.361328 17.648438 C 24.208337 7.0232535 14.670257 11.712515 2.6308594 6.4160156 z" />
+  <ellipse fill="#8bbf5a" cx="5.6" cy="10.7" rx="2.5" ry="2" transform="rotate(34 5.6 10.7)" />
+  <ellipse fill="#a8d46e" cx="12" cy="12.5" rx="2.5" ry="2" transform="rotate(19 12 12.5)" />
+  <ellipse fill="#8bbf5a" cx="18.1" cy="12.7" rx="2.5" ry="2" transform="rotate(34 18.1 12.7)" />
+</svg>

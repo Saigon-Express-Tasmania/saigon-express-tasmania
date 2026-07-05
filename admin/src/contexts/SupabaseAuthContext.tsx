@@ -1,7 +1,12 @@
+import {
+  isAuthFailureError,
+  markSessionExpired,
+  registerAuthFailureHandler,
+} from '@/lib/auth-session';
 import supabase from '@/lib/supabase/client';
 import { parseUserRole } from '@/lib/user-metadata';
 import { type Session, type User } from '@supabase/supabase-js';
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 
 export type SupabaseAuth = {
   user: User | null;
@@ -23,6 +28,22 @@ export const SupabaseAuthContext = createContext<SupabaseAuth>({
   signOut: async () => {},
 });
 
+function ensureAdminAccess(session: Session) {
+  const userRole = parseUserRole(session.user.app_metadata?.user_role);
+
+  if (userRole !== 'admin') {
+    throw new Error('Access denied. Admin account required.');
+  }
+}
+
+async function clearInvalidSession() {
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // Session may already be invalid on the server.
+  }
+}
+
 export function SupabaseAuthProvider({
   children,
 }: {
@@ -31,41 +52,156 @@ export function SupabaseAuthProvider({
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isHandlingAuthFailureRef = useRef(false);
+
+  const applySignedOutState = useCallback(() => {
+    setSession(null);
+    setUser(null);
+  }, []);
+
+  const handleAuthFailure = useCallback(async () => {
+    if (isHandlingAuthFailureRef.current) return;
+    isHandlingAuthFailureRef.current = true;
+
+    try {
+      markSessionExpired();
+      applySignedOutState();
+      await clearInvalidSession();
+    } finally {
+      isHandlingAuthFailureRef.current = false;
+    }
+  }, [applySignedOutState]);
+
+  const resolveAuthSession = useCallback(async (options?: { keepExistingOnError?: boolean }) => {
+    const {
+      data: { user: validatedUser },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+      if (isAuthFailureError(userError)) {
+        await handleAuthFailure();
+        return { user: null, session: null };
+      }
+
+      if (options?.keepExistingOnError) {
+        return null;
+      }
+
+      throw userError;
+    }
+
+    if (!validatedUser) {
+      applySignedOutState();
+      return { user: null, session: null };
+    }
+
+    const {
+      data: { session: activeSession },
+    } = await supabase.auth.getSession();
+
+    if (!activeSession) {
+      await handleAuthFailure();
+      return { user: null, session: null };
+    }
+
+    try {
+      ensureAdminAccess(activeSession);
+    } catch {
+      await handleAuthFailure();
+      return { user: null, session: null };
+    }
+
+    return { user: validatedUser, session: activeSession };
+  }, [applySignedOutState, handleAuthFailure]);
 
   useEffect(() => {
-    const getSession = async () => {
+    let mounted = true;
+
+    const init = async () => {
       try {
-        const {
-          data: { session: initialSession },
-        } = await supabase.auth.getSession();
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
+        const resolved = await resolveAuthSession();
+        if (!mounted || !resolved) return;
+        setSession(resolved.session);
+        setUser(resolved.user);
       } catch (error) {
         console.error('Error getting session:', error);
+        if (mounted) applySignedOutState();
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
 
-    getSession();
+    void init();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
-      // Token refresh on window focus updates the session in the Supabase
-      // client already; avoid replacing `user` so profile/data hooks don't reload.
       if (event === 'TOKEN_REFRESHED') {
+        if (!newSession?.user) {
+          void handleAuthFailure();
+          return;
+        }
+
         setSession(newSession);
         return;
       }
 
+      if (event === 'SIGNED_OUT') {
+        applySignedOutState();
+        setIsLoading(false);
+        return;
+      }
+
+      if (event === 'INITIAL_SESSION') {
+        return;
+      }
+
+      if (!newSession?.user) {
+        applySignedOutState();
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        ensureAdminAccess(newSession);
+      } catch {
+        void handleAuthFailure();
+        return;
+      }
+
       setSession(newSession);
-      setUser(newSession?.user ?? null);
+      setUser(newSession.user);
       setIsLoading(false);
     });
 
     return () => subscription?.unsubscribe();
-  }, []);
+  }, [applySignedOutState, handleAuthFailure, resolveAuthSession]);
+
+  useEffect(() => {
+    return registerAuthFailureHandler(() => {
+      void handleAuthFailure();
+    });
+  }, [handleAuthFailure]);
+
+  useEffect(() => {
+    const revalidate = () => {
+      if (document.visibilityState === 'hidden') return;
+      void resolveAuthSession({ keepExistingOnError: true }).then((resolved) => {
+        if (!resolved) return;
+        setSession(resolved.session);
+        setUser(resolved.user);
+      });
+    };
+
+    window.addEventListener('focus', revalidate);
+    document.addEventListener('visibilitychange', revalidate);
+
+    return () => {
+      window.removeEventListener('focus', revalidate);
+      document.removeEventListener('visibilitychange', revalidate);
+    };
+  }, [resolveAuthSession]);
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
@@ -73,14 +209,6 @@ export function SupabaseAuthProvider({
       password,
     });
     if (error) throw error;
-  };
-
-  const ensureAdminAccess = async (session: Session) => {
-    const userRole = parseUserRole(session.user.app_metadata?.user_role);
-
-    if (userRole !== 'admin') {
-      throw new Error('Access denied. Admin account required.');
-    }
   };
 
   const signIn = async (email: string, password: string) => {
@@ -97,7 +225,7 @@ export function SupabaseAuthProvider({
     }
 
     try {
-      await ensureAdminAccess(data.session);
+      ensureAdminAccess(data.session);
     } catch (adminCheckError) {
       await supabase.auth.signOut();
       throw adminCheckError;
@@ -113,7 +241,7 @@ export function SupabaseAuthProvider({
     user,
     session,
     isLoading,
-    isSignedIn: !!session?.user,
+    isSignedIn: !!user && !!session,
     signUp,
     signIn,
     signOut,

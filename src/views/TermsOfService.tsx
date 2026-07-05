@@ -242,7 +242,7 @@ export default function TermsOfService() {
       <article className="max-w-3xl mx-auto px-4 py-12 md:py-16 space-y-10">
         <Section id="food-safety" title="Food Safety Information">
           <p>
-            Tognini&rsquo;s Catering follows all relevant food safety guidelines
+            Saigon Express&rsquo;s Catering follows all relevant food safety guidelines
             as outlined by Tasmania Health and Food Standards Australia New
             Zealand (FSANZ) to ensure all food is prepared and delivered under
             safe, hygienic conditions.
@@ -278,7 +278,7 @@ export default function TermsOfService() {
             ]}
           />
           <p>
-            Tognini&rsquo;s Catering cannot accept responsibility for food safety
+            Saigon Express&rsquo;s Catering cannot accept responsibility for food safety
             concerns arising from improper storage, handling, or consumption once
             the order has been delivered or collected.
           </p>
@@ -291,7 +291,7 @@ export default function TermsOfService() {
 
         <div className="space-y-4 text-stone-600 leading-relaxed">
           <p>
-            Welcome to Saigon Express. These Terms of Service
+            These Terms of Service
             (&ldquo;Terms&rdquo;) govern your access to and use of the
             saigonexpress.com.au website, our Progressive Web App (PWA), and any
             related online services, including wholesale, catering, and franchise
