@@ -1,6 +1,7 @@
 'use client';
 
 import { STORAGE_BUCKET } from '@/constants';
+import { optimizeImageFile } from '@/lib/image-optimize';
 import { generateStorageFileName } from '@/lib/storage-file-name';
 import { normalizeStoragePath } from '@/lib/storage-path';
 import supabase from '@/lib/supabase/client';
@@ -136,7 +137,8 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
       if (!user) throw new Error('You must be signed in to upload files.');
 
       const folder = options?.folder ?? 'media';
-      const ext = extensionFromFile(file);
+      const uploadFile = await optimizeImageFile(file);
+      const ext = extensionFromFile(uploadFile);
       const fileName = options?.fileName ?? generateStorageFileName(ext);
       const path = `${folder}/${user.id}/${fileName}`;
 
@@ -144,9 +146,9 @@ export function SupabaseStorageProvider({ children }: { children: ReactNode }) {
       try {
         const { error: uploadError } = await supabase.storage
           .from(STORAGE_BUCKET)
-          .upload(path, file, {
+          .upload(path, uploadFile, {
             upsert: options?.upsert ?? true,
-            contentType: file.type || undefined,
+            contentType: uploadFile.type || undefined,
           });
 
         if (uploadError) throw uploadError;

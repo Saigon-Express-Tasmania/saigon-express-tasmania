@@ -51,6 +51,6 @@ export default defineConfig({
       "handsontable",
       "handsontable/registry",
     ],
-    exclude: ["xlsx"],
+    exclude: ["xlsx", "@jsquash/jpeg", "@jsquash/oxipng"],
   },
 })
