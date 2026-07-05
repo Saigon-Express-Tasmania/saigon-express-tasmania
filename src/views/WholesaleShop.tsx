@@ -7,6 +7,7 @@ import LazyImage from "@/components/LazyImage";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
+import { productMatchesCategory } from "@/lib/product-categories";
 import {
   MEMBER_PORTAL_LIGHT_BANNER_CLASS,
   MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS,
@@ -34,12 +35,13 @@ import { Plus, Package, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
 import CategorySelect from "@/components/CategorySelect";
 import CategorySidebar, {
-  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CategorySidebarAside,
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   filterCategoriesWithItems,
+  getActiveCategoryLabel,
   getPopulatedCategoryIds,
 } from "@/lib/category-bar";
 import type { SiteCategoryGroup } from "@/types";
@@ -52,6 +54,7 @@ type DashboardProduct = {
   id: number;
   name: string;
   categoryId: number | null;
+  categoryIds: number[];
   category: string;
   description: string;
   priceExGst: number;
@@ -72,6 +75,7 @@ function mapProduct(p: WholesaleProduct): DashboardProduct {
     id: p.id,
     name: p.name,
     categoryId: p.categoryId,
+    categoryIds: p.categoryIds,
     category: p.category,
     description: p.description ?? "",
     priceExGst: Number(p.unitPrice ?? 0),
@@ -114,7 +118,9 @@ export default function WholesaleShop({
   const { addToCart, getCartQty, clearCart } = useWholesaleCart();
   const { setInventory, validateQty, getMaxQty } = useWholesaleInventory();
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+    null,
+  );
   const [shopProducts, setShopProducts] = useState(products);
 
   const barCategories = useMemo(() => {
@@ -133,8 +139,8 @@ export default function WholesaleShop({
 
   const categoryIconMap = useMemo(
     () =>
-      categoriesContent.reduce<Record<string, string>>((acc, category) => {
-        if (category.icon) acc[category.name] = category.icon;
+      categoriesContent.reduce<Record<number, string>>((acc, category) => {
+        if (category.icon) acc[category.id] = category.icon;
         return acc;
       }, {}),
     [categoriesContent],
@@ -142,23 +148,23 @@ export default function WholesaleShop({
 
   const categoryDescriptionMap = useMemo(
     () =>
-      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+      categoriesContent.reduce<Record<number, string>>((acc, category) => {
         const description = category.description?.trim();
-        if (description) acc[category.name] = description;
+        if (description) acc[category.id] = description;
         return acc;
       }, {}),
     [categoriesContent],
   );
 
   const getCategoryIcon = useCallback(
-    (categoryName: string) =>
-      categoryName === ALL_CATEGORY ? null : categoryIconMap[categoryName] ?? null,
+    (categoryId: number | null) =>
+      categoryId == null ? null : categoryIconMap[categoryId] ?? null,
     [categoryIconMap],
   );
 
   const getCategoryIconFallback = useCallback(
-    (categoryName: string): "all" | "category" =>
-      categoryName === ALL_CATEGORY ? "all" : "category",
+    (categoryId: number | null): "all" | "category" =>
+      categoryId == null ? "all" : "category",
     [],
   );
 
@@ -242,20 +248,24 @@ export default function WholesaleShop({
 
   const allProducts = useMemo(() => shopProducts.map(mapProduct), [shopProducts]);
 
-  const selectedCategoryId = useMemo(() => {
-    if (selectedCategory === ALL_CATEGORY) return null;
-    return (
-      categoriesContent.find((category) => category.name === selectedCategory)
-        ?.id ?? null
-    );
-  }, [selectedCategory, categoriesContent]);
+  const selectedCategoryLabel = getActiveCategoryLabel(
+    selectedCategoryId,
+    ALL_CATEGORY,
+    categoriesContent,
+  );
+  const selectedCategoryDescription =
+    selectedCategoryId != null
+      ? categoryDescriptionMap[selectedCategoryId]
+      : undefined;
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase();
     return moveZeroSortOrderToEnd(
       allProducts.filter((p) => {
-        const matchesCategory =
-          selectedCategoryId === null || p.categoryId === selectedCategoryId;
+        const matchesCategory = productMatchesCategory(
+          p,
+          selectedCategoryId,
+        );
         const matchesSearch =
           !normalizedSearch ||
           p.name.toLowerCase().includes(normalizedSearch) ||
@@ -266,9 +276,9 @@ export default function WholesaleShop({
     );
   }, [allProducts, search, selectedCategoryId]);
 
-  const handleCategoryClick = useCallback((cat: string) => {
-    setSelectedCategory(cat);
-    scrollToCategoryInList(cat, ALL_CATEGORY);
+  const handleCategoryClick = useCallback((categoryId: number | null) => {
+    setSelectedCategoryId(categoryId);
+    scrollToCategoryInList(categoryId);
   }, []);
 
   const handleLogout = async () => {
@@ -330,7 +340,7 @@ export default function WholesaleShop({
         <div className="max-w-[1280px] mx-auto px-6 py-3">
           <CategorySelect
             allLabel={ALL_CATEGORY}
-            activeCategory={selectedCategory}
+            activeCategoryId={selectedCategoryId}
             onCategorySelect={handleCategoryClick}
             categories={barCategories}
             categoryGroups={categoryGroups}
@@ -347,30 +357,27 @@ export default function WholesaleShop({
 
       <div className="lg:flex lg:items-start">
         <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
-          <aside
+          <CategorySidebarAside
             aria-label={t("categories.label")}
-            className={cn(
-              CATEGORY_SIDEBAR_ASIDE_CLASS,
-              "border-r border-gray-100 bg-white px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)]",
-            )}
+            variant="member"
           >
             <CategorySidebar
               allLabel={ALL_CATEGORY}
-              activeCategory={selectedCategory}
+              activeCategoryId={selectedCategoryId}
               onCategorySelect={handleCategoryClick}
               categories={barCategories}
               categoryGroups={categoryGroups}
               variant="member"
               renderCategoryLeading={(category) => (
                 <CategoryIcon
-                  icon={getCategoryIcon(category.name)}
-                  fallback={getCategoryIconFallback(category.name)}
+                  icon={getCategoryIcon(category.id)}
+                  fallback={getCategoryIconFallback(category.id)}
                   className="size-5 shrink-0 text-base"
                   fallbackClassName="size-3.5"
                 />
               )}
             />
-          </aside>
+          </CategorySidebarAside>
         </div>
 
       <div className="min-w-0 w-full flex-1 pt-3 pb-8 px-6 py-10">
@@ -389,17 +396,17 @@ export default function WholesaleShop({
 
         <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-        {selectedCategory !== ALL_CATEGORY ? (
+        {selectedCategoryId != null ? (
           <div
-            id={getCategorySectionId(selectedCategory)}
+            id={getCategorySectionId(selectedCategoryId)}
             className="scroll-mt-24 mb-6"
           >
             <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">
-              {selectedCategory}
+              {selectedCategoryLabel}
             </h2>
-            {categoryDescriptionMap[selectedCategory] ? (
+            {selectedCategoryDescription ? (
               <p className="text-sm leading-relaxed text-gray-500">
-                {categoryDescriptionMap[selectedCategory]}
+                {selectedCategoryDescription}
               </p>
             ) : null}
           </div>
@@ -410,7 +417,10 @@ export default function WholesaleShop({
           {filtered.map((product) => {
             const gradientClass =
               categoryStyleMap[product.category] ?? "from-gray-800 to-gray-600";
-            const icon = categoryIconMap[product.category];
+            const icon =
+              product.categoryId != null
+                ? categoryIconMap[product.categoryId]
+                : undefined;
             const cartQty = getCartQty(product.id);
             const maxQty = getMaxQty(product.id);
             const outOfStock =

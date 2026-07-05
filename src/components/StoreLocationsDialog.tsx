@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { X, MapPin, Clock } from "lucide-react";
@@ -62,6 +62,10 @@ export default function StoreLocationsDialog({
 }: StoreLocationsDialogProps) {
   const t = useTranslations("StoreLocationsDialog");
   const tFinder = useTranslations("StoreFinder");
+  const sortedStores = useMemo(
+    () => [...stores].sort((a, b) => a.sortOrder - b.sortOrder),
+    [stores],
+  );
   const [orderType, setOrderType] = useState<OrderType>("pickup");
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [phase, setPhase] = useState<DialogPhase>("closed");
@@ -92,8 +96,8 @@ export default function StoreLocationsDialog({
   useEffect(() => {
     if (!open) return;
     setOrderType("pickup");
-    setSelectedStoreId(stores[0]?.id ?? null);
-  }, [open, stores]);
+    setSelectedStoreId(sortedStores[0]?.id ?? null);
+  }, [open, sortedStores]);
 
   if (phase === "closed") return null;
 
@@ -112,7 +116,7 @@ export default function StoreLocationsDialog({
 
   const heading = title ?? t("heading");
   const subheading = subtitle ?? t("subheading");
-  const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null;
+  const selectedStore = sortedStores.find((s) => s.id === selectedStoreId) ?? null;
   const canOrder = Boolean(selectedStore?.deliveryUrl);
 
   const handleOrder = () => {
@@ -168,7 +172,7 @@ export default function StoreLocationsDialog({
           </div>
         </div>
 
-        {stores.length > 0 ? (
+        {sortedStores.length > 0 ? (
           <div
             className="shrink-0 border-b border-gray-100 px-4 py-3 sm:px-5"
             role="radiogroup"
@@ -217,7 +221,7 @@ export default function StoreLocationsDialog({
           role="radiogroup"
           aria-label={t("locationLabel")}
         >
-          {stores.length === 0 ? (
+          {sortedStores.length === 0 ? (
             <div className="rounded-xl border border-gray-100 bg-brand-cream/40 px-4 py-8 text-center text-sm text-brand-dark/50">
               {tFinder("list.empty")}
             </div>
@@ -227,7 +231,7 @@ export default function StoreLocationsDialog({
                 {t("locationLabel")}
               </p>
               <ul className="space-y-2">
-                {stores.map((store) => {
+                {sortedStores.map((store) => {
                   const hours = formatHours(store.hours);
                   const storeOpen = isOpenNow(store.hours);
                   const showHalal = store.name
@@ -312,7 +316,7 @@ export default function StoreLocationsDialog({
           )}
         </div>
 
-        {stores.length > 0 ? (
+        {sortedStores.length > 0 ? (
           <div className="shrink-0 border-t border-gray-100 bg-white px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:px-5">
             <button
               type="button"

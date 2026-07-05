@@ -9,13 +9,14 @@ import { useSupabase } from "@/hooks/useSupabase";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
 import { cn } from "@/lib/utils";
 import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
+import { productMatchesCategory } from "@/lib/product-categories";
 import {
   CATEGORY_LIST_ANCHOR,
   getCategorySectionId,
   scrollToCategoryInList,
 } from "@/lib/category-list-scroll";
 import { hasPrivilege } from "@/lib/privileges";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type {
   SiteCategory,
@@ -31,12 +32,17 @@ import {
 import Fuse from "fuse.js";
 import CategorySelect from "@/components/CategorySelect";
 import CategorySidebar, {
-  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CategorySidebarAside,
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import {
+  buildMenuCategoryQueryFromId,
+  resolveMenuCategoryFromUrlParam,
+} from "@/lib/menu-category-url";
+import {
   filterCategoriesWithItems,
+  getActiveCategoryLabel,
   getPopulatedCategoryIds,
 } from "@/lib/category-bar";
 import type { SiteCategoryGroup } from "@/types";
@@ -76,6 +82,17 @@ export default function WholesaleLandingShop({
     return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
   }, [categoriesContent, products]);
 
+  const resolvedUrlCategory = useMemo(
+    () => resolveMenuCategoryFromUrlParam(urlCategory, categoriesContent),
+    [urlCategory, categoriesContent],
+  );
+  const selectedCategoryId = resolvedUrlCategory?.id ?? null;
+  const selectedCategoryLabel = getActiveCategoryLabel(
+    selectedCategoryId,
+    ALL_CATEGORY,
+    categoriesContent,
+  );
+
   const categoryStyleMap = useMemo(
     () =>
       categoriesContent.reduce<Record<string, string>>((acc, category) => {
@@ -87,8 +104,8 @@ export default function WholesaleLandingShop({
 
   const categoryIconMap = useMemo(
     () =>
-      categoriesContent.reduce<Record<string, string>>((acc, category) => {
-        if (category.icon) acc[category.name] = category.icon;
+      categoriesContent.reduce<Record<number, string>>((acc, category) => {
+        if (category.icon) acc[category.id] = category.icon;
         return acc;
       }, {}),
     [categoriesContent],
@@ -96,49 +113,49 @@ export default function WholesaleLandingShop({
 
   const categoryDescriptionMap = useMemo(
     () =>
-      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+      categoriesContent.reduce<Record<number, string>>((acc, category) => {
         const description = category.description?.trim();
-        if (description) acc[category.name] = description;
+        if (description) acc[category.id] = description;
         return acc;
       }, {}),
     [categoriesContent],
   );
 
   const getCategoryIcon = useCallback(
-    (categoryName: string) =>
-      categoryName === ALL_CATEGORY ? null : categoryIconMap[categoryName] ?? null,
+    (categoryId: number | null) =>
+      categoryId == null ? null : categoryIconMap[categoryId] ?? null,
     [categoryIconMap],
   );
 
   const getCategoryIconFallback = useCallback(
-    (categoryName: string): "all" | "category" =>
-      categoryName === ALL_CATEGORY ? "all" : "category",
+    (categoryId: number | null): "all" | "category" =>
+      categoryId == null ? "all" : "category",
     [],
   );
 
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(
-    urlCategory || ALL_CATEGORY,
-  );
 
-  // Handle category clicks by updating state AND the URL
   const handleCategoryClick = useCallback(
-    (cat: string) => {
-      setSelectedCategory(cat);
-
-      // Update the URL search parameters seamlessly
-      const params = new URLSearchParams(searchParams.toString());
-      if (cat === ALL_CATEGORY) {
-        params.delete("category");
-      } else {
-        params.set("category", cat);
-      }
-
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-      scrollToCategoryInList(cat, ALL_CATEGORY);
+    (categoryId: number | null) => {
+      const query = buildMenuCategoryQueryFromId(categoryId, categoriesContent);
+      const nextUrl = query ? `${pathname}?${query}` : pathname;
+      router.replace(nextUrl, { scroll: false });
+      scrollToCategoryInList(categoryId);
     },
-    [searchParams, pathname, router],
+    [pathname, router, categoriesContent],
   );
+
+  useEffect(() => {
+    if (urlCategory && resolvedUrlCategory && urlCategory !== resolvedUrlCategory.alias) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("category", resolvedUrlCategory.alias);
+      const query = params.toString();
+      router.replace(
+        query ? `${pathname}?${query}` : pathname,
+        { scroll: false },
+      );
+    }
+  }, [urlCategory, resolvedUrlCategory, searchParams, pathname, router]);
 
   // 2. Initialize Fuse instance with targeted keys and fine-tuned thresholds
   const fuse = useMemo(() => {
@@ -153,13 +170,10 @@ export default function WholesaleLandingShop({
     return new Fuse(products ?? [], options);
   }, [products]);
 
-  const selectedCategoryId = useMemo(() => {
-    if (selectedCategory === ALL_CATEGORY) return null;
-    return (
-      categoriesContent.find((category) => category.name === selectedCategory)
-        ?.id ?? null
-    );
-  }, [selectedCategory, categoriesContent]);
+  const selectedCategoryDescription =
+    selectedCategoryId != null
+      ? categoryDescriptionMap[selectedCategoryId]
+      : undefined;
 
   // 3. Compute fuzzy matching coupled with category constraints using useMemo
   const filtered = useMemo(() => {
@@ -171,7 +185,9 @@ export default function WholesaleLandingShop({
         return moveZeroSortOrderToEnd(products ?? [], (item) => item.sortOrder);
       }
       return moveZeroSortOrderToEnd(
-        (products ?? []).filter((p) => p.categoryId === selectedCategoryId),
+        (products ?? []).filter((p) =>
+          productMatchesCategory(p, selectedCategoryId),
+        ),
         (item) => item.sortOrder,
       );
     }
@@ -184,7 +200,9 @@ export default function WholesaleLandingShop({
     // Apply category isolation on top of search hits
     if (selectedCategoryId !== null) {
       return moveZeroSortOrderToEnd(
-        searchResults.filter((p) => p.categoryId === selectedCategoryId),
+        searchResults.filter((p) =>
+          productMatchesCategory(p, selectedCategoryId),
+        ),
         (item) => item.sortOrder,
       );
     }
@@ -282,7 +300,7 @@ export default function WholesaleLandingShop({
           <div className="container py-3">
             <CategorySelect
               allLabel={ALL_CATEGORY}
-              activeCategory={selectedCategory}
+              activeCategoryId={selectedCategoryId}
               onCategorySelect={handleCategoryClick}
               categories={barCategories}
               categoryGroups={categoryGroups}
@@ -299,30 +317,27 @@ export default function WholesaleLandingShop({
 
         <div className="lg:flex lg:items-start">
           <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
-            <aside
+            <CategorySidebarAside
               aria-label={t("categories.label")}
-              className={cn(
-                CATEGORY_SIDEBAR_ASIDE_CLASS,
-                "border-r border-border bg-background px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.04)]",
-              )}
+              variant="wholesale"
             >
               <CategorySidebar
                 allLabel={ALL_CATEGORY}
-                activeCategory={selectedCategory}
+                activeCategoryId={selectedCategoryId}
                 onCategorySelect={handleCategoryClick}
                 categories={barCategories}
                 categoryGroups={categoryGroups}
                 variant="wholesale"
                 renderCategoryLeading={(category) => (
                   <CategoryIcon
-                    icon={getCategoryIcon(category.name)}
-                    fallback={getCategoryIconFallback(category.name)}
+                    icon={getCategoryIcon(category.id)}
+                    fallback={getCategoryIconFallback(category.id)}
                     className="size-5 shrink-0 text-base"
                     fallbackClassName="size-3.5"
                   />
                 )}
               />
-            </aside>
+            </CategorySidebarAside>
           </div>
 
           <div className="min-w-0 flex-1">
@@ -357,17 +372,17 @@ export default function WholesaleLandingShop({
         <div className="min-w-0 flex-1 w-full mx-auto px-6 py-8">
           <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-          {selectedCategory !== ALL_CATEGORY ? (
+          {selectedCategoryId != null ? (
             <div
-              id={getCategorySectionId(selectedCategory)}
+              id={getCategorySectionId(selectedCategoryId)}
               className="scroll-mt-24 mb-6"
             >
               <h2 className="font-serif text-foreground text-2xl mb-2">
-                {selectedCategory}
+                {selectedCategoryLabel}
               </h2>
-              {categoryDescriptionMap[selectedCategory] ? (
+              {selectedCategoryDescription ? (
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  {categoryDescriptionMap[selectedCategory]}
+                  {selectedCategoryDescription}
                 </p>
               ) : null}
             </div>
@@ -382,7 +397,10 @@ export default function WholesaleLandingShop({
               );
               const gradientClass =
                 categoryStyleMap[p.category] ?? "from-gray-800 to-gray-600";
-              const catIcon = categoryIconMap[p.category] ?? "📦";
+              const catIcon =
+                p.categoryId != null
+                  ? categoryIconMap[p.categoryId] ?? "📦"
+                  : "📦";
               const desc = p.description ?? "";
               const badge: string | null = null;
 

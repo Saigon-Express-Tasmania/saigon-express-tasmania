@@ -1,4 +1,11 @@
 import { resolveSiteAssetUrl } from "@/lib/resolve-site-url";
+import type { CategoryLookup } from "@/lib/product-category";
+import type { ProductCategoryAssignment } from "@/lib/product-categories";
+import {
+  getPrimaryCategoryId,
+  resolveProductCategoryIds,
+  resolveProductCategoryLabel,
+} from "@/lib/product-categories";
 
 /** Size key → public image URL (e.g. `"512"` → `https://...`). */
 export type WholesaleImageUrls = Record<string, string>;
@@ -8,8 +15,6 @@ export type WholesaleProductRow = {
   id: number;
   name: string;
   sku: string | null;
-  category_id: number | null;
-  category?: string;
   description: string | null;
   unit: string;
   unit_price: string;
@@ -40,6 +45,7 @@ export type WholesaleProduct = {
   name: string;
   sku: string | null;
   categoryId: number | null;
+  categoryIds: number[];
   category: string;
   description: string | null;
   unit: string;
@@ -94,14 +100,20 @@ export function pickWholesaleImageUrl(
 
 export function mapWholesaleProductRow(
   row: WholesaleProductRow,
-  categoryName = row.category ?? "",
+  assignments: ProductCategoryAssignment[],
+  categoryById: Map<number, CategoryLookup> = new Map(),
 ): WholesaleProduct {
+  const categoryIds = resolveProductCategoryIds(assignments);
+  const categoryId = getPrimaryCategoryId(assignments);
+  const category = resolveProductCategoryLabel(assignments, categoryById);
+
   return {
     id: row.id,
     name: row.name,
     sku: row.sku,
-    categoryId: row.category_id ?? null,
-    category: categoryName,
+    categoryId,
+    categoryIds,
+    category,
     description: row.description,
     unit: row.unit,
     unitPrice: row.unit_price,

@@ -2,9 +2,14 @@ import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import {
   categoryMapById,
-  resolveCategoryName,
   type CategoryLookup,
 } from "@/lib/product-category";
+import type { ProductCategoryAssignment } from "@/lib/product-categories";
+import {
+  getPrimaryCategoryId,
+  resolveProductCategoryIds,
+  resolveProductCategoryLabel,
+} from "@/lib/product-categories";
 import {
   normalizeMenuImageUrls,
   parseMenuImageMore,
@@ -13,8 +18,10 @@ import {
   type MenuImageUrls,
 } from "@/types";
 import { parseNumericCateringItemId } from "@/lib/catering-item-routes";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
+import { getProductCategoryAssignments } from "@/lib/product-categories";
 import { getCategoriesByKind } from "./categories";
+import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
+import { loadProductCategoriesByProductIds } from "./product-categories";
 import {
   fetchCateringProductRowById,
   fetchCateringProductRows,
@@ -35,6 +42,7 @@ export type CateringPack = {
   id: number;
   name: string;
   categoryId: number | null;
+  categoryIds: number[];
   category: string;
   categoryAlias: string | null;
   serves: string | null;
@@ -71,6 +79,7 @@ function mapTierPrices(input: CateringProductRow["prices"]): CateringTierPrice[]
 
 export function mapCateringPackRow(
   row: CateringProductRow,
+  assignments: ProductCategoryAssignment[],
   categoryById: Map<number, CategoryLookup> = new Map(),
 ): CateringPack {
   const imageUrls = normalizeMenuImageUrls(row.image_urls);
@@ -80,18 +89,19 @@ export function mapCateringPackRow(
     row.image_url?.trim() ??
     null;
 
-  const categoryId = row.category_id ?? null;
+  const categoryIds = resolveProductCategoryIds(assignments);
+  const categoryId = getPrimaryCategoryId(assignments);
+  const category =
+    resolveProductCategoryLabel(assignments, categoryById) ||
+    FEATURED_CATERING_PACK_CATEGORY;
   const categoryLookup =
     categoryId != null ? categoryById.get(categoryId) : undefined;
-  const category =
-    categoryLookup?.name ??
-    (resolveCategoryName(categoryId, categoryById, row.category ?? "") ||
-      FEATURED_CATERING_PACK_CATEGORY);
 
   return {
     id: Number(row.id),
     name: row.name,
     categoryId,
+    categoryIds,
     category,
     categoryAlias: categoryLookup?.alias ?? null,
     serves: row.serves?.trim() || null,
@@ -122,8 +132,17 @@ async function loadCateringPacks(): Promise<CateringPack[]> {
     fetchCateringProductRows(),
     getCategoriesByKind("catering"),
   ]);
+  const categoriesByProductId = await loadProductCategoriesByProductIds(
+    rows.map((row) => row.id),
+  );
   const categoryById = categoryMapById(categories);
-  return rows.map((row) => mapCateringPackRow(row, categoryById));
+  return rows.map((row) =>
+    mapCateringPackRow(
+      row,
+      getProductCategoryAssignments(categoriesByProductId, row.id),
+      categoryById,
+    ),
+  );
 }
 
 async function loadCateringItemById(id: number): Promise<CateringPack | null> {
@@ -132,7 +151,12 @@ async function loadCateringItemById(id: number): Promise<CateringPack | null> {
     getCategoriesByKind("catering"),
   ]);
   if (!row) return null;
-  return mapCateringPackRow(row, categoryMapById(categories));
+  const categoriesByProductId = await loadProductCategoriesByProductIds([row.id]);
+  return mapCateringPackRow(
+    row,
+    getProductCategoryAssignments(categoriesByProductId, row.id),
+    categoryMapById(categories),
+  );
 }
 
 export const getCateringPacks = unstable_cache(

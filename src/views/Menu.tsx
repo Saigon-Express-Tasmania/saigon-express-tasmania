@@ -21,7 +21,7 @@ import {
   scrollToCategoryInList,
 } from "@/lib/category-list-scroll";
 import {
-  buildMenuCategoryQuery,
+  buildMenuCategoryQueryFromId,
   resolveMenuCategoryFromUrlParam,
 } from "@/lib/menu-category-url";
 import { cn } from "@/lib/utils";
@@ -39,14 +39,16 @@ import LazyImage from "@/components/LazyImage";
 import FoodContentLabels from "@/components/FoodContentLabels";
 import CategorySelect from "@/components/CategorySelect";
 import CategorySidebar, {
-  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CategorySidebarAside,
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
 import {
   filterCategoriesWithItems,
+  getActiveCategoryLabel,
   getPopulatedCategoryIds,
 } from "@/lib/category-bar";
 import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
+import { productMatchesCategory } from "@/lib/product-categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, SiteCategoryGroup, StoreLocation } from "@/types";
@@ -109,7 +111,12 @@ export default function Menu({
     () => resolveMenuCategoryFromUrlParam(urlCategory, categoriesContent),
     [urlCategory, categoriesContent],
   );
-  const activeCategory = resolvedUrlCategory?.name ?? allLabel;
+  const activeCategoryId = resolvedUrlCategory?.id ?? null;
+  const activeCategoryLabel = getActiveCategoryLabel(
+    activeCategoryId,
+    allLabel,
+    categoriesContent,
+  );
   const [search, setSearch] = useState("");
   const [addonTrigger, setAddonTrigger] = useState<{
     item: SuggestedItem;
@@ -119,15 +126,14 @@ export default function Menu({
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
 
-  // Handle category clicks by updating state AND the URL
   const handleCategoryClick = useCallback(
-    (cat: string) => {
-      const query = buildMenuCategoryQuery(cat, allLabel, categoriesContent);
+    (categoryId: number | null) => {
+      const query = buildMenuCategoryQueryFromId(categoryId, categoriesContent);
       const nextUrl = query ? `${pathname}?${query}` : pathname;
       router.replace(nextUrl, { scroll: false });
-      scrollToCategoryInList(cat, allLabel);
+      scrollToCategoryInList(categoryId);
     },
-    [pathname, router, allLabel, categoriesContent],
+    [pathname, router, categoriesContent],
   );
 
   useEffect(() => {
@@ -178,10 +184,10 @@ export default function Menu({
     [categoriesContent],
   );
 
-  const categoryIconMap = useMemo<Record<string, string | null>>(
+  const categoryIconMap = useMemo<Record<number, string | null>>(
     () =>
-      categoriesContent.reduce<Record<string, string | null>>((acc, category) => {
-        acc[category.name] = category.icon;
+      categoriesContent.reduce<Record<number, string | null>>((acc, category) => {
+        acc[category.id] = category.icon;
         return acc;
       }, {}),
     [categoriesContent],
@@ -189,9 +195,9 @@ export default function Menu({
 
   const categoryDescriptionMap = useMemo(
     () =>
-      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+      categoriesContent.reduce<Record<number, string>>((acc, category) => {
         const description = category.description?.trim();
-        if (description) acc[category.name] = description;
+        if (description) acc[category.id] = description;
         return acc;
       }, {}),
     [categoriesContent],
@@ -206,13 +212,10 @@ export default function Menu({
     [categoriesContent],
   );
 
-  const activeCategoryId = useMemo(() => {
-    if (activeCategory === allLabel) return null;
-    return (
-      categoriesContent.find((category) => category.name === activeCategory)
-        ?.id ?? null
-    );
-  }, [activeCategory, allLabel, categoriesContent]);
+  const activeCategoryDescription =
+    activeCategoryId != null
+      ? categoryDescriptionMap[activeCategoryId]
+      : undefined;
 
   const barCategories = useMemo(() => {
     const populatedCategoryIds = getPopulatedCategoryIds(menuItems);
@@ -241,7 +244,9 @@ export default function Menu({
     // First, filter by category if a specific one is selected
     let baseItems = menuItems ?? [];
     if (activeCategoryId != null) {
-      baseItems = baseItems.filter((m) => m.categoryId === activeCategoryId);
+      baseItems = baseItems.filter((m) =>
+        productMatchesCategory(m, activeCategoryId),
+      );
     }
 
     if (!q) {
@@ -255,7 +260,7 @@ export default function Menu({
 
     if (activeCategoryId != null) {
       return moveZeroSortOrderToEnd(
-        searchResults.filter((m) => m.categoryId === activeCategoryId),
+        searchResults.filter((m) => productMatchesCategory(m, activeCategoryId)),
         (item) => item.sortOrder,
       );
     }
@@ -302,11 +307,11 @@ export default function Menu({
 
   const cartIds = new Set(cart.map((c) => c.item.id));
 
-  const getCategoryIcon = (categoryName: string) =>
-    categoryName === allLabel ? null : categoryIconMap[categoryName];
+  const getCategoryIcon = (categoryId: number | null) =>
+    categoryId == null ? null : categoryIconMap[categoryId] ?? null;
 
-  const getCategoryIconFallback = (categoryName: string): "all" | "category" =>
-    categoryName === allLabel ? "all" : "category";
+  const getCategoryIconFallback = (categoryId: number | null): "all" | "category" =>
+    categoryId == null ? "all" : "category";
 
   return (
     <div className="min-h-screen bg-brand-cream font-sans">
@@ -363,7 +368,7 @@ export default function Menu({
         <div className="max-w-[1280px] mx-auto px-6 py-3">
           <CategorySelect
             allLabel={allLabel}
-            activeCategory={activeCategory}
+            activeCategoryId={activeCategoryId}
             onCategorySelect={handleCategoryClick}
             categories={barCategories}
             categoryGroups={categoryGroups}
@@ -379,30 +384,24 @@ export default function Menu({
 
       <div className="lg:flex lg:items-start">
         <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
-          <aside
-            aria-label={t("categories.label")}
-            className={cn(
-              CATEGORY_SIDEBAR_ASIDE_CLASS,
-              "border-r border-gray-100 bg-white px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)]",
-            )}
-          >
+          <CategorySidebarAside aria-label={t("categories.label")}>
             <CategorySidebar
               allLabel={allLabel}
-              activeCategory={activeCategory}
+              activeCategoryId={activeCategoryId}
               onCategorySelect={handleCategoryClick}
               categories={barCategories}
               categoryGroups={categoryGroups}
               renderCategoryLeading={(category) => (
                 <CategoryIcon
-                  icon={getCategoryIcon(category.name)}
-                  fallback={getCategoryIconFallback(category.name)}
+                  icon={getCategoryIcon(category.id)}
+                  fallback={getCategoryIconFallback(category.id)}
                   accent
                   className="size-5 shrink-0 text-base"
                   fallbackClassName="size-3.5"
                 />
               )}
             />
-          </aside>
+          </CategorySidebarAside>
         </div>
 
         {/* Grid */}
@@ -441,17 +440,17 @@ export default function Menu({
 
         <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-        {activeCategory !== allLabel ? (
+        {activeCategoryId != null ? (
           <div
-            id={getCategorySectionId(activeCategory)}
+            id={getCategorySectionId(activeCategoryId)}
             className="scroll-mt-24 mb-6"
           >
             <h2 className="font-serif text-brand-dark text-2xl mb-3 pb-2 border-b border-brand-cream">
-              {activeCategory}
+              {activeCategoryLabel}
             </h2>
-            {categoryDescriptionMap[activeCategory] ? (
+            {activeCategoryDescription ? (
               <p className="text-sm leading-relaxed text-brand-dark/55">
-                {categoryDescriptionMap[activeCategory]}
+                {activeCategoryDescription}
               </p>
             ) : null}
           </div>

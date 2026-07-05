@@ -1,7 +1,11 @@
 import { DashboardLayout } from '@/components/layout';
+import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
 import { ImageUpload } from '@/components/ImageUpload';
 import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
-import { SearchableSelect } from '@/components/SearchableSelect';
+import {
+  formatProductCategoryCell,
+  ProductCategoriesFields,
+} from '@/components/ProductCategoriesFields';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
 import { SearchableMultiSelect } from '@/components/SearchableMultiSelect';
@@ -61,7 +65,17 @@ import {
 } from '@/lib/menu-image-urls';
 import { slugFromName } from '@/lib/slug';
 import { nextProductId } from '@/lib/products';
-import { loadAdminCategoriesByKind } from '@/lib/categories';
+import {
+  countProductsByCategoryId,
+  flattenAdminCategoryFilterSections,
+  loadAdminCategoryFilterSections,
+  type AdminCategoryFilterSection,
+} from '@/lib/category-filter-sections';
+import {
+  attachProductCategoryFields,
+  loadProductCategoriesByProductIds,
+  syncProductCategories,
+} from '@/lib/product-categories';
 import {
   emptyProductShippingInput,
   PRODUCT_SHIPPING_SELECT,
@@ -237,12 +251,13 @@ type CateringPackRow = {
   tag_bg: string;
   image_url: string | null;
   image_urls: Record<string, unknown>;
-  category_id: number | null;
-  category_name: string | null;
+  categoryIds: number[];
+  primaryCategoryId: number | null;
   note: string | null;
   prices: CateringTierPrice[];
   sort_order: number;
   is_available: boolean;
+  is_published: boolean;
   customizationIds: number[];
   customizationsDisabled: boolean;
 } & ProductShippingRow;
@@ -257,13 +272,15 @@ type CateringPackInput = {
   includesText: string;
   tag: string;
   tag_bg: string;
-  category_id: number | null;
+  categoryIds: number[];
+  primaryCategoryId: number | null;
   note: string;
   image_sizes: ImageUrlsMap;
   additional_images: MenuImageMoreEntry[];
   prices: CateringTierPrice[];
   sort_order: number;
   is_available: boolean;
+  is_published: boolean;
   customizationIds: number[];
   customizationsDisabled: boolean;
 } & ProductShippingInput;
@@ -284,13 +301,15 @@ const emptyCateringPackInput = (): CateringPackInput => ({
   includesText: '',
   tag: '',
   tag_bg: '',
-  category_id: null,
+  categoryIds: [],
+  primaryCategoryId: null,
   note: '',
   image_sizes: {},
   additional_images: [],
   prices: [],
   sort_order: 0,
   is_available: true,
+  is_published: true,
   customizationIds: [],
   customizationsDisabled: false,
   ...emptyProductShippingInput(),
@@ -353,6 +372,59 @@ function cateringNeedsQuote(unitPriceRaw: string | null | undefined): boolean {
   return !Number.isFinite(value);
 }
 
+function mapCateringPackDbRow(
+  row: Record<string, unknown> & {
+    categoryIds: number[];
+    primaryCategoryId: number | null;
+  },
+): CateringPackRow {
+  const customizationIds = Array.isArray(row.customization_ids)
+    ? row.customization_ids.map((id) => Number(id))
+    : [];
+
+  const shipping: ProductShippingRow = {
+    is_shippable: Boolean(row.is_shippable),
+    ship_weight_kg:
+      row.ship_weight_kg != null ? Number(row.ship_weight_kg) : null,
+    ship_length_cm:
+      row.ship_length_cm != null ? Number(row.ship_length_cm) : null,
+    ship_width_cm:
+      row.ship_width_cm != null ? Number(row.ship_width_cm) : null,
+    ship_height_cm:
+      row.ship_height_cm != null ? Number(row.ship_height_cm) : null,
+  };
+
+  return {
+    id: Number(row.id),
+    name: String(row.name ?? ''),
+    serves: String(row.serves ?? ''),
+    price: String(row.price ?? ''),
+    unit_price: String(row.unit_price ?? ''),
+    description: String(row.description ?? ''),
+    includes: Array.isArray(row.includes)
+      ? row.includes.map((value) => String(value))
+      : [],
+    tag: String(row.tag ?? ''),
+    tag_bg: String(row.tag_bg ?? ''),
+    image_url:
+      typeof row.image_url === 'string' ? row.image_url : null,
+    image_urls:
+      row.image_urls && typeof row.image_urls === 'object'
+        ? (row.image_urls as Record<string, unknown>)
+        : {},
+    categoryIds: row.categoryIds,
+    primaryCategoryId: row.primaryCategoryId,
+    note: typeof row.note === 'string' ? row.note : null,
+    prices: parseTierPrices(row.prices),
+    sort_order: Number(row.sort_order ?? 0),
+    is_available: Boolean(row.is_available),
+    is_published: row.is_published !== false,
+    customizationIds,
+    customizationsDisabled: Boolean(row.customizations_disabled),
+    ...shipping,
+  };
+}
+
 async function nextCateringPackId(): Promise<number> {
   return nextProductId('catering');
 }
@@ -363,8 +435,8 @@ export function CateringPacks() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [packs, setPacks] = useState<CateringPackRow[]>([]);
-  const [categoryOptions, setCategoryOptions] = useState<
-    { id: number; name: string }[]
+  const [categoryFilterSections, setCategoryFilterSections] = useState<
+    AdminCategoryFilterSection[]
   >([]);
   const [customizations, setCustomizations] = useState<CustomizationOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -394,7 +466,7 @@ export function CateringPacks() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, category_id, categories(name), note, prices, sort_order, is_available, customization_ids, customizations_disabled, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, note, prices, sort_order, is_available, is_published, customization_ids, customizations_disabled, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'catering')
         .order('sort_order', { ascending: true })
@@ -402,27 +474,17 @@ export function CateringPacks() {
 
       if (fetchError) throw fetchError;
 
+      const rows = (data ?? []) as Array<
+        Record<string, unknown> & { id: number; prices: unknown }
+      >;
+      const categoriesByProductId = await loadProductCategoriesByProductIds(
+        rows.map((row) => row.id),
+      );
+
       setPacks(
-        (data ?? []).map((row) => {
-          const pack = row as CateringPackRow & {
-            categories: { name: string } | { name: string }[] | null;
-            customization_ids: number[] | null;
-            customizations_disabled: boolean;
-          };
-          const categoryJoin = pack.categories;
-          const categoryName = Array.isArray(categoryJoin)
-            ? categoryJoin[0]?.name ?? null
-            : categoryJoin?.name ?? null;
-          return {
-            ...pack,
-            category_name: categoryName,
-            prices: parseTierPrices(pack.prices),
-            customizationIds: Array.isArray(pack.customization_ids)
-              ? pack.customization_ids.map((id) => Number(id))
-              : [],
-            customizationsDisabled: pack.customizations_disabled ?? false,
-          };
-        }),
+        attachProductCategoryFields(rows, categoriesByProductId).map(
+          mapCateringPackDbRow,
+        ),
       );
     } catch (err) {
       const message =
@@ -452,17 +514,27 @@ export function CateringPacks() {
 
   const loadCategoryOptions = useCallback(async () => {
     try {
-      const categories = await loadAdminCategoriesByKind('catering');
-      setCategoryOptions(categories.map(({ id, name }) => ({ id, name })));
+      const sections = await loadAdminCategoryFilterSections('catering');
+      setCategoryFilterSections(sections);
     } catch (err) {
       toast.error(
         err instanceof Error
           ? err.message
           : 'Failed to load catering categories.',
       );
-      setCategoryOptions([]);
+      setCategoryFilterSections([]);
     }
   }, []);
+
+  const categoryOptions = useMemo(
+    () => flattenAdminCategoryFilterSections(categoryFilterSections),
+    [categoryFilterSections],
+  );
+
+  const productCountByCategoryId = useMemo(
+    () => countProductsByCategoryId(packs),
+    [packs],
+  );
 
   useEffect(() => {
     if (isAdmin) {
@@ -476,15 +548,6 @@ export function CateringPacks() {
 
   const categoryNameById = useMemo(
     () => new Map(categoryOptions.map((category) => [category.id, category.name])),
-    [categoryOptions],
-  );
-
-  const categorySelectOptions = useMemo(
-    () =>
-      categoryOptions.map((category) => ({
-        value: String(category.id),
-        label: category.name,
-      })),
     [categoryOptions],
   );
 
@@ -502,15 +565,17 @@ export function CateringPacks() {
     const filtered = packs.filter((pack) => {
       if (categoryFilter !== 'all') {
         const filterId = Number(categoryFilter);
-        if (!Number.isFinite(filterId) || pack.category_id !== filterId) {
+        if (!Number.isFinite(filterId) || !pack.categoryIds.includes(filterId)) {
           return false;
         }
       }
       if (!term) return true;
-      const categoryName = pack.category_name ?? '';
+      const categoryNames = pack.categoryIds
+        .map((categoryId) => categoryNameById.get(categoryId) ?? '')
+        .join(' ');
       return (
         (pack.name ?? '').toLowerCase().includes(term) ||
-        categoryName.toLowerCase().includes(term) ||
+        categoryNames.toLowerCase().includes(term) ||
         (pack.serves ?? '').toLowerCase().includes(term) ||
         (pack.price ?? '').toLowerCase().includes(term) ||
         (pack.description ?? '').toLowerCase().includes(term) ||
@@ -529,11 +594,17 @@ export function CateringPacks() {
         return (a.sort_order - b.sort_order || a.id - b.id) * direction;
       }
       if (sortColumn === 'category') {
-        return (a.category_name ?? '').localeCompare(b.category_name ?? '') * direction;
+        const categoryLabel = (pack: CateringPackRow) => {
+          const categoryId = pack.primaryCategoryId ?? pack.categoryIds[0] ?? null;
+          return categoryId != null
+            ? categoryNameById.get(categoryId) ?? ''
+            : '';
+        };
+        return categoryLabel(a).localeCompare(categoryLabel(b)) * direction;
       }
       return a.name.localeCompare(b.name) * direction;
     });
-  }, [packs, search, categoryFilter, sortColumn, sortDirection]);
+  }, [packs, search, categoryFilter, sortColumn, sortDirection, categoryNameById]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -623,13 +694,15 @@ export function CateringPacks() {
       includesText: pack.includes.join('\n'),
       tag: pack.tag ?? '',
       tag_bg: pack.tag_bg ?? '',
-      category_id: pack.category_id,
+      categoryIds: [...pack.categoryIds],
+      primaryCategoryId: pack.primaryCategoryId,
       note: pack.note ?? '',
       image_sizes: legacySizes,
       additional_images: parsedImages.more,
       prices: pack.prices.length > 0 ? pack.prices : [],
       sort_order: pack.sort_order,
       is_available: pack.is_available,
+      is_published: pack.is_published ?? true,
       customizationIds: [...pack.customizationIds],
       customizationsDisabled: pack.customizationsDisabled,
       ...productShippingFromRow(pack),
@@ -749,10 +822,6 @@ export function CateringPacks() {
       toast.error('Name is required.');
       return;
     }
-    const selectedCategoryName = form.category_id
-      ? categoryNameById.get(form.category_id) ?? ''
-      : '';
-
     const tierPrices = serializeTierPrices(form.prices);
     const includesValues = form.includesText
       .split('\n')
@@ -827,12 +896,11 @@ export function CateringPacks() {
         tag_bg: form.tag_bg.trim(),
         image_url,
         image_urls,
-        category_id: form.category_id,
-        category: selectedCategoryName,
         note: form.note.trim() || null,
         prices: tierPrices,
         sort_order: Number(form.sort_order) || 0,
         is_available: form.is_available,
+        is_published: form.is_published,
         customization_ids: form.customizationIds,
         customizations_disabled: form.customizationsDisabled,
         ...productShippingToPayload(form),
@@ -846,11 +914,23 @@ export function CateringPacks() {
           .eq('product_type', 'catering');
 
         if (updateError) throw updateError;
+        await syncProductCategories(
+          form.id,
+          form.categoryIds,
+          form.primaryCategoryId,
+          Number(form.sort_order) || 0,
+        );
         toast.success('Catering item updated.');
       } else {
         const { error: insertError } = await supabase.from('products').insert(payload);
 
         if (insertError) throw insertError;
+        await syncProductCategories(
+          form.id,
+          form.categoryIds,
+          form.primaryCategoryId,
+          Number(form.sort_order) || 0,
+        );
         toast.success('Catering item created.');
       }
 
@@ -1011,22 +1091,14 @@ export function CateringPacks() {
                   <Label htmlFor="pack-category-filter" className="whitespace-nowrap">
                     Category
                   </Label>
-                  <Select
+                  <CategoryFilterSelect
+                    id="pack-category-filter"
                     value={categoryFilter}
-                    onValueChange={(value) => setCategoryFilter(value)}
-                  >
-                    <SelectTrigger id="pack-category-filter" className="w-56">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {categoryOptions.map((category) => (
-                        <SelectItem key={category.id} value={String(category.id)}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onValueChange={setCategoryFilter}
+                    sections={categoryFilterSections}
+                    productCountByCategoryId={productCountByCategoryId}
+                    totalProductCount={packs.length}
+                  />
                 </div>
               </div>
               {selectedCount > 0 ? (
@@ -1101,6 +1173,9 @@ export function CateringPacks() {
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Available
                       </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Published
+                      </th>
                       <SortableHeader
                         label="Sort"
                         column="sort_order"
@@ -1133,7 +1208,11 @@ export function CateringPacks() {
                         </td>
                         <td className="px-4 py-3 font-mono text-sm">{pack.id}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {pack.category_name ?? '—'}
+                          {formatProductCategoryCell(
+                            pack.categoryIds,
+                            pack.primaryCategoryId,
+                            categoryNameById,
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {pack.name}
@@ -1174,6 +1253,13 @@ export function CateringPacks() {
                             variant={pack.is_available ? 'default' : 'secondary'}
                           >
                             {pack.is_available ? 'Yes' : 'No'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={pack.is_published ? 'default' : 'secondary'}
+                          >
+                            {pack.is_published ? 'Yes' : 'No'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -1320,22 +1406,25 @@ export function CateringPacks() {
                   />
                 </CateringPackFormField>
                 <CateringPackFormField
-                  label="Category"
-                  htmlFor="pack-category"
+                  label="Categories"
+                  htmlFor="pack-categories"
                   className="md:col-span-2"
                 >
-                  <SearchableSelect
-                    id="pack-category"
-                    options={categorySelectOptions}
-                    value={form.category_id != null ? String(form.category_id) : ''}
-                    onValueChange={(value) =>
+                  <ProductCategoriesFields
+                    idPrefix="pack"
+                    value={{
+                      categoryIds: form.categoryIds,
+                      primaryCategoryId: form.primaryCategoryId,
+                    }}
+                    sections={categoryFilterSections}
+                    disabled={saving || imageUploadBusy}
+                    onChange={({ categoryIds, primaryCategoryId }) =>
                       setForm((f) => ({
                         ...f,
-                        category_id: value ? Number(value) : null,
+                        categoryIds,
+                        primaryCategoryId,
                       }))
                     }
-                    placeholder="Search categories…"
-                    emptyOption={{ value: '', label: 'No category' }}
                   />
                 </CateringPackFormField>
                 <CateringPackFormField
@@ -1662,44 +1751,84 @@ export function CateringPacks() {
               description="Control whether this item appears on the public catering page."
               accentClass="border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-background dark:border-rose-900/50 dark:from-rose-950/30"
             >
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={form.is_available}
-                onClick={() =>
-                  setForm((f) => ({ ...f, is_available: !f.is_available }))
-                }
-                disabled={saving || imageUploadBusy}
-                className={cn(
-                  'flex w-full cursor-pointer items-start gap-3 rounded-lg border p-4 text-left transition-all',
-                  form.is_available
-                    ? 'border-emerald-300/70 bg-emerald-500/10 font-medium text-emerald-950 dark:text-emerald-100'
-                    : 'border-border/60 bg-background hover:border-rose-300/50 hover:bg-rose-50/30',
-                )}
-              >
-                <span
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={form.is_published}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, is_published: !f.is_published }))
+                  }
+                  disabled={saving || imageUploadBusy}
                   className={cn(
-                    'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
-                    form.is_available
-                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                      : 'border-muted-foreground/40 bg-background',
+                    'flex w-full cursor-pointer items-start gap-3 rounded-lg border p-4 text-left transition-all',
+                    form.is_published
+                      ? 'border-sky-300/70 bg-sky-500/10 font-medium text-sky-950 dark:text-sky-100'
+                      : 'border-border/60 bg-background hover:border-sky-300/50 hover:bg-sky-50/30',
                   )}
                 >
-                  {form.is_available ? (
-                    <Check className="size-3 stroke-[3]" aria-hidden />
-                  ) : null}
-                </span>
-                <div className="grid gap-0.5">
-                  <span className="text-sm font-medium leading-none">
-                    Available on catering page
+                  <span
+                    className={cn(
+                      'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
+                      form.is_published
+                        ? 'border-sky-600 bg-sky-600 text-white'
+                        : 'border-muted-foreground/40 bg-background',
+                    )}
+                  >
+                    {form.is_published ? (
+                      <Check className="size-3 stroke-[3]" aria-hidden />
+                    ) : null}
                   </span>
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    {form.is_available
-                      ? 'Customers can view and enquire about this item.'
-                      : 'Hidden from the public catering menu until enabled.'}
+                  <div className="grid gap-0.5">
+                    <span className="text-sm font-medium leading-none">
+                      Published on storefront
+                    </span>
+                    <span className="text-xs leading-relaxed text-muted-foreground">
+                      {form.is_published
+                        ? 'Visible on the public catering catalogue when also marked available.'
+                        : 'Draft — hidden from the public site regardless of availability.'}
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={form.is_available}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, is_available: !f.is_available }))
+                  }
+                  disabled={saving || imageUploadBusy}
+                  className={cn(
+                    'flex w-full cursor-pointer items-start gap-3 rounded-lg border p-4 text-left transition-all',
+                    form.is_available
+                      ? 'border-emerald-300/70 bg-emerald-500/10 font-medium text-emerald-950 dark:text-emerald-100'
+                      : 'border-border/60 bg-background hover:border-rose-300/50 hover:bg-rose-50/30',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
+                      form.is_available
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-muted-foreground/40 bg-background',
+                    )}
+                  >
+                    {form.is_available ? (
+                      <Check className="size-3 stroke-[3]" aria-hidden />
+                    ) : null}
                   </span>
-                </div>
-              </button>
+                  <div className="grid gap-0.5">
+                    <span className="text-sm font-medium leading-none">
+                      Available on catering page
+                    </span>
+                    <span className="text-xs leading-relaxed text-muted-foreground">
+                      {form.is_available
+                        ? 'Customers can view and enquire about this item.'
+                        : 'Hidden from the public catering menu until enabled.'}
+                    </span>
+                  </div>
+                </button>
+              </div>
             </CateringPackFormSection>
           </div>
 

@@ -1,7 +1,11 @@
 import { DashboardLayout } from '@/components/layout';
+import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
 import { ImageUpload } from '@/components/ImageUpload';
 import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
-import { SearchableSelect } from '@/components/SearchableSelect';
+import {
+  formatProductCategoryCell,
+  ProductCategoriesFields,
+} from '@/components/ProductCategoriesFields';
 import { ProductShippingFields } from '@/components/ProductShippingFields';
 import {
   AlertDialog,
@@ -44,7 +48,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { nextProductId } from '@/lib/products';
-import { loadAdminCategoriesByKind } from '@/lib/categories';
+import {
+  countProductsByCategoryId,
+  flattenAdminCategoryFilterSections,
+  loadAdminCategoryFilterSections,
+  type AdminCategoryFilterSection,
+} from '@/lib/category-filter-sections';
+import {
+  attachProductCategoryFields,
+  loadProductCategoriesByProductIds,
+  syncProductCategories,
+} from '@/lib/product-categories';
 import {
   emptyProductShippingInput,
   PRODUCT_SHIPPING_SELECT,
@@ -168,8 +182,8 @@ type WholesaleProductRow = {
   id: number;
   name: string;
   sku: string | null;
-  category_id: number | null;
-  category_name: string | null;
+  categoryIds: number[];
+  primaryCategoryId: number | null;
   description: string | null;
   unit: string;
   uom: ItemUom;
@@ -177,6 +191,7 @@ type WholesaleProductRow = {
   daily_global_limit: number;
   daily_customer_limit: number | null;
   is_available: boolean;
+  is_published: boolean;
   min_order_qty: number;
   sort_order: number;
   image_urls: WholesaleImageUrls;
@@ -212,17 +227,18 @@ function previewFromImageUrls(
 
 type WholesaleProductInput = Omit<
   WholesaleProductRow,
-  'created_at' | 'updated_at' | 'category_name' | keyof ProductShippingRow
+  'created_at' | 'updated_at' | keyof ProductShippingRow
 > & ProductShippingInput;
 
 const SELECT_COLUMNS =
-  `id, name, sku, category_id, categories(name), description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, sort_order, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
+  `id, name, sku, description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, is_published, min_order_qty, sort_order, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
   name: '',
   sku: '',
-  category_id: null,
+  categoryIds: [],
+  primaryCategoryId: null,
   description: '',
   unit: '',
   uom: 'EACH',
@@ -230,7 +246,9 @@ const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   daily_global_limit: 0,
   daily_customer_limit: null,
   is_available: true,
+  is_published: true,
   min_order_qty: 1,
+  sort_order: 0,
   image_urls: {},
   ...emptyProductShippingInput(),
 });
@@ -245,8 +263,8 @@ export function WholesaleProducts() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [products, setProducts] = useState<WholesaleProductRow[]>([]);
-  const [categoryOptions, setCategoryOptions] = useState<
-    { id: number; name: string }[]
+  const [categoryFilterSections, setCategoryFilterSections] = useState<
+    AdminCategoryFilterSection[]
   >([]);
   const [todayGlobalPaidByProductId, setTodayGlobalPaidByProductId] = useState<
     Record<number, number>
@@ -312,21 +330,15 @@ export function WholesaleProducts() {
       if (productsResult.error) throw productsResult.error;
       if (usageResult.error) throw usageResult.error;
 
-      setProducts(
-        (productsResult.data ?? []).map((row) => {
-          const product = row as WholesaleProductRow & {
-            categories: { name: string } | { name: string }[] | null;
-          };
-          const categoryJoin = product.categories;
-          const categoryName = Array.isArray(categoryJoin)
-            ? categoryJoin[0]?.name ?? null
-            : categoryJoin?.name ?? null;
-          return {
-            ...product,
-            category_name: categoryName,
-          };
-        }),
+      const rows = (productsResult.data ?? []) as Omit<
+        WholesaleProductRow,
+        'categoryIds' | 'primaryCategoryId'
+      >[];
+      const categoriesByProductId = await loadProductCategoriesByProductIds(
+        rows.map((row) => row.id),
       );
+
+      setProducts(attachProductCategoryFields(rows, categoriesByProductId));
       setTodayGlobalPaidByProductId(
         Object.fromEntries(
           (usageResult.data ?? []).map((row) => [
@@ -358,17 +370,27 @@ export function WholesaleProducts() {
 
   const loadCategoryOptions = useCallback(async () => {
     try {
-      const categories = await loadAdminCategoriesByKind('wholesale');
-      setCategoryOptions(categories.map(({ id, name }) => ({ id, name })));
+      const sections = await loadAdminCategoryFilterSections('wholesale');
+      setCategoryFilterSections(sections);
     } catch (err) {
       toast.error(
         err instanceof Error
           ? err.message
           : 'Failed to load wholesale categories.',
       );
-      setCategoryOptions([]);
+      setCategoryFilterSections([]);
     }
   }, []);
+
+  const categoryOptions = useMemo(
+    () => flattenAdminCategoryFilterSections(categoryFilterSections),
+    [categoryFilterSections],
+  );
+
+  const productCountByCategoryId = useMemo(
+    () => countProductsByCategoryId(products),
+    [products],
+  );
 
   useEffect(() => {
     if (isAdmin) {
@@ -381,15 +403,6 @@ export function WholesaleProducts() {
 
   const categoryNameById = useMemo(
     () => new Map(categoryOptions.map((category) => [category.id, category.name])),
-    [categoryOptions],
-  );
-
-  const categorySelectOptions = useMemo(
-    () =>
-      categoryOptions.map((category) => ({
-        value: String(category.id),
-        label: category.name,
-      })),
     [categoryOptions],
   );
 
@@ -432,17 +445,19 @@ export function WholesaleProducts() {
     const filtered = products.filter((p) => {
       if (categoryFilter !== 'all') {
         const filterId = Number(categoryFilter);
-        if (!Number.isFinite(filterId) || p.category_id !== filterId) {
+        if (!Number.isFinite(filterId) || !p.categoryIds.includes(filterId)) {
           return false;
         }
       }
       if (!term) return true;
-      const categoryName = p.category_name ?? '';
+      const categoryNames = p.categoryIds
+        .map((categoryId) => categoryNameById.get(categoryId) ?? '')
+        .join(' ');
       return (
         (p.name ?? '').toLowerCase().includes(term) ||
         (p.sku ?? '').toLowerCase().includes(term) ||
         (p.description ?? '').toLowerCase().includes(term) ||
-        categoryName.toLowerCase().includes(term)
+        categoryNames.toLowerCase().includes(term)
       );
     });
 
@@ -459,7 +474,7 @@ export function WholesaleProducts() {
       }
       return (a.name ?? '').localeCompare(b.name ?? '') * direction;
     });
-  }, [products, search, categoryFilter, sortColumn, sortDirection]);
+  }, [products, search, categoryFilter, sortColumn, sortDirection, categoryNameById]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -541,7 +556,8 @@ export function WholesaleProducts() {
       id: product.id,
       name: product.name,
       sku: product.sku ?? '',
-      category_id: product.category_id,
+      categoryIds: [...product.categoryIds],
+      primaryCategoryId: product.primaryCategoryId,
       description: product.description ?? '',
       unit: product.unit,
       uom: product.uom ?? 'EACH',
@@ -549,7 +565,9 @@ export function WholesaleProducts() {
       daily_global_limit: product.daily_global_limit,
       daily_customer_limit: product.daily_customer_limit,
       is_available: product.is_available,
+      is_published: product.is_published ?? true,
       min_order_qty: product.min_order_qty,
+      sort_order: product.sort_order,
       image_urls: normalizeImageUrls(product.image_urls),
       ...productShippingFromRow(product),
     });
@@ -629,10 +647,6 @@ export function WholesaleProducts() {
       return;
     }
 
-    const selectedCategoryName = form.category_id
-      ? categoryNameById.get(form.category_id) ?? ''
-      : '';
-
     setSaving(true);
     try {
       const nowIso = new Date().toISOString();
@@ -641,8 +655,6 @@ export function WholesaleProducts() {
         id: form.id,
         name: form.name.trim(),
         sku: form.sku?.trim() || null,
-        category_id: form.category_id,
-        category: selectedCategoryName,
         description: form.description?.trim() || '',
         unit: form.unit.trim(),
         uom: form.uom,
@@ -653,6 +665,7 @@ export function WholesaleProducts() {
             ? null
             : Number(form.daily_customer_limit),
         is_available: form.is_available,
+        is_published: form.is_published,
         min_order_qty: Number(form.min_order_qty) || 1,
         image_urls: form.image_urls,
         ...productShippingToPayload(form),
@@ -669,6 +682,12 @@ export function WholesaleProducts() {
           .eq('product_type', 'wholesale');
 
         if (updateError) throw updateError;
+        await syncProductCategories(
+          form.id,
+          form.categoryIds,
+          form.primaryCategoryId,
+          Number(form.sort_order) || 0,
+        );
         toast.success('Wholesale product updated.');
       } else {
         const { error: insertError } = await supabase.from('products').insert({
@@ -678,6 +697,12 @@ export function WholesaleProducts() {
         });
 
         if (insertError) throw insertError;
+        await syncProductCategories(
+          form.id,
+          form.categoryIds,
+          form.primaryCategoryId,
+          Number(form.sort_order) || 0,
+        );
         toast.success('Wholesale product created.');
       }
 
@@ -833,22 +858,15 @@ export function WholesaleProducts() {
                   <Label htmlFor="wp-category-filter" className="whitespace-nowrap">
                     Category
                   </Label>
-                  <Select
+                  <CategoryFilterSelect
+                    id="wp-category-filter"
                     value={categoryFilter}
-                    onValueChange={(value) => setCategoryFilter(value)}
-                  >
-                    <SelectTrigger id="wp-category-filter" className="w-44">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {categoryOptions.map((category) => (
-                        <SelectItem key={category.id} value={String(category.id)}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onValueChange={setCategoryFilter}
+                    sections={categoryFilterSections}
+                    productCountByCategoryId={productCountByCategoryId}
+                    totalProductCount={products.length}
+                    triggerClassName="w-44"
+                  />
                 </div>
               </div>
               {selectedCount > 0 ? (
@@ -942,6 +960,9 @@ export function WholesaleProducts() {
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Available
                       </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Published
+                      </th>
                       <th className="px-4 py-3 text-right text-sm font-semibold">
                         Actions
                       </th>
@@ -991,7 +1012,11 @@ export function WholesaleProducts() {
                           {p.sku ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {p.category_name ?? '—'}
+                          {formatProductCategoryCell(
+                            p.categoryIds,
+                            p.primaryCategoryId,
+                            categoryNameById,
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {p.unit}
@@ -1026,6 +1051,13 @@ export function WholesaleProducts() {
                             variant={p.is_available ? 'default' : 'secondary'}
                           >
                             {p.is_available ? 'Yes' : 'No'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={p.is_published ? 'default' : 'secondary'}
+                          >
+                            {p.is_published ? 'Yes' : 'No'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -1118,6 +1150,24 @@ export function WholesaleProducts() {
               </Select>
             </div>
 
+            <div className="grid gap-2">
+              <Label htmlFor="wp-published">Published</Label>
+              <Select
+                value={form.is_published ? 'yes' : 'no'}
+                onValueChange={(value) =>
+                  setForm((f) => ({ ...f, is_published: value === 'yes' }))
+                }
+              >
+                <SelectTrigger id="wp-published">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="wp-name">Name</Label>
               <Input
@@ -1129,20 +1179,22 @@ export function WholesaleProducts() {
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="wp-category">Category</Label>
-              <SearchableSelect
-                id="wp-category"
-                options={categorySelectOptions}
-                value={form.category_id != null ? String(form.category_id) : ''}
-                onValueChange={(value) =>
+            <div className="grid gap-2 md:col-span-2">
+              <ProductCategoriesFields
+                idPrefix="wp"
+                value={{
+                  categoryIds: form.categoryIds,
+                  primaryCategoryId: form.primaryCategoryId,
+                }}
+                sections={categoryFilterSections}
+                disabled={saving || isUploadingImages}
+                onChange={({ categoryIds, primaryCategoryId }) =>
                   setForm((f) => ({
                     ...f,
-                    category_id: value ? Number(value) : null,
+                    categoryIds,
+                    primaryCategoryId,
                   }))
                 }
-                placeholder="Search categories…"
-                emptyOption={{ value: '', label: 'No category' }}
               />
             </div>
             <div className="grid gap-2">

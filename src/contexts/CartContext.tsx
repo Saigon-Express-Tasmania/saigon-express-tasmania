@@ -14,6 +14,7 @@ export type MenuItem = {
   name: string;
   slug?: string;
   categoryId?: number | null;
+  categoryIds?: number[];
   category: string;
   price: string;
   description?: string | null;

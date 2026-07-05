@@ -1,22 +1,19 @@
-import { stringToSlug } from "@/lib/utils";
-
 export const CATEGORY_LIST_ANCHOR = "category-list";
 
-export function getCategorySectionId(categoryName: string): string {
-  return stringToSlug(categoryName);
+export function getCategorySectionId(categoryId: number): string {
+  return `category-${categoryId}`;
 }
 
 export function scrollToCategoryInList(
-  categoryName: string,
-  allLabel: string,
+  categoryId: number | null,
   listAnchorId: string = CATEGORY_LIST_ANCHOR,
 ): void {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       const targetId =
-        categoryName === allLabel
+        categoryId == null
           ? listAnchorId
-          : getCategorySectionId(categoryName);
+          : getCategorySectionId(categoryId);
 
       const element =
         document.getElementById(targetId) ??

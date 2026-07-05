@@ -25,10 +25,16 @@ export function getCategoryBarItemName(item: CategoryBarItem): string {
 }
 
 export function getPopulatedCategoryIds(
-  items: readonly { categoryId?: number | null }[],
+  items: readonly { categoryId?: number | null; categoryIds?: number[] }[],
 ): Set<number> {
   const ids = new Set<number>();
   for (const item of items) {
+    if (item.categoryIds?.length) {
+      for (const categoryId of item.categoryIds) {
+        ids.add(categoryId);
+      }
+      continue;
+    }
     if (item.categoryId != null) {
       ids.add(item.categoryId);
     }
@@ -72,11 +78,6 @@ export function buildCategoryBarItems(
 
     const sortedGroupedCategories =
       sortCategoriesByDisplayOrder(groupedCategories);
-
-    if (sortedGroupedCategories.length === 1) {
-      orphanCategories.push(sortedGroupedCategories[0]);
-      continue;
-    }
 
     items.push({
       kind: "group",
@@ -151,15 +152,28 @@ export function sortGroupsByCategoryBarOrder<T extends { categoryId: number | nu
   });
 }
 
+export function getActiveCategoryLabel(
+  activeCategoryId: number | null,
+  allLabel: string,
+  categories: Pick<SiteCategory, "id" | "name">[],
+): string {
+  if (activeCategoryId == null) return allLabel;
+  return (
+    categories.find((category) => category.id === activeCategoryId)?.name ??
+    allLabel
+  );
+}
+
 export function isCategoryActiveInBarItem(
   item: CategoryBarItem,
-  activeCategoryName: string,
+  activeCategoryId: number | null,
 ): boolean {
+  if (activeCategoryId == null) return false;
   if (item.kind === "orphan") {
-    return item.category.name === activeCategoryName;
+    return item.category.id === activeCategoryId;
   }
   return item.categories.some(
-    (category) => category.name === activeCategoryName,
+    (category) => category.id === activeCategoryId,
   );
 }
 
@@ -176,6 +190,79 @@ export function categoryGroupBarAccent(index: number): string {
   return CATEGORY_GROUP_BAR_ACCENTS[
     index % CATEGORY_GROUP_BAR_ACCENTS.length
   ];
+}
+
+export type CategorySidebarGroupAccent = {
+  label: string;
+  bar: string;
+  header: string;
+  headerActive: string;
+  itemHover: string;
+};
+
+const CATEGORY_SIDEBAR_GROUP_ACCENTS: CategorySidebarGroupAccent[] = [
+  {
+    label: "text-violet-700",
+    bar: "bg-gradient-to-b from-violet-500 to-fuchsia-500",
+    header: "hover:bg-violet-50/90",
+    headerActive: "bg-violet-50 text-violet-800",
+    itemHover: "hover:bg-violet-50/60",
+  },
+  {
+    label: "text-sky-700",
+    bar: "bg-gradient-to-b from-sky-500 to-cyan-500",
+    header: "hover:bg-sky-50/90",
+    headerActive: "bg-sky-50 text-sky-800",
+    itemHover: "hover:bg-sky-50/60",
+  },
+  {
+    label: "text-amber-800",
+    bar: "bg-gradient-to-b from-amber-500 to-orange-500",
+    header: "hover:bg-amber-50/90",
+    headerActive: "bg-amber-50 text-amber-900",
+    itemHover: "hover:bg-amber-50/60",
+  },
+  {
+    label: "text-emerald-700",
+    bar: "bg-gradient-to-b from-emerald-500 to-green-500",
+    header: "hover:bg-emerald-50/90",
+    headerActive: "bg-emerald-50 text-emerald-800",
+    itemHover: "hover:bg-emerald-50/60",
+  },
+  {
+    label: "text-indigo-700",
+    bar: "bg-gradient-to-b from-indigo-500 to-blue-500",
+    header: "hover:bg-indigo-50/90",
+    headerActive: "bg-indigo-50 text-indigo-800",
+    itemHover: "hover:bg-indigo-50/60",
+  },
+  {
+    label: "text-rose-700",
+    bar: "bg-gradient-to-b from-rose-500 to-pink-500",
+    header: "hover:bg-rose-50/90",
+    headerActive: "bg-rose-50 text-rose-800",
+    itemHover: "hover:bg-rose-50/60",
+  },
+];
+
+export function categorySidebarGroupAccent(index: number): CategorySidebarGroupAccent {
+  return CATEGORY_SIDEBAR_GROUP_ACCENTS[
+    index % CATEGORY_SIDEBAR_GROUP_ACCENTS.length
+  ];
+}
+
+export function getCategorySidebarShellClass(
+  variant: CategoryNavVariant,
+): string {
+  // if (variant === "member") {
+  //   return "border-r border-gray-100 bg-gradient-to-b from-white via-white to-gray-50/90 px-3 py-3 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.1)]";
+  // }
+
+  // if (variant === "wholesale") {
+  //   return "border-r border-border bg-gradient-to-b from-background via-background to-muted/25 px-3 py-3 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.08)]";
+  // }
+
+  return "border-r border-gray-100/90 bg-gradient-to-b from-white via-white to-brand-cream/50 px-3 py-3 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.1)] h-screen overflow-hidden";
 }
 
 export type CategoryNavVariant = "brand" | "member" | "wholesale";

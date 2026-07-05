@@ -1,4 +1,11 @@
 import type { MenuItem } from "@/contexts/CartContext";
+import type { CategoryLookup } from "@/lib/product-category";
+import type { ProductCategoryAssignment } from "@/lib/product-categories";
+import {
+  getPrimaryCategoryId,
+  resolveProductCategoryIds,
+  resolveProductCategoryLabel,
+} from "@/lib/product-categories";
 import { parseFoodContent, type FoodContent } from "@/types/FoodContent";
 
 /** Size key → image URL (e.g. `"512"` → `https://...`). */
@@ -128,7 +135,7 @@ export function isMenuItemIngredientEmpty(
   );
 }
 
-/** Row shape from `public.menu` (snake_case). */
+/** Row shape from `public.products` where product_type = alacarte (snake_case). */
 export type MenuItemRow = {
   id: number;
   name: string;
@@ -136,8 +143,6 @@ export type MenuItemRow = {
   description: string | null;
   price: string;
   wholesale_price: string | null;
-  category_id: number | null;
-  category?: string;
   image_urls: MenuImageUrls;
   is_available: boolean;
   is_popular: boolean;
@@ -179,16 +184,22 @@ export function pickMenuImageUrl(
 
 export function mapMenuItemRow(
   row: MenuItemRow,
-  categoryName = row.category ?? "",
+  assignments: ProductCategoryAssignment[],
+  categoryById: Map<number, CategoryLookup> = new Map(),
 ): MenuItem {
   const imageUrls = normalizeMenuImageUrls(row.image_urls);
   const moreImages = parseMenuImageMore(row.image_urls);
+  const categoryIds = resolveProductCategoryIds(assignments);
+  const categoryId = getPrimaryCategoryId(assignments);
+  const category = resolveProductCategoryLabel(assignments, categoryById);
+
   return {
     id: row.id,
     name: row.name,
     slug: row.slug?.trim() ?? "",
-    categoryId: row.category_id ?? null,
-    category: categoryName,
+    categoryId,
+    categoryIds,
+    category,
     price: row.price,
     description: row.description,
     isAvailable: row.is_available,

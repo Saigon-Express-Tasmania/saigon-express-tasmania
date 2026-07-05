@@ -6,4 +6,5 @@ export const ENV = {
   cacheRevalidateSecret: process.env.CACHE_REVALIDATE_SECRET || "",
   gaMeasurementId: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "",
   supabaseStorageBucketForCustomer: process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_FOR_CUSTOMER || DEFAULT_SUPABASE_STORAGE_BUCKET_FOR_CUSTOMER,
+  useUnpublishedProducts: process.env.USE_UNPUBLISHED_PRODUCTS === "true",
 };

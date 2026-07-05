@@ -2,12 +2,11 @@ import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapMenuItemRow } from "@/types";
 import type { MenuItem } from "@/contexts/CartContext";
-import {
-  categoryMapById,
-  resolveCategoryName,
-} from "@/lib/product-category";
+import { categoryMapById } from "@/lib/product-category";
+import { getProductCategoryAssignments } from "@/lib/product-categories";
 import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { getCategoriesByKind } from "./categories";
+import { loadProductCategoriesByProductIds } from "./product-categories";
 import { fetchAlacarteProductRows } from "./products";
 
 const CACHE_TAG = CACHE_TAGS.menu;
@@ -17,11 +16,15 @@ async function loadMenuItems(): Promise<MenuItem[]> {
     fetchAlacarteProductRows(),
     getCategoriesByKind("menu"),
   ]);
+  const categoriesByProductId = await loadProductCategoriesByProductIds(
+    rows.map((row) => row.id),
+  );
   const categoryById = categoryMapById(categories);
   return rows.map((row) =>
     mapMenuItemRow(
       row,
-      resolveCategoryName(row.category_id, categoryById, row.category ?? ""),
+      getProductCategoryAssignments(categoriesByProductId, row.id),
+      categoryById,
     ),
   );
 }

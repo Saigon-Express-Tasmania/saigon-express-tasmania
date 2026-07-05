@@ -35,3 +35,17 @@ export function buildMenuCategoryQuery(
   params.set("category", alias);
   return params.toString();
 }
+
+export function buildMenuCategoryQueryFromId(
+  categoryId: number | null,
+  categories: Pick<SiteCategory, "id" | "alias">[],
+): string {
+  if (categoryId == null) return "";
+
+  const alias = categories.find((category) => category.id === categoryId)?.alias;
+  if (!alias) return "";
+
+  const params = new URLSearchParams();
+  params.set("category", alias);
+  return params.toString();
+}

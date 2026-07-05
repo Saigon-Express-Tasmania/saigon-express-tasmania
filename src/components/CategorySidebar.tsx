@@ -1,8 +1,16 @@
 "use client";
 
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   buildCategoryBarItems,
+  categorySidebarGroupAccent,
   getCategoryNavVariantStyles,
+  getCategorySidebarShellClass,
   isCategoryActiveInBarItem,
   type CategoryNavVariant,
 } from "@/lib/category-bar";
@@ -14,26 +22,32 @@ import {
 import { cn } from "@/lib/utils";
 import type { SiteCategory, SiteCategoryGroup } from "@/types";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { useMemo, type ReactNode } from "react";
+import { LayoutGrid } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 export const CATEGORY_SIDEBAR_WIDTH_CLASS =
-  "w-[25vw] max-w-[25vw] min-w-52 2xl:w-max 2xl:max-w-none";
+  "min-w-56 w-64 shrink-0 lg:w-[24vw] lg:max-w-md xl:w-96 2xl:w-128";
 
 /** Stretch column to main content height so inner sticky sidebar can stick while scrolling. */
 export const CATEGORY_SIDEBAR_COLUMN_CLASS = cn(
-  "hidden shrink-0 self-stretch lg:flex lg:flex-col",
+  "hidden self-stretch lg:flex lg:flex-col",
   CATEGORY_SIDEBAR_WIDTH_CLASS,
 );
 
-export const CATEGORY_SIDEBAR_ASIDE_CLASS = "sticky top-16 z-30 w-full";
+export const CATEGORY_SIDEBAR_ASIDE_CLASS =
+  "sticky top-16 z-30 w-full overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]";
 
-const CATEGORY_SIDEBAR_LABEL_CLASS =
-  "min-w-0 truncate 2xl:truncate-none 2xl:whitespace-nowrap";
+const CATEGORY_SIDEBAR_LABEL_CLASS = "min-w-0 flex-1 truncate";
 
 export type CategorySidebarProps = {
   allLabel: string;
-  activeCategory: string;
-  onCategorySelect: (categoryName: string) => void;
+  activeCategoryId: number | null;
+  onCategorySelect: (categoryId: number | null) => void;
   categories: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
   variant?: CategoryNavVariant;
@@ -41,11 +55,39 @@ export type CategorySidebarProps = {
   renderCategoryLeading?: (category: SiteCategory) => ReactNode;
 };
 
+type CategorySidebarAsideProps = {
+  "aria-label": string;
+  variant?: CategoryNavVariant;
+  className?: string;
+  children: ReactNode;
+};
+
+export function CategorySidebarAside({
+  "aria-label": ariaLabel,
+  variant = "brand",
+  className,
+  children,
+}: CategorySidebarAsideProps) {
+  return (
+    <aside
+      aria-label={ariaLabel}
+      className={cn(
+        CATEGORY_SIDEBAR_ASIDE_CLASS,
+        getCategorySidebarShellClass(variant),
+        className,
+      )}
+    >
+      {children}
+    </aside>
+  );
+}
+
 type SidebarCategoryButtonProps = {
   category: SiteCategory;
   selected: boolean;
   onSelect: () => void;
   itemButtonClass: (selected: boolean) => string;
+  itemHoverClass?: string;
   renderCategoryLeading?: (category: SiteCategory) => ReactNode;
 };
 
@@ -54,6 +96,7 @@ function SidebarCategoryButton({
   selected,
   onSelect,
   itemButtonClass,
+  itemHoverClass,
   renderCategoryLeading,
 }: SidebarCategoryButtonProps) {
   const description = category.description?.trim();
@@ -64,7 +107,7 @@ function SidebarCategoryButton({
         <button
           type="button"
           onClick={onSelect}
-          className={itemButtonClass(selected)}
+          className={cn(itemButtonClass(selected), !selected && itemHoverClass)}
         >
           {renderCategoryLeading?.(category)}
           <span className={CATEGORY_SIDEBAR_LABEL_CLASS}>{category.name}</span>
@@ -86,9 +129,28 @@ function SidebarCategoryButton({
   );
 }
 
+function getDefaultOpenGroupId(
+  groupItems: Extract<
+    ReturnType<typeof buildCategoryBarItems>[number],
+    { kind: "group" }
+  >[],
+  activeCategoryId: number | null,
+): string | undefined {
+  if (groupItems.length === 0) return undefined;
+
+  if (activeCategoryId != null) {
+    const activeGroup = groupItems.find((item) =>
+      isCategoryActiveInBarItem(item, activeCategoryId),
+    );
+    if (activeGroup) return `group-${activeGroup.id}`;
+  }
+
+  return `group-${groupItems[0].id}`;
+}
+
 export default function CategorySidebar({
   allLabel,
-  activeCategory,
+  activeCategoryId,
   onCategorySelect,
   categories,
   categoryGroups,
@@ -106,30 +168,68 @@ export default function CategorySidebar({
   const orphanItems = barItems.filter((item) => item.kind === "orphan");
   const groupItems = barItems.filter((item) => item.kind === "group");
 
-  const isAllActive = activeCategory === allLabel;
+  const [openGroup, setOpenGroup] = useState<string | undefined>(() =>
+    getDefaultOpenGroupId(groupItems, activeCategoryId),
+  );
+
+  useEffect(() => {
+    if (activeCategoryId == null) return;
+
+    const activeGroup = groupItems.find((item) =>
+      isCategoryActiveInBarItem(item, activeCategoryId),
+    );
+    if (!activeGroup) return;
+
+    const groupKey = `group-${activeGroup.id}`;
+    setOpenGroup((current) => (current === groupKey ? current : groupKey));
+  }, [activeCategoryId, groupItems]);
+
+  const isAllActive = activeCategoryId == null;
+
+  const allIconClass = isAllActive
+    ? variant === "brand"
+      ? "bg-brand-red/10 text-brand-red"
+      : "bg-primary/10 text-primary"
+    : variant === "brand"
+      ? "bg-gray-100 text-gray-500"
+      : "bg-muted text-muted-foreground";
 
   const itemButtonClass = (selected: boolean) =>
     cn(
-      "flex w-full min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors 2xl:w-max 2xl:min-w-full",
-      selected ? styles.itemSelected : styles.itemIdle,
+      "relative flex w-full min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+      selected
+        ? cn(styles.itemSelected, "shadow-sm")
+        : cn(styles.itemIdle, "border border-transparent"),
     );
 
   return (
     <TooltipProvider delayDuration={300}>
       <nav
         className={cn(
-          "flex w-full min-w-0 flex-col gap-4 py-4 2xl:w-max",
+          "flex w-full min-w-0 flex-col gap-3 py-2",
           className,
         )}
       >
-        <div>
+        <div className="rounded-xl border border-black/[0.04] bg-white/70 p-1.5 shadow-sm backdrop-blur-sm">
           <TooltipPrimitive.Root>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => onCategorySelect(allLabel)}
-                className={itemButtonClass(isAllActive)}
+                onClick={() => onCategorySelect(null)}
+                className={cn(
+                  itemButtonClass(isAllActive),
+                  "gap-3 px-3.5 py-2.5 font-medium",
+                  isAllActive && "ring-1 ring-inset ring-black/[0.06]",
+                )}
               >
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                    allIconClass,
+                  )}
+                >
+                  <LayoutGrid className="size-4" />
+                </span>
                 <span className={CATEGORY_SIDEBAR_LABEL_CLASS}>{allLabel}</span>
               </button>
             </TooltipTrigger>
@@ -144,56 +244,101 @@ export default function CategorySidebar({
         </div>
 
         {orphanItems.length > 0 ? (
-          <div className="flex flex-col gap-0.5">
-            {orphanItems.map((item) => {
-              const selected = activeCategory === item.category.name;
-              return (
-                <SidebarCategoryButton
-                  key={`orphan-${item.category.id}`}
-                  category={item.category}
-                  selected={selected}
-                  onSelect={() => onCategorySelect(item.category.name)}
-                  itemButtonClass={itemButtonClass}
-                  renderCategoryLeading={renderCategoryLeading}
-                />
-              );
-            })}
+          <div className="rounded-xl border border-black/[0.04] bg-white/60 p-1.5 shadow-sm">
+            <div className="flex flex-col gap-0.5">
+              {orphanItems.map((item) => {
+                const selected = activeCategoryId === item.category.id;
+                return (
+                  <SidebarCategoryButton
+                    key={`orphan-${item.category.id}`}
+                    category={item.category}
+                    selected={selected}
+                    onSelect={() => onCategorySelect(item.category.id)}
+                    itemButtonClass={itemButtonClass}
+                    renderCategoryLeading={renderCategoryLeading}
+                  />
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
-        {groupItems.map((item) => {
-          const groupActive = isCategoryActiveInBarItem(item, activeCategory);
+        {groupItems.length > 0 ? (
+          <Accordion
+            type="single"
+            collapsible
+            value={openGroup}
+            onValueChange={setOpenGroup}
+            className="w-full overflow-hidden rounded-xl border border-black/[0.04] bg-white/60 shadow-sm"
+          >
+            {groupItems.map((item, groupIndex) => {
+              const groupActive = isCategoryActiveInBarItem(
+                item,
+                activeCategoryId,
+              );
+              const accent = categorySidebarGroupAccent(groupIndex);
+              const groupKey = `group-${item.id}`;
 
-          return (
-            <div key={`group-${item.id}`}>
-              <p
-                className={cn(
-                  "mb-1 px-3 text-xs font-bold uppercase tracking-wider",
-                  CATEGORY_SIDEBAR_LABEL_CLASS,
-                  groupActive ? styles.groupActive : styles.groupIdle,
-                )}
-              >
-                {item.name}
-              </p>
-              <ul className="flex flex-col gap-0.5">
-                {item.categories.map((category) => {
-                  const selected = activeCategory === category.name;
-                  return (
-                    <li key={category.id}>
-                      <SidebarCategoryButton
-                        category={category}
-                        selected={selected}
-                        onSelect={() => onCategorySelect(category.name)}
-                        itemButtonClass={itemButtonClass}
-                        renderCategoryLeading={renderCategoryLeading}
+              return (
+                <AccordionItem
+                  key={groupKey}
+                  value={groupKey}
+                  className="border-black/[0.05] px-1.5 first:pt-1.5 last:pb-1.5"
+                >
+                  <AccordionTrigger
+                    className={cn(
+                      "w-full rounded-lg px-2.5 py-2.5 text-xs font-bold uppercase tracking-[0.14em] no-underline hover:no-underline",
+                      accent.header,
+                      groupActive ? accent.headerActive : accent.label,
+                    )}
+                  >
+                    <span className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
+                      <span
+                        className={cn(
+                          "h-5 w-1 shrink-0 rounded-full",
+                          accent.bar,
+                        )}
+                        aria-hidden
                       />
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
+                      <span className={CATEGORY_SIDEBAR_LABEL_CLASS}>
+                        {item.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "ml-auto mr-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums tracking-normal normal-case",
+                          groupActive
+                            ? "bg-white/80 text-current"
+                            : "bg-black/[0.04] text-current/70",
+                        )}
+                      >
+                        {item.categories.length}
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-1.5">
+                    <ul className="flex flex-col gap-0.5 border-l-2 border-black/[0.04] pl-2 ml-3.5">
+                      {item.categories.map((category) => {
+                        const selected = activeCategoryId === category.id;
+                        return (
+                          <li key={category.id}>
+                            <SidebarCategoryButton
+                              category={category}
+                              selected={selected}
+                              onSelect={() => onCategorySelect(category.id)}
+                              itemButtonClass={itemButtonClass}
+                              itemHoverClass={accent.itemHover}
+                              renderCategoryLeading={renderCategoryLeading}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        ) : null}
       </nav>
     </TooltipProvider>
   );

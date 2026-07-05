@@ -3,12 +3,11 @@ import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { parseNumericMenuItemId } from "@/lib/menu-item-routes";
 import { mapMenuItemRow } from "@/types";
 import type { MenuItem } from "@/contexts/CartContext";
-import {
-  categoryMapById,
-  resolveCategoryName,
-} from "@/lib/product-category";
+import { categoryMapById } from "@/lib/product-category";
+import { getProductCategoryAssignments } from "@/lib/product-categories";
 import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { getCategoriesByKind } from "./categories";
+import { loadProductCategoriesByProductIds } from "./product-categories";
 import { fetchAlacarteProductRowById, fetchAlacarteProductRowBySlug } from "./products";
 
 const CACHE_TAG = CACHE_TAGS.menu;
@@ -19,10 +18,12 @@ async function loadMenuItemById(id: number): Promise<MenuItem | null> {
     getCategoriesByKind("menu"),
   ]);
   if (!row) return null;
+  const categoriesByProductId = await loadProductCategoriesByProductIds([row.id]);
   const categoryById = categoryMapById(categories);
   return mapMenuItemRow(
     row,
-    resolveCategoryName(row.category_id, categoryById, row.category ?? ""),
+    getProductCategoryAssignments(categoriesByProductId, row.id),
+    categoryById,
   );
 }
 
@@ -32,10 +33,12 @@ async function loadMenuItemBySlug(slug: string): Promise<MenuItem | null> {
     getCategoriesByKind("menu"),
   ]);
   if (!row) return null;
+  const categoriesByProductId = await loadProductCategoriesByProductIds([row.id]);
   const categoryById = categoryMapById(categories);
   return mapMenuItemRow(
     row,
-    resolveCategoryName(row.category_id, categoryById, row.category ?? ""),
+    getProductCategoryAssignments(categoriesByProductId, row.id),
+    categoryById,
   );
 }
 

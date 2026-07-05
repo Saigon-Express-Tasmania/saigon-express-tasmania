@@ -16,6 +16,7 @@ create table public.products (
   category_id bigint references public.categories (id) on delete set null,
   description text not null default '',  
   is_available boolean not null default true,
+  is_published boolean not null default true,
   sort_order integer not null default 0,
   image_urls jsonb not null default '{}'::jsonb,
 

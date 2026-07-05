@@ -24,8 +24,8 @@ export type CategoryGroupBarProps = {
   id?: string;
   className?: string;
   allLabel: string;
-  activeCategory: string;
-  onCategorySelect: (categoryName: string) => void;
+  activeCategoryId: number | null;
+  onCategorySelect: (categoryId: number | null) => void;
   categories: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
   variant?: CategoryGroupBarVariant;
@@ -83,7 +83,7 @@ export default function CategoryGroupBar({
   id,
   className,
   allLabel,
-  activeCategory,
+  activeCategoryId,
   onCategorySelect,
   categories,
   categoryGroups,
@@ -99,15 +99,15 @@ export default function CategoryGroupBar({
     [categories, categoryGroups],
   );
 
-  const isAllActive = activeCategory === allLabel;
+  const isAllActive = activeCategoryId == null;
 
   const closeDropdown = useCallback(() => {
     setOpenGroupId(null);
   }, []);
 
   const handleCategorySelect = useCallback(
-    (categoryName: string) => {
-      onCategorySelect(categoryName);
+    (categoryId: number | null) => {
+      onCategorySelect(categoryId);
       closeDropdown();
     },
     [closeDropdown, onCategorySelect],
@@ -131,7 +131,7 @@ export default function CategoryGroupBar({
   const renderGroup = (item: Extract<CategoryBarItem, { kind: "group" }>) => {
     const accent = categoryGroupBarAccent(groupAccentIndex++);
     const isOpen = openGroupId === item.id;
-    const isActive = isCategoryActiveInBarItem(item, activeCategory);
+    const isActive = isCategoryActiveInBarItem(item, activeCategoryId);
 
     return (
       <div
@@ -172,14 +172,14 @@ export default function CategoryGroupBar({
               className="min-w-[min(100%,14rem)] overflow-hidden rounded-xl border border-black/5 bg-white py-1.5 shadow-2xl"
             >
               {item.categories.map((category) => {
-                const selected = activeCategory === category.name;
+                const selected = activeCategoryId === category.id;
                 return (
                   <button
                     key={category.id}
                     type="button"
                     role="option"
                     aria-selected={selected}
-                    onClick={() => handleCategorySelect(category.name)}
+                    onClick={() => handleCategorySelect(category.id)}
                     className={cn(
                       "flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors",
                       selected ? styles.dropdownActive : styles.dropdownIdle,
@@ -198,12 +198,12 @@ export default function CategoryGroupBar({
   };
 
   const renderOrphan = (item: Extract<CategoryBarItem, { kind: "orphan" }>) => {
-    const selected = activeCategory === item.category.name;
+    const selected = activeCategoryId === item.category.id;
     return (
       <button
         key={`orphan-${item.category.id}`}
         type="button"
-        onClick={() => handleCategorySelect(item.category.name)}
+        onClick={() => handleCategorySelect(item.category.id)}
         className={cn(
           "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
           selected ? styles.orphanActive : styles.orphanIdle,
@@ -219,7 +219,7 @@ export default function CategoryGroupBar({
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide md:flex-wrap md:overflow-visible">
         <button
           type="button"
-          onClick={() => handleCategorySelect(allLabel)}
+          onClick={() => handleCategorySelect(null)}
           className={cn(
             "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
             isAllActive ? styles.allActive : styles.allIdle,

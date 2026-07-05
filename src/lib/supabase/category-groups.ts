@@ -8,6 +8,7 @@ const CACHE_TAG = CACHE_TAGS.categoryGroups;
 
 type CategoryGroupRow = {
   id: number;
+  kind: string;
   name: string;
   alias: string;
   description: string | null;
@@ -18,6 +19,7 @@ type CategoryGroupRow = {
 function mapCategoryGroupRow(row: CategoryGroupRow): SiteCategoryGroup {
   return {
     id: Number(row.id),
+    kind: row.kind,
     name: row.name,
     alias: row.alias,
     description: row.description ?? null,
@@ -30,7 +32,7 @@ async function loadCategoryGroups(): Promise<SiteCategoryGroup[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("category_groups")
-    .select('id, name, alias, description, "imageUrl", sort_order')
+    .select('id, kind, name, alias, description, "imageUrl", sort_order')
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true })
     .order("id", { ascending: true });

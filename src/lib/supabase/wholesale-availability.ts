@@ -7,10 +7,9 @@ import {
   type WholesaleProductAvailabilityRow,
   type WholesaleProductRow,
 } from "@/types";
-import {
-  resolveCategoryName,
-  type CategoryLookup,
-} from "@/lib/product-category";
+import { categoryMapById, type CategoryLookup } from "@/lib/product-category";
+import type { ProductCategoriesByProductId } from "@/lib/product-categories";
+import { getProductCategoryAssignments } from "@/lib/product-categories";
 import {
   buildWholesaleProductsAvailabilityRpcArgs,
   isWholesaleAvailabilityRpcMissing,
@@ -43,6 +42,7 @@ export async function fetchWholesaleProductsAvailability(
 export function mergeWholesaleProductsWithAvailability(
   rows: WholesaleProductRow[],
   availabilityRows: WholesaleProductAvailabilityRow[],
+  categoriesByProductId: ProductCategoriesByProductId = new Map(),
   categoryById: Map<number, CategoryLookup> = new Map(),
 ): WholesaleProduct[] {
   const availabilityByProductId = new Map(
@@ -53,7 +53,8 @@ export function mergeWholesaleProductsWithAvailability(
     applyWholesaleProductAvailability(
       mapWholesaleProductRow(
         row,
-        resolveCategoryName(row.category_id, categoryById, row.category ?? ""),
+        getProductCategoryAssignments(categoriesByProductId, row.id),
+        categoryById,
       ),
       availabilityByProductId.get(row.id),
     ),

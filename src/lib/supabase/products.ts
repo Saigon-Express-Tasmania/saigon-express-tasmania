@@ -1,4 +1,5 @@
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
+import { ENV } from "@/config/env";
 import type { MenuItemRow, WholesaleProductRow } from "@/types";
 import { unstable_cache } from "next/cache";
 import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
@@ -7,19 +8,30 @@ import { createServerSupabaseClient } from "./server";
 export type ProductType = "alacarte" | "wholesale" | "catering";
 
 const ALACARTE_SELECT =
-  "id, name, slug, description, price, wholesale_price, category_id, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
+  "id, name, slug, description, price, wholesale_price, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
 
 const WHOLESALE_SELECT =
-  "id, name, sku, category_id, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, sort_order, image_urls, created_at, updated_at";
+  "id, name, sku, description, unit, unit_price, daily_global_limit, daily_customer_limit, is_available, min_order_qty, sort_order, image_urls, created_at, updated_at";
 
 export const CATERING_SELECT =
-  "id, name, category_id, serves, price, unit_price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available, customization_ids, customizations_disabled";
+  "id, name, serves, price, unit_price, description, includes, note, prices, tag, tag_bg, image_url, image_urls, sort_order, is_available, customization_ids, customizations_disabled";
 
 const PRODUCT_CACHE_TAGS: Record<ProductType, string> = {
   alacarte: CACHE_TAGS.menu,
   wholesale: CACHE_TAGS.wholesaleProducts,
   catering: CACHE_TAGS.cateringPacks,
 };
+
+function publishedProductsCacheKey(): string {
+  return ENV.useUnpublishedProducts ? "include-unpublished" : "published-only";
+}
+
+function applyPublishedProductFilter<
+  T extends { eq: (column: string, value: boolean) => T },
+>(query: T): T {
+  if (ENV.useUnpublishedProducts) return query;
+  return query.eq("is_published", true);
+}
 
 async function queryAvailableProductRows<T>(
   productType: ProductType,
@@ -32,6 +44,8 @@ async function queryAvailableProductRows<T>(
     .select(select)
     .eq("product_type", productType)
     .eq("is_available", true);
+
+  query = applyPublishedProductFilter(query);
 
   for (const { column, ascending } of order) {
     query = query.order(column, { ascending });
@@ -62,6 +76,7 @@ function getCachedAvailableProductRows<T>(
       productType,
       select,
       orderKey,
+      publishedProductsCacheKey(),
       SERVER_CACHE_INSTANCE_ID,
     ],
     {
@@ -75,12 +90,15 @@ async function queryAlacarteProductRowById(
   id: number,
 ): Promise<MenuItemRow | null> {
   const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("products")
     .select(ALACARTE_SELECT)
     .eq("product_type", "alacarte")
-    .eq("id", id)
-    .maybeSingle();
+    .eq("id", id);
+
+  query = applyPublishedProductFilter(query);
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     throw new Error(`products alacarte item ${id}: ${error.message}`);
@@ -96,12 +114,15 @@ async function queryAlacarteProductRowBySlug(
   if (!trimmed) return null;
 
   const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("products")
     .select(ALACARTE_SELECT)
     .eq("product_type", "alacarte")
-    .eq("slug", trimmed)
-    .maybeSingle();
+    .eq("slug", trimmed);
+
+  query = applyPublishedProductFilter(query);
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     throw new Error(`products alacarte slug "${trimmed}": ${error.message}`);
@@ -122,7 +143,7 @@ export async function fetchAlacarteProductRowById(
 ): Promise<MenuItemRow | null> {
   return unstable_cache(
     () => queryAlacarteProductRowById(id),
-    ["products", "alacarte", "id", String(id), SERVER_CACHE_INSTANCE_ID],
+    ["products", "alacarte", "id", String(id), publishedProductsCacheKey(), SERVER_CACHE_INSTANCE_ID],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAGS.menu, `${CACHE_TAGS.menu}-item-${id}`],
@@ -138,7 +159,7 @@ export async function fetchAlacarteProductRowBySlug(
 
   return unstable_cache(
     () => queryAlacarteProductRowBySlug(trimmed),
-    ["products", "alacarte", "slug", trimmed, SERVER_CACHE_INSTANCE_ID],
+    ["products", "alacarte", "slug", trimmed, publishedProductsCacheKey(), SERVER_CACHE_INSTANCE_ID],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAGS.menu, `${CACHE_TAGS.menu}-slug-${trimmed}`],
@@ -160,8 +181,6 @@ export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]
 export type CateringProductRow = {
   id: number;
   name: string;
-  category_id: number | null;
-  category?: string;
   serves: string | null;
   price: string | null;
   unit_price: string | null;
@@ -183,12 +202,15 @@ async function queryCateringProductRowById(
   id: number,
 ): Promise<CateringProductRow | null> {
   const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("products")
     .select(CATERING_SELECT)
     .eq("product_type", "catering")
-    .eq("id", id)
-    .maybeSingle();
+    .eq("id", id);
+
+  query = applyPublishedProductFilter(query);
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     throw new Error(`products catering item ${id}: ${error.message}`);
@@ -202,7 +224,7 @@ export async function fetchCateringProductRowById(
 ): Promise<CateringProductRow | null> {
   return unstable_cache(
     () => queryCateringProductRowById(id),
-    ["products", "catering", "id", String(id), SERVER_CACHE_INSTANCE_ID],
+    ["products", "catering", "id", String(id), publishedProductsCacheKey(), SERVER_CACHE_INSTANCE_ID],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAGS.cateringPacks, `${CACHE_TAGS.cateringPacks}-item-${id}`],

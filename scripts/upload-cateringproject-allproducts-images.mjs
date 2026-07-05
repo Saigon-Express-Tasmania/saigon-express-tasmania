@@ -1,16 +1,27 @@
 #!/usr/bin/env node
 /**
- * Upload Catering Project allproducts.json local images to Supabase Storage.
+ * Upload Catering Project local images to Supabase Storage.
  *
- * Reads per category:
- *   refs/cateringproject/htmls/<category-slug>/allproducts.json
+ * Reads the deduplicated catalog:
+ *   refs/cateringproject/htmls/totalproducts.json
+ *
+ * Local image files are resolved from prefixed paths in totalproducts.json, e.g.:
  *   refs/cateringproject/htmls/<category-slug>/images/<product-slug>/*
  *
- * Uploads each local image to:
+ * Uploads each local image once per product slug, then patches image_urls /
+ * image_url in totalproducts.json only (category allproducts.json is not modified).
+ *
+ * Uploads run concurrently in batches of 10.
  *   catering-packs/<product-slug>/<filename>
  *
- * Patches allproducts.json image_urls / image_url with Supabase public URLs.
- * Products whose image_url already points at Supabase Storage are skipped entirely.
+ * Patches totalproducts.json image_urls / image_url with Supabase public URLs.
+ * Products with no remaining local image paths are skipped.
+ *
+ * Requires totalproducts.json (run merge-cateringproject-allproducts.mjs first).
+ *
+ * Optional --category / --category-slugs filter which totalproducts.json rows
+ * are processed (matched via _source.category_slugs). Category allproducts.json
+ * files are never read or written.
  *
  * Usage:
  *   node scripts/upload-cateringproject-allproducts-images.mjs
@@ -18,6 +29,10 @@
  *   node scripts/upload-cateringproject-allproducts-images.mjs --category refs/cateringproject/htmls/afternoon-tea-disposables
  *   node scripts/upload-cateringproject-allproducts-images.mjs --dry-run
  *   node scripts/upload-cateringproject-allproducts-images.mjs --skip-uploaded
+ *
+ * Dry run (--dry-run):
+ *   - Does not upload to Supabase Storage or write totalproducts.json
+ *   - Scans local images, counts sizes/bytes, and reports planned uploads + JSON patches
  *
  * Env (from .env / .env.local):
  *   SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL
@@ -28,12 +43,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import {
+  inferProductSlug,
+  isPrefixedLocalImagePath,
+} from "./lib/cateringproject-product-slug.mjs";
+import {
+  BUCKET,
+  FOLDER,
+  buildPublicUrl,
+  isSupabasePublicUrl,
+  parseSupabaseObjectPath,
+} from "./lib/cateringproject-supabase-images.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const DEFAULT_HTML_ROOT = path.join(root, "refs/cateringproject/htmls");
-const BUCKET = "saigon-express-tasmania";
-const FOLDER = "catering-packs";
+const UPLOAD_BATCH_SIZE = 10;
 
 const args = process.argv.slice(2);
 const options = parseArgs(args);
@@ -52,8 +77,9 @@ async function main() {
   const supabaseUrl =
     process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const reportSupabaseUrl = supabaseUrl ?? "https://<SUPABASE_URL>";
 
-  if (!supabaseUrl) {
+  if (!supabaseUrl && !dryRun) {
     throw new Error("Missing SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
   }
   if (!dryRun && !serviceKey) {
@@ -66,90 +92,102 @@ async function main() {
       })
     : null;
 
-  const categoryFolders = resolveCategoryFolders();
+  const totalProductsPath = path.join(htmlRoot, "totalproducts.json");
+  if (!fs.existsSync(totalProductsPath)) {
+    throw new Error(
+      `Missing ${relativize(totalProductsPath)}. Run: node scripts/merge-cateringproject-allproducts.mjs`,
+    );
+  }
+
+  const allTotalProducts = readJson(totalProductsPath);
+  if (!Array.isArray(allTotalProducts)) {
+    throw new Error(`${totalProductsPath} must be a JSON array`);
+  }
+
+  const totalProducts = filterTotalProducts(allTotalProducts);
+  const registry = createUploadRegistry(totalProducts);
+
   const batchSummary = {
     generated_at: new Date().toISOString(),
     html_root: htmlRoot,
+    totalproducts_path: totalProductsPath,
+    products_in_file: allTotalProducts.length,
+    products_selected: totalProducts.length,
+    registry_seeded_urls: registry.size(),
+    upload_batch_size: UPLOAD_BATCH_SIZE,
     bucket: BUCKET,
     folder: FOLDER,
     dry_run: dryRun,
     skip_uploaded: options.skipUploaded,
-    categories: [],
+    totals: emptyRunTotals(),
+    totalproducts: null,
   };
 
   console.log(
-    `${dryRun ? "Dry run" : "Uploading"} images for ${categoryFolders.length} categories...`,
+    `${dryRun ? "Dry run" : "Uploading"} images for ${totalProducts.length} products (${registry.size()} URLs in registry)...`,
   );
 
-  for (const [index, categoryFolder] of categoryFolders.entries()) {
-    const categorySlug = path.basename(categoryFolder);
-    const allProductsPath = path.join(categoryFolder, "allproducts.json");
+  const totalProductsReport = {
+    label: "totalproducts.json",
+    json_path: totalProductsPath,
+    stats: emptyRunTotals(),
+    products: [],
+  };
 
-    if (!fs.existsSync(allProductsPath)) {
-      console.warn(
-        `[${index + 1}/${categoryFolders.length}] ${categorySlug} skipped (missing allproducts.json)`,
-      );
-      continue;
-    }
+  await processProductFile({
+    products: totalProducts,
+    categoryFolder: htmlRoot,
+    htmlRoot,
+    supabase,
+    supabaseUrl: reportSupabaseUrl,
+    registry,
+    dryRun,
+    stats: totalProductsReport.stats,
+    productDetails: totalProductsReport.products,
+  });
 
-    const products = readJson(allProductsPath);
-    if (!Array.isArray(products)) {
-      throw new Error(`${allProductsPath} must be a JSON array`);
-    }
-
-    const stats = {
-      products: products.length,
-      products_skipped: 0,
-      uploaded: 0,
-      skipped: 0,
-      failed: 0,
-      already_remote: 0,
-    };
-
-    for (const product of products) {
-      if (isSupabasePublicUrl(product.image_url)) {
-        stats.products_skipped += 1;
-        continue;
-      }
-
-      const productStats = await patchProductImages({
-        product,
-        categoryFolder,
-        supabase,
-        supabaseUrl,
-      });
-      stats.uploaded += productStats.uploaded;
-      stats.skipped += productStats.skipped;
-      stats.failed += productStats.failed;
-      stats.already_remote += productStats.already_remote;
-    }
-
-    if (!dryRun) {
-      fs.writeFileSync(allProductsPath, `${JSON.stringify(products, null, 2)}\n`, "utf8");
-    }
-
-    batchSummary.categories.push({
-      category_slug: categorySlug,
-      allproducts_path: allProductsPath,
-      stats,
-    });
-
-    console.log(
-      `[${index + 1}/${categoryFolders.length}] ${categorySlug} patched ${products.length - stats.products_skipped} products (${stats.products_skipped} already on supabase, ${stats.uploaded} uploaded, ${stats.skipped} skipped, ${stats.failed} failed)`,
+  if (!dryRun) {
+    fs.writeFileSync(
+      totalProductsPath,
+      `${JSON.stringify(allTotalProducts, null, 2)}\n`,
+      "utf8",
     );
   }
 
-  fs.writeFileSync(
-    path.join(htmlRoot, "_allproducts-upload-summary.json"),
-    `${JSON.stringify(batchSummary, null, 2)}\n`,
-    "utf8",
+  mergeRunTotals(batchSummary.totals, totalProductsReport.stats);
+  batchSummary.totalproducts = totalProductsReport;
+
+  logProgress({
+    label: "totalproducts.json",
+    stats: totalProductsReport.stats,
+    dryRun,
+  });
+
+  const summaryPath = path.join(
+    htmlRoot,
+    dryRun ? "_allproducts-upload-dry-run-summary.json" : "_allproducts-upload-summary.json",
   );
+  fs.writeFileSync(summaryPath, `${JSON.stringify(batchSummary, null, 2)}\n`, "utf8");
+  printBatchSummary(batchSummary, summaryPath);
+}
+
+function filterTotalProducts(products) {
+  const categorySlug = options.categorySlug;
+  if (!options.categorySlugs && !categorySlug) return products;
+
+  const allowedSlugs = options.categorySlugs ?? new Set([categorySlug]);
+
+  return products.filter((product) => {
+    const slugs = product._source?.category_slugs ?? [];
+    return slugs.some((slug) => allowedSlugs.has(slug));
+  });
 }
 
 function parseArgs(inputArgs) {
   const result = {
     htmlRoot: relativize(DEFAULT_HTML_ROOT),
     categoryPath: null,
+    categorySlug: null,
     categorySlugs: null,
     dryRun: false,
     skipUploaded: false,
@@ -176,40 +214,548 @@ function parseArgs(inputArgs) {
     }
   }
 
+  if (result.categoryPath) {
+    result.categorySlug = path.basename(path.resolve(root, result.categoryPath));
+  }
+
   return result;
 }
 
-function resolveCategoryFolders() {
-  if (options.categoryPath) {
-    return [path.resolve(root, options.categoryPath)];
+async function processProductFile({
+  products,
+  categoryFolder,
+  htmlRoot,
+  supabase,
+  supabaseUrl,
+  registry,
+  dryRun,
+  stats,
+  productDetails,
+}) {
+  stats.products_total = products.length;
+
+  if (dryRun) {
+    for (const product of products) {
+      if (!hasLocalImagePaths(product)) {
+        stats.products_skipped_remote += 1;
+        if (productDetails) {
+          productDetails.push({
+            product_slug: getProductSlug(product),
+            product_name: product.name ?? null,
+            status: "skipped_no_local_images",
+            image_url: product.image_url ?? null,
+          });
+        }
+        continue;
+      }
+
+      const plan = planProductImages({
+        product,
+        categoryFolder,
+        htmlRoot,
+        supabaseUrl,
+        registry,
+      });
+      mergeRunTotals(stats, plan.stats);
+      if (productDetails) productDetails.push(plan);
+    }
+    return;
   }
 
-  return fs
-    .readdirSync(htmlRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .filter((name) => !name.startsWith("."))
-    .filter((name) => !options.categorySlugs || options.categorySlugs.has(name))
-    .sort((a, b) => a.localeCompare(b))
-    .map((name) => path.join(htmlRoot, name));
+  const productsToPatch = [];
+  const uploadJobsByObjectPath = new Map();
+
+  for (const product of products) {
+    if (!hasLocalImagePaths(product)) {
+      stats.products_skipped_remote += 1;
+      continue;
+    }
+
+    const prepared = prepareProductImagePatches({
+      product,
+      categoryFolder,
+      htmlRoot,
+      registry,
+    });
+    if (!prepared) continue;
+
+    mergeRunTotals(stats, prepared.stats);
+    productsToPatch.push(prepared);
+
+    for (const job of prepared.uploadJobs) {
+      if (!uploadJobsByObjectPath.has(job.objectPath)) {
+        uploadJobsByObjectPath.set(job.objectPath, job);
+      }
+    }
+  }
+
+  const uploadJobs = [...uploadJobsByObjectPath.values()];
+
+  if (options.skipUploaded) {
+    for (const job of uploadJobs) {
+      const exists = await storageObjectExists(supabase, job.objectPath);
+      if (exists) {
+        registry.remember(job.objectPath, buildPublicUrl(supabaseUrl, job.objectPath));
+        uploadJobsByObjectPath.delete(job.objectPath);
+        stats.uploads_skipped_existing += 1;
+      }
+    }
+  }
+
+  const pendingUploads = [...uploadJobsByObjectPath.values()];
+  const uploadStats = await runUploadsInBatches({
+    jobs: pendingUploads,
+    batchSize: UPLOAD_BATCH_SIZE,
+    supabase,
+    supabaseUrl,
+    htmlRoot,
+    registry,
+  });
+  mergeRunTotals(stats, uploadStats);
+
+  for (const prepared of productsToPatch) {
+    applyProductImagePatches({
+      product: prepared.product,
+      slug: prepared.slug,
+      categoryFolder: prepared.categoryFolder,
+      htmlRoot: prepared.htmlRoot,
+      registry: prepared.registry,
+    });
+  }
 }
 
-async function patchProductImages({ product, categoryFolder, supabase, supabaseUrl }) {
-  const stats = { uploaded: 0, skipped: 0, failed: 0, already_remote: 0 };
-  const slug = inferProductSlug(product);
-  if (!slug) return stats;
+function createUploadRegistry(totalProducts) {
+  const objectPathToUrl = new Map();
 
-  const localToPublic = new Map();
+  function store(objectPath, url) {
+    if (objectPath && url) objectPathToUrl.set(objectPath, url);
+  }
 
-  async function resolvePath(localRelativePath) {
+  function seedFromValue(value) {
+    if (!isSupabasePublicUrl(value)) return;
+    const parsed = parseSupabaseObjectPath(value);
+    if (parsed) store(parsed.objectPath, value);
+  }
+
+  function seedFromProduct(product) {
+    const urls = product.image_urls ?? {};
+
+    for (const key of ["256", "512", "1024", "1920"]) {
+      seedFromValue(urls[key]);
+    }
+
+    if (Array.isArray(urls.more)) {
+      for (const entry of urls.more) {
+        seedFromValue(entry.sm);
+        seedFromValue(entry.lg);
+      }
+    }
+
+    seedFromValue(product.image_url);
+  }
+
+  for (const product of totalProducts) {
+    seedFromProduct(product);
+  }
+
+  return {
+    getUrl(objectPath) {
+      return objectPathToUrl.get(objectPath) ?? null;
+    },
+    remember: store,
+    size() {
+      return objectPathToUrl.size;
+    },
+  };
+}
+
+function getProductSlug(product) {
+  return product.product_slug ?? inferProductSlug(product);
+}
+
+function hasLocalImagePaths(product) {
+  const urls = product.image_urls ?? {};
+
+  for (const key of ["256", "512", "1024", "1920"]) {
+    if (isLocalImagePath(urls[key])) return true;
+  }
+
+  if (isLocalImagePath(product.image_url)) return true;
+
+  if (Array.isArray(urls.more)) {
+    for (const entry of urls.more) {
+      if (isLocalImagePath(entry.sm) || isLocalImagePath(entry.lg)) return true;
+    }
+  }
+
+  return false;
+}
+
+function isLocalImagePath(value) {
+  return (
+    typeof value === "string" &&
+    (value.startsWith("images/") || isPrefixedLocalImagePath(value))
+  );
+}
+
+function resolveLocalAbsolutePath(localRelativePath, categoryFolder, htmlRoot) {
+  if (isPrefixedLocalImagePath(localRelativePath)) {
+    return path.join(htmlRoot, localRelativePath);
+  }
+
+  return path.join(categoryFolder, localRelativePath);
+}
+
+function emptyRunTotals() {
+  return {
+    products_total: 0,
+    products_to_patch: 0,
+    products_skipped_remote: 0,
+    uploads_planned: 0,
+    uploads_uploaded: 0,
+    uploads_skipped_existing: 0,
+    uploads_deduplicated: 0,
+    uploads_failed: 0,
+    refs_already_remote: 0,
+    refs_unchanged: 0,
+    missing_local_files: 0,
+    bytes_to_upload: 0,
+    size_variant_counts: {},
+    extension_counts: {},
+  };
+}
+
+function mergeRunTotals(target, source) {
+  if (!source) return;
+
+  target.products_total += source.products_total ?? 0;
+  target.products_to_patch += source.products_to_patch ?? 0;
+  target.products_skipped_remote +=
+    source.products_skipped_remote ?? source.products_skipped ?? 0;
+  target.uploads_planned += source.uploads_planned ?? 0;
+  target.uploads_uploaded += source.uploads_uploaded ?? source.uploaded ?? 0;
+  target.uploads_skipped_existing +=
+    source.uploads_skipped_existing ?? source.skipped ?? 0;
+  target.uploads_deduplicated += source.uploads_deduplicated ?? 0;
+  target.uploads_failed += source.uploads_failed ?? source.failed ?? 0;
+  target.refs_already_remote +=
+    source.refs_already_remote ?? source.already_remote ?? 0;
+  target.refs_unchanged += source.refs_unchanged ?? 0;
+  target.missing_local_files += source.missing_local_files ?? 0;
+  target.bytes_to_upload += source.bytes_to_upload ?? 0;
+
+  for (const [key, count] of Object.entries(source.size_variant_counts ?? {})) {
+    target.size_variant_counts[key] =
+      (target.size_variant_counts[key] ?? 0) + count;
+  }
+  for (const [key, count] of Object.entries(source.extension_counts ?? {})) {
+    target.extension_counts[key] = (target.extension_counts[key] ?? 0) + count;
+  }
+}
+
+function planProductImages({ product, categoryFolder, htmlRoot, supabaseUrl, registry }) {
+  const slug = getProductSlug(product);
+  const stats = emptyRunTotals();
+  const uploads = [];
+  const jsonPatches = [];
+  const seenLocalPaths = new Set();
+
+  if (!slug) {
+    return {
+      product_slug: null,
+      product_name: product.name ?? null,
+      status: "skipped_no_slug",
+      stats,
+      uploads,
+      json_patches: jsonPatches,
+    };
+  }
+
+  stats.products_to_patch = 1;
+
+  function planPath(field, localRelativePath) {
     if (!localRelativePath) return localRelativePath;
 
     if (isSupabasePublicUrl(localRelativePath)) {
-      stats.already_remote += 1;
+      stats.refs_already_remote += 1;
       return localRelativePath;
     }
 
     if (!isLocalImagePath(localRelativePath)) {
+      stats.refs_unchanged += 1;
+      return localRelativePath;
+    }
+
+    const publicUrl = planLocalUpload({
+      localRelativePath,
+      slug,
+      categoryFolder,
+      htmlRoot,
+      supabaseUrl,
+      stats,
+      uploads,
+      seenLocalPaths,
+      registry,
+    });
+
+    if (publicUrl !== localRelativePath) {
+      jsonPatches.push({
+        field,
+        from: localRelativePath,
+        to: publicUrl,
+      });
+    }
+
+    return publicUrl;
+  }
+
+  const originalImageUrls = product.image_urls ?? {};
+  const plannedImageUrls = {};
+
+  for (const [key, value] of Object.entries(originalImageUrls)) {
+    if (key === "more") continue;
+    if (typeof value === "string") {
+      plannedImageUrls[key] = planPath(`image_urls.${key}`, value);
+    }
+  }
+
+  if (Array.isArray(originalImageUrls.more)) {
+    plannedImageUrls.more = [];
+    for (const [index, entry] of originalImageUrls.more.entries()) {
+      plannedImageUrls.more.push({
+        sm: planPath(`image_urls.more[${index}].sm`, entry.sm),
+        lg: planPath(`image_urls.more[${index}].lg`, entry.lg),
+      });
+    }
+  }
+
+  const plannedImageUrl =
+    planPath("image_url", product.image_url) ??
+    plannedImageUrls["1920"] ??
+    plannedImageUrls["1024"] ??
+    plannedImageUrls["512"] ??
+    plannedImageUrls["256"] ??
+    product.image_url ??
+    null;
+
+  if (
+    Object.keys(plannedImageUrls).length &&
+    JSON.stringify(plannedImageUrls) !== JSON.stringify(originalImageUrls)
+  ) {
+    jsonPatches.push({
+      field: "image_urls",
+      from: originalImageUrls,
+      to: plannedImageUrls,
+    });
+  }
+
+  if (plannedImageUrl !== product.image_url) {
+    jsonPatches.push({
+      field: "image_url",
+      from: product.image_url ?? null,
+      to: plannedImageUrl,
+    });
+  }
+
+  return {
+    product_slug: slug,
+    product_name: product.name ?? null,
+    status: jsonPatches.length ? "planned" : "no_changes",
+    stats,
+    uploads,
+    json_patches: jsonPatches,
+  };
+}
+
+function planLocalUpload({
+  localRelativePath,
+  slug,
+  categoryFolder,
+  htmlRoot,
+  supabaseUrl,
+  stats,
+  uploads,
+  seenLocalPaths,
+  registry,
+}) {
+  if (seenLocalPaths.has(localRelativePath)) {
+    const existing = uploads.find((item) => item.local_path === localRelativePath);
+    return (
+      existing?.public_url ??
+      buildPublicUrl(supabaseUrl, `${FOLDER}/${slug}/${path.basename(localRelativePath)}`)
+    );
+  }
+  seenLocalPaths.add(localRelativePath);
+
+  const fileName = path.basename(localRelativePath);
+  const objectPath = `${FOLDER}/${slug}/${fileName}`;
+  const cachedUrl = registry.getUrl(objectPath);
+  if (cachedUrl) {
+    stats.uploads_deduplicated += 1;
+    return cachedUrl;
+  }
+
+  const absolutePath = resolveLocalAbsolutePath(
+    localRelativePath,
+    categoryFolder,
+    htmlRoot,
+  );
+  const exists = fs.existsSync(absolutePath);
+  const sizeBytes = exists ? fs.statSync(absolutePath).size : 0;
+  const contentType = mimeTypeForPath(absolutePath);
+  const extension = path.extname(fileName).toLowerCase() || "(none)";
+  const sizeVariant = inferSizeVariant(fileName, localRelativePath);
+
+  if (!exists) {
+    stats.missing_local_files += 1;
+  }
+
+  stats.uploads_planned += 1;
+  stats.bytes_to_upload += sizeBytes;
+  stats.size_variant_counts[sizeVariant] =
+    (stats.size_variant_counts[sizeVariant] ?? 0) + 1;
+  stats.extension_counts[extension] =
+    (stats.extension_counts[extension] ?? 0) + 1;
+
+  const publicUrl = buildPublicUrl(supabaseUrl, objectPath);
+  registry.remember(objectPath, publicUrl);
+  uploads.push({
+    local_path: localRelativePath,
+    absolute_path: absolutePath,
+    object_path: objectPath,
+    public_url: publicUrl,
+    size_bytes: sizeBytes,
+    size_variant: sizeVariant,
+    content_type: contentType,
+    missing_local_file: !exists,
+  });
+
+  return publicUrl;
+}
+
+function inferSizeVariant(fileName, localRelativePath) {
+  const fromName = fileName.match(/_(\d+)\.[^.]+$/);
+  if (fromName) return fromName[1];
+
+  const parts = localRelativePath.split("/").filter(Boolean);
+  if (parts.length >= 3) {
+    const variantDir = parts[2];
+    if (/^\d+$/.test(variantDir)) return variantDir;
+  }
+
+  return "unknown";
+}
+
+function logProgress({ label, stats, dryRun }) {
+  if (dryRun) {
+    console.log(
+      `${label} plan: ${stats.products_to_patch} products to patch, ${stats.products_skipped_remote} already remote, ${stats.uploads_planned} uploads (${formatBytes(stats.bytes_to_upload)}), ${stats.uploads_deduplicated} deduplicated, ${stats.missing_local_files} missing files`,
+    );
+    return;
+  }
+
+  console.log(
+    `${label} patched ${stats.products_to_patch} products (${stats.products_skipped_remote} already remote, ${stats.uploads_uploaded} uploaded, ${stats.uploads_deduplicated} deduplicated, ${stats.uploads_skipped_existing} skipped, ${stats.uploads_failed} failed)`,
+  );
+}
+
+function printBatchSummary(batchSummary, summaryPath) {
+  const { totals, dry_run: dryRun } = batchSummary;
+
+  console.log("");
+  console.log(dryRun ? "=== Dry run summary ===" : "=== Upload summary ===");
+  console.log(`Products in totalproducts.json: ${batchSummary.products_in_file}`);
+  if (batchSummary.products_selected !== batchSummary.products_in_file) {
+    console.log(`Products selected: ${batchSummary.products_selected}`);
+  }
+  console.log(`Products to patch: ${totals.products_to_patch}`);
+  console.log(`Products already on Supabase: ${totals.products_skipped_remote}`);
+
+  if (dryRun) {
+    console.log(`Uploads planned: ${totals.uploads_planned}`);
+    console.log(`Uploads deduplicated (registry): ${totals.uploads_deduplicated}`);
+    console.log(`Total upload size: ${formatBytes(totals.bytes_to_upload)}`);
+    console.log(`Missing local files: ${totals.missing_local_files}`);
+    console.log(`Image refs already remote: ${totals.refs_already_remote}`);
+    console.log(`Image refs unchanged: ${totals.refs_unchanged}`);
+    console.log(
+      `Size variants: ${formatCountMap(totals.size_variant_counts) || "(none)"}`,
+    );
+    console.log(
+      `Extensions: ${formatCountMap(totals.extension_counts) || "(none)"}`,
+    );
+    console.log("No files were uploaded and totalproducts.json was not modified.");
+  } else {
+    console.log(`Uploads completed: ${totals.uploads_uploaded}`);
+    console.log(`Uploads deduplicated (registry): ${totals.uploads_deduplicated}`);
+    console.log(`Uploads skipped (already in bucket): ${totals.uploads_skipped_existing}`);
+    console.log(`Upload failures: ${totals.uploads_failed}`);
+    console.log(`Image refs already remote: ${totals.refs_already_remote}`);
+  }
+
+  console.log(`Report written to: ${summaryPath}`);
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatCountMap(map) {
+  return Object.entries(map)
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+    .map(([key, count]) => `${key}=${count}`)
+    .join(", ");
+}
+
+function collectProductImagePaths(product) {
+  const paths = [];
+  const urls = product.image_urls ?? {};
+
+  for (const key of ["256", "512", "1024", "1920"]) {
+    if (typeof urls[key] === "string") paths.push(urls[key]);
+  }
+
+  if (typeof product.image_url === "string") paths.push(product.image_url);
+
+  if (Array.isArray(urls.more)) {
+    for (const entry of urls.more) {
+      if (typeof entry.sm === "string") paths.push(entry.sm);
+      if (typeof entry.lg === "string") paths.push(entry.lg);
+    }
+  }
+
+  return paths;
+}
+
+function createImagePathResolver({
+  slug,
+  categoryFolder,
+  htmlRoot,
+  registry,
+  stats,
+  uploadJobs,
+  collectUploads,
+}) {
+  const localToPublic = new Map();
+
+  function resolvePath(localRelativePath) {
+    if (!localRelativePath) return localRelativePath;
+
+    if (isSupabasePublicUrl(localRelativePath)) {
+      stats.refs_already_remote += 1;
+      return localRelativePath;
+    }
+
+    if (!isLocalImagePath(localRelativePath)) {
+      stats.refs_unchanged += 1;
       return localRelativePath;
     }
 
@@ -220,37 +766,75 @@ async function patchProductImages({ product, categoryFolder, supabase, supabaseU
     const fileName = path.basename(localRelativePath);
     const objectPath = `${FOLDER}/${slug}/${fileName}`;
 
-    if (options.skipUploaded) {
-      const exists = await storageObjectExists(supabase, objectPath);
-      if (exists) {
-        const url = buildPublicUrl(supabaseUrl, objectPath);
-        localToPublic.set(localRelativePath, url);
-        stats.skipped += 1;
-        return url;
-      }
+    const cachedUrl = registry.getUrl(objectPath);
+    if (cachedUrl) {
+      localToPublic.set(localRelativePath, cachedUrl);
+      stats.uploads_deduplicated += 1;
+      return cachedUrl;
     }
 
-    try {
-      const url = dryRun
-        ? buildPublicUrl(supabaseUrl, objectPath)
-        : await uploadLocalFile({
-            supabase,
-            supabaseUrl,
-            categoryFolder,
-            localRelativePath,
-            objectPath,
-          });
-      localToPublic.set(localRelativePath, url);
-      stats.uploaded += 1;
-      return url;
-    } catch (error) {
-      stats.failed += 1;
-      console.warn(
-        `  ${slug}: upload failed (${localRelativePath}): ${String(error?.message || error)}`,
-      );
+    if (collectUploads) {
+      if (!localToPublic.has(localRelativePath)) {
+        uploadJobs.push({
+          localRelativePath,
+          objectPath,
+          categoryFolder,
+          slug,
+        });
+        localToPublic.set(localRelativePath, localRelativePath);
+      }
       return localRelativePath;
     }
+
+    return localRelativePath;
   }
+
+  return resolvePath;
+}
+
+function prepareProductImagePatches({ product, categoryFolder, htmlRoot, registry }) {
+  const stats = emptyRunTotals();
+  const slug = getProductSlug(product);
+  if (!slug) return null;
+
+  stats.products_to_patch = 1;
+  const uploadJobs = [];
+  const resolvePath = createImagePathResolver({
+    slug,
+    categoryFolder,
+    htmlRoot,
+    registry,
+    stats,
+    uploadJobs,
+    collectUploads: true,
+  });
+
+  for (const localPath of collectProductImagePaths(product)) {
+    resolvePath(localPath);
+  }
+
+  return {
+    product,
+    slug,
+    categoryFolder,
+    htmlRoot,
+    registry,
+    stats,
+    uploadJobs,
+  };
+}
+
+function applyProductImagePatches({ product, slug, categoryFolder, htmlRoot, registry }) {
+  const stats = emptyRunTotals();
+  const resolvePath = createImagePathResolver({
+    slug,
+    categoryFolder,
+    htmlRoot,
+    registry,
+    stats,
+    uploadJobs: [],
+    collectUploads: false,
+  });
 
   const originalImageUrls = product.image_urls ?? {};
   const patchedImageUrls = {};
@@ -258,7 +842,7 @@ async function patchProductImages({ product, categoryFolder, supabase, supabaseU
   for (const [key, value] of Object.entries(originalImageUrls)) {
     if (key === "more") continue;
     if (typeof value === "string") {
-      patchedImageUrls[key] = await resolvePath(value);
+      patchedImageUrls[key] = resolvePath(value);
     }
   }
 
@@ -266,8 +850,8 @@ async function patchProductImages({ product, categoryFolder, supabase, supabaseU
     patchedImageUrls.more = [];
     for (const entry of originalImageUrls.more) {
       patchedImageUrls.more.push({
-        sm: await resolvePath(entry.sm),
-        lg: await resolvePath(entry.lg),
+        sm: resolvePath(entry.sm),
+        lg: resolvePath(entry.lg),
       });
     }
   }
@@ -277,13 +861,53 @@ async function patchProductImages({ product, categoryFolder, supabase, supabaseU
   }
 
   product.image_url =
-    (await resolvePath(product.image_url)) ??
+    resolvePath(product.image_url) ??
     patchedImageUrls["1920"] ??
     patchedImageUrls["1024"] ??
     patchedImageUrls["512"] ??
     patchedImageUrls["256"] ??
     product.image_url ??
     null;
+}
+
+async function runUploadsInBatches({
+  jobs,
+  batchSize,
+  supabase,
+  supabaseUrl,
+  htmlRoot,
+  registry,
+}) {
+  const stats = emptyRunTotals();
+
+  for (let index = 0; index < jobs.length; index += batchSize) {
+    const batch = jobs.slice(index, index + batchSize);
+    const results = await Promise.allSettled(
+      batch.map((job) =>
+        uploadLocalFile({
+          supabase,
+          supabaseUrl,
+          categoryFolder: job.categoryFolder,
+          htmlRoot,
+          localRelativePath: job.localRelativePath,
+          objectPath: job.objectPath,
+        }),
+      ),
+    );
+
+    for (const [resultIndex, result] of results.entries()) {
+      const job = batch[resultIndex];
+      if (result.status === "fulfilled") {
+        registry.remember(job.objectPath, result.value);
+        stats.uploads_uploaded += 1;
+      } else {
+        stats.uploads_failed += 1;
+        console.warn(
+          `  ${job.slug}: upload failed (${job.localRelativePath}): ${String(result.reason?.message || result.reason)}`,
+        );
+      }
+    }
+  }
 
   return stats;
 }
@@ -292,10 +916,15 @@ async function uploadLocalFile({
   supabase,
   supabaseUrl,
   categoryFolder,
+  htmlRoot,
   localRelativePath,
   objectPath,
 }) {
-  const absolutePath = path.join(categoryFolder, localRelativePath);
+  const absolutePath = resolveLocalAbsolutePath(
+    localRelativePath,
+    categoryFolder,
+    htmlRoot,
+  );
   if (!fs.existsSync(absolutePath)) {
     throw new Error(`missing local file: ${localRelativePath}`);
   }
@@ -317,7 +946,7 @@ async function uploadLocalFile({
 }
 
 async function storageObjectExists(supabase, objectPath) {
-  if (!supabase || dryRun) return false;
+  if (!supabase) return false;
 
   const folder = path.posix.dirname(objectPath);
   const fileName = path.posix.basename(objectPath);
@@ -328,67 +957,6 @@ async function storageObjectExists(supabase, objectPath) {
 
   if (error) return false;
   return (data ?? []).some((item) => item.name === fileName);
-}
-
-function inferProductSlug(product) {
-  const urls = product.image_urls ?? {};
-
-  for (const key of ["256", "512", "1024", "1920"]) {
-    const candidate = urls[key];
-    const slug = slugFromLocalImagePath(candidate);
-    if (slug) return slug;
-  }
-
-  const fromImageUrl = slugFromLocalImagePath(product.image_url);
-  if (fromImageUrl) return fromImageUrl;
-
-  if (Array.isArray(urls.more)) {
-    for (const entry of urls.more) {
-      const slug = slugFromLocalImagePath(entry.sm) ?? slugFromLocalImagePath(entry.lg);
-      if (slug) return slug;
-    }
-  }
-
-  if (typeof product.sku === "string" && product.sku.startsWith("CP-")) {
-    return product.sku
-      .slice(3)
-      .toLowerCase()
-      .replace(/_/g, "-");
-  }
-
-  return slugFromName(product.name);
-}
-
-function slugFromLocalImagePath(value) {
-  if (!isLocalImagePath(value)) return null;
-  const parts = value.split("/").filter(Boolean);
-  return parts.length >= 2 ? parts[1] : null;
-}
-
-function slugFromName(name) {
-  return String(name ?? "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function isLocalImagePath(value) {
-  return typeof value === "string" && value.startsWith("images/");
-}
-
-function isSupabasePublicUrl(value) {
-  return (
-    typeof value === "string" &&
-    /^https?:\/\//i.test(value) &&
-    value.includes("/storage/v1/object/public/")
-  );
-}
-
-function buildPublicUrl(supabaseUrl, objectPath) {
-  const base = supabaseUrl.replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/${BUCKET}/${objectPath}`;
 }
 
 function mimeTypeForPath(filePath) {

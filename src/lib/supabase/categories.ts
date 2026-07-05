@@ -96,7 +96,7 @@ export async function getCategoryCatalogByKind(
     categories: sortCategoriesByDisplayOrder(
       categories.filter((category) => category.kind === kind),
     ),
-    categoryGroups,
+    categoryGroups: categoryGroups.filter((group) => group.kind === kind),
   };
 }
 

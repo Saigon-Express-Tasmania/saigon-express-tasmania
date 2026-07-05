@@ -28,7 +28,7 @@ import {
   type CateringPack,
   type CateringTierPrice,
 } from "@/lib/supabase/catering-packs";
-import { cn, stringToSlug } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useCateringCart } from "@/contexts/CateringCartContext";
 import { useProductCustomizations } from "@/contexts/ProductCustomizationsContext";
 import { useGuestCateringOrder } from "@/contexts/GuestCateringOrderContext";
@@ -46,11 +46,12 @@ import {
   cateringItemDetailPath,
 } from "@/lib/catering-item-routes";
 import {
-  buildCateringCategoryQuery,
+  buildCateringCategoryQueryFromId,
   resolveCateringCategoryFromUrlParam,
 } from "@/lib/catering-category-url";
 import {
   CATEGORY_LIST_ANCHOR,
+  getCategorySectionId,
   scrollToCategoryInList,
 } from "@/lib/category-list-scroll";
 import {
@@ -59,7 +60,7 @@ import {
 } from "@/lib/category-sort";
 import CategorySelect from "@/components/CategorySelect";
 import CategorySidebar, {
-  CATEGORY_SIDEBAR_ASIDE_CLASS,
+  CategorySidebarAside,
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -95,23 +96,37 @@ function buildCateringMenuGroups(
       (pack) =>
         pack.isAvailable && pack.category !== FEATURED_CATERING_PACK_CATEGORY,
     )
-    .reduce<CateringMenuGroup[]>((acc, item) => {
-      const existing = acc.find((group) => group.categoryId === item.categoryId);
-      if (existing) {
-        existing.items.push(item);
-        existing.sortOrder = Math.min(existing.sortOrder, item.sortOrder);
-      } else {
-        acc.push({
-          categoryId: item.categoryId,
-          category: item.category,
+    .reduce<Map<number, CateringMenuGroup>>((groupMap, item) => {
+      const categoryIds =
+        item.categoryIds.length > 0
+          ? item.categoryIds
+          : item.categoryId != null
+            ? [item.categoryId]
+            : [];
+
+      for (const categoryId of categoryIds) {
+        const meta = categoryMeta.get(categoryId);
+        const existing = groupMap.get(categoryId);
+        if (existing) {
+          if (!existing.items.some((pack) => pack.id === item.id)) {
+            existing.items.push(item);
+          }
+          existing.sortOrder = Math.min(existing.sortOrder, item.sortOrder);
+          continue;
+        }
+
+        groupMap.set(categoryId, {
+          categoryId,
+          category: meta?.name ?? item.category,
           items: [item],
-          sortOrder: item.sortOrder,
+          sortOrder: meta?.sortOrder ?? item.sortOrder,
         });
       }
-      return acc;
-    }, []);
 
-  return groups
+      return groupMap;
+    }, new Map());
+
+  return [...groups.values()]
     .filter((group) => group.items.length > 0)
     .sort((a, b) => {
       const aMeta =
@@ -223,12 +238,12 @@ export default function Catering({
     message: "",
   });
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState(() => {
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(() => {
     const resolved = resolveCateringCategoryFromUrlParam(
       urlCategory,
       categoriesContent,
     );
-    return resolved?.name ?? allLabel;
+    return resolved?.id ?? null;
   });
 
   const availablePacks = useMemo(
@@ -256,30 +271,30 @@ export default function Catering({
 
   const categoryIconMap = useMemo(
     () =>
-      categoriesContent.reduce<Record<string, string | null>>((acc, category) => {
-        acc[category.name] = category.icon;
+      categoriesContent.reduce<Record<number, string | null>>((acc, category) => {
+        acc[category.id] = category.icon;
         return acc;
       }, {}),
     [categoriesContent],
   );
 
   const getCategoryIcon = useCallback(
-    (categoryName: string) =>
-      categoryName === allLabel ? null : categoryIconMap[categoryName] ?? null,
-    [allLabel, categoryIconMap],
+    (categoryId: number | null) =>
+      categoryId == null ? null : categoryIconMap[categoryId] ?? null,
+    [categoryIconMap],
   );
 
   const getCategoryIconFallback = useCallback(
-    (categoryName: string): "all" | "category" =>
-      categoryName === allLabel ? "all" : "category",
-    [allLabel],
+    (categoryId: number | null): "all" | "category" =>
+      categoryId == null ? "all" : "category",
+    [],
   );
 
   const categoryDescriptionMap = useMemo(
     () =>
-      categoriesContent.reduce<Record<string, string>>((acc, category) => {
+      categoriesContent.reduce<Record<number, string>>((acc, category) => {
         const description = category.description?.trim();
-        if (description) acc[category.name] = description;
+        if (description) acc[category.id] = description;
         return acc;
       }, {}),
     [categoriesContent],
@@ -310,14 +325,6 @@ export default function Catering({
     () => buildCateringMenuGroups(availablePacks, sortedCategories),
     [availablePacks, sortedCategories],
   );
-
-  const activeCategoryId = useMemo(() => {
-    if (activeCategory === allLabel) return null;
-    return (
-      categoriesContent.find((category) => category.name === activeCategory)
-        ?.id ?? null
-    );
-  }, [activeCategory, allLabel, categoriesContent]);
 
   const visibleMenuGroups = useMemo(() => {
     const categoryFiltered =
@@ -354,25 +361,24 @@ export default function Catering({
   ]);
 
   const replaceCategoryInUrl = useCallback(
-    (categoryName: string) => {
-      const query = buildCateringCategoryQuery(
-        categoryName,
-        allLabel,
+    (categoryId: number | null) => {
+      const query = buildCateringCategoryQueryFromId(
+        categoryId,
         categoriesContent,
       );
       const nextUrl = query ? `${pathname}?${query}` : pathname;
       window.history.replaceState(window.history.state, "", nextUrl);
     },
-    [pathname, allLabel, categoriesContent],
+    [pathname, categoriesContent],
   );
 
   const handleCategoryClick = useCallback(
-    (cat: string) => {
-      setActiveCategory(cat);
-      replaceCategoryInUrl(cat);
-      scrollToCategoryInList(cat, allLabel);
+    (categoryId: number | null) => {
+      setActiveCategoryId(categoryId);
+      replaceCategoryInUrl(categoryId);
+      scrollToCategoryInList(categoryId);
     },
-    [replaceCategoryInUrl, allLabel],
+    [replaceCategoryInUrl],
   );
 
   // Load configuration arrays from translation files
@@ -384,7 +390,7 @@ export default function Catering({
       const params = new URLSearchParams(window.location.search);
       const param = params.get("category");
       if (!param) {
-        setActiveCategory(allLabel);
+        setActiveCategoryId(null);
         return;
       }
 
@@ -393,11 +399,11 @@ export default function Catering({
         categoriesContent,
       );
       if (!resolved) {
-        setActiveCategory(allLabel);
+        setActiveCategoryId(null);
         return;
       }
 
-      setActiveCategory(resolved.name);
+      setActiveCategoryId(resolved.id);
 
       if (param !== resolved.alias) {
         params.set("category", resolved.alias);
@@ -862,7 +868,7 @@ export default function Catering({
                 <div className="max-w-[1280px] mx-auto px-6 py-3">
                   <CategorySelect
                     allLabel={allLabel}
-                    activeCategory={activeCategory}
+                    activeCategoryId={activeCategoryId}
                     onCategorySelect={handleCategoryClick}
                     categories={barCategories}
                     categoryGroups={categoryGroups}
@@ -879,31 +885,28 @@ export default function Catering({
 
               <div className="lg:flex lg:items-start">
                 <div className={CATEGORY_SIDEBAR_COLUMN_CLASS}>
-                  <aside
+                  <CategorySidebarAside
                     aria-label={t("menu.categories.label")}
-                    className={cn(
-                      CATEGORY_SIDEBAR_ASIDE_CLASS,
-                      "border-r border-gray-100 bg-white px-4 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)]",
-                    )}
+                    variant="brand"
                   >
                     <CategorySidebar
                       allLabel={allLabel}
-                      activeCategory={activeCategory}
+                      activeCategoryId={activeCategoryId}
                       onCategorySelect={handleCategoryClick}
                       categories={barCategories}
                       categoryGroups={categoryGroups}
                       variant="brand"
                       renderCategoryLeading={(category) => (
                         <CategoryIcon
-                          icon={getCategoryIcon(category.name)}
-                          fallback={getCategoryIconFallback(category.name)}
+                          icon={getCategoryIcon(category.id)}
+                          fallback={getCategoryIconFallback(category.id)}
                           accent
                           className="size-5 shrink-0 text-base"
                           fallbackClassName="size-3.5"
                         />
                       )}
                     />
-                  </aside>
+                  </CategorySidebarAside>
                 </div>
 
                 <div className="min-w-0 flex-1 w-full mx-auto px-6">
@@ -961,17 +964,22 @@ export default function Catering({
           ) : (
             visibleMenuGroups.map((group, groupIndex) => (
               <div
-                key={group.category}
-                id={stringToSlug(group.category)}
+                key={`${group.category}-${group.categoryId}`}
+                id={
+                  group.categoryId != null
+                    ? getCategorySectionId(group.categoryId)
+                    : undefined
+                }
                 className="scroll-mt-24"
               >
                 <div className="mb-6">
                   <h3 className="font-serif text-brand-dark text-2xl mb-3 pb-2 border-b border-brand-cream">
                     {group.category}
                   </h3>
-                  {categoryDescriptionMap[group.category] ? (
+                  {group.categoryId != null &&
+                  categoryDescriptionMap[group.categoryId] ? (
                     <p className="mt-3 text-sm leading-relaxed text-brand-dark/55">
-                      {categoryDescriptionMap[group.category]}
+                      {categoryDescriptionMap[group.categoryId]}
                     </p>
                   ) : null}
                 </div>

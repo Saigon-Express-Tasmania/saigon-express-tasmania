@@ -1,7 +1,11 @@
+import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
-import { SearchableSelect } from '@/components/SearchableSelect';
+import {
+  formatProductCategoryCell,
+  ProductCategoriesFields,
+} from '@/components/ProductCategoriesFields';
 import { MenuAdditionalImages } from '@/components/MenuAdditionalImages';
 import { MenuFoodContentEditor } from '@/components/MenuFoodContentEditor';
 import { MenuIngredientsEditor } from '@/components/MenuIngredientsEditor';
@@ -54,7 +58,17 @@ import {
   type MenuImageMoreEntry,
 } from '@/lib/menu-image-urls';
 import { resolveMenuSlug, slugFromName } from '@/lib/slug';
-import { loadAdminCategoriesByKind } from '@/lib/categories';
+import {
+  countProductsByCategoryId,
+  flattenAdminCategoryFilterSections,
+  loadAdminCategoryFilterSections,
+  type AdminCategoryFilterSection,
+} from '@/lib/category-filter-sections';
+import {
+  attachProductCategoryFields,
+  loadProductCategoriesByProductIds,
+  syncProductCategories,
+} from '@/lib/product-categories';
 import { nextProductId } from '@/lib/products';
 import {
   emptyProductShippingInput,
@@ -143,11 +157,12 @@ type MenuItemRow = {
   description: string | null;
   price: string;
   wholesale_price: string | null;
-  category_id: number | null;
-  category_name: string | null;
+  categoryIds: number[];
+  primaryCategoryId: number | null;
   image_urls: Record<string, unknown>;
   related_items: number[];
   is_available: boolean;
+  is_published: boolean;
   is_popular: boolean;
   sort_order: number;
   ingredients: unknown;
@@ -161,7 +176,6 @@ type MenuItemInput = Omit<
   | 'ingredients'
   | 'image_urls'
   | 'food_content'
-  | 'category_name'
   | keyof ProductShippingRow
 > & {
   image_sizes: ImageUrlsMap;
@@ -177,11 +191,13 @@ const emptyMenuItemInput = (): MenuItemInput => ({
   description: '',
   price: '',
   wholesale_price: '',
-  category_id: null,
+  categoryIds: [],
+  primaryCategoryId: null,
   image_sizes: {},
   additional_images: [],
   related_items: [],
   is_available: true,
+  is_published: true,
   is_popular: false,
   sort_order: 0,
   ingredients: emptyMenuItemIngredient(),
@@ -210,8 +226,8 @@ export function Menu() {
   const isAdmin = profile?.user_role === 'admin';
 
   const [items, setItems] = useState<MenuItemRow[]>([]);
-  const [categoryOptions, setCategoryOptions] = useState<
-    { id: number; name: string }[]
+  const [categoryFilterSections, setCategoryFilterSections] = useState<
+    AdminCategoryFilterSection[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -240,28 +256,27 @@ export function Menu() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, slug, description, price, wholesale_price, category_id, categories(name), image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, spicy_level, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, slug, description, price, wholesale_price, image_urls, is_available, is_published, is_popular, sort_order, ingredients, energy, food_content, spicy_level, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'alacarte')
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true });
 
       if (fetchError) throw fetchError;
+
+      const rows = (data ?? []) as Omit<
+        MenuItemRow,
+        'categoryIds' | 'primaryCategoryId'
+      >[];
+      const categoriesByProductId = await loadProductCategoriesByProductIds(
+        rows.map((row) => row.id),
+      );
+
       setItems(
-        (data ?? []).map((row) => {
-          const item = row as MenuItemRow & {
-            categories: { name: string } | { name: string }[] | null;
-          };
-          const categoryJoin = item.categories;
-          const categoryName = Array.isArray(categoryJoin)
-            ? categoryJoin[0]?.name ?? null
-            : categoryJoin?.name ?? null;
-          return {
-            ...item,
-            category_name: categoryName,
-            slug: resolveMenuSlug(item.slug, item.name),
-          };
-        }),
+        attachProductCategoryFields(rows, categoriesByProductId).map((item) => ({
+          ...item,
+          slug: resolveMenuSlug(item.slug, item.name),
+        })),
       );
     } catch (err) {
       const message =
@@ -275,15 +290,25 @@ export function Menu() {
 
   const loadCategoryOptions = useCallback(async () => {
     try {
-      const categories = await loadAdminCategoriesByKind('menu');
-      setCategoryOptions(categories.map(({ id, name }) => ({ id, name })));
+      const sections = await loadAdminCategoryFilterSections('menu');
+      setCategoryFilterSections(sections);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to load menu categories.',
       );
-      setCategoryOptions([]);
+      setCategoryFilterSections([]);
     }
   }, []);
+
+  const categoryOptions = useMemo(
+    () => flattenAdminCategoryFilterSections(categoryFilterSections),
+    [categoryFilterSections],
+  );
+
+  const productCountByCategoryId = useMemo(
+    () => countProductsByCategoryId(items),
+    [items],
+  );
 
   useEffect(() => {
     if (isAdmin) {
@@ -296,15 +321,6 @@ export function Menu() {
 
   const categoryNameById = useMemo(
     () => new Map(categoryOptions.map((category) => [category.id, category.name])),
-    [categoryOptions],
-  );
-
-  const categorySelectOptions = useMemo(
-    () =>
-      categoryOptions.map((category) => ({
-        value: String(category.id),
-        label: category.name,
-      })),
     [categoryOptions],
   );
 
@@ -322,16 +338,18 @@ export function Menu() {
     const filtered = items.filter((item) => {
       if (categoryFilter !== 'all') {
         const filterId = Number(categoryFilter);
-        if (!Number.isFinite(filterId) || item.category_id !== filterId) {
+        if (!Number.isFinite(filterId) || !item.categoryIds.includes(filterId)) {
           return false;
         }
       }
       if (!term) return true;
-      const categoryName = item.category_name ?? '';
+      const categoryNames = item.categoryIds
+        .map((categoryId) => categoryNameById.get(categoryId) ?? '')
+        .join(' ');
       return (
         (item.name ?? '').toLowerCase().includes(term) ||
         (item.description ?? '').toLowerCase().includes(term) ||
-        categoryName.toLowerCase().includes(term)
+        categoryNames.toLowerCase().includes(term)
       );
     });
 
@@ -348,7 +366,7 @@ export function Menu() {
       }
       return (a.name ?? '').localeCompare(b.name ?? '') * direction;
     });
-  }, [items, search, categoryFilter, sortColumn, sortDirection]);
+  }, [items, search, categoryFilter, sortColumn, sortDirection, categoryNameById]);
 
   const {
     selectedIds,
@@ -421,11 +439,13 @@ export function Menu() {
       description: item.description ?? '',
       price: item.price,
       wholesale_price: item.wholesale_price ?? '',
-      category_id: item.category_id,
+      categoryIds: [...item.categoryIds],
+      primaryCategoryId: item.primaryCategoryId,
       image_sizes: parsedImages.sizes,
       additional_images: parsedImages.more,
       related_items: item.related_items,
       is_available: item.is_available,
+      is_published: item.is_published ?? true,
       is_popular: item.is_popular,
       sort_order: item.sort_order,
       ingredients: parseMenuItemIngredient(item.ingredients),
@@ -570,10 +590,6 @@ export function Menu() {
       ? Math.min(5, Math.max(0, Math.round(form.spicy_level)))
       : 0;
 
-    const selectedCategoryName = form.category_id
-      ? categoryNameById.get(form.category_id) ?? ''
-      : '';
-
     setSaving(true);
     try {
       const slug = slugFromName(form.name);
@@ -590,13 +606,12 @@ export function Menu() {
         description: form.description?.trim() || '',
         price: String(form.price),
         wholesale_price: form.wholesale_price?.trim() || null,
-        category_id: form.category_id,
-        category: selectedCategoryName,
         image_urls: serializeMenuImageUrls(
           form.image_sizes,
           form.additional_images,
         ),
         is_available: form.is_available,
+        is_published: form.is_published,
         is_popular: form.is_popular,
         sort_order: Number(form.sort_order) || 0,
         ingredients: ingredientsValue,
@@ -615,10 +630,9 @@ export function Menu() {
             description: payload.description,
             price: payload.price,
             wholesale_price: payload.wholesale_price,
-            category_id: payload.category_id,
-            category: payload.category,
             image_urls: payload.image_urls,
             is_available: payload.is_available,
+            is_published: payload.is_published,
             is_popular: payload.is_popular,
             sort_order: payload.sort_order,
             ingredients: payload.ingredients,
@@ -636,11 +650,23 @@ export function Menu() {
           .eq('product_type', 'alacarte');
 
         if (updateError) throw updateError;
+        await syncProductCategories(
+          form.id,
+          form.categoryIds,
+          form.primaryCategoryId,
+          Number(form.sort_order) || 0,
+        );
         toast.success('Menu item updated.');
       } else {
         const { error: insertError } = await supabase.from('products').insert(payload);
 
         if (insertError) throw insertError;
+        await syncProductCategories(
+          form.id,
+          form.categoryIds,
+          form.primaryCategoryId,
+          Number(form.sort_order) || 0,
+        );
         toast.success('Menu item created.');
       }
 
@@ -774,22 +800,15 @@ export function Menu() {
                   <Label htmlFor="category-filter" className="whitespace-nowrap">
                     Category
                   </Label>
-                  <Select
+                  <CategoryFilterSelect
+                    id="category-filter"
                     value={categoryFilter}
-                    onValueChange={(value) => setCategoryFilter(value)}
-                  >
-                    <SelectTrigger id="category-filter" className="w-40">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {categoryOptions.map((category) => (
-                        <SelectItem key={category.id} value={String(category.id)}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onValueChange={setCategoryFilter}
+                    sections={categoryFilterSections}
+                    productCountByCategoryId={productCountByCategoryId}
+                    totalProductCount={items.length}
+                    triggerClassName="w-40"
+                  />
                 </div>
               </div>
               {selectedCount > 0 ? (
@@ -861,6 +880,9 @@ export function Menu() {
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Available
                       </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Published
+                      </th>
                       <SortableHeader
                         label="Sort"
                         column="sort_order"
@@ -916,7 +938,11 @@ export function Menu() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {item.category_name ?? '—'}
+                          {formatProductCategoryCell(
+                            item.categoryIds,
+                            item.primaryCategoryId,
+                            categoryNameById,
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           ${Number(item.price).toFixed(2)}
@@ -933,6 +959,13 @@ export function Menu() {
                             variant={item.is_available ? 'default' : 'secondary'}
                           >
                             {item.is_available ? 'Yes' : 'No'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={item.is_published ? 'default' : 'secondary'}
+                          >
+                            {item.is_published ? 'Yes' : 'No'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -1052,20 +1085,22 @@ export function Menu() {
                 tabIndex={-1}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="menu-category">Category</Label>
-              <SearchableSelect
-                id="menu-category"
-                options={categorySelectOptions}
-                value={form.category_id != null ? String(form.category_id) : ''}
-                onValueChange={(value) =>
+            <div className="grid gap-2 md:col-span-2">
+              <ProductCategoriesFields
+                idPrefix="menu"
+                value={{
+                  categoryIds: form.categoryIds,
+                  primaryCategoryId: form.primaryCategoryId,
+                }}
+                sections={categoryFilterSections}
+                disabled={saving || imageUploadBusy}
+                onChange={({ categoryIds, primaryCategoryId }) =>
                   setForm((f) => ({
                     ...f,
-                    category_id: value ? Number(value) : null,
+                    categoryIds,
+                    primaryCategoryId,
                   }))
                 }
-                placeholder="Search categories…"
-                emptyOption={{ value: '', label: 'No category' }}
               />
             </div>
             <div className="grid gap-2 md:col-span-2">
@@ -1170,6 +1205,23 @@ export function Menu() {
                 }
               >
                 <SelectTrigger id="menu-available">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="menu-published">Published</Label>
+              <Select
+                value={form.is_published ? 'yes' : 'no'}
+                onValueChange={(value) =>
+                  setForm((f) => ({ ...f, is_published: value === 'yes' }))
+                }
+              >
+                <SelectTrigger id="menu-published">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

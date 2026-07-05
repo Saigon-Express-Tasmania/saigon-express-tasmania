@@ -18,6 +18,7 @@ import {
 import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   buildCategoryBarItems,
+  getActiveCategoryLabel,
   getCategoryNavVariantStyles,
   type CategoryNavVariant,
 } from "@/lib/category-bar";
@@ -26,23 +27,23 @@ import type { SiteCategory, SiteCategoryGroup } from "@/types";
 
 export type CategorySelectProps = {
   allLabel: string;
-  activeCategory: string;
-  onCategorySelect: (categoryName: string) => void;
+  activeCategoryId: number | null;
+  onCategorySelect: (categoryId: number | null) => void;
   categories: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
   label: string;
   placeholder: string;
   searchPlaceholder: string;
   emptyMessage: string;
-  getCategoryIcon: (categoryName: string) => string | null;
-  getCategoryIconFallback: (categoryName: string) => "all" | "category";
+  getCategoryIcon: (categoryId: number | null) => string | null;
+  getCategoryIconFallback: (categoryId: number | null) => "all" | "category";
   variant?: CategoryNavVariant;
   className?: string;
 };
 
 export default function CategorySelect({
   allLabel,
-  activeCategory,
+  activeCategoryId,
   onCategorySelect,
   categories,
   categoryGroups,
@@ -64,17 +65,22 @@ export default function CategorySelect({
     [categories, categoryGroups],
   );
 
-  const isAllActive = activeCategory === allLabel;
+  const activeCategoryLabel = getActiveCategoryLabel(
+    activeCategoryId,
+    allLabel,
+    categories,
+  );
+  const isAllActive = activeCategoryId == null;
 
-  const handleSelect = (categoryName: string) => {
-    onCategorySelect(categoryName);
+  const handleSelect = (categoryId: number | null) => {
+    onCategorySelect(categoryId);
     setOpen(false);
   };
 
-  const renderOptionIcon = (categoryName: string) => (
+  const renderOptionIcon = (categoryId: number | null) => (
     <CategoryIcon
-      icon={getCategoryIcon(categoryName)}
-      fallback={getCategoryIconFallback(categoryName)}
+      icon={getCategoryIcon(categoryId)}
+      fallback={getCategoryIconFallback(categoryId)}
       accent={variant === "brand"}
       className="size-5 shrink-0 text-base"
       fallbackClassName="size-3.5"
@@ -110,14 +116,14 @@ export default function CategorySelect({
               open && styles.triggerOpen,
             )}
           >
-            {renderOptionIcon(activeCategory)}
+            {renderOptionIcon(activeCategoryId)}
             <span
               className={cn(
                 "min-w-0 flex-1 truncate text-sm font-semibold",
                 styles.triggerText,
               )}
             >
-              {activeCategory || placeholder}
+              {activeCategoryLabel || placeholder}
             </span>
             <ChevronsUpDown
               className={cn("size-4 shrink-0", styles.triggerChevron)}
@@ -158,7 +164,7 @@ export default function CategorySelect({
 
               <CommandItem
                 value={allLabel}
-                onSelect={() => handleSelect(allLabel)}
+                onSelect={() => handleSelect(null)}
                 className={optionItemClass}
               >
                 <Check
@@ -168,19 +174,19 @@ export default function CategorySelect({
                     isAllActive ? "opacity-100" : "opacity-0",
                   )}
                 />
-                {renderOptionIcon(allLabel)}
+                {renderOptionIcon(null)}
                 <span className="truncate font-medium">{allLabel}</span>
               </CommandItem>
 
               {barItems.map((item) => {
                 if (item.kind === "orphan") {
-                  const categoryName = item.category.name;
-                  const selected = activeCategory === categoryName;
+                  const category = item.category;
+                  const selected = activeCategoryId === category.id;
                   return (
                     <CommandItem
-                      key={`orphan-${item.category.id}`}
-                      value={categoryName}
-                      onSelect={() => handleSelect(categoryName)}
+                      key={`orphan-${category.id}`}
+                      value={category.name}
+                      onSelect={() => handleSelect(category.id)}
                       className={optionItemClass}
                     >
                       <Check
@@ -190,8 +196,8 @@ export default function CategorySelect({
                           selected ? "opacity-100" : "opacity-0",
                         )}
                       />
-                      {renderOptionIcon(categoryName)}
-                      <span className="truncate">{categoryName}</span>
+                      {renderOptionIcon(category.id)}
+                      <span className="truncate">{category.name}</span>
                     </CommandItem>
                   );
                 }
@@ -211,12 +217,12 @@ export default function CategorySelect({
                     )}
                   >
                     {item.categories.map((category) => {
-                      const selected = activeCategory === category.name;
+                      const selected = activeCategoryId === category.id;
                       return (
                         <CommandItem
                           key={category.id}
                           value={`${item.name} ${category.name}`}
-                          onSelect={() => handleSelect(category.name)}
+                          onSelect={() => handleSelect(category.id)}
                           className={optionItemClass}
                         >
                           <Check
@@ -226,7 +232,7 @@ export default function CategorySelect({
                               selected ? "opacity-100" : "opacity-0",
                             )}
                           />
-                          {renderOptionIcon(category.name)}
+                          {renderOptionIcon(category.id)}
                           <span className="truncate">{category.name}</span>
                         </CommandItem>
                       );
