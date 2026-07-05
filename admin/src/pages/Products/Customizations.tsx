@@ -589,30 +589,32 @@ export function Customizations() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Input
                 placeholder="Search title, key, kind, or option labels…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="max-w-md"
+                className="w-full max-w-sm"
               />
-              <div className="flex items-center gap-2">
-                <Label htmlFor="customization-kind-filter" className="whitespace-nowrap">
-                  Channel
-                </Label>
-                <Select value={kindFilter} onValueChange={setKindFilter}>
-                  <SelectTrigger id="customization-kind-filter" className="w-40">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {CUSTOMIZATION_KINDS.map((kind) => (
-                      <SelectItem key={kind} value={kind}>
-                        {kindLabel(kind)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="customization-kind-filter" className="whitespace-nowrap">
+                    Channel
+                  </Label>
+                  <Select value={kindFilter} onValueChange={setKindFilter}>
+                    <SelectTrigger id="customization-kind-filter" className="w-40">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      {CUSTOMIZATION_KINDS.map((kind) => (
+                        <SelectItem key={kind} value={kind}>
+                          {kindLabel(kind)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

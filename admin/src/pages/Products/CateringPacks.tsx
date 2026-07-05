@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
+import { PublishedFilterSelect, matchesPublishedFilter, type PublishedFilterValue } from '@/components/PublishedFilterSelect';
 import { ImageUpload } from '@/components/ImageUpload';
 import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
 import {
@@ -93,6 +94,7 @@ import {
   Check,
   DollarSign,
   FilePenLine,
+  Globe,
   ImageIcon,
   Loader2,
   Package,
@@ -453,8 +455,10 @@ export function CateringPacks() {
 
   const [deleteTarget, setDeleteTarget] = useState<CateringPackRow | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [publishedFilter, setPublishedFilter] = useState<PublishedFilterValue>('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(null);
@@ -569,6 +573,9 @@ export function CateringPacks() {
           return false;
         }
       }
+      if (!matchesPublishedFilter(pack.is_published ?? false, publishedFilter)) {
+        return false;
+      }
       if (!term) return true;
       const categoryNames = pack.categoryIds
         .map((categoryId) => categoryNameById.get(categoryId) ?? '')
@@ -604,7 +611,7 @@ export function CateringPacks() {
       }
       return a.name.localeCompare(b.name) * direction;
     });
-  }, [packs, search, categoryFilter, sortColumn, sortDirection, categoryNameById]);
+  }, [packs, search, categoryFilter, publishedFilter, sortColumn, sortDirection, categoryNameById]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -969,6 +976,34 @@ export function CateringPacks() {
     }
   };
 
+  const handleBulkPublish = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setSaving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ is_published: true })
+        .in('id', ids)
+        .eq('product_type', 'catering');
+
+      if (updateError) throw updateError;
+      toast.success(
+        `Published ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}.`,
+      );
+      clearSelection();
+      setBulkPublishOpen(false);
+      await loadCateringPacks();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to publish catering items.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
@@ -1080,13 +1115,13 @@ export function CateringPacks() {
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-row flex-wrap items-center gap-3">
-                <Input
-                  placeholder="Search name, category, tag, note..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="min-w-[12rem] flex-1 max-w-sm"
-                />
+              <Input
+                placeholder="Search name, category, tag, note..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full max-w-sm"
+              />
+              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="pack-category-filter" className="whitespace-nowrap">
                     Category
@@ -1100,20 +1135,37 @@ export function CateringPacks() {
                     totalProductCount={packs.length}
                   />
                 </div>
+                <PublishedFilterSelect
+                  id="pack-published-filter"
+                  value={publishedFilter}
+                  onValueChange={setPublishedFilter}
+                />
+                {selectedCount > 0 ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setBulkPublishOpen(true)}
+                      disabled={saving}
+                    >
+                      <Globe className="size-4" />
+                      Publish {selectedCount}{' '}
+                      {selectedCount === 1 ? 'item' : 'items'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setBulkDeleteOpen(true)}
+                      disabled={saving}
+                    >
+                      <Trash2 className="size-4" />
+                      Delete {selectedCount}{' '}
+                      {selectedCount === 1 ? 'item' : 'items'}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
-              {selectedCount > 0 ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  className="shrink-0 self-end sm:self-auto"
-                  onClick={() => setBulkDeleteOpen(true)}
-                  disabled={saving}
-                >
-                  <Trash2 className="size-4" />
-                  Delete {selectedCount} {selectedCount === 1 ? 'item' : 'items'}
-                </Button>
-              ) : null}
             </div>
 
             {loading ? (
@@ -1881,6 +1933,36 @@ export function CateringPacks() {
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkPublishOpen}
+        onOpenChange={(open) => !open && setBulkPublishOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Publish {selectedCount} catering {selectedCount === 1 ? 'item' : 'items'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will set {selectedCount} catering{' '}
+              {selectedCount === 1 ? 'item' : 'items'} to published and make{' '}
+              {selectedCount === 1 ? 'it' : 'them'} visible on the storefront.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleBulkPublish();
+              }}
+            >
+              Publish
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

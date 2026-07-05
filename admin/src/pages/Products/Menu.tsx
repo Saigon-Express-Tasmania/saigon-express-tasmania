@@ -1,4 +1,5 @@
 import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
+import { PublishedFilterSelect, matchesPublishedFilter, type PublishedFilterValue } from '@/components/PublishedFilterSelect';
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
@@ -86,6 +87,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Globe,
   ImageIcon,
   Loader2,
   Pencil,
@@ -243,8 +245,10 @@ export function Menu() {
 
   const [deleteTarget, setDeleteTarget] = useState<MenuItemRow | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [publishedFilter, setPublishedFilter] = useState<PublishedFilterValue>('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('sort_order');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(null);
@@ -342,6 +346,9 @@ export function Menu() {
           return false;
         }
       }
+      if (!matchesPublishedFilter(item.is_published ?? false, publishedFilter)) {
+        return false;
+      }
       if (!term) return true;
       const categoryNames = item.categoryIds
         .map((categoryId) => categoryNameById.get(categoryId) ?? '')
@@ -366,7 +373,7 @@ export function Menu() {
       }
       return (a.name ?? '').localeCompare(b.name ?? '') * direction;
     });
-  }, [items, search, categoryFilter, sortColumn, sortDirection, categoryNameById]);
+  }, [items, search, categoryFilter, publishedFilter, sortColumn, sortDirection, categoryNameById]);
 
   const {
     selectedIds,
@@ -706,6 +713,34 @@ export function Menu() {
     }
   };
 
+  const handleBulkPublish = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setSaving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ is_published: true })
+        .in('id', ids)
+        .eq('product_type', 'alacarte');
+
+      if (updateError) throw updateError;
+      toast.success(
+        `Published ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}.`,
+      );
+      clearSelection();
+      setBulkPublishOpen(false);
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to publish menu items.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
@@ -788,14 +823,14 @@ export function Menu() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <Input
-                  placeholder="Search by name, description or category…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="max-w-sm"
-                />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                placeholder="Search by name, description or category…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full max-w-sm"
+              />
+              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="category-filter" className="whitespace-nowrap">
                     Category
@@ -810,20 +845,37 @@ export function Menu() {
                     triggerClassName="w-40"
                   />
                 </div>
+                <PublishedFilterSelect
+                  id="menu-published-filter"
+                  value={publishedFilter}
+                  onValueChange={setPublishedFilter}
+                />
+                {selectedCount > 0 ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setBulkPublishOpen(true)}
+                      disabled={saving}
+                    >
+                      <Globe className="size-4" />
+                      Publish {selectedCount}{' '}
+                      {selectedCount === 1 ? 'item' : 'items'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setBulkDeleteOpen(true)}
+                      disabled={saving}
+                    >
+                      <Trash2 className="size-4" />
+                      Delete {selectedCount}{' '}
+                      {selectedCount === 1 ? 'item' : 'items'}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
-              {selectedCount > 0 ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  className="shrink-0 self-end sm:self-auto"
-                  onClick={() => setBulkDeleteOpen(true)}
-                  disabled={saving}
-                >
-                  <Trash2 className="size-4" />
-                  Delete {selectedCount} {selectedCount === 1 ? 'item' : 'items'}
-                </Button>
-              ) : null}
             </div>
 
             {loading ? (
@@ -1334,6 +1386,36 @@ export function Menu() {
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkPublishOpen}
+        onOpenChange={(open) => !open && setBulkPublishOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Publish {selectedCount} menu {selectedCount === 1 ? 'item' : 'items'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will set {selectedCount} menu{' '}
+              {selectedCount === 1 ? 'item' : 'items'} to published and make{' '}
+              {selectedCount === 1 ? 'it' : 'them'} visible on the storefront.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleBulkPublish();
+              }}
+            >
+              Publish
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

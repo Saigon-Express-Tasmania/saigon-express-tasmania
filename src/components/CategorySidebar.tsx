@@ -26,6 +26,7 @@ import { LayoutGrid } from "lucide-react";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -165,14 +166,30 @@ export default function CategorySidebar({
     [categories, categoryGroups],
   );
 
-  const orphanItems = barItems.filter((item) => item.kind === "orphan");
-  const groupItems = barItems.filter((item) => item.kind === "group");
+  const orphanItems = useMemo(
+    () => barItems.filter((item) => item.kind === "orphan"),
+    [barItems],
+  );
+  const groupItems = useMemo(
+    () =>
+      barItems.filter(
+        (item): item is Extract<typeof item, { kind: "group" }> =>
+          item.kind === "group",
+      ),
+    [barItems],
+  );
 
   const [openGroup, setOpenGroup] = useState<string | undefined>(() =>
     getDefaultOpenGroupId(groupItems, activeCategoryId),
   );
 
+  const prevActiveCategoryIdRef = useRef(activeCategoryId);
+
   useEffect(() => {
+    const categoryChanged = prevActiveCategoryIdRef.current !== activeCategoryId;
+    prevActiveCategoryIdRef.current = activeCategoryId;
+
+    if (!categoryChanged) return;
     if (activeCategoryId == null) return;
 
     const activeGroup = groupItems.find((item) =>
@@ -180,8 +197,17 @@ export default function CategorySidebar({
     );
     if (!activeGroup) return;
 
-    const groupKey = `group-${activeGroup.id}`;
-    setOpenGroup((current) => (current === groupKey ? current : groupKey));
+    setOpenGroup(`group-${activeGroup.id}`);
+  }, [activeCategoryId, groupItems]);
+
+  useEffect(() => {
+    if (activeCategoryId == null || groupItems.length === 0) return;
+
+    setOpenGroup((current) => {
+      if (current != null) return current;
+
+      return getDefaultOpenGroupId(groupItems, activeCategoryId);
+    });
   }, [activeCategoryId, groupItems]);
 
   const isAllActive = activeCategoryId == null;

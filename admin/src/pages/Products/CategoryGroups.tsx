@@ -624,28 +624,30 @@ export function CategoryGroups() {
                 placeholder="Search kind, alias, name, description or image URL…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="max-w-sm"
+                className="w-full max-w-sm"
               />
-              <div className="flex items-center gap-2">
-                <Label htmlFor="group-kind-filter" className="whitespace-nowrap">
-                  Kind
-                </Label>
-                <Select
-                  value={kindFilter}
-                  onValueChange={(value) => setKindFilter(value)}
-                >
-                  <SelectTrigger id="group-kind-filter" className="w-40">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {CATEGORY_KINDS.map((kind) => (
-                      <SelectItem key={kind} value={kind}>
-                        {kind}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="group-kind-filter" className="whitespace-nowrap">
+                    Kind
+                  </Label>
+                  <Select
+                    value={kindFilter}
+                    onValueChange={(value) => setKindFilter(value)}
+                  >
+                    <SelectTrigger id="group-kind-filter" className="w-40">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      {CATEGORY_KINDS.map((kind) => (
+                        <SelectItem key={kind} value={kind}>
+                          {kind}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
