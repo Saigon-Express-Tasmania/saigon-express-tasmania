@@ -910,7 +910,7 @@ export default function Catering({
                 </div>
 
                 <div className="min-w-0 flex-1 w-full mx-auto px-6">
-                  <div className="relative mb-8 max-w-xl">
+                  <div className="relative mt-8 mb-8 max-w-xl">
                     <svg
                       className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-dark/40"
                       fill="none"

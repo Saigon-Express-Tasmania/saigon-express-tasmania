@@ -41,7 +41,7 @@ export const CATEGORY_SIDEBAR_COLUMN_CLASS = cn(
 );
 
 export const CATEGORY_SIDEBAR_ASIDE_CLASS =
-  "sticky top-16 z-30 w-full overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]";
+  "sticky top-16 z-30 w-full max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-gutter:stable]";
 
 const CATEGORY_SIDEBAR_LABEL_CLASS = "min-w-0 flex-1 truncate";
 

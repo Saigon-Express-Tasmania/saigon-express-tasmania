@@ -262,7 +262,7 @@ export function getCategorySidebarShellClass(
   //   return "border-r border-border bg-gradient-to-b from-background via-background to-muted/25 px-3 py-3 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.08)]";
   // }
 
-  return "border-r border-gray-100/90 bg-gradient-to-b from-white via-white to-brand-cream/50 px-3 py-3 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.1)] h-screen overflow-hidden";
+  return "border-r border-gray-100/90 bg-gradient-to-b from-white via-white to-brand-cream/50 px-3 py-3 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.1)]";
 }
 
 export type CategoryNavVariant = "brand" | "member" | "wholesale";

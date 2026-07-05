@@ -11,10 +11,12 @@ import {
 } from "cmdk";
 import { Check, ChevronsUpDown } from "lucide-react";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   buildCategoryBarItems,
@@ -102,8 +104,8 @@ export default function CategorySelect({
       >
         {label}
       </span>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <Drawer open={open} onOpenChange={setOpen} shouldScaleBackground>
+        <DrawerTrigger asChild>
           <button
             type="button"
             role="combobox"
@@ -129,20 +131,20 @@ export default function CategorySelect({
               className={cn("size-4 shrink-0", styles.triggerChevron)}
             />
           </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="z-50 w-[var(--radix-popover-trigger-width)] border-gray-200 bg-white p-0 shadow-xl"
-        >
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[75dvh]">
+          <DrawerHeader className="pb-2">
+            <DrawerTitle>{label}</DrawerTitle>
+          </DrawerHeader>
           <Command
             id={listboxId}
-            className="bg-white"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
             filter={(value, query) => {
               const haystack = value.toLowerCase();
               return haystack.includes(query.trim().toLowerCase()) ? 1 : 0;
             }}
           >
-            <div className="border-b border-gray-100 px-3 py-2.5">
+            <div className="border-b border-gray-100 px-1 py-2.5">
               <CommandInput
                 placeholder={searchPlaceholder}
                 className={cn(
@@ -152,7 +154,7 @@ export default function CategorySelect({
                 )}
               />
             </div>
-            <CommandList className="max-h-72 overflow-y-auto p-1.5">
+            <CommandList className="min-h-0 flex-1 overflow-y-auto p-1.5">
               <CommandEmpty
                 className={cn(
                   "px-3 py-8 text-center text-sm",
@@ -242,8 +244,8 @@ export default function CategorySelect({
               })}
             </CommandList>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
