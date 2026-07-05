@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 /**
- * Scrape Catering Project product pages from a products.json listing.
+ * Scrape Catering Project product pages from category products.json listings.
  *
- * Default behavior: scrape mirrored markdown/html plus page images.
+ * Default behavior: scan refs/cateringproject/htmls/* for category folders that
+ * contain a products.json file, then scrape mirrored markdown/html plus page
+ * images for each product listed in each folder.
  * Optional behavior: generate metadata.json from the mirrored markdown.
  *
  * Usage:
  *   node scripts/scrape-cateringproject-product-pages.mjs
  *   node scripts/scrape-cateringproject-product-pages.mjs --with-metadata
  *   node scripts/scrape-cateringproject-product-pages.mjs --metadata-only
- *   node scripts/scrape-cateringproject-product-pages.mjs --slugs=sweet-croissant-platter,protein-ball-platter
+ *   node scripts/scrape-cateringproject-product-pages.mjs --category-slugs=morning-tea-savoury,breakfast-sweet
  *   node scripts/scrape-cateringproject-product-pages.mjs --limit=5 --skip-existing
- *   node scripts/scrape-cateringproject-product-pages.mjs --products refs/cateringproject/htmls/morning-tea-sweet/products.json
- *   node scripts/scrape-cateringproject-product-pages.mjs --out refs/cateringproject/htmls/morning-tea-sweet/product-htmls
+ *   node scripts/scrape-cateringproject-product-pages.mjs --products refs/cateringproject/htmls/morning-tea-sweet/products.json --out refs/cateringproject/htmls/morning-tea-sweet/product-htmls
  */
 
 import fs from "node:fs";
@@ -21,22 +22,22 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const DEFAULT_PRODUCTS_PATH = path.join(
-  root,
-  "refs/cateringproject/htmls/morning-tea-sweet/products.json",
-);
-const DEFAULT_OUTPUT_ROOT = path.join(
-  root,
-  "refs/cateringproject/htmls/morning-tea-sweet/product-htmls",
-);
+const DEFAULT_HTML_ROOT = path.join(root, "refs/cateringproject/htmls");
+const DEFAULT_CATEGORIES_PATH = path.join(root, "refs/cateringproject/categories.json");
 const DEFAULT_COLLECTION_URL =
   "https://www.cateringproject.com.au/morning-tea-sweet";
 
 const args = process.argv.slice(2);
 const options = parseArgs(args);
 
-const productsPath = path.resolve(root, options.productsPath);
-const outputRoot = path.resolve(root, options.outputRoot);
+const productsPath = options.productsPath
+  ? path.resolve(root, options.productsPath)
+  : null;
+const outputRoot = options.outputRoot
+  ? path.resolve(root, options.outputRoot)
+  : null;
+const htmlRoot = path.resolve(root, options.htmlRoot);
+const categoriesPath = path.resolve(root, options.categoriesPath);
 const mode = options.metadataOnly
   ? "metadata"
   : options.withMetadata
@@ -59,33 +60,73 @@ main().catch((error) => {
 });
 
 async function main() {
-  const productsPayload = readJson(productsPath);
-  const allProducts = Array.isArray(productsPayload.products)
-    ? productsPayload.products
-    : [];
-  const products = filterProducts(allProducts, options);
+  const categoryLinkMap = buildCategoryLinkMap(readJson(categoriesPath));
+  const jobs = buildJobs({ categoryLinkMap });
 
-  fs.mkdirSync(outputRoot, { recursive: true });
-
-  if (mode === "scrape" || mode === "all") {
-    await runScrape(products);
+  if (!jobs.length) {
+    console.log("No category products.json files matched the current filters.");
+    return;
   }
 
-  if (mode === "metadata" || mode === "all") {
-    runMetadata(products, productsPayload);
+  const batchSummary = {
+    generated_at: new Date().toISOString(),
+    mode,
+    categories_path: categoriesPath,
+    html_root: htmlRoot,
+    jobs: [],
+  };
+
+  for (const job of jobs) {
+    fs.mkdirSync(job.outputRoot, { recursive: true });
+
+    if (mode === "scrape" || mode === "all") {
+      const scrapeSummary = await runScrape(job);
+      batchSummary.jobs.push({
+        category_slug: job.categorySlug,
+        products_path: job.productsPath,
+        output_root: job.outputRoot,
+        scrape_summary: scrapeSummary,
+      });
+    }
+
+    if (mode === "metadata" || mode === "all") {
+      const metadataSummary = runMetadata(job);
+      const existing = batchSummary.jobs.find(
+        (entry) => entry.category_slug === job.categorySlug,
+      );
+      if (existing) {
+        existing.metadata_summary = metadataSummary;
+      } else {
+        batchSummary.jobs.push({
+          category_slug: job.categorySlug,
+          products_path: job.productsPath,
+          output_root: job.outputRoot,
+          metadata_summary: metadataSummary,
+        });
+      }
+    }
   }
+
+  fs.writeFileSync(
+    path.join(htmlRoot, "_product-page-batch-summary.json"),
+    `${JSON.stringify(batchSummary, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 function parseArgs(inputArgs) {
   const result = {
-    productsPath: relativizeToRoot(DEFAULT_PRODUCTS_PATH),
-    outputRoot: relativizeToRoot(DEFAULT_OUTPUT_ROOT),
+    productsPath: null,
+    outputRoot: null,
+    htmlRoot: relativizeToRoot(DEFAULT_HTML_ROOT),
+    categoriesPath: relativizeToRoot(DEFAULT_CATEGORIES_PATH),
     withMetadata: false,
     metadataOnly: false,
     skipExisting: false,
     force: false,
     limit: null,
     slugs: null,
+    categorySlugs: null,
   };
 
   for (const arg of inputArgs) {
@@ -97,6 +138,10 @@ function parseArgs(inputArgs) {
       result.productsPath = arg.slice("--products=".length);
     } else if (arg.startsWith("--out=")) {
       result.outputRoot = arg.slice("--out=".length);
+    } else if (arg.startsWith("--html-root=")) {
+      result.htmlRoot = arg.slice("--html-root=".length);
+    } else if (arg.startsWith("--categories=")) {
+      result.categoriesPath = arg.slice("--categories=".length);
     } else if (arg.startsWith("--limit=")) {
       const value = Number(arg.slice("--limit=".length));
       result.limit = Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
@@ -107,6 +152,13 @@ function parseArgs(inputArgs) {
         .map((item) => item.trim())
         .filter(Boolean);
       result.slugs = values.length ? new Set(values) : null;
+    } else if (arg.startsWith("--category-slugs=")) {
+      const values = arg
+        .slice("--category-slugs=".length)
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      result.categorySlugs = values.length ? new Set(values) : null;
     }
   }
 
@@ -134,20 +186,99 @@ function filterProducts(allProducts, currentOptions) {
   return products;
 }
 
-async function runScrape(products) {
+function buildCategoryLinkMap(categoryGroups) {
+  const map = new Map();
+
+  for (const group of Array.isArray(categoryGroups) ? categoryGroups : []) {
+    for (const category of Array.isArray(group.categories) ? group.categories : []) {
+      if (!category?.slug) continue;
+      map.set(category.slug, {
+        categoryGroup: group.categoryGroup ?? "",
+        categoryName: category.name ?? category.slug,
+        link: category.link ?? null,
+      });
+    }
+  }
+
+  return map;
+}
+
+function buildJobs({ categoryLinkMap }) {
+  if (productsPath) {
+    const productsPayload = readJson(productsPath);
+    const allProducts = Array.isArray(productsPayload.products)
+      ? productsPayload.products
+      : [];
+    const products = filterProducts(allProducts, options);
+    const categorySlug = path.basename(path.dirname(productsPath));
+    const categoryMeta = categoryLinkMap.get(categorySlug) ?? null;
+
+    return [
+      {
+        categorySlug,
+        collectionUrl: categoryMeta?.link ?? DEFAULT_COLLECTION_URL,
+        productsPath,
+        outputRoot:
+          outputRoot ?? path.join(path.dirname(productsPath), "product-htmls"),
+        productsPayload,
+        products,
+      },
+    ];
+  }
+
+  const directories = fs
+    .readdirSync(htmlRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => !name.startsWith(".") && name !== "product-htmls")
+    .sort((a, b) => a.localeCompare(b));
+
+  const jobs = [];
+  for (const categorySlug of directories) {
+    if (options.categorySlugs && !options.categorySlugs.has(categorySlug)) {
+      continue;
+    }
+
+    const categoryProductsPath = path.join(htmlRoot, categorySlug, "products.json");
+    if (!fs.existsSync(categoryProductsPath)) continue;
+
+    const productsPayload = readJson(categoryProductsPath);
+    const allProducts = Array.isArray(productsPayload.products)
+      ? productsPayload.products
+      : [];
+    const products = filterProducts(allProducts, options);
+    const categoryMeta = categoryLinkMap.get(categorySlug) ?? null;
+
+    jobs.push({
+      categorySlug,
+      collectionUrl: categoryMeta?.link ?? DEFAULT_COLLECTION_URL,
+      productsPath: categoryProductsPath,
+      outputRoot: path.join(htmlRoot, categorySlug, "product-htmls"),
+      productsPayload,
+      products,
+    });
+  }
+
+  return jobs;
+}
+
+async function runScrape(job) {
+  const { categorySlug, products, productsPath: jobProductsPath, outputRoot: jobOutputRoot } =
+    job;
   const summary = {
     generated_at: new Date().toISOString(),
     mode: "scrape",
-    products_path: productsPath,
-    output_root: outputRoot,
+    category_slug: categorySlug,
+    products_path: jobProductsPath,
+    output_root: jobOutputRoot,
     count: products.length,
     products: [],
   };
 
-  console.log(`Scraping ${products.length} product pages...`);
+  console.log(`Scraping ${products.length} product pages for ${categorySlug}...`);
 
   for (const [index, product] of products.entries()) {
-    const folder = path.join(outputRoot, product.slug);
+    const folder = path.join(jobOutputRoot, product.slug);
     const assetsDir = path.join(folder, "assets");
     fs.mkdirSync(assetsDir, { recursive: true });
 
@@ -246,18 +377,28 @@ async function runScrape(products) {
   }
 
   fs.writeFileSync(
-    path.join(outputRoot, "_scrape-summary.json"),
+    path.join(jobOutputRoot, "_scrape-summary.json"),
     `${JSON.stringify(summary, null, 2)}\n`,
     "utf8",
   );
+  return summary;
 }
 
-function runMetadata(products, productsPayload) {
+function runMetadata(job) {
+  const {
+    categorySlug,
+    products,
+    productsPayload,
+    productsPath: jobProductsPath,
+    outputRoot: jobOutputRoot,
+    collectionUrl,
+  } = job;
   const summary = {
     generated_at: new Date().toISOString(),
     mode: "metadata",
-    products_path: productsPath,
-    output_root: outputRoot,
+    category_slug: categorySlug,
+    products_path: jobProductsPath,
+    output_root: jobOutputRoot,
     count: products.length,
     category_group: productsPayload.category_group ?? null,
     category: productsPayload.category ?? null,
@@ -267,7 +408,7 @@ function runMetadata(products, productsPayload) {
   console.log(`Generating metadata for ${products.length} product pages...`);
 
   for (const [index, product] of products.entries()) {
-    const folder = path.join(outputRoot, product.slug);
+    const folder = path.join(jobOutputRoot, product.slug);
     const mdPath = path.join(folder, `${product.slug}.jina.md`);
     const assetsManifestPath = path.join(folder, "assets.tsv");
     const metadataPath = path.join(folder, "metadata.json");
@@ -286,7 +427,13 @@ function runMetadata(products, productsPayload) {
     }
 
     const mdText = fs.readFileSync(mdPath, "utf8");
-    const metadata = buildMetadata(product, mdText, folder, assetsManifestPath);
+    const metadata = buildMetadata(
+      product,
+      mdText,
+      folder,
+      assetsManifestPath,
+      collectionUrl,
+    );
     fs.writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 
     summary.products.push({
@@ -302,13 +449,20 @@ function runMetadata(products, productsPayload) {
   }
 
   fs.writeFileSync(
-    path.join(outputRoot, "_metadata-summary.json"),
+    path.join(jobOutputRoot, "_metadata-summary.json"),
     `${JSON.stringify(summary, null, 2)}\n`,
     "utf8",
   );
+  return summary;
 }
 
-function buildMetadata(product, mdText, localFolder, assetsManifestPath) {
+function buildMetadata(
+  product,
+  mdText,
+  localFolder,
+  assetsManifestPath,
+  collectionUrl,
+) {
   const lines = mdText.split(/\r?\n/);
   const pageImages = extractImageEntries(mdText);
   const detailImages = extractDetailImages(lines);
@@ -379,7 +533,7 @@ function buildMetadata(product, mdText, localFolder, assetsManifestPath) {
       url: product.url,
       mirrored_url: mirrorUrl(product.url),
       vendor: "Catering Project",
-      collection: DEFAULT_COLLECTION_URL,
+      collection: collectionUrl ?? DEFAULT_COLLECTION_URL,
       category_group: product.category_group ?? "Morning Tea",
       category: product.category ?? "Sweet",
       slug: product.slug,

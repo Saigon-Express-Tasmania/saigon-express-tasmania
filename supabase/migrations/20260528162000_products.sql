@@ -13,6 +13,7 @@ create table public.products (
 
   name text not null,
   category text not null default '',
+  category_id bigint references public.categories (id) on delete set null,
   description text not null default '',  
   is_available boolean not null default true,
   sort_order integer not null default 0,
@@ -74,6 +75,10 @@ comment on table public.products is
   'Unified product catalogue. Rows are distinguished by product_type: alacarte, wholesale, or catering.';
 comment on column public.products.product_type is
   'Product channel: alacarte (menu), wholesale, or catering.';
+comment on column public.products.category is
+  'Legacy category label (text). Prefer category_id; retained for transition and display fallbacks.';
+comment on column public.products.category_id is
+  'FK to public.categories. Preferred category link; legacy products.category text is retained for transition.';
 comment on column public.products.price is
   'Display price for alacarte/catering (text, may include currency symbols).';
 comment on column public.products.unit_price is
@@ -104,6 +109,9 @@ create index products_type_available_sort_idx
 
 create index products_type_available_category_idx
   on public.products (product_type, is_available, category, id);
+
+create index products_category_id_idx
+  on public.products (category_id);
 
 create index products_alacarte_slug_idx
   on public.products (slug)
@@ -11804,4 +11812,22 @@ on conflict (id) do update set
   note = excluded.note,
   image_url = excluded.image_url,
   updated_at = now();
+
+-- Backfill category_id from legacy products.category text matched to categories.name.
+update public.products p
+set category_id = c.id
+from public.categories c
+where trim(p.category) <> ''
+  and (
+    (p.product_type = 'alacarte'::public.product_type and c.kind = 'menu'::public.category_kind)
+    or (p.product_type = 'wholesale'::public.product_type and c.kind = 'wholesale'::public.category_kind)
+    or (p.product_type = 'catering'::public.product_type and c.kind = 'catering'::public.category_kind)
+  )
+  and (
+    trim(p.category) = c.name
+    or trim(p.category) = c.alias
+    or regexp_replace(trim(p.category), '[''’]', '''', 'g')
+      = regexp_replace(c.name, '[''’]', '''', 'g')
+  );
+
 -- END products seed

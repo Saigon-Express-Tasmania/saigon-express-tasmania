@@ -274,6 +274,20 @@ on conflict (alias) do update set
   "imageUrl" = excluded."imageUrl",
   addon = excluded.addon;
 
+-- Wholesale categories (grouping for wholesale product catalogue rows).
+insert into public.categories (kind, alias, name)
+values
+  ('wholesale'::public.category_kind, 'dough', 'Dough'),
+  ('wholesale'::public.category_kind, 'dried-foods', 'Dried Foods'),
+  ('wholesale'::public.category_kind, 'equipment', 'Equipment'),
+  ('wholesale'::public.category_kind, 'fresh-food', 'Fresh Food'),
+  ('wholesale'::public.category_kind, 'frozen-food', 'Frozen Food'),
+  ('wholesale'::public.category_kind, 'frozen-marinated-meat', 'Frozen Marinated Meat'),
+  ('wholesale'::public.category_kind, 'packaging', 'Packaging'),
+  ('wholesale'::public.category_kind, 'sauce', 'Sauce')
+on conflict (alias) do update set
+  kind = excluded.kind,
+  name = excluded.name;
 
 -- RLS and grants for category_groups (table created in 20260528110000_categories.sql).
 
