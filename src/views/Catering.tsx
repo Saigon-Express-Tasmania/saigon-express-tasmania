@@ -2,7 +2,6 @@
 
 import Link from "@/components/link";
 import CateringPackOrderButton from "@/components/CateringPackOrderButton";
-import CateringProductHtml from "@/components/CateringProductHtml";
 import LazyImage from "@/components/LazyImage";
 import CateringTierSelect from "@/components/CateringTierSelect";
 import {
@@ -1043,10 +1042,9 @@ export default function Catering({
                           </p>
                         )}
                         {item.note ? (
-                          <CateringProductHtml
-                            html={item.note}
-                            className="mb-2 text-xs italic text-brand-dark/50"
-                          />
+                          <p className="mb-2 text-xs italic text-brand-dark/50 line-clamp-4 leading-relaxed">
+                            {item.note}
+                          </p>
                         ) : null}
                         {item.includes.length > 0 && (
                           <ul className="space-y-1 mb-4">
