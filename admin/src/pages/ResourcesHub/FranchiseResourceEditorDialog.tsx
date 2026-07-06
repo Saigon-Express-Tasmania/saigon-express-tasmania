@@ -1,5 +1,6 @@
 import { BlogPostAssetReferencesPanel } from '@/components/BlogPostAssetReferencesPanel';
 import { SearchableSelect } from '@/components/SearchableSelect';
+import { TaxonomyGroupedCategorySelect } from '@/components/TaxonomyGroupedCategorySelect';
 import { FileDropzone } from '@/components/FileDropzone';
 import { HtmlRichTextEditor } from '@/components/HtmlRichTextEditor';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -381,20 +382,22 @@ export function FranchiseResourceEditorDialog({
       ? 0
       : form.attached_files.length + (form.content_file ? 1 : 0);
 
-  const categoryOptions = useMemo(
+  const categoryFilterOptions = useMemo(
     () =>
       taxonomyByKind.category.map((option) => ({
-        value: String(option.id),
+        id: option.id,
         label: option.label,
+        sortOrder: option.sort_order,
       })),
     [taxonomyByKind.category],
   );
 
-  const folderOptions = useMemo(
+  const folderFilterOptions = useMemo(
     () =>
       taxonomyByKind.folder.map((option) => ({
-        value: String(option.id),
+        id: option.id,
         label: option.label,
+        sortOrder: option.sort_order,
       })),
     [taxonomyByKind.folder],
   );
@@ -853,7 +856,7 @@ export function FranchiseResourceEditorDialog({
                   {isDocument ? (
                     <>
                       <ResourceFormField label="Category">
-                        <SearchableSelect
+                        <TaxonomyGroupedCategorySelect
                           id={`${idPrefix}-category`}
                           value={form.category_id}
                           onValueChange={(value) =>
@@ -862,7 +865,7 @@ export function FranchiseResourceEditorDialog({
                               category_id: value,
                             }))
                           }
-                          options={categoryOptions}
+                          taxonomies={categoryFilterOptions}
                           placeholder="Search categories…"
                           disabled={saving}
                         />
@@ -901,7 +904,7 @@ export function FranchiseResourceEditorDialog({
                   {isAnnouncement ? (
                     <>
                       <ResourceFormField label="Folder">
-                        <SearchableSelect
+                        <TaxonomyGroupedCategorySelect
                           id={`${idPrefix}-folder`}
                           value={form.category_id}
                           onValueChange={(value) =>
@@ -910,7 +913,7 @@ export function FranchiseResourceEditorDialog({
                               category_id: value,
                             }))
                           }
-                          options={folderOptions}
+                          taxonomies={folderFilterOptions}
                           placeholder="Search folders…"
                           disabled={saving}
                         />
@@ -1174,7 +1177,7 @@ export function FranchiseResourceEditorDialog({
                     >
                       {!hiddenEditorTaxonomyKinds.has('category') ? (
                       <ResourceFormField label="Category">
-                        <SearchableSelect
+                        <TaxonomyGroupedCategorySelect
                           id={`${idPrefix}-category`}
                           value={form.category_id}
                           onValueChange={(value) =>
@@ -1183,7 +1186,7 @@ export function FranchiseResourceEditorDialog({
                               category_id: value,
                             }))
                           }
-                          options={categoryOptions}
+                          taxonomies={categoryFilterOptions}
                           placeholder="Search categories…"
                           disabled={saving}
                         />
@@ -1248,7 +1251,7 @@ export function FranchiseResourceEditorDialog({
                     label="Category"
                     className="md:col-span-2 xl:col-span-3"
                   >
-                    <SearchableSelect
+                    <TaxonomyGroupedCategorySelect
                       id={`${idPrefix}-category`}
                       value={form.category_id}
                       onValueChange={(value) =>
@@ -1257,7 +1260,7 @@ export function FranchiseResourceEditorDialog({
                           category_id: value,
                         }))
                       }
-                      options={categoryOptions}
+                      taxonomies={categoryFilterOptions}
                       placeholder="Search categories…"
                       disabled={saving}
                     />

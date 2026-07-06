@@ -393,7 +393,7 @@ export default function WholesaleLandingShop({
             {filtered.map((p, i) => {
               const img = pickWholesaleImageUrl(
                 p.imageUrls,
-                [256, 512, 1024, 1448],
+                [512, 1024, 1448],
               );
               const gradientClass =
                 categoryStyleMap[p.category] ?? "from-gray-800 to-gray-600";

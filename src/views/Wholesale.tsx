@@ -270,11 +270,11 @@ export default function Wholesale({
               {t("pricingHeading.desc")}
             </p>
           </div>
-          <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="flex flex-wrap justify-center gap-3">
             {pricingTiers.map((tier) => (
               <div
                 key={tier.id}
-                className={`p-5 text-center relative ${tier.popular ? "bg-brand-red" : "bg-white/5 border border-white/10"}`}
+                className={`relative flex w-full flex-[1_1_100%] flex-col items-center justify-center p-5 text-center sm:flex-[0_1_calc(33.333%-0.5rem)] lg:flex-[0_1_calc(20%-0.6rem)] ${tier.popular ? "bg-brand-red" : "bg-white/5 border border-white/10"}`}
               >
                 {tier.popular && (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-brand-amber text-brand-dark text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest whitespace-nowrap">

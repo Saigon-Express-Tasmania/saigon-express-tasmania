@@ -1022,7 +1022,7 @@ export default function FranchisePage() {
               >
                 <div className="absolute inset-0 bg-brand-dark/10 group-hover:bg-transparent transition-colors duration-500 z-10" />
                 <AppImage
-                  src="/manus-storage/IMG_43782_5753892a.jpg"
+                  src="/manus-storage/franchise-hero-2.png"
                   alt="Saigon Express opens new store"
                   fill
                   className="object-cover transition-transform duration-700 group-hover:scale-105"

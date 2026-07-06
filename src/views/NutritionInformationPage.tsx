@@ -1,6 +1,7 @@
 import AllergenKeyBadge from "@/components/nutrition/AllergenKeyBadge";
 import DietGuideCard from "@/components/nutrition/DietGuideCard";
 import NutritionDishFinder from "@/components/nutrition/NutritionDishFinder";
+import NutritionFaqSection from "@/components/nutrition/NutritionFaqSection";
 import {
   nutritionAllergenKeyItems,
   nutritionDietGuideCards,
@@ -236,6 +237,8 @@ export default function NutritionInformationPage({
           </div>
         </div>
       </section>
+
+      <NutritionFaqSection />
     </div>
   );
 }

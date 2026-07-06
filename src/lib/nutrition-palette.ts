@@ -148,3 +148,53 @@ export const nutritionDietGuideCards = [
 
 export const nutritionCardHover =
   "hover:-translate-y-1.5 hover:shadow-[0_18px_40px_rgba(200,16,46,0.22)]";
+
+export const nutritionFaqItems = [
+  {
+    question: "What vegetarian and vegan options do you have?",
+    answer:
+      "Plenty. Our menu has 51 vegetarian and 18 vegan dishes — think crispy tofu rice-paper rolls, veggie & tofu phở, fresh bún salads, tofu banh mi, stir-fried vegetables and more. For a fully vegan meal, just ask us to leave out egg mayo, fish sauce and dairy. Use the live finder above to see every option.",
+  },
+  {
+    question:
+      "Do your dishes contain common allergens like nuts, gluten or dairy?",
+    answer:
+      "Some do. Our dishes may contain gluten, tree nuts/peanuts, dairy, egg, soy, fish, shellfish and sesame. Each dish is listed with its allergens in our Dietary & Allergen Guide and in the live finder — filter by the allergen you need to avoid. Please always tell our staff about your allergies before ordering.",
+  },
+  {
+    question: "Can I get a gluten-free meal?",
+    answer:
+      "Many dishes — such as rice-paper rolls, phở and rice plates — are naturally lower in gluten. However, our kitchen handles wheat and gluten products, so we can't guarantee a dish is completely gluten-free. Let our team know about your sensitivity and we'll help you choose the safest option.",
+  },
+  {
+    question: "Which store offers Halal-suitable dishes?",
+    answer:
+      "Halal-suitable options are available at our Sandy Bay store only. These dishes are prepared without pork or pâté, using chicken, beef, duck, prawn and tofu. Please note our kitchen is not Halal-certified — confirm availability and preparation with staff when you order.",
+    highlight: "Sandy Bay store only",
+  },
+  {
+    question: "Do your meals contain MSG?",
+    answer:
+      "We focus on fresh ingredients, aromatics and traditional Vietnamese seasonings for flavour. Some dishes may contain a small amount of MSG. If you'd prefer your meal without added MSG, let us know when ordering and we'll do our best to accommodate.",
+  },
+  {
+    question: "Are there low-carb options?",
+    answer:
+      "Yes. Ask for a bún (vermicelli salad) or rice plate served without the rice or noodles, and pick your protein — lemongrass chicken, beef, prawn or tofu — with plenty of fresh salad. Our salads (gỏi) and many stir-fries are naturally lower in carbohydrates too.",
+  },
+  {
+    question: "Can you customise a dish for my dietary needs?",
+    answer:
+      "Absolutely — we're happy to adjust dishes where we can (leave out a sauce, swap a protein, add extra veg, skip the egg or fish sauce). Just tell our staff your preferences when ordering and we'll guide you to the best choice.",
+  },
+  {
+    question: "How accurate is the nutritional information?",
+    answer:
+      "The values in our guides are average estimates per serve and can vary with portion size, preparation and optional extras (extra egg, avocado, sauces). You can view them per dish in the live finder or download the full Nutritional Information guide above.",
+  },
+  {
+    question: "Is there a risk of cross-contact in the kitchen?",
+    answer:
+      "Yes. We prepare many dishes in a shared, fast-moving kitchen, so traces of allergens such as nuts, sesame, egg, gluten, shellfish and dairy may transfer during storage or preparation. We take care to minimise this but can't guarantee complete separation. Please share any specific concerns and we'll do our best to help.",
+  },
+] as const;

@@ -492,7 +492,7 @@ export function useFranchiseResourceTaxonomies(
   const loadTaxonomies = useCallback(async () => {
     let query = supabase
       .from('franchise_resource_taxonomies')
-      .select('id, kind, label, alias, created_at')
+      .select('id, kind, label, alias, sort_order, created_at')
       .eq('place', taxonomyPlace)
       .eq('is_active', true);
 

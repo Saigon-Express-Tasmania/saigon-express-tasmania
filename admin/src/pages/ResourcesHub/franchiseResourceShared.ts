@@ -21,6 +21,7 @@ export type TaxonomyOption = {
   kind: 'folder' | 'category' | 'course' | 'period';
   label: string;
   alias: string;
+  sort_order?: number;
   created_at?: string;
 };
 

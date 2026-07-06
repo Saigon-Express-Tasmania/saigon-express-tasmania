@@ -1,7 +1,6 @@
 import { Input } from '@/components/ui/input';
 import type { AdminCategoryFilterSection } from '@/lib/category-filter-sections';
 import {
-  buildCategoryThemeById,
   buildGroupThemeIndexById,
   categoryGroupTheme,
   filterCategorySections,
@@ -10,7 +9,7 @@ import {
   type CategoryGroupTheme,
 } from '@/lib/category-select-themes';
 import { cn } from '@/lib/utils';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -49,16 +48,16 @@ function CategoryGroupHeading({
   );
 }
 
-function CategoryMultiSelectRow({
+function CategorySelectRow({
   name,
   selected,
   theme,
-  onToggle,
+  onSelect,
 }: {
   name: string;
   selected: boolean;
   theme: CategoryGroupTheme;
-  onToggle: () => void;
+  onSelect: () => void;
 }) {
   return (
     <button
@@ -70,16 +69,11 @@ function CategoryMultiSelectRow({
       )}
       onPointerDown={(event) => {
         event.preventDefault();
-        onToggle();
+        onSelect();
       }}
     >
-      <span
-        className={cn(
-          'flex size-4 shrink-0 items-center justify-center rounded-sm border',
-          selected ? theme.checkbox : 'border-input bg-background',
-        )}
-      >
-        {selected ? <Check className="size-3" /> : null}
+      <span className="flex size-4 shrink-0 items-center justify-center">
+        {selected ? <Check className="size-3.5" /> : null}
       </span>
       <span className={cn('size-2 shrink-0 rounded-full', theme.dot)} />
       <span className="min-w-0 flex-1 truncate">{name}</span>
@@ -87,28 +81,33 @@ function CategoryMultiSelectRow({
   );
 }
 
-type GroupedCategoryMultiSelectProps = {
+type GroupedCategorySelectProps = {
   id?: string;
   sections: AdminCategoryFilterSection[];
-  values: string[];
-  onValuesChange: (values: string[]) => void;
+  value: string;
+  onValueChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  emptyOptionLabel?: string;
   className?: string;
   orphanSectionLabel?: string;
+  selectedLabelById?: ReadonlyMap<number, string>;
 };
 
-export function GroupedCategoryMultiSelect({
+export function GroupedCategorySelect({
   id,
   sections,
-  values,
-  onValuesChange,
+  value,
+  onValueChange,
   disabled = false,
   placeholder = 'Search categories…',
+  emptyOptionLabel = 'None',
   className,
   orphanSectionLabel = 'Ungrouped',
-}: GroupedCategoryMultiSelectProps) {
+  selectedLabelById,
+}: GroupedCategorySelectProps) {
   const [open, setOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [filterText, setFilterText] = useState('');
   const [position, setPosition] = useState<DropdownPosition | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -119,7 +118,6 @@ export function GroupedCategoryMultiSelect({
     () => flattenCategorySections(sections),
     [sections],
   );
-  const themeById = useMemo(() => buildCategoryThemeById(sections), [sections]);
   const groupThemeIndexById = useMemo(
     () => buildGroupThemeIndexById(sections),
     [sections],
@@ -134,29 +132,30 @@ export function GroupedCategoryMultiSelect({
     [sections, filterText],
   );
 
-  const selectedCategories = useMemo(
-    () =>
-      values
-        .map((value) => categoryById.get(Number(value)))
-        .filter((category) => category != null),
-    [values, categoryById],
-  );
+  const selectedLabel = useMemo(() => {
+    if (!value) return '';
+    const parsedId = Number.parseInt(value, 10);
+    if (Number.isNaN(parsedId)) return '';
+    return (
+      selectedLabelById?.get(parsedId) ??
+      categoryById.get(parsedId)?.name ??
+      ''
+    );
+  }, [value, selectedLabelById, categoryById]);
+
+  const showEmptyOption =
+    !filterText.trim() ||
+    emptyOptionLabel.toLowerCase().includes(filterText.trim().toLowerCase());
 
   const closeDropdown = () => {
     setOpen(false);
+    setIsEditing(false);
     setFilterText('');
   };
 
-  const toggleValue = (value: string) => {
-    if (values.includes(value)) {
-      onValuesChange(values.filter((entry) => entry !== value));
-      return;
-    }
-    onValuesChange([...values, value]);
-  };
-
-  const removeValue = (value: string) => {
-    onValuesChange(values.filter((entry) => entry !== value));
+  const selectValue = (nextValue: string) => {
+    onValueChange(nextValue);
+    closeDropdown();
   };
 
   useEffect(() => {
@@ -177,7 +176,7 @@ export function GroupedCategoryMultiSelect({
       window.removeEventListener('resize', syncPosition);
       window.removeEventListener('scroll', syncPosition, true);
     };
-  }, [open, filterText, selectedCategories.length]);
+  }, [open, filterText, isEditing, selectedLabel]);
 
   useEffect(() => {
     if (!open) return;
@@ -216,7 +215,9 @@ export function GroupedCategoryMultiSelect({
     el.addEventListener('wheel', handleWheel, { passive: false, capture: true });
     return () =>
       el.removeEventListener('wheel', handleWheel, { capture: true });
-  }, [open, filteredSections, position]);
+  }, [open, filteredSections, position, showEmptyOption]);
+
+  const inputValue = open && isEditing ? filterText : selectedLabel;
 
   const dropdown =
     open && !disabled && position
@@ -233,7 +234,40 @@ export function GroupedCategoryMultiSelect({
             onWheel={(event) => event.stopPropagation()}
             onTouchMove={(event) => event.stopPropagation()}
           >
-            {filteredSections.length === 0 ? (
+            {showEmptyOption ? (
+              <div className="px-1 pb-1">
+                <button
+                  type="button"
+                  className={cn(
+                    'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                    ORPHAN_CATEGORY_THEME.item,
+                    !value && 'bg-accent/70',
+                  )}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    selectValue('');
+                  }}
+                >
+                  <span className="flex size-4 shrink-0 items-center justify-center">
+                    {!value ? <Check className="size-3.5" /> : null}
+                  </span>
+                  <span
+                    className={cn(
+                      'size-2 shrink-0 rounded-full',
+                      ORPHAN_CATEGORY_THEME.dot,
+                    )}
+                  />
+                  <span className="min-w-0 flex-1 truncate">
+                    {emptyOptionLabel}
+                  </span>
+                </button>
+                {filteredSections.length > 0 ? (
+                  <div className="my-1.5 h-px bg-border" />
+                ) : null}
+              </div>
+            ) : null}
+
+            {filteredSections.length === 0 && !showEmptyOption ? (
               <p className="px-3 py-2 text-xs text-muted-foreground">
                 No matching categories.
               </p>
@@ -248,12 +282,12 @@ export function GroupedCategoryMultiSelect({
                       />
                       <div className="space-y-0.5 px-1 py-1">
                         {section.categories.map((category) => (
-                          <CategoryMultiSelectRow
+                          <CategorySelectRow
                             key={category.id}
                             name={category.name}
-                            selected={values.includes(String(category.id))}
+                            selected={value === String(category.id)}
                             theme={ORPHAN_CATEGORY_THEME}
-                            onToggle={() => toggleValue(String(category.id))}
+                            onSelect={() => selectValue(String(category.id))}
                           />
                         ))}
                       </div>
@@ -276,12 +310,12 @@ export function GroupedCategoryMultiSelect({
                     />
                     <div className="space-y-0.5 px-1 py-1">
                       {section.categories.map((category) => (
-                        <CategoryMultiSelectRow
+                        <CategorySelectRow
                           key={category.id}
                           name={category.name}
-                          selected={values.includes(String(category.id))}
+                          selected={value === String(category.id)}
                           theme={theme}
-                          onToggle={() => toggleValue(String(category.id))}
+                          onSelect={() => selectValue(String(category.id))}
                         />
                       ))}
                     </div>
@@ -299,56 +333,30 @@ export function GroupedCategoryMultiSelect({
 
   return (
     <>
-      <div ref={containerRef} className={cn('space-y-2', className)}>
-        {selectedCategories.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {selectedCategories.map((category) => {
-              const theme =
-                themeById.get(category.id) ?? ORPHAN_CATEGORY_THEME;
-              return (
-                <span
-                  key={category.id}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium',
-                    theme.chip,
-                  )}
-                >
-                  <span className={cn('size-1.5 rounded-full', theme.dot)} />
-                  {category.name}
-                  <button
-                    type="button"
-                    className="rounded-full p-0.5 opacity-70 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
-                    disabled={disabled}
-                    aria-label={`Remove ${category.name}`}
-                    onClick={() => removeValue(String(category.id))}
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-        ) : null}
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            id={id}
-            value={filterText}
-            disabled={disabled}
-            placeholder={placeholder}
-            onFocus={() => setOpen(true)}
-            onChange={(event) => {
-              setFilterText(event.target.value);
-              setOpen(true);
-            }}
-            className="w-full border-primary/25 bg-gradient-to-r from-primary/8 via-background to-background pr-8 shadow-sm transition-colors hover:border-primary/40 hover:from-primary/12 focus-visible:border-primary/40"
-            autoComplete="off"
-            role="combobox"
-            aria-expanded={open}
-            aria-autocomplete="list"
-          />
-          <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground" />
-        </div>
+      <div ref={containerRef} className={cn('relative w-full', className)}>
+        <Input
+          ref={inputRef}
+          id={id}
+          value={inputValue}
+          disabled={disabled}
+          placeholder={selectedLabel || placeholder}
+          onFocus={() => setOpen(true)}
+          onChange={(event) => {
+            const nextQuery = event.target.value;
+            setIsEditing(true);
+            setFilterText(nextQuery);
+            setOpen(true);
+            if (!nextQuery.trim()) {
+              onValueChange('');
+            }
+          }}
+          className="w-full border-primary/25 bg-gradient-to-r from-primary/8 via-background to-background pr-8 shadow-sm transition-colors hover:border-primary/40 hover:from-primary/12 focus-visible:border-primary/40"
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-autocomplete="list"
+        />
+        <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground" />
       </div>
       {dropdown}
     </>

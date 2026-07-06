@@ -20,15 +20,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { TaxonomyFilterSelect } from '@/components/TaxonomyFilterSelect';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useTablePagination } from '@/hooks/useTablePagination';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -133,6 +127,16 @@ function matchesTaxonomyFilter(
   if (filterValue === 'all') return true;
   const parsedId = Number.parseInt(filterValue, 10);
   return !Number.isNaN(parsedId) && taxonomyId === parsedId;
+}
+
+function toTaxonomyFilterOptions(
+  taxonomies: { id: number; label: string; sort_order?: number }[],
+) {
+  return taxonomies.map((taxonomy) => ({
+    id: taxonomy.id,
+    label: taxonomy.label,
+    sortOrder: taxonomy.sort_order,
+  }));
 }
 
 export function FranchiseResourceAdminPage({
@@ -465,20 +469,14 @@ export function FranchiseResourceAdminPage({
                   <Label htmlFor={filterId} className="whitespace-nowrap">
                     {listFilterLabel}
                   </Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger id={filterId} className="w-56">
-                      <SelectValue placeholder={`All ${listFilterLabel.toLowerCase()}s`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All {listFilterLabel.toLowerCase()}s</SelectItem>
-                      <SelectItem value="none">Uncategorized</SelectItem>
-                      {listFilterTaxonomies.map((taxonomy) => (
-                        <SelectItem key={taxonomy.id} value={String(taxonomy.id)}>
-                          {taxonomy.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <TaxonomyFilterSelect
+                    id={filterId}
+                    value={categoryFilter}
+                    onValueChange={setCategoryFilter}
+                    options={toTaxonomyFilterOptions(listFilterTaxonomies)}
+                    allLabel={`All ${listFilterLabel.toLowerCase()}s`}
+                    noneLabel="Uncategorized"
+                  />
                 </div>
               ) : null}
               {listTaxonomyFilters.map((kind) => {
@@ -490,7 +488,8 @@ export function FranchiseResourceAdminPage({
                     <Label htmlFor={filterKindId} className="whitespace-nowrap">
                       {label}
                     </Label>
-                    <Select
+                    <TaxonomyFilterSelect
+                      id={filterKindId}
                       value={taxonomyFilters[kind]}
                       onValueChange={(value) =>
                         setTaxonomyFilters((current) => ({
@@ -498,20 +497,10 @@ export function FranchiseResourceAdminPage({
                           [kind]: value,
                         }))
                       }
-                    >
-                      <SelectTrigger id={filterKindId} className="w-56">
-                        <SelectValue placeholder={`All ${label.toLowerCase()}s`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All {label.toLowerCase()}s</SelectItem>
-                        <SelectItem value="none">Unassigned</SelectItem>
-                        {options.map((taxonomy) => (
-                          <SelectItem key={taxonomy.id} value={String(taxonomy.id)}>
-                            {taxonomy.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={toTaxonomyFilterOptions(options)}
+                      allLabel={`All ${label.toLowerCase()}s`}
+                      noneLabel="Unassigned"
+                    />
                   </div>
                 );
               })}
