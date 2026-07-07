@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import AppImage from "@/components/AppImage";
-import CateringTierSelect from "@/components/CateringTierSelect";
+import CateringMenuCatalog from "@/components/CateringMenuCatalog";
+import CateringPackOrderButton from "@/components/CateringPackOrderButton";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import {
@@ -20,12 +21,14 @@ import {
   type CateringPack,
   type CateringTierPrice,
 } from "@/lib/supabase/catering-packs";
-import type { UserProfile } from "@/types";
-import { CheckCircle, Plus, Users, UtensilsCrossed } from "lucide-react";
+import type { SiteCategory, SiteCategoryGroup, UserProfile } from "@/types";
+import { CheckCircle, Users, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
 
 type MemberCateringShopProps = {
   packs: CateringPack[];
+  categoriesContent: SiteCategory[];
+  categoryGroups: SiteCategoryGroup[];
 };
 
 function getContactName(profile: UserProfile): string {
@@ -35,46 +38,16 @@ function getContactName(profile: UserProfile): string {
   return profile.email ?? "Member";
 }
 
-function PackOrderButton({
-  pack,
-  selectedTier,
-  onAdd,
-}: {
-  pack: CateringPack;
-  selectedTier: CateringTierPrice | null;
-  onAdd: () => void;
-}) {
-  const unitPrice =
-    selectedTier != null
-      ? parseCateringPrice(selectedTier.price)
-      : parseCateringPrice(pack.price);
-
-  if (unitPrice == null) {
-    return (
-      <p className="text-xs text-gray-500">
-        Contact us for pricing on this item.
-      </p>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onAdd}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
-    >
-      <Plus className="h-4 w-4" />
-      Add to order
-    </button>
-  );
-}
-
-export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
+export default function MemberCateringShop({
+  packs,
+  categoriesContent,
+  categoryGroups,
+}: MemberCateringShopProps) {
   const t = useTranslations("Catering");
+  const locale = useLocale();
   const router = useRouter();
   const { profile, authMetadata, isLoading, isSignedIn, signOut } = useSupabase();
   const { addToCart } = useCateringCart();
-  const [tierSelection, setTierSelection] = useState<Record<number, number>>({});
 
   const me = useMemo(() => {
     if (!profile) return null;
@@ -96,18 +69,6 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
   const featuredPacks = packs.filter(
     (pack) => pack.category === FEATURED_CATERING_PACK_CATEGORY,
   );
-
-  const menuGroups = packs
-    .filter((pack) => pack.category !== FEATURED_CATERING_PACK_CATEGORY)
-    .reduce<Array<{ category: string; items: CateringPack[] }>>((groups, item) => {
-      const existingGroup = groups.find((group) => group.category === item.category);
-      if (existingGroup) {
-        existingGroup.items.push(item);
-      } else {
-        groups.push({ category: item.category, items: [item] });
-      }
-      return groups;
-    }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -176,7 +137,7 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
         </div>
       </div>
 
-      <div className="container space-y-12 py-8 pb-16">
+      {/* <div className="container space-y-12 py-8">
         <section id="packs">
           <div className="mb-8 text-center">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">
@@ -249,10 +210,12 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
                       ))}
                     </ul>
                     <div className="mt-auto pt-4">
-                      <PackOrderButton
+                      <CateringPackOrderButton
                         pack={pack}
                         selectedTier={null}
                         onAdd={() => handleAddPack(pack, null)}
+                        orderLabel={t("packs.addToOrder")}
+                        quoteLabel={t("packs.quoteRequired")}
                       />
                     </div>
                   </div>
@@ -261,125 +224,30 @@ export default function MemberCateringShop({ packs }: MemberCateringShopProps) {
             )}
           </div>
         </section>
+      </div> */}
 
-        <section id="catering-menu">
-          <div className="mb-8 text-center">
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-              {t("menu.label")}
-            </p>
-            <h2 className="font-serif text-3xl text-gray-900 md:text-4xl">
-              {t("menu.title")}
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-600">
-              {t("menu.description")}
-            </p>
-          </div>
+      <section id="catering-menu" className="bg-white py-4 pb-16">
+        {/* <div className="mb-12 text-center">
+          <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-brand-red">
+            {t("menu.label")}
+          </p>
+          <h2 className="font-serif text-4xl text-brand-dark">
+            {t("menu.title")}
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-brand-dark/55">
+            {t("menu.description")}
+            {t("menu.descriptionEnd")}
+          </p>
+        </div> */}
 
-          {menuGroups.length === 0 ? (
-            <div className="py-6 text-center text-sm text-gray-500">
-              {t("menu.empty")}
-            </div>
-          ) : (
-            menuGroups.map((group, groupIndex) => (
-              <div key={group.category}>
-                <h3 className="mb-6 border-b border-gray-200 pb-2 font-serif text-2xl text-gray-900">
-                  {group.category}
-                </h3>
-                <div
-                  className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${
-                    groupIndex === menuGroups.length - 1 ? "mb-10" : "mb-12"
-                  }`}
-                >
-                  {group.items.map((item) => {
-                    const selectedTierIndex = tierSelection[item.id] ?? 0;
-                    const selectedTier = item.prices[selectedTierIndex] ?? null;
-
-                    return (
-                      <article
-                        key={item.id}
-                        className={`${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} group flex h-full flex-col`}
-                      >
-                        <div className="relative aspect-square overflow-hidden">
-                          <AppImage
-                            src={item.img ?? "/placeholder.svg"}
-                            alt={item.name}
-                            fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                          {item.price ? (
-                            <div className="absolute right-3 top-3 bg-primary px-3 py-1 text-sm font-bold text-white">
-                              {item.price}
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="flex flex-1 flex-col p-5">
-                          <h4 className="mb-1 font-serif text-xl text-gray-900">
-                            {item.name}
-                          </h4>
-                          {item.serves ? (
-                            <p className="mb-3 flex items-center gap-1 text-xs font-semibold text-primary">
-                              <Users className="h-3 w-3" />
-                              {t("menu.caters", { serves: item.serves })}
-                            </p>
-                          ) : null}
-                          {item.note ? (
-                            <p className="mb-2 text-xs italic text-gray-500">
-                              {item.note}
-                            </p>
-                          ) : null}
-                          {item.includes.length > 0 ? (
-                            <ul className="mb-4 space-y-1">
-                              {item.includes.map((inc, index) => (
-                                <li
-                                  key={index}
-                                  className="flex items-start gap-1.5 text-xs text-gray-600"
-                                >
-                                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
-                                  {inc}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                          <div className="mt-auto flex flex-col gap-3 pt-4">
-                            {item.prices.length > 0 ? (
-                              <CateringTierSelect
-                                id={`member-catering-tier-${item.id}`}
-                                tiers={item.prices}
-                                value={selectedTierIndex}
-                                onValueChange={(index) =>
-                                  setTierSelection((prev) => ({
-                                    ...prev,
-                                    [item.id]: index,
-                                  }))
-                                }
-                                label={t("menu.sizeLabel")}
-                                variant="light"
-                              />
-                            ) : null}
-                            <PackOrderButton
-                              pack={item}
-                              selectedTier={selectedTier}
-                              onAdd={() => handleAddPack(item, selectedTier)}
-                            />
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
-          )}
-
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center">
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-              {t("menu.proteinLabel")}
-            </p>
-            <p className="text-sm text-gray-700">{t("menu.proteinList")}</p>
-            <p className="mt-2 text-xs text-gray-500">{t("menu.proteinNote")}</p>
-          </div>
-        </section>
-      </div>
+        <CateringMenuCatalog
+          packs={packs}
+          categoriesContent={categoriesContent}
+          categoryGroups={categoryGroups}
+          onAddToOrder={handleAddPack}
+          locale={locale}
+        />
+      </section>
     </MemberPortalBackground>
   );
 }

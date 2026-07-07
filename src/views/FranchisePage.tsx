@@ -129,6 +129,19 @@ const EXISTING_STORE_OPPORTUNITIES: OpportunityItem[] = [
       "Partners seeking efficiency",
     ],
   },
+  {
+    name: "Saigon Express Kingston",
+    imageSrc: "/images/franchise-kingston-shop.jpg",
+    imageAlt: "Saigon Express Kingston opportunity",
+    description:
+      "Located in one of Tasmania's fastest-growing southern municipalities. This site captures a dense, community-focused family demographic and busy retail shoppers, offering a highly profitable blend of consistent daytime trade and strong evening delivery demand.",
+    highlightLabel: "Key potential",
+    highlights: [
+      "High-growth residential area",
+      "Strong family demographic",
+      "Robust evening delivery demand",
+    ],
+  },
 ];
 
 const NEW_GROWTH_AREAS: GrowthAreaItem[] = [
@@ -138,8 +151,7 @@ const NEW_GROWTH_AREAS: GrowthAreaItem[] = [
     imageAlt: "Huonville growth area opportunity",
     advantage:
       "Zero market saturation for premium Vietnamese food. Capitalize on a growing community of families and booming tourism in the Huon Valley. Be the absolute go-to destination for local lunches and takeaway.",
-    recommendedFormat:
-      "Takeaway + small dine-in area + local catering.",
+    recommendedFormat: "Takeaway + small dine-in area + local catering.",
   },
   {
     name: "Margate",
@@ -168,8 +180,7 @@ const FRANCHISE_MODELS: FranchiseModelItem[] = [
     imageAlt: "Saigon Express kiosk franchise model",
     floorSpace: "30m² - 60m²",
     investment: "$150k - 250k",
-    idealFor:
-      "Shopping centre food courts and high foot-traffic transit hubs.",
+    idealFor: "Shopping centre food courts and high foot-traffic transit hubs.",
     features: [
       "Highly efficient takeaway-focused model.",
       "Low overheads and minimal staffing required.",
@@ -435,27 +446,27 @@ export default function FranchisePage() {
 
     setIsSubmittingInterest(true);
     try {
-      const result = await invokeEdgeFunction<{ id: number; submitted: boolean }>(
-        "franchise-interest",
-        {
-          body: {
-            p_interest_type: "franchise",
-            p_full_name: form.fullName,
-            p_email: form.email,
-            p_phone: form.phone || null,
-            p_city: form.city || null,
-            p_state: "Tasmania",
-            p_investment_budget: form.investmentBudget || null,
-            p_business_experience:
-              form.hasExperience === "yes"
-                ? t("interestForm.experiencePayloadYes")
-                : t("interestForm.experiencePayloadNo"),
-            p_preferred_date: null,
-            p_preferred_time: null,
-            p_message: form.message || null,
-          },
+      const result = await invokeEdgeFunction<{
+        id: number;
+        submitted: boolean;
+      }>("franchise-interest", {
+        body: {
+          p_interest_type: "franchise",
+          p_full_name: form.fullName,
+          p_email: form.email,
+          p_phone: form.phone || null,
+          p_city: form.city || null,
+          p_state: "Tasmania",
+          p_investment_budget: form.investmentBudget || null,
+          p_business_experience:
+            form.hasExperience === "yes"
+              ? t("interestForm.experiencePayloadYes")
+              : t("interestForm.experiencePayloadNo"),
+          p_preferred_date: null,
+          p_preferred_time: null,
+          p_message: form.message || null,
         },
-      );
+      });
 
       if (!result.ok) {
         throw new Error(result.error);
@@ -498,24 +509,24 @@ export default function FranchisePage() {
 
     setIsSubmittingConsult(true);
     try {
-      const result = await invokeEdgeFunction<{ id: number; submitted: boolean }>(
-        "franchise-interest",
-        {
-          body: {
-            p_interest_type: "consultation",
-            p_full_name: consultForm.name,
-            p_email: consultForm.email,
-            p_phone: consultForm.phone || null,
-            p_city: null,
-            p_state: "Tasmania",
-            p_investment_budget: null,
-            p_business_experience: null,
-            p_preferred_date: consultForm.preferredDate || null,
-            p_preferred_time: consultForm.preferredTime || null,
-            p_message: consultForm.message || null,
-          },
+      const result = await invokeEdgeFunction<{
+        id: number;
+        submitted: boolean;
+      }>("franchise-interest", {
+        body: {
+          p_interest_type: "consultation",
+          p_full_name: consultForm.name,
+          p_email: consultForm.email,
+          p_phone: consultForm.phone || null,
+          p_city: null,
+          p_state: "Tasmania",
+          p_investment_budget: null,
+          p_business_experience: null,
+          p_preferred_date: consultForm.preferredDate || null,
+          p_preferred_time: consultForm.preferredTime || null,
+          p_message: consultForm.message || null,
         },
-      );
+      });
 
       if (!result.ok) {
         throw new Error(result.error);
@@ -557,8 +568,7 @@ export default function FranchisePage() {
           <div className="relative z-10 w-full px-6 md:px-20 max-w-[1280px] mx-auto flex flex-col items-center text-center">
             <div data-aos="fade-down" data-aos-duration="1000">
               <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold tracking-[0.2em] uppercase text-brand-amber mb-6">
-              FRANCHISE WITH
-              SAIGON EXPRESS TASMANIA
+                FRANCHISE WITH SAIGON EXPRESS TASMANIA
               </span>
             </div>
 
@@ -568,10 +578,10 @@ export default function FranchisePage() {
               data-aos-delay="200"
               className="font-serif text-white text-5xl md:text-7xl lg:text-8xl leading-tight max-w-[1280px] mb-6 drop-shadow-2xl"
             >
-              OVER 10 YEARS 
+              OVER 10 YEARS
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">
-              OF EXCELLENCE. 
+                OF EXCELLENCE.
               </span>
             </h1>
 
@@ -582,7 +592,8 @@ export default function FranchisePage() {
               className="text-white/80 text-lg md:text-xl max-w-[1280px] leading-relaxed mb-10 font-light"
             >
               <h2 className="text-white text-2xl md:text-3xl font-serif leading-snug mb-4">
-              Join Our Family and Own a Part of Tasmania’s Premier Vietnamese Brand.
+                Join Our Family and Own a Part of Tasmania’s Premier Vietnamese
+                Brand.
               </h2>
               <p className="mb-4">
                 For more than a decade, Saigon Express has dominated the
@@ -596,8 +607,8 @@ export default function FranchisePage() {
                 business; you are joining a legacy. We stand by our partners
                 with unwavering support, flexible financial solutions, and a
                 shared hunger for mutual success. From crispy banh mi to
-                fragrant pho, our goal is simple: serve great food, create
-                loyal customers, and build highly profitable local businesses.
+                fragrant pho, our goal is simple: serve great food, create loyal
+                customers, and build highly profitable local businesses.
               </p>
             </div>
 
@@ -677,10 +688,9 @@ export default function FranchisePage() {
                 Skip the startup phase.
               </h2>
               <p className="text-brand-dark/60 text-base md:text-lg leading-relaxed">
-                These opportunities allow you to take over an established
-                Saigon Express location with instant brand recognition,
-                perfected operating systems, and a hungry, existing customer
-                base.
+                These opportunities allow you to take over an established Saigon
+                Express location with instant brand recognition, perfected
+                operating systems, and a hungry, existing customer base.
               </p>
             </div>
 
@@ -797,7 +807,9 @@ export default function FranchisePage() {
                       {area.name}
                     </h3>
                     <p className="text-brand-dark/65 text-sm leading-relaxed mb-6">
-                      <strong className="text-brand-dark">The Advantage:</strong>{" "}
+                      <strong className="text-brand-dark">
+                        The Advantage:
+                      </strong>{" "}
                       {area.advantage}
                     </p>
 
@@ -833,8 +845,8 @@ export default function FranchisePage() {
               </p>
               <p className="text-brand-red font-semibold text-base md:text-lg max-w-3xl mx-auto mb-8">
                 Leverage our 10+ years of brand power to ensure your chosen
-                location becomes an instant success. Let&apos;s expand our legacy
-                together.
+                location becomes an instant success. Let&apos;s expand our
+                legacy together.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -879,8 +891,8 @@ export default function FranchisePage() {
               </h2>
               <p className="text-white/70 text-base md:text-lg leading-relaxed">
                 We offer flexible, proven store models designed to maximize ROI
-                across different real estate formats. From compact retail
-                kiosks to full-scale dining lounges, there is a Saigon Express
+                across different real estate formats. From compact retail kiosks
+                to full-scale dining lounges, there is a Saigon Express
                 blueprint to fit your investment capacity and location.
               </p>
             </div>
@@ -956,7 +968,9 @@ export default function FranchisePage() {
                     <ul className="space-y-3 mb-8">
                       <li
                         className={`text-sm leading-relaxed ${
-                          model.featured ? "text-brand-dark/70" : "text-white/70"
+                          model.featured
+                            ? "text-brand-dark/70"
+                            : "text-white/70"
                         }`}
                       >
                         <strong
@@ -972,14 +986,14 @@ export default function FranchisePage() {
                         <li
                           key={feature}
                           className={`flex items-start gap-3 text-sm leading-relaxed ${
-                            model.featured ? "text-brand-dark/70" : "text-white/70"
+                            model.featured
+                              ? "text-brand-dark/70"
+                              : "text-white/70"
                           }`}
                         >
                           <span
                             className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${
-                              model.featured
-                                ? "bg-brand-red"
-                                : "bg-brand-amber"
+                              model.featured ? "bg-brand-red" : "bg-brand-amber"
                             }`}
                           />
                           <span>{feature}</span>
@@ -1004,8 +1018,8 @@ export default function FranchisePage() {
 
             <p className="mt-10 text-center text-xs italic leading-relaxed text-white/45 max-w-5xl mx-auto">
               * Estimated investment costs include store fit-out, equipment,
-              signage, initial franchise fees, and training. Working capital
-              and bank guarantees are additional. Remember, we offer financial
+              signage, initial franchise fees, and training. Working capital and
+              bank guarantees are additional. Remember, we offer financial
               assistance to the right partners to secure locations with just a
               $50k deposit.
             </p>
@@ -1078,8 +1092,8 @@ export default function FranchisePage() {
                 For more than 10 years, Saigon Express has been a pillar of the
                 Tasmanian culinary scene. We have already done the heavy lifting
                 of building brand loyalty, perfecting recipes, and establishing
-                a fierce market presence. When you join us, you inherit a
-                decade of goodwill and success.
+                a fierce market presence. When you join us, you inherit a decade
+                of goodwill and success.
               </p>
               <h3 className="font-serif text-brand-dark text-2xl mb-3">
                 The Strength of a Family Partnership
@@ -1088,8 +1102,8 @@ export default function FranchisePage() {
                 Unlike massive, faceless corporations, Saigon Express treats
                 every franchise partner like family. You have direct access to
                 the founders, and your success is our personal mission. We
-                protect our brand, and we passionately protect our partners&apos;
-                investments.
+                protect our brand, and we passionately protect our
+                partners&apos; investments.
               </p>
               <h3 className="font-serif text-brand-dark text-2xl mb-3">
                 A trusted brand with unbeatable ROI
@@ -1105,8 +1119,8 @@ export default function FranchisePage() {
                 A menu that creates multiple, high-margin revenue streams
               </h3>
               <p className="text-brand-dark/60 text-base leading-relaxed mb-6">
-                We are more than banh mi. Our menu features pho, rice bowls,
-                wok dishes, and catering platters. This diversity protects your
+                We are more than banh mi. Our menu features pho, rice bowls, wok
+                dishes, and catering platters. This diversity protects your
                 business from seasonal dips and gives you unparalleled ability
                 to capture every type of hungry customer.
               </p>
@@ -1155,7 +1169,6 @@ export default function FranchisePage() {
                 partners will be prioritized for highly lucrative multi-store
                 opportunities.
               </p>
-
             </div>
           </div>
         </section>
@@ -1196,9 +1209,9 @@ export default function FranchisePage() {
               <p className="text-white/80 text-base leading-8 mb-6">
                 If you have the drive, the hunger for success, and the
                 operational skills, we have the financial solutions to get you
-                started. We offer flexible, tailored financing assistance to
-                the right partners. Do not let upfront capital stop you from
-                owning a highly profitable business.
+                started. We offer flexible, tailored financing assistance to the
+                right partners. Do not let upfront capital stop you from owning
+                a highly profitable business.
               </p>
               <p className="text-brand-amber text-lg font-semibold mb-8 leading-relaxed">
                 Contact us today to arrange a direct, confidential meeting with
@@ -1209,7 +1222,10 @@ export default function FranchisePage() {
                 onClick={() => setConsultModalOpen(true)}
                 className="group inline-flex items-center gap-3 bg-white text-brand-red font-bold text-base px-10 py-5 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_45px_rgba(0,0,0,0.4)] hover:-translate-y-1 transition-all duration-300"
               >
-                <MessageCircle size={22} className="group-hover:animate-bounce" />
+                <MessageCircle
+                  size={22}
+                  className="group-hover:animate-bounce"
+                />
                 {t("consultBanner.btnBook")}
               </button>
             </div>
@@ -1243,8 +1259,8 @@ export default function FranchisePage() {
               </h2>
               <p className="text-white/75 text-base leading-relaxed mb-6">
                 You do not need to be a chef or have owned a restaurant before.
-                However, successful franchise partners need commitment,
-                business discipline and a genuine focus on customer service.
+                However, successful franchise partners need commitment, business
+                discipline and a genuine focus on customer service.
               </p>
               <p className="text-white font-semibold mb-5">
                 We are looking for people with:
@@ -1419,8 +1435,8 @@ export default function FranchisePage() {
                     <p className="mt-5 text-[11px] leading-relaxed text-white/50">
                       The information on this page is provided for general
                       franchise enquiry purposes only. It does not constitute
-                      financial advice, a profit guarantee or an offer to sell
-                      a franchise. Applicants should obtain independent legal,
+                      financial advice, a profit guarantee or an offer to sell a
+                      franchise. Applicants should obtain independent legal,
                       financial and accounting advice before making any
                       investment decision.
                     </p>
@@ -1641,9 +1657,7 @@ export default function FranchisePage() {
                   >
                     <button
                       type="button"
-                      onClick={() =>
-                        setOpenFaqIndex(isOpen ? null : index)
-                      }
+                      onClick={() => setOpenFaqIndex(isOpen ? null : index)}
                       className="flex w-full items-center justify-between gap-6 px-7 py-6 text-left"
                       aria-expanded={isOpen}
                     >
@@ -1657,7 +1671,10 @@ export default function FranchisePage() {
                             : ""
                         }`}
                       >
-                        <ChevronRight size={18} color={isOpen ? "white" : undefined} />
+                        <ChevronRight
+                          size={18}
+                          color={isOpen ? "white" : undefined}
+                        />
                       </span>
                     </button>
 
