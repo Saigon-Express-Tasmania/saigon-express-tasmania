@@ -1,3 +1,8 @@
+import { BulkAddToCategoryDialog } from '@/components/BulkAddToCategoryDialog';
+import {
+  BulkProcessingOverlay,
+  withBulkProcessing,
+} from '@/components/BulkProcessingOverlay';
 import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
 import { ProductCategoryGroupFilterStrip } from '@/components/ProductCategoryGroupFilterStrip';
 import { PublishedFilterSelect, matchesPublishedFilter, type PublishedFilterValue } from '@/components/PublishedFilterSelect';
@@ -69,6 +74,7 @@ import {
   type AdminCategoryFilterSection,
 } from '@/lib/category-filter-sections';
 import {
+  appendProductCategories,
   attachProductCategoryFields,
   loadProductCategoriesByProductIds,
   resolvePrimaryCategoryId,
@@ -94,6 +100,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  FolderPlus,
   Globe,
   ImageIcon,
   Loader2,
@@ -256,6 +263,10 @@ export function Menu() {
   const [deleteTarget, setDeleteTarget] = useState<MenuItemRow | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
+  const [bulkAddCategoryOpen, setBulkAddCategoryOpen] = useState(false);
+  const [bulkProcessingMessage, setBulkProcessingMessage] = useState<string | null>(
+    null,
+  );
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [publishedFilter, setPublishedFilter] = useState<PublishedFilterValue>('all');
@@ -413,11 +424,14 @@ export function Menu() {
     selectedCount,
     selectAllRef,
     allFilteredSelected,
-    toggleSelected,
+    onRowCheckboxPointerDown,
+    onRowCheckboxChange,
     toggleSelectAllFiltered,
     clearSelection,
     removeFromSelection,
-  } = useBulkRowSelection(filteredItems);
+  } = useBulkRowSelection(filteredItems, {
+    displayRows: paginatedFilteredItems,
+  });
 
   const handleInlineSortOrderSave = useCallback(
     async (itemId: number, sortOrder: number) => {
@@ -861,56 +875,86 @@ export function Menu() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
 
-    setSaving(true);
-    try {
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ is_published: true })
-        .in('id', ids)
-        .eq('product_type', 'alacarte');
+    setBulkPublishOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Publishing ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}…`,
+      async () => {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ is_published: true })
+          .in('id', ids)
+          .eq('product_type', 'alacarte');
 
-      if (updateError) throw updateError;
-      toast.success(
-        `Published ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}.`,
-      );
-      clearSelection();
-      setBulkPublishOpen(false);
-      await loadItems();
-    } catch (err) {
+        if (updateError) throw updateError;
+        toast.success(
+          `Published ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}.`,
+        );
+        clearSelection();
+        await loadItems();
+      },
+    ).catch((err) => {
       toast.error(
         err instanceof Error ? err.message : 'Failed to publish menu items.',
       );
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
 
-    setSaving(true);
-    try {
-      const { error: deleteError } = await supabase
-        .from('products')
-        .delete()
-        .in('id', ids)
-        .eq('product_type', 'alacarte');
+    setBulkDeleteOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Deleting ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}…`,
+      async () => {
+        const { error: deleteError } = await supabase
+          .from('products')
+          .delete()
+          .in('id', ids)
+          .eq('product_type', 'alacarte');
 
-      if (deleteError) throw deleteError;
-      toast.success(
-        `Deleted ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}.`,
-      );
-      clearSelection();
-      setBulkDeleteOpen(false);
-      await loadItems();
-    } catch (err) {
+        if (deleteError) throw deleteError;
+        toast.success(
+          `Deleted ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}.`,
+        );
+        clearSelection();
+        await loadItems();
+      },
+    ).catch((err) => {
       toast.error(
         err instanceof Error ? err.message : 'Failed to delete menu items.',
       );
-    } finally {
-      setSaving(false);
-    }
+    });
+  };
+
+  const handleBulkAddToCategory = async (categoryIds: number[]) => {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || categoryIds.length === 0) return;
+
+    setBulkAddCategoryOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Adding categories to ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}…`,
+      async () => {
+        await appendProductCategories(ids, categoryIds);
+        toast.success(
+          `Added categories to ${ids.length} menu ${ids.length === 1 ? 'item' : 'items'}.`,
+        );
+        clearSelection();
+        await loadItems();
+      },
+    ).catch((err) => {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to add categories to menu items.',
+      );
+    });
   };
 
   if (profileLoading) {
@@ -1011,6 +1055,16 @@ export function Menu() {
                   <div className="flex shrink-0 items-center gap-2">
                     <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setBulkAddCategoryOpen(true)}
+                      disabled={saving}
+                    >
+                      <FolderPlus className="size-4" />
+                      Add to category
+                    </Button>
+                    <Button
+                      type="button"
                       size="sm"
                       onClick={() => setBulkPublishOpen(true)}
                       disabled={saving}
@@ -1057,7 +1111,7 @@ export function Menu() {
                           className="h-4 w-4 rounded border-input"
                           checked={allFilteredSelected}
                           disabled={saving || filteredItems.length === 0}
-                          aria-label="Select all visible menu items"
+                          aria-label="Select all menu items on this page"
                           onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
                         />
                       </th>
@@ -1126,7 +1180,8 @@ export function Menu() {
                             checked={selectedIds.has(item.id)}
                             disabled={saving}
                             aria-label={`Select menu item ${item.name}`}
-                            onChange={(e) => toggleSelected(item.id, e.target.checked)}
+                            onPointerDown={onRowCheckboxPointerDown}
+                            onChange={onRowCheckboxChange(item.id)}
                           />
                         </td>
                         <td className="px-4 py-3 font-mono text-sm">
@@ -1606,6 +1661,16 @@ export function Menu() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <BulkAddToCategoryDialog
+        open={bulkAddCategoryOpen}
+        onOpenChange={setBulkAddCategoryOpen}
+        sections={categoryFilterSections}
+        selectedCount={selectedCount}
+        itemLabel="menu item"
+        saving={saving}
+        onConfirm={handleBulkAddToCategory}
+      />
+
       <AlertDialog
         open={bulkPublishOpen}
         onOpenChange={(open) => !open && setBulkPublishOpen(false)}
@@ -1665,6 +1730,11 @@ export function Menu() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BulkProcessingOverlay
+        open={bulkProcessingMessage != null}
+        message={bulkProcessingMessage ?? 'Processing…'}
+      />
     </DashboardLayout>
   );
 }

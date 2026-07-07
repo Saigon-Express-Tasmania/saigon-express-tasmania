@@ -1,3 +1,8 @@
+import { BulkAddToCategoryDialog } from '@/components/BulkAddToCategoryDialog';
+import {
+  BulkProcessingOverlay,
+  withBulkProcessing,
+} from '@/components/BulkProcessingOverlay';
 import { DashboardLayout } from '@/components/layout';
 import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
 import { ProductCategoryGroupFilterStrip } from '@/components/ProductCategoryGroupFilterStrip';
@@ -59,6 +64,7 @@ import {
   type AdminCategoryFilterSection,
 } from '@/lib/category-filter-sections';
 import {
+  appendProductCategories,
   attachProductCategoryFields,
   loadProductCategoriesByProductIds,
   resolvePrimaryCategoryId,
@@ -82,6 +88,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  FolderPlus,
   Globe,
   ImageIcon,
   Loader2,
@@ -300,6 +307,10 @@ export function WholesaleProducts() {
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
+  const [bulkAddCategoryOpen, setBulkAddCategoryOpen] = useState(false);
+  const [bulkProcessingMessage, setBulkProcessingMessage] = useState<string | null>(
+    null,
+  );
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [publishedFilter, setPublishedFilter] = useState<PublishedFilterValue>('all');
@@ -527,11 +538,14 @@ export function WholesaleProducts() {
     selectedCount,
     selectAllRef,
     allFilteredSelected,
-    toggleSelected,
+    onRowCheckboxPointerDown,
+    onRowCheckboxChange,
     toggleSelectAllFiltered,
     clearSelection,
     removeFromSelection,
-  } = useBulkRowSelection(filteredProducts);
+  } = useBulkRowSelection(filteredProducts, {
+    displayRows: paginatedFilteredProducts,
+  });
 
   const handleInlineSortOrderSave = useCallback(
     async (productId: number, sortOrder: number) => {
@@ -889,60 +903,90 @@ export function WholesaleProducts() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
 
-    setSaving(true);
-    try {
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ is_published: true })
-        .in('id', ids)
-        .eq('product_type', 'wholesale');
+    setBulkPublishOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Publishing ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}…`,
+      async () => {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ is_published: true })
+          .in('id', ids)
+          .eq('product_type', 'wholesale');
 
-      if (updateError) throw updateError;
-      toast.success(
-        `Published ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}.`,
-      );
-      clearSelection();
-      setBulkPublishOpen(false);
-      await loadProducts();
-    } catch (err) {
+        if (updateError) throw updateError;
+        toast.success(
+          `Published ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}.`,
+        );
+        clearSelection();
+        await loadProducts();
+      },
+    ).catch((err) => {
       toast.error(
         err instanceof Error
           ? err.message
           : 'Failed to publish wholesale products.',
       );
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
 
-    setSaving(true);
-    try {
-      const { error: deleteError } = await supabase
-        .from('products')
-        .delete()
-        .in('id', ids)
-        .eq('product_type', 'wholesale');
+    setBulkDeleteOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Deleting ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}…`,
+      async () => {
+        const { error: deleteError } = await supabase
+          .from('products')
+          .delete()
+          .in('id', ids)
+          .eq('product_type', 'wholesale');
 
-      if (deleteError) throw deleteError;
-      toast.success(
-        `Deleted ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}.`,
-      );
-      clearSelection();
-      setBulkDeleteOpen(false);
-      await loadProducts();
-    } catch (err) {
+        if (deleteError) throw deleteError;
+        toast.success(
+          `Deleted ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}.`,
+        );
+        clearSelection();
+        await loadProducts();
+      },
+    ).catch((err) => {
       toast.error(
         err instanceof Error
           ? err.message
           : 'Failed to delete wholesale products.',
       );
-    } finally {
-      setSaving(false);
-    }
+    });
+  };
+
+  const handleBulkAddToCategory = async (categoryIds: number[]) => {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || categoryIds.length === 0) return;
+
+    setBulkAddCategoryOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Adding categories to ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}…`,
+      async () => {
+        await appendProductCategories(ids, categoryIds);
+        toast.success(
+          `Added categories to ${ids.length} wholesale ${ids.length === 1 ? 'product' : 'products'}.`,
+        );
+        clearSelection();
+        await loadProducts();
+      },
+    ).catch((err) => {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to add categories to wholesale products.',
+      );
+    });
   };
 
   if (profileLoading) {
@@ -1059,6 +1103,16 @@ export function WholesaleProducts() {
                   <div className="flex shrink-0 items-center gap-2">
                     <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setBulkAddCategoryOpen(true)}
+                      disabled={saving}
+                    >
+                      <FolderPlus className="size-4" />
+                      Add to category
+                    </Button>
+                    <Button
+                      type="button"
                       size="sm"
                       onClick={() => setBulkPublishOpen(true)}
                       disabled={saving}
@@ -1105,7 +1159,7 @@ export function WholesaleProducts() {
                           className="h-4 w-4 rounded border-input"
                           checked={allFilteredSelected}
                           disabled={saving || filteredProducts.length === 0}
-                          aria-label="Select all visible wholesale products"
+                          aria-label="Select all wholesale products on this page"
                           onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
                         />
                       </th>
@@ -1189,7 +1243,8 @@ export function WholesaleProducts() {
                             checked={selectedIds.has(p.id)}
                             disabled={saving}
                             aria-label={`Select wholesale product ${p.name}`}
-                            onChange={(e) => toggleSelected(p.id, e.target.checked)}
+                            onPointerDown={onRowCheckboxPointerDown}
+                            onChange={onRowCheckboxChange(p.id)}
                           />
                         </td>
                         <td className="px-4 py-3 font-mono text-sm">{p.id}</td>
@@ -1672,6 +1727,16 @@ export function WholesaleProducts() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <BulkAddToCategoryDialog
+        open={bulkAddCategoryOpen}
+        onOpenChange={setBulkAddCategoryOpen}
+        sections={categoryFilterSections}
+        selectedCount={selectedCount}
+        itemLabel="wholesale product"
+        saving={saving}
+        onConfirm={handleBulkAddToCategory}
+      />
+
       <AlertDialog
         open={bulkPublishOpen}
         onOpenChange={(open) => !open && setBulkPublishOpen(false)}
@@ -1734,6 +1799,11 @@ export function WholesaleProducts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BulkProcessingOverlay
+        open={bulkProcessingMessage != null}
+        message={bulkProcessingMessage ?? 'Processing…'}
+      />
     </DashboardLayout>
   );
 }

@@ -1,3 +1,8 @@
+import { BulkAddToCategoryDialog } from '@/components/BulkAddToCategoryDialog';
+import {
+  BulkProcessingOverlay,
+  withBulkProcessing,
+} from '@/components/BulkProcessingOverlay';
 import { DashboardLayout } from '@/components/layout';
 import { CategoryFilterCombobox } from '@/components/CategoryFilterCombobox';
 import { ProductCategoryGroupFilterStrip } from '@/components/ProductCategoryGroupFilterStrip';
@@ -69,6 +74,7 @@ import {
   type AdminCategoryFilterSection,
 } from '@/lib/category-filter-sections';
 import {
+  appendProductCategories,
   attachProductCategoryFields,
   loadProductCategoriesByProductIds,
   resolvePrimaryCategoryId,
@@ -91,6 +97,7 @@ import {
   Check,
   DollarSign,
   FilePenLine,
+  FolderPlus,
   Globe,
   ImageIcon,
   Loader2,
@@ -457,6 +464,10 @@ export function CateringPacks() {
   const [deleteTarget, setDeleteTarget] = useState<CateringPackRow | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
+  const [bulkAddCategoryOpen, setBulkAddCategoryOpen] = useState(false);
+  const [bulkProcessingMessage, setBulkProcessingMessage] = useState<string | null>(
+    null,
+  );
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [publishedFilter, setPublishedFilter] = useState<PublishedFilterValue>('all');
@@ -651,11 +662,14 @@ export function CateringPacks() {
     selectedCount,
     selectAllRef,
     allFilteredSelected,
-    toggleSelected,
+    onRowCheckboxPointerDown,
+    onRowCheckboxChange,
     toggleSelectAllFiltered,
     clearSelection,
     removeFromSelection,
-  } = useBulkRowSelection(filteredPacks);
+  } = useBulkRowSelection(filteredPacks, {
+    displayRows: paginatedFilteredPacks,
+  });
 
   const handleInlineSortOrderSave = useCallback(
     async (packId: number, sortOrder: number) => {
@@ -1127,56 +1141,86 @@ export function CateringPacks() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
 
-    setSaving(true);
-    try {
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ is_published: true })
-        .in('id', ids)
-        .eq('product_type', 'catering');
+    setBulkPublishOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Publishing ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}…`,
+      async () => {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ is_published: true })
+          .in('id', ids)
+          .eq('product_type', 'catering');
 
-      if (updateError) throw updateError;
-      toast.success(
-        `Published ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}.`,
-      );
-      clearSelection();
-      setBulkPublishOpen(false);
-      await loadCateringPacks();
-    } catch (err) {
+        if (updateError) throw updateError;
+        toast.success(
+          `Published ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}.`,
+        );
+        clearSelection();
+        await loadCateringPacks();
+      },
+    ).catch((err) => {
       toast.error(
         err instanceof Error ? err.message : 'Failed to publish catering items.',
       );
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
 
-    setSaving(true);
-    try {
-      const { error: deleteError } = await supabase
-        .from('products')
-        .delete()
-        .in('id', ids)
-        .eq('product_type', 'catering');
+    setBulkDeleteOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Deleting ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}…`,
+      async () => {
+        const { error: deleteError } = await supabase
+          .from('products')
+          .delete()
+          .in('id', ids)
+          .eq('product_type', 'catering');
 
-      if (deleteError) throw deleteError;
-      toast.success(
-        `Deleted ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}.`,
-      );
-      clearSelection();
-      setBulkDeleteOpen(false);
-      await loadCateringPacks();
-    } catch (err) {
+        if (deleteError) throw deleteError;
+        toast.success(
+          `Deleted ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}.`,
+        );
+        clearSelection();
+        await loadCateringPacks();
+      },
+    ).catch((err) => {
       toast.error(
         err instanceof Error ? err.message : 'Failed to delete catering items.',
       );
-    } finally {
-      setSaving(false);
-    }
+    });
+  };
+
+  const handleBulkAddToCategory = async (categoryIds: number[]) => {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || categoryIds.length === 0) return;
+
+    setBulkAddCategoryOpen(false);
+    await withBulkProcessing(
+      setBulkProcessingMessage,
+      setSaving,
+      `Adding categories to ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}…`,
+      async () => {
+        await appendProductCategories(ids, categoryIds);
+        toast.success(
+          `Added categories to ${ids.length} catering ${ids.length === 1 ? 'item' : 'items'}.`,
+        );
+        clearSelection();
+        await loadCateringPacks();
+      },
+    ).catch((err) => {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to add categories to catering items.',
+      );
+    });
   };
 
   const updateTierPrice = (
@@ -1307,6 +1351,16 @@ export function CateringPacks() {
                     <div className="flex shrink-0 items-center gap-2">
                       <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setBulkAddCategoryOpen(true)}
+                        disabled={saving}
+                      >
+                        <FolderPlus className="size-4" />
+                        Add to category
+                      </Button>
+                      <Button
+                        type="button"
                         size="sm"
                         onClick={() => setBulkPublishOpen(true)}
                         disabled={saving}
@@ -1370,7 +1424,7 @@ export function CateringPacks() {
                           className="h-4 w-4 rounded border-input"
                           checked={allFilteredSelected}
                           disabled={saving || filteredPacks.length === 0}
-                          aria-label="Select all visible catering items"
+                          aria-label="Select all catering items on this page"
                           onChange={(e) => toggleSelectAllFiltered(e.target.checked)}
                         />
                       </th>
@@ -1437,7 +1491,8 @@ export function CateringPacks() {
                             checked={selectedIds.has(pack.id)}
                             disabled={saving}
                             aria-label={`Select catering item ${pack.name}`}
-                            onChange={(e) => toggleSelected(pack.id, e.target.checked)}
+                            onPointerDown={onRowCheckboxPointerDown}
+                            onChange={onRowCheckboxChange(pack.id)}
                           />
                         </td>
                         <td className="px-4 py-3 font-mono text-sm">{pack.id}</td>
@@ -2172,6 +2227,16 @@ export function CateringPacks() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <BulkAddToCategoryDialog
+        open={bulkAddCategoryOpen}
+        onOpenChange={setBulkAddCategoryOpen}
+        sections={categoryFilterSections}
+        selectedCount={selectedCount}
+        itemLabel="catering item"
+        saving={saving}
+        onConfirm={handleBulkAddToCategory}
+      />
+
       <AlertDialog
         open={bulkPublishOpen}
         onOpenChange={(open) => !open && setBulkPublishOpen(false)}
@@ -2231,6 +2296,11 @@ export function CateringPacks() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BulkProcessingOverlay
+        open={bulkProcessingMessage != null}
+        message={bulkProcessingMessage ?? 'Processing…'}
+      />
     </DashboardLayout>
   );
 }

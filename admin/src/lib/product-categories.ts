@@ -1,5 +1,56 @@
 import supabase from '@/lib/supabase/client';
 
+const PRODUCT_ID_QUERY_BATCH_SIZE = 100;
+const PRODUCT_CATEGORY_UPSERT_BATCH_SIZE = 400;
+const PRIMARY_UPDATE_BATCH_SIZE = 50;
+
+function chunkValues<T>(values: T[], batchSize: number): T[][] {
+  if (values.length === 0) return [];
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += batchSize) {
+    chunks.push(values.slice(index, index + batchSize));
+  }
+  return chunks;
+}
+
+async function runInParallelBatches<T>(
+  items: T[],
+  batchSize: number,
+  handler: (batch: T[]) => Promise<void>,
+): Promise<void> {
+  await Promise.all(
+    chunkValues(items, batchSize).map((batch) => handler(batch)),
+  );
+}
+
+async function loadLegacyCategoryIdsByProductId(
+  productIds: number[],
+): Promise<Map<number, number | null>> {
+  const legacyCategoryIdByProductId = new Map<number, number | null>();
+
+  await runInParallelBatches(
+    productIds,
+    PRODUCT_ID_QUERY_BATCH_SIZE,
+    async (batchIds) => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, category_id')
+        .in('id', batchIds);
+
+      if (error) throw error;
+
+      for (const row of data ?? []) {
+        legacyCategoryIdByProductId.set(
+          Number(row.id),
+          row.category_id != null ? Number(row.category_id) : null,
+        );
+      }
+    },
+  );
+
+  return legacyCategoryIdByProductId;
+}
+
 export type ProductCategoryAssignment = {
   categoryId: number;
   isPrimary: boolean;
@@ -15,27 +66,34 @@ export async function loadProductCategoriesByProductIds(
   productIds: number[],
 ): Promise<ProductCategoriesByProductId> {
   const byProductId: ProductCategoriesByProductId = new Map();
-  if (productIds.length === 0) return byProductId;
+  const uniqueProductIds = [...new Set(productIds.filter((id) => id > 0))];
+  if (uniqueProductIds.length === 0) return byProductId;
 
-  const { data, error } = await supabase
-    .from('product_categories')
-    .select('product_id, category_id, is_primary, sort_order')
-    .in('product_id', productIds)
-    .order('sort_order', { ascending: true })
-    .order('category_id', { ascending: true });
+  await runInParallelBatches(
+    uniqueProductIds,
+    PRODUCT_ID_QUERY_BATCH_SIZE,
+    async (batchIds) => {
+      const { data, error } = await supabase
+        .from('product_categories')
+        .select('product_id, category_id, is_primary, sort_order')
+        .in('product_id', batchIds)
+        .order('sort_order', { ascending: true })
+        .order('category_id', { ascending: true });
 
-  if (error) throw error;
+      if (error) throw error;
 
-  for (const row of data ?? []) {
-    const productId = Number(row.product_id);
-    const assignments = byProductId.get(productId) ?? [];
-    assignments.push({
-      categoryId: Number(row.category_id),
-      isPrimary: Boolean(row.is_primary),
-      sortOrder: Number(row.sort_order ?? 0),
-    });
-    byProductId.set(productId, assignments);
-  }
+      for (const row of data ?? []) {
+        const productId = Number(row.product_id);
+        const assignments = byProductId.get(productId) ?? [];
+        assignments.push({
+          categoryId: Number(row.category_id),
+          isPrimary: Boolean(row.is_primary),
+          sortOrder: Number(row.sort_order ?? 0),
+        });
+        byProductId.set(productId, assignments);
+      }
+    },
+  );
 
   return byProductId;
 }
@@ -72,6 +130,103 @@ export function resolvePrimaryCategoryId(
     return primaryCategoryId;
   }
   return uniqueIds[0] ?? null;
+}
+
+export async function appendProductCategories(
+  productIds: number[],
+  categoryIdsToAdd: number[],
+): Promise<void> {
+  const uniqueCategoryIds = [
+    ...new Set(categoryIdsToAdd.filter((categoryId) => categoryId > 0)),
+  ];
+  const uniqueProductIds = [...new Set(productIds.filter((productId) => productId > 0))];
+  if (uniqueProductIds.length === 0 || uniqueCategoryIds.length === 0) return;
+
+  const [existingByProductId, legacyCategoryIdByProductId] = await Promise.all([
+    loadProductCategoriesByProductIds(uniqueProductIds),
+    loadLegacyCategoryIdsByProductId(uniqueProductIds),
+  ]);
+
+  const rowsToInsert: Array<{
+    product_id: number;
+    category_id: number;
+    is_primary: boolean;
+    sort_order: number;
+  }> = [];
+  const primaryCategoryByProductId = new Map<number, number>();
+
+  for (const productId of uniqueProductIds) {
+    const assignments = existingByProductId.get(productId) ?? [];
+    const legacyCategoryId = legacyCategoryIdByProductId.get(productId) ?? null;
+    const existingCategoryIds = new Set(
+      assignments.map((assignment) => assignment.categoryId),
+    );
+    if (legacyCategoryId != null) {
+      existingCategoryIds.add(legacyCategoryId);
+    }
+
+    const hasPrimary =
+      assignments.some((assignment) => assignment.isPrimary) ||
+      legacyCategoryId != null;
+
+    let maxSortOrder = assignments.reduce(
+      (max, assignment) => Math.max(max, assignment.sortOrder),
+      -1,
+    );
+
+    for (const categoryId of uniqueCategoryIds) {
+      if (existingCategoryIds.has(categoryId)) continue;
+
+      maxSortOrder += 1;
+      rowsToInsert.push({
+        product_id: productId,
+        category_id: categoryId,
+        is_primary: false,
+        sort_order: maxSortOrder,
+      });
+      existingCategoryIds.add(categoryId);
+
+      if (!hasPrimary && !primaryCategoryByProductId.has(productId)) {
+        primaryCategoryByProductId.set(productId, categoryId);
+      }
+    }
+  }
+
+  if (rowsToInsert.length === 0) return;
+
+  await runInParallelBatches(
+    rowsToInsert,
+    PRODUCT_CATEGORY_UPSERT_BATCH_SIZE,
+    async (batchRows) => {
+      const { error: insertError } = await supabase
+        .from('product_categories')
+        .upsert(batchRows, {
+          onConflict: 'product_id,category_id',
+          ignoreDuplicates: true,
+        });
+
+      if (insertError) throw insertError;
+    },
+  );
+
+  const primaryUpdates = [...primaryCategoryByProductId.entries()];
+  await runInParallelBatches(
+    primaryUpdates,
+    PRIMARY_UPDATE_BATCH_SIZE,
+    async (batchUpdates) => {
+      await Promise.all(
+        batchUpdates.map(async ([productId, categoryId]) => {
+          const { error: primaryError } = await supabase
+            .from('product_categories')
+            .update({ is_primary: true })
+            .eq('product_id', productId)
+            .eq('category_id', categoryId);
+
+          if (primaryError) throw primaryError;
+        }),
+      );
+    },
+  );
 }
 
 export async function syncProductCategories(
