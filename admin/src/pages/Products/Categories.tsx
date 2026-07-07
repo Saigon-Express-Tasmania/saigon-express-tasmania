@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -49,6 +50,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronDown,
   ImageIcon,
   Layers,
   Loader2,
@@ -58,7 +60,14 @@ import {
   SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { toast } from 'sonner';
 
 const CATEGORY_KINDS = ['menu', 'wholesale', 'catering'] as const;
@@ -171,6 +180,151 @@ type CategoryGroupOption = {
   alias: string;
   sortOrder: number;
 };
+
+type CategoryTableGroup = {
+  key: string;
+  groupId: number | null;
+  groupName: string;
+  kind: CategoryKind | null;
+  sortOrder: number;
+  categories: CategoryRow[];
+};
+
+type CategoryGroupColorSet = {
+  accordion: string;
+  idCell: string;
+};
+
+const CATEGORY_GROUP_COLOR_SETS: CategoryGroupColorSet[] = [
+  {
+    accordion: 'border-l-emerald-500/70 bg-emerald-500/5 hover:bg-emerald-500/10',
+    idCell: 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-100',
+  },
+  {
+    accordion: 'border-l-sky-500/70 bg-sky-500/5 hover:bg-sky-500/10',
+    idCell: 'bg-sky-500/10 text-sky-900 dark:text-sky-100',
+  },
+  {
+    accordion: 'border-l-amber-500/70 bg-amber-500/5 hover:bg-amber-500/10',
+    idCell: 'bg-amber-500/10 text-amber-900 dark:text-amber-100',
+  },
+  {
+    accordion: 'border-l-fuchsia-500/70 bg-fuchsia-500/5 hover:bg-fuchsia-500/10',
+    idCell: 'bg-fuchsia-500/10 text-fuchsia-900 dark:text-fuchsia-100',
+  },
+  {
+    accordion: 'border-l-indigo-500/70 bg-indigo-500/5 hover:bg-indigo-500/10',
+    idCell: 'bg-indigo-500/10 text-indigo-900 dark:text-indigo-100',
+  },
+  {
+    accordion: 'border-l-rose-500/70 bg-rose-500/5 hover:bg-rose-500/10',
+    idCell: 'bg-rose-500/10 text-rose-900 dark:text-rose-100',
+  },
+];
+
+function categoryGroupColorSet(groupId: number | null): CategoryGroupColorSet {
+  if (groupId == null) {
+    return {
+      accordion: 'border-l-violet-500/60 bg-violet-500/5 hover:bg-violet-500/10',
+      idCell: 'bg-violet-500/10 text-violet-900 dark:text-violet-100',
+    };
+  }
+  const index = Math.abs(groupId) % CATEGORY_GROUP_COLOR_SETS.length;
+  return CATEGORY_GROUP_COLOR_SETS[index];
+}
+
+const CATEGORY_TABLE_BASE_COLUMN_COUNT = 9;
+
+function getCategoryTableColumnCount(showKindColumn: boolean): number {
+  return showKindColumn
+    ? CATEGORY_TABLE_BASE_COLUMN_COUNT + 1
+    : CATEGORY_TABLE_BASE_COLUMN_COUNT;
+}
+
+function buildCategoryTableGroups(
+  categories: CategoryRow[],
+  categoryGroups: CategoryGroupOption[],
+  kindFilter: string,
+): CategoryTableGroup[] {
+  const byGroupId = new Map<number, CategoryRow[]>();
+  const ungrouped: CategoryRow[] = [];
+
+  for (const category of categories) {
+    if (category.categoryGroupId != null) {
+      const list = byGroupId.get(category.categoryGroupId) ?? [];
+      list.push(category);
+      byGroupId.set(category.categoryGroupId, list);
+    } else {
+      ungrouped.push(category);
+    }
+  }
+
+  const knownGroupIds = new Set(categoryGroups.map((group) => group.id));
+  const sections: CategoryTableGroup[] = [];
+
+  const orderedGroups = categoryGroups
+    .filter(
+      (group) =>
+        (kindFilter === 'all' || group.kind === kindFilter) &&
+        byGroupId.has(group.id),
+    )
+    .sort(
+      (a, b) =>
+        a.sortOrder - b.sortOrder ||
+        a.name.localeCompare(b.name) ||
+        a.id - b.id,
+    );
+
+  for (const group of orderedGroups) {
+    sections.push({
+      key: `group-${group.id}`,
+      groupId: group.id,
+      groupName: group.name,
+      kind: group.kind,
+      sortOrder: group.sortOrder,
+      categories: byGroupId.get(group.id) ?? [],
+    });
+  }
+
+  for (const [groupId, groupCategories] of byGroupId) {
+    if (knownGroupIds.has(groupId)) continue;
+
+    const visibleCategories =
+      kindFilter === 'all'
+        ? groupCategories
+        : groupCategories.filter((category) => category.kind === kindFilter);
+
+    if (visibleCategories.length === 0) continue;
+
+    sections.push({
+      key: `orphan-${groupId}`,
+      groupId,
+      groupName:
+        visibleCategories[0]?.categoryGroupName ?? `Group #${groupId}`,
+      kind: visibleCategories[0]?.kind ?? null,
+      sortOrder: Number.MAX_SAFE_INTEGER - 1,
+      categories: visibleCategories,
+    });
+  }
+
+  const ungroupedFiltered =
+    kindFilter === 'all'
+      ? ungrouped
+      : ungrouped.filter((category) => category.kind === kindFilter);
+
+  if (ungroupedFiltered.length > 0) {
+    sections.push({
+      key: kindFilter === 'all' ? 'ungrouped' : `ungrouped-${kindFilter}`,
+      groupId: null,
+      groupName: 'Ungrouped',
+      kind: kindFilter === 'all' ? null : (kindFilter as CategoryKind),
+      sortOrder: Number.MAX_SAFE_INTEGER,
+      categories: ungroupedFiltered,
+    });
+  }
+
+  return sections;
+}
 
 type CategoryRow = {
   id: number;
@@ -378,6 +532,9 @@ export function Categories() {
   const [inlineSortSavingId, setInlineSortSavingId] = useState<number | null>(
     null,
   );
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const loadCategories = useCallback(async () => {
     try {
@@ -542,6 +699,45 @@ export function Categories() {
       return a[sortColumn].localeCompare(b[sortColumn]) * direction;
     });
   }, [categories, search, kindFilter, sortColumn, sortDirection]);
+
+  const groupedCategories = useMemo(
+    () =>
+      buildCategoryTableGroups(
+        filteredCategories,
+        categoryGroups,
+        kindFilter,
+      ),
+    [filteredCategories, categoryGroups, kindFilter],
+  );
+
+  useEffect(() => {
+    setExpandedGroups((previous) => {
+      const next = new Set(previous);
+      for (const group of groupedCategories) {
+        next.add(group.key);
+      }
+      for (const key of next) {
+        if (!groupedCategories.some((group) => group.key === key)) {
+          next.delete(key);
+        }
+      }
+      return next;
+    });
+  }, [groupedCategories]);
+
+  const toggleGroup = useCallback((groupKey: string) => {
+    setExpandedGroups((previous) => {
+      const next = new Set(previous);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  }, []);
+
+  const showKindColumn = kindFilter === 'all';
 
   const handleInlineSortOrderSave = useCallback(
     async (categoryId: number, sortOrder: number) => {
@@ -788,37 +984,31 @@ export function Categories() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search kind, alias, name, group, style, icon or add-ons…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-sm"
-              />
-              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="cat-kind-filter" className="whitespace-nowrap">
-                    Kind
-                  </Label>
-                  <Select
-                    value={kindFilter}
-                    onValueChange={(value) => setKindFilter(value)}
-                  >
-                    <SelectTrigger id="cat-kind-filter" className="w-40">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {CATEGORY_KINDS.map((kind) => (
-                        <SelectItem key={kind} value={kind}>
-                          {kind}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
+            <Input
+              placeholder="Search kind, alias, name, group, style, icon or add-ons…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-sm"
+            />
+
+            <Tabs
+              value={kindFilter}
+              onValueChange={setKindFilter}
+              className="gap-3"
+            >
+              <TabsList
+                id="cat-kind-filter"
+                aria-label="Filter by kind"
+                className="h-auto w-full flex-wrap justify-start sm:w-auto"
+              >
+                <TabsTrigger value="all">All</TabsTrigger>
+                {CATEGORY_KINDS.map((kind) => (
+                  <TabsTrigger key={kind} value={kind} className="capitalize">
+                    {kind}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -840,13 +1030,15 @@ export function Categories() {
                         sortDirection={sortDirection}
                         onSort={handleSort}
                       />
-                      <SortableHeader
-                        label="Kind"
-                        column="kind"
-                        sortColumn={sortColumn}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                      />
+                      {showKindColumn ? (
+                        <SortableHeader
+                          label="Kind"
+                          column="kind"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      ) : null}
                       <SortableHeader
                         label="Sort"
                         column="sort_order"
@@ -863,9 +1055,6 @@ export function Categories() {
                       />
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Name
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Group
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Style
@@ -885,65 +1074,139 @@ export function Categories() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredCategories.map((cat) => (
-                      <tr
-                        key={cat.id}
-                        className="border-b transition-colors hover:bg-muted/50"
-                      >
-                        <td className="px-4 py-3 font-mono text-sm">{cat.id}</td>
-                        <td className="px-4 py-3 text-sm capitalize text-muted-foreground">
-                          {cat.kind}
-                        </td>
-                        <td className="px-4 py-3">
-                          <InlineSortOrderInput
-                            value={cat.sortOrder}
-                            disabled={inlineSortSavingId === cat.id || saving}
-                            onCommit={(sortOrder) =>
-                              handleInlineSortOrderSave(cat.id, sortOrder)
-                            }
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {cat.alias}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {cat.name}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {cat.categoryGroupName ?? '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {cat.style ?? '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {cat.icon ?? '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {cat.addon.length > 0 ? cat.addon.join(', ') : '—'}
-                        </td>
-                        <td className="max-w-[280px] truncate px-4 py-3 text-sm text-muted-foreground">
-                          {cat.imageUrl ?? '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEdit(cat)}
+                    {groupedCategories.map((group) => {
+                      const isExpanded = expandedGroups.has(group.key);
+
+                      return (
+                        <Fragment key={group.key}>
+                          <tr className="border-b">
+                            <td
+                              colSpan={getCategoryTableColumnCount(showKindColumn)}
+                              className="px-4 py-1.5"
                             >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setDeleteTarget(cat)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              <button
+                                type="button"
+                                onClick={() => toggleGroup(group.key)}
+                                aria-expanded={isExpanded}
+                                className={cn(
+                                  'flex w-full items-center justify-between gap-3 rounded-md border-l-3 px-3 py-1.5 text-left text-sm transition-colors',
+                                  categoryGroupColorSet(group.groupId).accordion,
+                                  isExpanded
+                                    ? 'text-foreground'
+                                    : 'text-muted-foreground hover:text-foreground',
+                                )}
+                              >
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <ChevronDown
+                                    className={cn(
+                                      'h-4 w-4 shrink-0 transition-transform',
+                                      isExpanded ? 'rotate-0' : '-rotate-90',
+                                    )}
+                                    aria-hidden
+                                  />
+                                  <span className="truncate font-semibold">
+                                    {group.groupName}
+                                  </span>
+                                  {showKindColumn && group.kind ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="ml-1 hidden capitalize sm:inline-flex"
+                                    >
+                                      {group.kind}
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant="secondary"
+                                    className="font-mono text-xs"
+                                  >
+                                    {group.categories.length}{' '}
+                                    {group.categories.length === 1
+                                      ? 'item'
+                                      : 'items'}
+                                  </Badge>
+                                </div>
+                              </button>
+                            </td>
+                          </tr>
+                          {isExpanded
+                            ? group.categories.map((cat) => (
+                                <tr
+                                  key={cat.id}
+                                  className="border-b transition-colors hover:bg-muted/50"
+                                >
+                                  <td
+                                    className={cn(
+                                      'px-4 py-3 pl-10 font-mono text-sm',
+                                      categoryGroupColorSet(cat.categoryGroupId).idCell,
+                                    )}
+                                  >
+                                    {cat.id}
+                                  </td>
+                                  {showKindColumn ? (
+                                    <td className="px-4 py-3 text-sm capitalize text-muted-foreground">
+                                      {cat.kind}
+                                    </td>
+                                  ) : null}
+                                  <td className="px-4 py-3">
+                                    <InlineSortOrderInput
+                                      value={cat.sortOrder}
+                                      disabled={
+                                        inlineSortSavingId === cat.id || saving
+                                      }
+                                      onCommit={(sortOrder) =>
+                                        handleInlineSortOrderSave(
+                                          cat.id,
+                                          sortOrder,
+                                        )
+                                      }
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 text-sm font-medium">
+                                    {cat.alias}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {cat.name}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {cat.style ?? '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {cat.icon ?? '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {cat.addon.length > 0
+                                      ? cat.addon.join(', ')
+                                      : '—'}
+                                  </td>
+                                  <td className="max-w-[280px] truncate px-4 py-3 text-sm text-muted-foreground">
+                                    {cat.imageUrl ?? '—'}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex justify-end gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openEdit(cat)}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setDeleteTarget(cat)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            : null}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

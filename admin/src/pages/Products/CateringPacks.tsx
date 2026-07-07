@@ -22,8 +22,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useTablePagination } from '@/hooks/useTablePagination';
 import {
   Card,
   CardContent,
@@ -58,7 +60,7 @@ import {
   type MenuImageMoreEntry,
 } from '@/lib/menu-image-urls';
 import { slugFromName } from '@/lib/slug';
-import { nextProductId } from '@/lib/products';
+import { nextProductId, PRODUCT_TABLE_PER_PAGE_OPTIONS } from '@/lib/products';
 import {
   countProductsByCategoryId,
   flattenAdminCategoryFilterSections,
@@ -68,6 +70,7 @@ import {
 import {
   attachProductCategoryFields,
   loadProductCategoriesByProductIds,
+  resolvePrimaryCategoryId,
   syncProductCategories,
 } from '@/lib/product-categories';
 import {
@@ -441,6 +444,9 @@ export function CateringPacks() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<CateringPackInput>(emptyCateringPackInput());
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateIdDraft, setDuplicateIdDraft] = useState<string>('');
+  const [duplicateLatestId, setDuplicateLatestId] = useState<number | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isUploadingAdditionalImages, setIsUploadingAdditionalImages] =
@@ -463,7 +469,7 @@ export function CateringPacks() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, note, prices, sort_order, is_available, is_published, customization_ids, customizations_disabled, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, serves, price, unit_price, description, includes, tag, tag_bg, image_url, image_urls, note, prices, sort_order, is_available, is_published, customization_ids, customizations_disabled, category_id, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'catering')
         .order('sort_order', { ascending: true })
@@ -605,6 +611,25 @@ export function CateringPacks() {
       return a.name.localeCompare(b.name) * direction;
     });
   }, [packs, search, categoryFilter, publishedFilter, sortColumn, sortDirection, categoryNameById]);
+
+  const paginationFilterKey = useMemo(
+    () => `${search}|${categoryFilter}|${publishedFilter}`,
+    [search, categoryFilter, publishedFilter],
+  );
+
+  const {
+    paginatedItems: paginatedFilteredPacks,
+    page,
+    perPage,
+    totalPages,
+    totalRecords,
+    perPageOptions,
+    setPage,
+    onPerPageChange,
+  } = useTablePagination(filteredPacks, paginationFilterKey, {
+    defaultPerPage: 20,
+    perPageOptions: [...PRODUCT_TABLE_PER_PAGE_OPTIONS],
+  });
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -836,34 +861,34 @@ export function CateringPacks() {
 
     const priceLabel = resolveCateringPriceLabel(form.price, unitPrice);
 
-    if (tierPrices.length === 0) {
-      if (!form.serves.trim()) {
-        toast.error('Serves is required when no tier prices are set.');
-        return;
-      }
-      if (!priceLabel) {
-        toast.error(
-          'Unit price or price label is required when no tier prices are set.',
-        );
-        return;
-      }
-      if (!form.description.trim()) {
-        toast.error('Description is required when no tier prices are set.');
-        return;
-      }
-      if (!form.tag.trim()) {
-        toast.error('Tag is required when no tier prices are set.');
-        return;
-      }
-      if (!form.tag_bg.trim()) {
-        toast.error('Tag background class is required when no tier prices are set.');
-        return;
-      }
-      if (includesValues.length === 0) {
-        toast.error('At least one include line is required when no tier prices are set.');
-        return;
-      }
-    }
+    // if (tierPrices.length === 0) {
+    //   if (!form.serves.trim()) {
+    //     toast.error('Serves is required when no tier prices are set.');
+    //     return;
+    //   }
+    //   if (!priceLabel) {
+    //     toast.error(
+    //       'Unit price or price label is required when no tier prices are set.',
+    //     );
+    //     return;
+    //   }
+    //   if (!form.description.trim()) {
+    //     toast.error('Description is required when no tier prices are set.');
+    //     return;
+    //   }
+    //   if (!form.tag.trim()) {
+    //     toast.error('Tag is required when no tier prices are set.');
+    //     return;
+    //   }
+    //   if (!form.tag_bg.trim()) {
+    //     toast.error('Tag background class is required when no tier prices are set.');
+    //     return;
+    //   }
+    //   if (includesValues.length === 0) {
+    //     toast.error('At least one include line is required when no tier prices are set.');
+    //     return;
+    //   }
+    // }
 
     const shippingError = validateProductShippingInput(form);
     if (shippingError) {
@@ -883,6 +908,14 @@ export function CateringPacks() {
 
     setSaving(true);
     try {
+      const productId = editingId ?? form.id;
+      const categoryIds = form.categoryIds;
+      const primaryCategoryId = form.primaryCategoryId;
+      const resolvedCategoryId = resolvePrimaryCategoryId(
+        categoryIds,
+        primaryCategoryId,
+      );
+
       const payload = {
         product_type: 'catering' as const,
         id: form.id,
@@ -894,6 +927,7 @@ export function CateringPacks() {
         includes: includesValues,
         tag: form.tag.trim(),
         tag_bg: form.tag_bg.trim(),
+        category_id: resolvedCategoryId,
         image_url,
         image_urls,
         note: form.note.trim() || null,
@@ -915,9 +949,9 @@ export function CateringPacks() {
 
         if (updateError) throw updateError;
         await syncProductCategories(
-          form.id,
-          form.categoryIds,
-          form.primaryCategoryId,
+          productId,
+          categoryIds,
+          primaryCategoryId,
           Number(form.sort_order) || 0,
         );
         toast.success('Catering item updated.');
@@ -926,9 +960,9 @@ export function CateringPacks() {
 
         if (insertError) throw insertError;
         await syncProductCategories(
-          form.id,
-          form.categoryIds,
-          form.primaryCategoryId,
+          productId,
+          categoryIds,
+          primaryCategoryId,
           Number(form.sort_order) || 0,
         );
         toast.success('Catering item created.');
@@ -939,6 +973,120 @@ export function CateringPacks() {
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to save catering item.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openDuplicateDialog = async () => {
+    if (editingId === null) return;
+    try {
+      const suggestedId = await nextCateringPackId();
+      setDuplicateLatestId(Math.max(0, suggestedId - 1));
+      setDuplicateIdDraft(String(suggestedId));
+      setDuplicateDialogOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to fetch latest catering item ID.',
+      );
+    }
+  };
+
+  const handleDuplicateConfirm = async () => {
+    if (editingId === null) return;
+    const nextId = Number.parseInt(duplicateIdDraft, 10);
+    if (!Number.isInteger(nextId) || nextId <= 0) {
+      toast.error('Duplicate ID must be a positive integer.');
+      return;
+    }
+
+    if (!form.name.trim()) {
+      toast.error('Name is required.');
+      return;
+    }
+
+    const tierPrices = serializeTierPrices(form.prices);
+    const includesValues = form.includesText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const unitPrice = form.unit_price.trim();
+    if (unitPrice && Number.isNaN(Number(unitPrice))) {
+      toast.error('Unit price must be a valid number.');
+      return;
+    }
+    const priceLabel = resolveCateringPriceLabel(form.price, unitPrice);
+    const shippingError = validateProductShippingInput(form);
+    if (shippingError) {
+      toast.error(shippingError);
+      return;
+    }
+
+    const image_urls = serializeMenuImageUrls(
+      form.image_sizes,
+      form.additional_images,
+    );
+    const image_url =
+      previewFromParsedMenuImages(
+        { sizes: form.image_sizes, more: form.additional_images },
+        [...CATERING_IMAGE_UPLOAD_RESIZES],
+      ) ?? null;
+
+    const payload = {
+      product_type: 'catering' as const,
+      id: nextId,
+      name: form.name.trim(),
+      serves: form.serves.trim(),
+      price: priceLabel,
+      unit_price: unitPrice,
+      description: form.description.trim(),
+      includes: includesValues,
+      tag: form.tag.trim(),
+      tag_bg: form.tag_bg.trim(),
+      image_url,
+      image_urls,
+      note: form.note.trim() || null,
+      prices: tierPrices,
+      sort_order: Number(form.sort_order) || 0,
+      is_available: form.is_available,
+      is_published: form.is_published,
+      customization_ids: form.customizationIds,
+      customizations_disabled: form.customizationsDisabled,
+      ...productShippingToPayload(form),
+    };
+
+    setSaving(true);
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', nextId)
+        .eq('product_type', 'catering')
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (existing) {
+        toast.error(`ID ${nextId} is already taken.`);
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('products').insert(payload);
+      if (insertError) throw insertError;
+
+      await syncProductCategories(
+        nextId,
+        form.categoryIds,
+        form.primaryCategoryId,
+        Number(form.sort_order) || 0,
+      );
+      setDuplicateDialogOpen(false);
+      toast.success(`Duplicated catering item as ID ${nextId}.`);
+      await loadCateringPacks();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to duplicate catering item.',
       );
     } finally {
       setSaving(false);
@@ -1170,6 +1318,7 @@ export function CateringPacks() {
                 No catering items found. Add one to get started.
               </p>
             ) : (
+              <div className="space-y-4">
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full">
                   <thead>
@@ -1234,7 +1383,7 @@ export function CateringPacks() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPacks.map((pack) => (
+                    {paginatedFilteredPacks.map((pack) => (
                       <tr
                         key={pack.id}
                         className={`border-b transition-colors hover:bg-muted/50 ${
@@ -1338,6 +1487,16 @@ export function CateringPacks() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <Pagination
+                totalRecords={totalRecords}
+                page={page}
+                perPage={perPage}
+                totalPages={totalPages}
+                perPageOptions={perPageOptions}
+                onPageChange={setPage}
+                onPerPageChange={onPerPageChange}
+              />
               </div>
             )}
           </CardContent>
@@ -1450,11 +1609,7 @@ export function CateringPacks() {
                     }
                   />
                 </CateringPackFormField>
-                <CateringPackFormField
-                  label="Categories"
-                  htmlFor="pack-categories"
-                  className="md:col-span-2"
-                >
+                <div className="md:col-span-2">
                   <ProductCategoriesFields
                     idPrefix="pack"
                     value={{
@@ -1471,7 +1626,7 @@ export function CateringPacks() {
                       }))
                     }
                   />
-                </CateringPackFormField>
+                </div>
                 <CateringPackFormField
                   label="Name"
                   htmlFor="pack-name"
@@ -1885,6 +2040,15 @@ export function CateringPacks() {
             >
               Cancel
             </Button>
+            {editingId !== null ? (
+              <Button
+                variant="outline"
+                onClick={() => void openDuplicateDialog()}
+                disabled={saving}
+              >
+                Duplicate…
+              </Button>
+            ) : null}
             <Button
               className="bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700"
               onClick={() => void handleSave()}
@@ -1902,6 +2066,43 @@ export function CateringPacks() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => !open && setDuplicateDialogOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate catering item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Latest ID: {duplicateLatestId ?? '—'}. Enter a new ID for the copy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="catering-duplicate-id">New ID</Label>
+            <Input
+              id="catering-duplicate-id"
+              type="number"
+              min={1}
+              value={duplicateIdDraft}
+              onChange={(e) => setDuplicateIdDraft(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDuplicateConfirm();
+              }}
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteTarget !== null}

@@ -93,7 +93,14 @@ export async function syncProductCategories(
 
   if (deleteError) throw deleteError;
 
-  if (uniqueIds.length === 0) return;
+  if (uniqueIds.length === 0) {
+    const { error: clearPrimaryError } = await supabase
+      .from('products')
+      .update({ category_id: null })
+      .eq('id', productId);
+    if (clearPrimaryError) throw clearPrimaryError;
+    return;
+  }
 
   const rows = uniqueIds.map((categoryId, index) => ({
     product_id: productId,
@@ -107,14 +114,31 @@ export async function syncProductCategories(
     .insert(rows);
 
   if (insertError) throw insertError;
+
+  const { error: setPrimaryError } = await supabase
+    .from('products')
+    .update({ category_id: resolvedPrimary })
+    .eq('id', productId);
+
+  if (setPrimaryError) throw setPrimaryError;
 }
 
-export function attachProductCategoryFields<T extends { id: number }>(
+export function attachProductCategoryFields<
+  T extends { id: number; category_id?: number | null },
+>(
   rows: T[],
   byProductId: ProductCategoriesByProductId,
 ): (T & { categoryIds: number[]; primaryCategoryId: number | null })[] {
   return rows.map((row) => {
     const assignments = byProductId.get(row.id) ?? [];
+    if (assignments.length === 0 && row.category_id != null) {
+      const legacyCategoryId = Number(row.category_id);
+      return {
+        ...row,
+        categoryIds: [legacyCategoryId],
+        primaryCategoryId: legacyCategoryId,
+      };
+    }
     return {
       ...row,
       categoryIds: getCategoryIdsOrdered(assignments),

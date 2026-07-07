@@ -234,6 +234,15 @@ export function SearchableMultiSelect({
             disabled={disabled}
             placeholder={placeholder}
             onFocus={() => setOpen(true)}
+            onPointerDown={() => {
+              if (!disabled) {
+                if (open) {
+                  closeDropdown();
+                  return;
+                }
+                setOpen(true);
+              }
+            }}
             onChange={(event) => {
               setFilterText(event.target.value);
               setOpen(true);

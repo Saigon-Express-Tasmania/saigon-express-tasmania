@@ -195,6 +195,15 @@ export function SearchableSelect({
           disabled={disabled}
           placeholder={selectedLabel || placeholder}
           onFocus={() => setOpen(true)}
+          onPointerDown={() => {
+            if (!disabled) {
+              if (open) {
+                closeDropdown();
+                return;
+              }
+              setOpen(true);
+            }
+          }}
           onChange={(event) => {
             const nextQuery = event.target.value;
             setIsEditing(true);

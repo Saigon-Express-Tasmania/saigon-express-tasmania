@@ -435,7 +435,7 @@ export default function WholesaleShop({
             return (
               <div
                 key={product.id}
-                className={`group [contain-intrinsic-size:420px] [content-visibility:auto] ${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
+                className={`group flex h-full flex-col [contain-intrinsic-size:420px] [content-visibility:auto] ${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
               >
                 <div className="relative h-44 overflow-hidden">
                   {product.imageUrl ? (
@@ -474,7 +474,7 @@ export default function WholesaleShop({
                     {product.category}
                   </div>
                 </div>
-                <div className="p-4">
+                <div className="flex flex-1 flex-col p-4">
                   <h3 className="font-semibold text-gray-900 text-sm mb-1.5 leading-snug">
                     {product.name}
                   </h3>
@@ -509,19 +509,21 @@ export default function WholesaleShop({
                     ) : null}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleAddToCart(product)}
-                    disabled={outOfStock || atCartMax}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
-                  >
-                    <Plus className="w-4 h-4" />
-                    {outOfStock
-                      ? "Out of Stock"
-                      : atCartMax
-                        ? "Limit reached"
-                        : "Add to Cart"}
-                  </button>
+                  <div className="mt-auto pt-3">
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(product)}
+                      disabled={outOfStock || atCartMax}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {outOfStock
+                        ? "Out of Stock"
+                        : atCartMax
+                          ? "Limit reached"
+                          : "Add to Cart"}
+                    </button>
+                  </div>
                 </div>
               </div>
             );

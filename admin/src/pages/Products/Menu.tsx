@@ -23,8 +23,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useTablePagination } from '@/hooks/useTablePagination';
 import {
   Card,
   CardContent,
@@ -68,9 +70,13 @@ import {
 import {
   attachProductCategoryFields,
   loadProductCategoriesByProductIds,
+  resolvePrimaryCategoryId,
   syncProductCategories,
 } from '@/lib/product-categories';
-import { nextProductId } from '@/lib/products';
+import {
+  nextProductId,
+  PRODUCT_TABLE_PER_PAGE_OPTIONS,
+} from '@/lib/products';
 import {
   emptyProductShippingInput,
   PRODUCT_SHIPPING_SELECT,
@@ -238,6 +244,9 @@ export function Menu() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<MenuItemInput>(emptyMenuItemInput());
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateIdDraft, setDuplicateIdDraft] = useState<string>('');
+  const [duplicateLatestId, setDuplicateLatestId] = useState<number | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isUploadingAdditionalImages, setIsUploadingAdditionalImages] =
@@ -260,7 +269,7 @@ export function Menu() {
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(
-          `id, name, slug, description, price, wholesale_price, image_urls, is_available, is_published, is_popular, sort_order, ingredients, energy, food_content, spicy_level, ${PRODUCT_SHIPPING_SELECT}`,
+          `id, name, slug, description, price, wholesale_price, image_urls, is_available, is_published, is_popular, sort_order, ingredients, energy, food_content, spicy_level, category_id, related_items, ${PRODUCT_SHIPPING_SELECT}`,
         )
         .eq('product_type', 'alacarte')
         .order('sort_order', { ascending: true })
@@ -374,6 +383,25 @@ export function Menu() {
       return (a.name ?? '').localeCompare(b.name ?? '') * direction;
     });
   }, [items, search, categoryFilter, publishedFilter, sortColumn, sortDirection, categoryNameById]);
+
+  const paginationFilterKey = useMemo(
+    () => `${search}|${categoryFilter}|${publishedFilter}`,
+    [search, categoryFilter, publishedFilter],
+  );
+
+  const {
+    paginatedItems: paginatedFilteredItems,
+    page,
+    perPage,
+    totalPages,
+    totalRecords,
+    perPageOptions,
+    setPage,
+    onPerPageChange,
+  } = useTablePagination(filteredItems, paginationFilterKey, {
+    defaultPerPage: 20,
+    perPageOptions: [...PRODUCT_TABLE_PER_PAGE_OPTIONS],
+  });
 
   const {
     selectedIds,
@@ -605,6 +633,14 @@ export function Menu() {
         return;
       }
 
+      const productId = editingId ?? form.id;
+      const categoryIds = form.categoryIds;
+      const primaryCategoryId = form.primaryCategoryId;
+      const resolvedCategoryId = resolvePrimaryCategoryId(
+        categoryIds,
+        primaryCategoryId,
+      );
+
       const payload = {
         product_type: 'alacarte' as const,
         id: form.id,
@@ -613,6 +649,7 @@ export function Menu() {
         description: form.description?.trim() || '',
         price: String(form.price),
         wholesale_price: form.wholesale_price?.trim() || null,
+        category_id: resolvedCategoryId,
         image_urls: serializeMenuImageUrls(
           form.image_sizes,
           form.additional_images,
@@ -637,6 +674,7 @@ export function Menu() {
             description: payload.description,
             price: payload.price,
             wholesale_price: payload.wholesale_price,
+            category_id: payload.category_id,
             image_urls: payload.image_urls,
             is_available: payload.is_available,
             is_published: payload.is_published,
@@ -658,9 +696,9 @@ export function Menu() {
 
         if (updateError) throw updateError;
         await syncProductCategories(
-          form.id,
-          form.categoryIds,
-          form.primaryCategoryId,
+          productId,
+          categoryIds,
+          primaryCategoryId,
           Number(form.sort_order) || 0,
         );
         toast.success('Menu item updated.');
@@ -669,9 +707,9 @@ export function Menu() {
 
         if (insertError) throw insertError;
         await syncProductCategories(
-          form.id,
-          form.categoryIds,
-          form.primaryCategoryId,
+          productId,
+          categoryIds,
+          primaryCategoryId,
           Number(form.sort_order) || 0,
         );
         toast.success('Menu item created.');
@@ -682,6 +720,107 @@ export function Menu() {
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to save menu item.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openDuplicateDialog = async () => {
+    if (editingId === null) return;
+    try {
+      const suggestedId = await nextMenuId();
+      setDuplicateLatestId(Math.max(0, suggestedId - 1));
+      setDuplicateIdDraft(String(suggestedId));
+      setDuplicateDialogOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to fetch latest menu ID.',
+      );
+    }
+  };
+
+  const handleDuplicateConfirm = async () => {
+    if (editingId === null) return;
+    const nextId = Number.parseInt(duplicateIdDraft, 10);
+    if (!Number.isInteger(nextId) || nextId <= 0) {
+      toast.error('Duplicate ID must be a positive integer.');
+      return;
+    }
+
+    const shippingError = validateProductShippingInput(form);
+    if (shippingError) {
+      toast.error(shippingError);
+      return;
+    }
+
+    const ingredientsValue = isMenuItemIngredientEmpty(form.ingredients)
+      ? {}
+      : serializeMenuItemIngredient(form.ingredients);
+    const foodContentValue = isFoodContentEmpty(form.food_content)
+      ? {}
+      : serializeFoodContent(form.food_content);
+    const energyValue = Number.isFinite(form.energy)
+      ? Math.max(0, Math.round(form.energy))
+      : 0;
+    const spicyLevelValue = Number.isFinite(form.spicy_level)
+      ? Math.min(5, Math.max(0, Math.round(form.spicy_level)))
+      : 0;
+    const slug = slugFromName(form.name);
+    if (!slug) {
+      toast.error('Name must produce a valid slug.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', nextId)
+        .eq('product_type', 'alacarte')
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (existing) {
+        toast.error(`ID ${nextId} is already taken.`);
+        return;
+      }
+
+      const payload = {
+        product_type: 'alacarte' as const,
+        id: nextId,
+        name: form.name.trim(),
+        slug,
+        description: form.description?.trim() || '',
+        price: String(form.price),
+        wholesale_price: form.wholesale_price?.trim() || null,
+        image_urls: serializeMenuImageUrls(form.image_sizes, form.additional_images),
+        is_available: form.is_available,
+        is_published: form.is_published,
+        is_popular: form.is_popular,
+        sort_order: Number(form.sort_order) || 0,
+        ingredients: ingredientsValue,
+        energy: energyValue,
+        food_content: foodContentValue,
+        spicy_level: spicyLevelValue,
+        ...productShippingToPayload(form),
+      };
+
+      const { error: insertError } = await supabase.from('products').insert(payload);
+      if (insertError) throw insertError;
+      await syncProductCategories(
+        nextId,
+        form.categoryIds,
+        form.primaryCategoryId,
+        Number(form.sort_order) || 0,
+      );
+
+      setDuplicateDialogOpen(false);
+      toast.success(`Duplicated menu item as ID ${nextId}.`);
+      await loadItems();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to duplicate menu item.',
       );
     } finally {
       setSaving(false);
@@ -887,6 +1026,7 @@ export function Menu() {
                 No menu items found. Add one to get started.
               </p>
             ) : (
+              <div className="space-y-4">
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full">
                   <thead>
@@ -948,7 +1088,7 @@ export function Menu() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((item) => {
+                    {paginatedFilteredItems.map((item) => {
                       const thumb = previewFromParsedMenuImages(
                         parseMenuImageUrls(item.image_urls),
                         [256, 512, 1024, 1920],
@@ -1052,6 +1192,16 @@ export function Menu() {
                     })}
                   </tbody>
                 </table>
+              </div>
+              <Pagination
+                totalRecords={totalRecords}
+                page={page}
+                perPage={perPage}
+                totalPages={totalPages}
+                perPageOptions={perPageOptions}
+                onPageChange={setPage}
+                onPerPageChange={onPerPageChange}
+              />
               </div>
             )}
           </CardContent>
@@ -1345,6 +1495,15 @@ export function Menu() {
             >
               Cancel
             </Button>
+            {editingId !== null ? (
+              <Button
+                variant="outline"
+                onClick={() => void openDuplicateDialog()}
+                disabled={saving || imageUploadBusy}
+              >
+                Duplicate…
+              </Button>
+            ) : null}
             <Button
               onClick={() => void handleSave()}
               disabled={saving || imageUploadBusy}
@@ -1361,6 +1520,43 @@ export function Menu() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => !open && setDuplicateDialogOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate menu item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Latest ID: {duplicateLatestId ?? '—'}. Enter a new ID for the copy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="menu-duplicate-id">New ID</Label>
+            <Input
+              id="menu-duplicate-id"
+              type="number"
+              min={1}
+              value={duplicateIdDraft}
+              onChange={(e) => setDuplicateIdDraft(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDuplicateConfirm();
+              }}
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteTarget !== null}

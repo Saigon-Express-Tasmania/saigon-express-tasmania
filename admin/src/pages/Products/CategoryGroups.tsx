@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -45,6 +46,7 @@ import { cn } from '@/lib/utils';
 import { slugify } from '@/pages/ResourcesHub/franchiseResourceShared';
 import {
   ArrowDown,
+  ArrowDownUp,
   ArrowUp,
   ArrowUpDown,
   FolderTree,
@@ -68,7 +70,7 @@ import { toast } from 'sonner';
 const CATEGORY_KINDS = ['menu', 'wholesale', 'catering'] as const;
 type CategoryKind = (typeof CATEGORY_KINDS)[number];
 
-type SortColumn = 'id' | 'kind' | 'alias' | 'sort_order';
+type SortColumn = 'id' | 'kind' | 'sort_order';
 type SortDirection = 'asc' | 'desc';
 
 type CategoryGroupRow = {
@@ -277,6 +279,147 @@ async function nextCategoryGroupId(): Promise<number> {
   return Number(data?.id ?? 0) + 1;
 }
 
+type SortOrderItem = Pick<CategoryGroupRow, 'id' | 'kind' | 'name' | 'sortOrder'>;
+
+function normalizeSortOrderValue(sortOrder: number): number {
+  const value = Number(sortOrder);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function normalizeSortOrderItem(item: SortOrderItem): SortOrderItem {
+  return { ...item, sortOrder: normalizeSortOrderValue(item.sortOrder) };
+}
+
+function compareByNameThenId(a: SortOrderItem, b: SortOrderItem): number {
+  return a.name.localeCompare(b.name) || a.id - b.id;
+}
+
+function compareForResort(a: SortOrderItem, b: SortOrderItem): number {
+  const aRank =
+    a.sortOrder === 0 ? Number.POSITIVE_INFINITY : a.sortOrder;
+  const bRank =
+    b.sortOrder === 0 ? Number.POSITIVE_INFINITY : b.sortOrder;
+  if (aRank !== bRank) return aRank - bRank;
+  return compareByNameThenId(a, b);
+}
+
+function hasWithinKindSortOrderDuplicates(items: SortOrderItem[]): boolean {
+  const countsByKind = new Map<CategoryKind, Map<number, number>>();
+
+  for (const item of items) {
+    const kindCounts = countsByKind.get(item.kind) ?? new Map<number, number>();
+    const sortOrder = normalizeSortOrderValue(item.sortOrder);
+    kindCounts.set(sortOrder, (kindCounts.get(sortOrder) ?? 0) + 1);
+    countsByKind.set(item.kind, kindCounts);
+  }
+
+  for (const kindCounts of countsByKind.values()) {
+    for (const count of kindCounts.values()) {
+      if (count > 1) return true;
+    }
+  }
+
+  return false;
+}
+
+/** Re-sort within each kind: break duplicate sort_order ties by name and shift later slots; zeros go last. */
+function computeResortedCategoryGroupSortOrders(
+  items: SortOrderItem[],
+): Map<number, number> {
+  const result = new Map<number, number>();
+  const byKind = new Map<CategoryKind, SortOrderItem[]>();
+
+  for (const item of items) {
+    const normalized = normalizeSortOrderItem(item);
+    const list = byKind.get(normalized.kind) ?? [];
+    list.push(normalized);
+    byKind.set(normalized.kind, list);
+  }
+
+  for (const kindItems of byKind.values()) {
+    const zeros = kindItems.filter((item) => item.sortOrder === 0);
+    const nonZeros = kindItems.filter((item) => item.sortOrder !== 0);
+
+    const bySortOrder = new Map<number, SortOrderItem[]>();
+    for (const item of nonZeros) {
+      const list = bySortOrder.get(item.sortOrder) ?? [];
+      list.push(item);
+      bySortOrder.set(item.sortOrder, list);
+    }
+
+    const sortKeys = [...bySortOrder.keys()].sort((a, b) => a - b);
+    let cumulativeOffset = 0;
+
+    for (const sortKey of sortKeys) {
+      const group = bySortOrder.get(sortKey)!;
+      group.sort(compareByNameThenId);
+      group.forEach((item, index) => {
+        result.set(item.id, sortKey + cumulativeOffset + index);
+      });
+      cumulativeOffset += group.length - 1;
+    }
+
+    const maxAssigned = nonZeros.reduce(
+      (max, item) => Math.max(max, result.get(item.id) ?? 0),
+      0,
+    );
+
+    zeros.sort(compareByNameThenId).forEach((item, index) => {
+      result.set(item.id, maxAssigned + 1 + index);
+    });
+  }
+
+  return result;
+}
+
+/** Compact to 1..n per kind while preserving display order (fallback when duplicates remain). */
+function computeCompactCategoryGroupSortOrders(
+  items: SortOrderItem[],
+): Map<number, number> {
+  const result = new Map<number, number>();
+  const byKind = new Map<CategoryKind, SortOrderItem[]>();
+
+  for (const item of items) {
+    const normalized = normalizeSortOrderItem(item);
+    const list = byKind.get(normalized.kind) ?? [];
+    list.push(normalized);
+    byKind.set(normalized.kind, list);
+  }
+
+  for (const kindItems of byKind.values()) {
+    const ordered = [...kindItems].sort(compareForResort);
+    ordered.forEach((item, index) => {
+      result.set(item.id, index + 1);
+    });
+  }
+
+  return result;
+}
+
+function getResortScopeGroups(
+  groups: CategoryGroupRow[],
+  kindFilter: string,
+): CategoryGroupRow[] {
+  if (kindFilter === 'all') return groups;
+  return groups.filter((group) => group.kind === kindFilter);
+}
+
+function buildSortOrderUpdates(
+  groups: CategoryGroupRow[],
+  nextSortOrders: Map<number, number>,
+): Array<{ id: number; sortOrder: number }> {
+  return groups.flatMap((group) => {
+    const nextSortOrder = nextSortOrders.get(group.id);
+    if (
+      nextSortOrder === undefined ||
+      normalizeSortOrderValue(group.sortOrder) === nextSortOrder
+    ) {
+      return [];
+    }
+    return [{ id: group.id, sortOrder: nextSortOrder }];
+  });
+}
+
 type CategoryGroupPayload = {
   kind: CategoryKind;
   name: string;
@@ -294,6 +437,7 @@ export function CategoryGroups() {
   const [groups, setGroups] = useState<CategoryGroupRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resorting, setResorting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -418,6 +562,85 @@ export function CategoryGroups() {
     },
     [],
   );
+
+  const handleResort = useCallback(async () => {
+    const scopedGroups = getResortScopeGroups(groups, kindFilter);
+    if (scopedGroups.length === 0) return;
+
+    setResorting(true);
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('category_groups')
+        .select('id, kind, name, sort_order')
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (fetchError) throw fetchError;
+
+      const freshGroups: CategoryGroupRow[] = (data ?? []).map((row) => ({
+        id: row.id,
+        kind: row.kind as CategoryKind,
+        name: row.name,
+        description: null,
+        imageUrl: null,
+        sortOrder: normalizeSortOrderValue(Number(row.sort_order ?? 0)),
+        alias: '',
+      }));
+
+      const freshScopedGroups = getResortScopeGroups(freshGroups, kindFilter);
+      if (freshScopedGroups.length === 0) return;
+
+      let nextSortOrders = computeResortedCategoryGroupSortOrders(
+        freshScopedGroups,
+      );
+      let updates = buildSortOrderUpdates(freshScopedGroups, nextSortOrders);
+
+      if (
+        updates.length === 0 &&
+        hasWithinKindSortOrderDuplicates(freshScopedGroups)
+      ) {
+        nextSortOrders = computeCompactCategoryGroupSortOrders(freshScopedGroups);
+        updates = buildSortOrderUpdates(freshScopedGroups, nextSortOrders);
+      }
+
+      if (updates.length === 0) {
+        if (kindFilter === 'all') {
+          toast.message(
+            'Sort order is already unique within each kind. The same number can appear across menu, wholesale, and catering.',
+          );
+        } else {
+          toast.message(
+            `Sort order is already normalized for ${kindFilter} groups.`,
+          );
+        }
+        return;
+      }
+
+      const results = await Promise.all(
+        updates.map(({ id, sortOrder }) =>
+          supabase
+            .from('category_groups')
+            .update({ sort_order: sortOrder })
+            .eq('id', id),
+        ),
+      );
+
+      const failed = results.find((result) => result.error);
+      if (failed?.error) throw failed.error;
+
+      await loadGroups();
+      toast.success(
+        `Re-sorted ${updates.length} category group${updates.length === 1 ? '' : 's'}.`,
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to re-sort category groups.',
+      );
+    } finally {
+      setResorting(false);
+    }
+  }, [groups, kindFilter, loadGroups]);
 
   const openCreate = () => {
     setEditing(null);
@@ -604,9 +827,25 @@ export function CategoryGroups() {
             <div className="flex items-center gap-2">
               <RefreshTableButton
                 onClick={() => void loadGroups()}
-                disabled={loading}
+                disabled={loading || resorting}
               />
-              <Button onClick={openCreate} disabled={loading}>
+              <Button
+                variant="outline"
+                onClick={() => void handleResort()}
+                disabled={
+                  loading ||
+                  resorting ||
+                  getResortScopeGroups(groups, kindFilter).length === 0
+                }
+              >
+                {resorting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowDownUp className="mr-2 h-4 w-4" />
+                )}
+                Re-sort
+              </Button>
+              <Button onClick={openCreate} disabled={loading || resorting}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add group
               </Button>
@@ -619,37 +858,31 @@ export function CategoryGroups() {
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search kind, alias, name, description or image URL…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-sm"
-              />
-              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="group-kind-filter" className="whitespace-nowrap">
-                    Kind
-                  </Label>
-                  <Select
-                    value={kindFilter}
-                    onValueChange={(value) => setKindFilter(value)}
-                  >
-                    <SelectTrigger id="group-kind-filter" className="w-40">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {CATEGORY_KINDS.map((kind) => (
-                        <SelectItem key={kind} value={kind}>
-                          {kind}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
+            <Input
+              placeholder="Search kind, alias, name, description or image URL…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-sm"
+            />
+
+            <Tabs
+              value={kindFilter}
+              onValueChange={setKindFilter}
+              className="gap-3"
+            >
+              <TabsList
+                id="group-kind-filter"
+                aria-label="Filter by kind"
+                className="h-auto w-full flex-wrap justify-start sm:w-auto"
+              >
+                <TabsTrigger value="all">All</TabsTrigger>
+                {CATEGORY_KINDS.map((kind) => (
+                  <TabsTrigger key={kind} value={kind} className="capitalize">
+                    {kind}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -681,13 +914,6 @@ export function CategoryGroups() {
                       <SortableHeader
                         label="Sort"
                         column="sort_order"
-                        sortColumn={sortColumn}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        label="Alias"
-                        column="alias"
                         sortColumn={sortColumn}
                         sortDirection={sortDirection}
                         onSort={handleSort}
@@ -726,9 +952,6 @@ export function CategoryGroups() {
                           />
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          {group.alias}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
                           {group.name}
                         </td>
                         <td className="max-w-[280px] truncate px-4 py-3 text-sm text-muted-foreground">
@@ -780,14 +1003,6 @@ export function CategoryGroups() {
                 {editing ? (
                   <Badge variant="secondary" className="font-mono">
                     #{editing.id}
-                  </Badge>
-                ) : null}
-                {generatedAlias ? (
-                  <Badge
-                    variant="outline"
-                    className="border-fuchsia-300/60 bg-fuchsia-500/10 font-mono text-fuchsia-900 dark:text-fuchsia-200"
-                  >
-                    {generatedAlias}
                   </Badge>
                 ) : null}
                 <Badge variant="secondary" className="capitalize">
@@ -881,18 +1096,20 @@ export function CategoryGroups() {
                     }
                     placeholder="Vietnamese Classics"
                   />
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {generatedAlias ? (
-                      <>
-                        Alias:{' '}
-                        <span className="text-foreground/80">
-                          {generatedAlias}
-                        </span>
-                      </>
-                    ) : (
-                      'Alias is generated from the name'
-                    )}
-                  </p>
+                </GroupFormField>
+                <GroupFormField
+                  label="Alias"
+                  htmlFor="group-alias"
+                  description="Auto-generated from the name (diacritics removed)."
+                >
+                  <Input
+                    id="group-alias"
+                    value={generatedAlias}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50 font-mono text-muted-foreground"
+                    placeholder="Generated from name"
+                  />
                 </GroupFormField>
                 <GroupFormField label="Description" htmlFor="group-description">
                   <Textarea

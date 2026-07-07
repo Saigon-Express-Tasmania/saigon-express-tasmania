@@ -20,7 +20,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useTablePagination } from '@/hooks/useTablePagination';
 import {
   Card,
   CardContent,
@@ -48,7 +50,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { nextProductId } from '@/lib/products';
+import { nextProductId, PRODUCT_TABLE_PER_PAGE_OPTIONS } from '@/lib/products';
 import {
   countProductsByCategoryId,
   flattenAdminCategoryFilterSections,
@@ -58,6 +60,7 @@ import {
 import {
   attachProductCategoryFields,
   loadProductCategoriesByProductIds,
+  resolvePrimaryCategoryId,
   syncProductCategories,
 } from '@/lib/product-categories';
 import {
@@ -233,7 +236,7 @@ type WholesaleProductInput = Omit<
 > & ProductShippingInput;
 
 const SELECT_COLUMNS =
-  `id, name, sku, description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, is_published, min_order_qty, sort_order, image_urls, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
+  `id, name, sku, description, unit, uom, unit_price, daily_global_limit, daily_customer_limit, is_available, is_published, min_order_qty, sort_order, image_urls, category_id, created_at, updated_at, ${PRODUCT_SHIPPING_SELECT}`;
 
 const emptyWholesaleProductInput = (): WholesaleProductInput => ({
   id: 0,
@@ -285,6 +288,9 @@ export function WholesaleProducts() {
   const [form, setForm] = useState<WholesaleProductInput>(
     emptyWholesaleProductInput(),
   );
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateIdDraft, setDuplicateIdDraft] = useState<string>('');
+  const [duplicateLatestId, setDuplicateLatestId] = useState<number | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
 
@@ -483,6 +489,25 @@ export function WholesaleProducts() {
     });
   }, [products, search, categoryFilter, publishedFilter, sortColumn, sortDirection, categoryNameById]);
 
+  const paginationFilterKey = useMemo(
+    () => `${search}|${categoryFilter}|${publishedFilter}`,
+    [search, categoryFilter, publishedFilter],
+  );
+
+  const {
+    paginatedItems: paginatedFilteredProducts,
+    page,
+    perPage,
+    totalPages,
+    totalRecords,
+    perPageOptions,
+    setPage,
+    onPerPageChange,
+  } = useTablePagination(filteredProducts, paginationFilterKey, {
+    defaultPerPage: 20,
+    perPageOptions: [...PRODUCT_TABLE_PER_PAGE_OPTIONS],
+  });
+
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
       setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
@@ -635,18 +660,18 @@ export function WholesaleProducts() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast.error('Name is required.');
-      return;
-    }
-    if (!form.unit.trim()) {
-      toast.error('Unit is required.');
-      return;
-    }
-    if (!form.unit_price || isNaN(Number(form.unit_price))) {
-      toast.error('Unit price must be a valid number.');
-      return;
-    }
+    // if (!form.name.trim()) {
+    //   toast.error('Name is required.');
+    //   return;
+    // }
+    // if (!form.unit.trim()) {
+    //   toast.error('Unit is required.');
+    //   return;
+    // }
+    // if (!form.unit_price || isNaN(Number(form.unit_price))) {
+    //   toast.error('Unit price must be a valid number.');
+    //   return;
+    // }
 
     const shippingError = validateProductShippingInput(form);
     if (shippingError) {
@@ -657,6 +682,14 @@ export function WholesaleProducts() {
     setSaving(true);
     try {
       const nowIso = new Date().toISOString();
+      const productId = editingId ?? form.id;
+      const categoryIds = form.categoryIds;
+      const primaryCategoryId = form.primaryCategoryId;
+      const resolvedCategoryId = resolvePrimaryCategoryId(
+        categoryIds,
+        primaryCategoryId,
+      );
+
       const payload = {
         product_type: 'wholesale' as const,
         id: form.id,
@@ -666,6 +699,7 @@ export function WholesaleProducts() {
         unit: form.unit.trim(),
         uom: form.uom,
         unit_price: String(form.unit_price),
+        category_id: resolvedCategoryId,
         daily_global_limit: Number(form.daily_global_limit) || 0,
         daily_customer_limit:
           form.daily_customer_limit == null || form.daily_customer_limit === 0
@@ -690,9 +724,9 @@ export function WholesaleProducts() {
 
         if (updateError) throw updateError;
         await syncProductCategories(
-          form.id,
-          form.categoryIds,
-          form.primaryCategoryId,
+          productId,
+          categoryIds,
+          primaryCategoryId,
           Number(form.sort_order) || 0,
         );
         toast.success('Wholesale product updated.');
@@ -705,9 +739,9 @@ export function WholesaleProducts() {
 
         if (insertError) throw insertError;
         await syncProductCategories(
-          form.id,
-          form.categoryIds,
-          form.primaryCategoryId,
+          productId,
+          categoryIds,
+          primaryCategoryId,
           Number(form.sort_order) || 0,
         );
         toast.success('Wholesale product created.');
@@ -720,6 +754,99 @@ export function WholesaleProducts() {
         err instanceof Error
           ? err.message
           : 'Failed to save wholesale product.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openDuplicateDialog = async () => {
+    if (editingId === null) return;
+    try {
+      const suggestedId = await nextWholesaleProductId();
+      setDuplicateLatestId(Math.max(0, suggestedId - 1));
+      setDuplicateIdDraft(String(suggestedId));
+      setDuplicateDialogOpen(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to fetch latest wholesale product ID.',
+      );
+    }
+  };
+
+  const handleDuplicateConfirm = async () => {
+    if (editingId === null) return;
+    const nextId = Number.parseInt(duplicateIdDraft, 10);
+    if (!Number.isInteger(nextId) || nextId <= 0) {
+      toast.error('Duplicate ID must be a positive integer.');
+      return;
+    }
+
+    const shippingError = validateProductShippingInput(form);
+    if (shippingError) {
+      toast.error(shippingError);
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const payload = {
+      product_type: 'wholesale' as const,
+      id: nextId,
+      name: form.name.trim(),
+      sku: form.sku?.trim() || null,
+      description: form.description?.trim() || '',
+      unit: form.unit.trim(),
+      uom: form.uom,
+      unit_price: String(form.unit_price),
+      daily_global_limit: Number(form.daily_global_limit) || 0,
+      daily_customer_limit:
+        form.daily_customer_limit == null || form.daily_customer_limit === 0
+          ? null
+          : Number(form.daily_customer_limit),
+      is_available: form.is_available,
+      is_published: form.is_published,
+      min_order_qty: Number(form.min_order_qty) || 1,
+      image_urls: form.image_urls,
+      ...productShippingToPayload(form),
+    };
+
+    setSaving(true);
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', nextId)
+        .eq('product_type', 'wholesale')
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (existing) {
+        toast.error(`ID ${nextId} is already taken.`);
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('products').insert({
+        ...payload,
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+      if (insertError) throw insertError;
+
+      await syncProductCategories(
+        nextId,
+        form.categoryIds,
+        form.primaryCategoryId,
+        Number(form.sort_order) || 0,
+      );
+      setDuplicateDialogOpen(false);
+      toast.success(`Duplicated wholesale product as ID ${nextId}.`);
+      await loadProducts();
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to duplicate wholesale product.',
       );
     } finally {
       setSaving(false);
@@ -947,6 +1074,7 @@ export function WholesaleProducts() {
                 No wholesale products found. Add one to get started.
               </p>
             ) : (
+              <div className="space-y-4">
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full">
                   <thead>
@@ -1023,7 +1151,7 @@ export function WholesaleProducts() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((p) => {
+                    {paginatedFilteredProducts.map((p) => {
                       const thumb = previewFromImageUrls(
                         normalizeImageUrls(p.image_urls),
                         [256, 512, 1024, 1448],
@@ -1138,6 +1266,16 @@ export function WholesaleProducts() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                totalRecords={totalRecords}
+                page={page}
+                perPage={perPage}
+                totalPages={totalPages}
+                perPageOptions={perPageOptions}
+                onPageChange={setPage}
+                onPerPageChange={onPerPageChange}
+              />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -1151,7 +1289,7 @@ export function WholesaleProducts() {
         }}
       >
         <DialogContent
-          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          className="flex max-h-[92vh] max-w-6xl flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl"
           showCloseButton={!isUploadingImages}
           onInteractOutside={(event) => {
             if (isUploadingImages) event.preventDefault();
@@ -1160,20 +1298,43 @@ export function WholesaleProducts() {
             if (isUploadingImages) event.preventDefault();
           }}
         >
-          <DialogHeader>
-            <DialogTitle>
-              {editingId !== null
-                ? 'Edit wholesale product'
-                : 'Add wholesale product'}
-            </DialogTitle>
-            <DialogDescription>
-              Daily global limit applies store-wide; daily customer limit caps how
-              many units one member may buy per product per day. Checkout must
-              satisfy both limits.
-            </DialogDescription>
-          </DialogHeader>
+          <div className="shrink-0 border-b bg-gradient-to-r from-sky-500/20 via-indigo-500/10 to-violet-500/20 px-6 py-5">
+            <DialogHeader className="space-y-2 text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className="border-sky-300/70 bg-background/70 text-sky-900 dark:text-sky-200"
+                >
+                  Wholesale product
+                </Badge>
+                {editingId !== null ? (
+                  <Badge variant="secondary" className="font-mono">
+                    #{editingId}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">New</Badge>
+                )}
+                <Badge
+                  variant={form.is_published ? 'default' : 'outline'}
+                  className="capitalize"
+                >
+                  {form.is_published ? 'published' : 'draft'}
+                </Badge>
+              </div>
+              <DialogTitle className="text-xl">
+                {editingId !== null
+                  ? 'Edit wholesale product'
+                  : 'Add wholesale product'}
+              </DialogTitle>
+              <DialogDescription>
+                Daily global limit applies store-wide; daily customer limit caps
+                how many units one member may buy per product per day. Checkout
+                must satisfy both limits.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-          <div className="grid gap-4 py-2 md:grid-cols-2">
+          <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-5 md:grid-cols-2 xl:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="wp-id">ID</Label>
               <Input
@@ -1222,7 +1383,7 @@ export function WholesaleProducts() {
               </Select>
             </div>
 
-            <div className="grid gap-2 md:col-span-2">
+            <div className="grid gap-2 md:col-span-2 xl:col-span-3">
               <Label htmlFor="wp-name">Name</Label>
               <Input
                 id="wp-name"
@@ -1233,7 +1394,7 @@ export function WholesaleProducts() {
               />
             </div>
 
-            <div className="grid gap-2 md:col-span-2">
+            <div className="grid gap-2 md:col-span-2 xl:col-span-3">
               <ProductCategoriesFields
                 idPrefix="wp"
                 value={{
@@ -1355,7 +1516,7 @@ export function WholesaleProducts() {
               />
             </div>
 
-            <div className="grid gap-2 md:col-span-2">
+            <div className="grid gap-2 md:col-span-2 xl:col-span-3">
               <ImageUpload
                 label="Product image"
                 description="JPEG, PNG, WebP or GIF. Uploads 256, 512, 1024 and 1448px variants."
@@ -1380,7 +1541,7 @@ export function WholesaleProducts() {
               disabled={saving || isUploadingImages}
             />
 
-            <div className="grid gap-2 md:col-span-2">
+            <div className="grid gap-2 md:col-span-2 xl:col-span-3">
               <Label htmlFor="wp-description">Description</Label>
               <Textarea
                 id="wp-description"
@@ -1393,7 +1554,7 @@ export function WholesaleProducts() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t bg-muted/20 px-6 py-4">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
@@ -1401,6 +1562,15 @@ export function WholesaleProducts() {
             >
               Cancel
             </Button>
+            {editingId !== null ? (
+              <Button
+                variant="outline"
+                onClick={() => void openDuplicateDialog()}
+                disabled={saving || isUploadingImages}
+              >
+                Duplicate…
+              </Button>
+            ) : null}
             <Button
               onClick={() => void handleSave()}
               disabled={saving || isUploadingImages}
@@ -1417,6 +1587,43 @@ export function WholesaleProducts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => !open && setDuplicateDialogOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate wholesale product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Latest ID: {duplicateLatestId ?? '—'}. Enter a new ID for the copy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="wholesale-duplicate-id">New ID</Label>
+            <Input
+              id="wholesale-duplicate-id"
+              type="number"
+              min={1}
+              value={duplicateIdDraft}
+              onChange={(e) => setDuplicateIdDraft(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDuplicateConfirm();
+              }}
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteTarget !== null}

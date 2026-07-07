@@ -14,7 +14,7 @@ import {
 } from '@/lib/category-select-themes';
 import { resolvePrimaryCategoryId } from '@/lib/product-categories';
 import { cn } from '@/lib/utils';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 export type ProductCategoryFormValue = {
   categoryIds: number[];
@@ -36,6 +36,9 @@ export function ProductCategoriesFields({
   disabled = false,
   onChange,
 }: ProductCategoriesFieldsProps) {
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
   const categoryIdStrings = value.categoryIds.map(String);
   const resolvedPrimary = resolvePrimaryCategoryId(
     value.categoryIds,
@@ -62,13 +65,13 @@ export function ProductCategoriesFields({
           id={`${idPrefix}-categories`}
           sections={sections}
           values={categoryIdStrings}
-          onValuesChange={(values) => {
-            const categoryIds = values.map((entry) => Number(entry));
+          onValuesChange={(nextValues) => {
+            const categoryIds = nextValues.map((entry) => Number(entry));
             onChange({
               categoryIds,
               primaryCategoryId: resolvePrimaryCategoryId(
                 categoryIds,
-                value.primaryCategoryId,
+                valueRef.current.primaryCategoryId,
               ),
             });
           }}
