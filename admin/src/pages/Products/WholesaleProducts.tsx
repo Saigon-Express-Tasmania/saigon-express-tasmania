@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
 import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
+import { ProductCategoryGroupFilterStrip } from '@/components/ProductCategoryGroupFilterStrip';
 import { PublishedFilterSelect, matchesPublishedFilter, type PublishedFilterValue } from '@/components/PublishedFilterSelect';
 import { ImageUpload } from '@/components/ImageUpload';
 import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
@@ -22,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useProductCategoryGroupFilter } from '@/hooks/useProductCategoryGroupFilter';
 import { useTablePagination } from '@/hooks/useTablePagination';
 import {
   Card,
@@ -52,7 +54,6 @@ import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { nextProductId, PRODUCT_TABLE_PER_PAGE_OPTIONS } from '@/lib/products';
 import {
-  countProductsByCategoryId,
   flattenAdminCategoryFilterSections,
   loadAdminCategoryFilterSections,
   type AdminCategoryFilterSection,
@@ -397,10 +398,14 @@ export function WholesaleProducts() {
     [categoryFilterSections],
   );
 
-  const productCountByCategoryId = useMemo(
-    () => countProductsByCategoryId(products),
-    [products],
-  );
+  const {
+    categoryGroupFilter,
+    onCategoryGroupFilterChange,
+    productCountByCategoryId,
+    productCountByGroupId,
+    scopedCategoryFilterSections,
+    scopedTotalProductCount,
+  } = useProductCategoryGroupFilter(products, categoryFilterSections);
 
   useEffect(() => {
     if (isAdmin) {
@@ -1010,28 +1015,41 @@ export function WholesaleProducts() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search by name, SKU, description or category…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-sm"
+            <div className="space-y-3">
+              <ProductCategoryGroupFilterStrip
+                id="wp-category-group-filter"
+                value={categoryGroupFilter}
+                onValueChange={(nextValue) => {
+                  onCategoryGroupFilterChange(nextValue);
+                  setCategoryFilter('all');
+                }}
+                sections={categoryFilterSections}
+                products={products}
+                productCountByGroupId={productCountByGroupId}
               />
-              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="wp-category-filter" className="whitespace-nowrap">
-                    Category
-                  </Label>
-                  <CategoryFilterSelect
-                    id="wp-category-filter"
-                    value={categoryFilter}
-                    onValueChange={setCategoryFilter}
-                    sections={categoryFilterSections}
-                    productCountByCategoryId={productCountByCategoryId}
-                    totalProductCount={products.length}
-                    triggerClassName="w-44"
-                  />
-                </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Input
+                  placeholder="Search by name, SKU, description or category…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full max-w-sm"
+                />
+                <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="wp-category-filter" className="whitespace-nowrap">
+                      Category
+                    </Label>
+                    <CategoryFilterSelect
+                      id="wp-category-filter"
+                      value={categoryFilter}
+                      onValueChange={setCategoryFilter}
+                      sections={scopedCategoryFilterSections}
+                      productCountByCategoryId={productCountByCategoryId}
+                      totalProductCount={scopedTotalProductCount}
+                      triggerClassName="w-44"
+                    />
+                  </div>
                 <PublishedFilterSelect
                   id="wp-published-filter"
                   value={publishedFilter}
@@ -1063,6 +1081,7 @@ export function WholesaleProducts() {
                   </div>
                 ) : null}
               </div>
+            </div>
             </div>
 
             {loading ? (

@@ -1,4 +1,5 @@
 import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
+import { ProductCategoryGroupFilterStrip } from '@/components/ProductCategoryGroupFilterStrip';
 import { PublishedFilterSelect, matchesPublishedFilter, type PublishedFilterValue } from '@/components/PublishedFilterSelect';
 import { DashboardLayout } from '@/components/layout';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -26,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useProductCategoryGroupFilter } from '@/hooks/useProductCategoryGroupFilter';
 import { useTablePagination } from '@/hooks/useTablePagination';
 import {
   Card,
@@ -62,7 +64,6 @@ import {
 } from '@/lib/menu-image-urls';
 import { resolveMenuSlug, slugFromName } from '@/lib/slug';
 import {
-  countProductsByCategoryId,
   flattenAdminCategoryFilterSections,
   loadAdminCategoryFilterSections,
   type AdminCategoryFilterSection,
@@ -318,10 +319,14 @@ export function Menu() {
     [categoryFilterSections],
   );
 
-  const productCountByCategoryId = useMemo(
-    () => countProductsByCategoryId(items),
-    [items],
-  );
+  const {
+    categoryGroupFilter,
+    onCategoryGroupFilterChange,
+    productCountByCategoryId,
+    productCountByGroupId,
+    scopedCategoryFilterSections,
+    scopedTotalProductCount,
+  } = useProductCategoryGroupFilter(items, categoryFilterSections);
 
   useEffect(() => {
     if (isAdmin) {
@@ -962,28 +967,41 @@ export function Menu() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search by name, description or category…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-sm"
+            <div className="space-y-3">
+              <ProductCategoryGroupFilterStrip
+                id="menu-category-group-filter"
+                value={categoryGroupFilter}
+                onValueChange={(nextValue) => {
+                  onCategoryGroupFilterChange(nextValue);
+                  setCategoryFilter('all');
+                }}
+                sections={categoryFilterSections}
+                products={items}
+                productCountByGroupId={productCountByGroupId}
               />
-              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="category-filter" className="whitespace-nowrap">
-                    Category
-                  </Label>
-                  <CategoryFilterSelect
-                    id="category-filter"
-                    value={categoryFilter}
-                    onValueChange={setCategoryFilter}
-                    sections={categoryFilterSections}
-                    productCountByCategoryId={productCountByCategoryId}
-                    totalProductCount={items.length}
-                    triggerClassName="w-40"
-                  />
-                </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Input
+                  placeholder="Search by name, description or category…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full max-w-sm"
+                />
+                <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="category-filter" className="whitespace-nowrap">
+                      Category
+                    </Label>
+                    <CategoryFilterSelect
+                      id="category-filter"
+                      value={categoryFilter}
+                      onValueChange={setCategoryFilter}
+                      sections={scopedCategoryFilterSections}
+                      productCountByCategoryId={productCountByCategoryId}
+                      totalProductCount={scopedTotalProductCount}
+                      triggerClassName="w-40"
+                    />
+                  </div>
                 <PublishedFilterSelect
                   id="menu-published-filter"
                   value={publishedFilter}
@@ -1015,6 +1033,7 @@ export function Menu() {
                   </div>
                 ) : null}
               </div>
+            </div>
             </div>
 
             {loading ? (

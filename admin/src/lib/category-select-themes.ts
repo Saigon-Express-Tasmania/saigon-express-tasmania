@@ -95,6 +95,26 @@ export function categoryGroupTheme(index: number): CategoryGroupTheme {
   return CATEGORY_GROUP_THEMES[index % CATEGORY_GROUP_THEMES.length];
 }
 
+const CATEGORY_GROUP_TAB_PILLS = [
+  'border-violet-200/80 bg-violet-50/90 text-violet-800 hover:bg-violet-100 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-200 data-[state=active]:border-violet-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-fuchsia-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30',
+  'border-sky-200/80 bg-sky-50/90 text-sky-800 hover:bg-sky-100 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-200 data-[state=active]:border-sky-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-sky-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-sky-500/30',
+  'border-amber-200/80 bg-amber-50/90 text-amber-900 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200 data-[state=active]:border-amber-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/30',
+  'border-emerald-200/80 bg-emerald-50/90 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200 data-[state=active]:border-emerald-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/30',
+  'border-indigo-200/80 bg-indigo-50/90 text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-200 data-[state=active]:border-indigo-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30',
+  'border-rose-200/80 bg-rose-50/90 text-rose-800 hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-200 data-[state=active]:border-rose-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-rose-500/30',
+] as const;
+
+export const ALL_GROUPS_TAB_PILL_CLASS =
+  'border-primary/30 bg-gradient-to-r from-primary/10 via-sky-500/10 to-violet-500/10 text-primary hover:from-primary/15 hover:via-sky-500/15 hover:to-violet-500/15 dark:from-primary/15 dark:via-sky-500/15 dark:to-violet-500/15 data-[state=active]:border-primary/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:via-indigo-500 data-[state=active]:to-violet-500 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25';
+
+export function categoryGroupTabPillClass(index: number): string {
+  return CATEGORY_GROUP_TAB_PILLS[index % CATEGORY_GROUP_TAB_PILLS.length];
+}
+
+export function categoryGroupTabDotClass(index: number): string {
+  return categoryGroupTheme(index).dot;
+}
+
 export function flattenCategorySections(
   sections: AdminCategoryFilterSection[],
 ): AdminCategoryOption[] {

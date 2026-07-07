@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Sidebar } from './Sidebar';
+import { Sidebar, SidebarMobileMenu } from './Sidebar';
 import { UserNav } from './UserNav';
 
 interface DashboardLayoutProps {
@@ -24,9 +24,12 @@ export function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b bg-background px-6">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <SidebarMobileMenu />
             {title && (
-              <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+              <h1 className="truncate text-2xl font-semibold tracking-tight">
+                {title}
+              </h1>
             )}
           </div>
 

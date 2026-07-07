@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout';
-import { CategoryFilterSelect } from '@/components/CategoryFilterSelect';
+import { CategoryFilterCombobox } from '@/components/CategoryFilterCombobox';
+import { ProductCategoryGroupFilterStrip } from '@/components/ProductCategoryGroupFilterStrip';
 import { PublishedFilterSelect, matchesPublishedFilter, type PublishedFilterValue } from '@/components/PublishedFilterSelect';
 import { ImageUpload } from '@/components/ImageUpload';
 import { InlineSortOrderInput } from '@/components/InlineSortOrderInput';
@@ -25,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { RefreshTableButton } from '@/components/ui/refresh-table-button';
 import { useBulkRowSelection } from '@/hooks/useBulkRowSelection';
+import { useProductCategoryGroupFilter } from '@/hooks/useProductCategoryGroupFilter';
 import { useTablePagination } from '@/hooks/useTablePagination';
 import {
   Card,
@@ -62,7 +64,6 @@ import {
 import { slugFromName } from '@/lib/slug';
 import { nextProductId, PRODUCT_TABLE_PER_PAGE_OPTIONS } from '@/lib/products';
 import {
-  countProductsByCategoryId,
   flattenAdminCategoryFilterSections,
   loadAdminCategoryFilterSections,
   type AdminCategoryFilterSection,
@@ -100,6 +101,7 @@ import {
   Sparkles,
   Trash2,
   Truck,
+  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -534,10 +536,14 @@ export function CateringPacks() {
     [categoryFilterSections],
   );
 
-  const productCountByCategoryId = useMemo(
-    () => countProductsByCategoryId(packs),
-    [packs],
-  );
+  const {
+    categoryGroupFilter,
+    onCategoryGroupFilterChange,
+    productCountByCategoryId,
+    productCountByGroupId,
+    scopedCategoryFilterSections,
+    scopedTotalProductCount,
+  } = useProductCategoryGroupFilter(packs, categoryFilterSections);
 
   useEffect(() => {
     if (isAdmin) {
@@ -1255,58 +1261,92 @@ export function CateringPacks() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search name, category, tag, note..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-sm"
+            <div className="space-y-3">
+              <ProductCategoryGroupFilterStrip
+                id="pack-category-group-filter"
+                value={categoryGroupFilter}
+                onValueChange={(nextValue) => {
+                  onCategoryGroupFilterChange(nextValue);
+                  setCategoryFilter('all');
+                }}
+                sections={categoryFilterSections}
+                products={packs}
+                productCountByGroupId={productCountByGroupId}
               />
-              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="pack-category-filter" className="whitespace-nowrap">
-                    Category
-                  </Label>
-                  <CategoryFilterSelect
-                    id="pack-category-filter"
-                    value={categoryFilter}
-                    onValueChange={setCategoryFilter}
-                    sections={categoryFilterSections}
-                    productCountByCategoryId={productCountByCategoryId}
-                    totalProductCount={packs.length}
-                  />
-                </div>
-                <PublishedFilterSelect
-                  id="pack-published-filter"
-                  value={publishedFilter}
-                  onValueChange={setPublishedFilter}
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Input
+                  placeholder="Search name, category, tag, note..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full max-w-sm"
                 />
-                {selectedCount > 0 ? (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => setBulkPublishOpen(true)}
-                      disabled={saving}
+                <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="pack-category-filter"
+                      className="whitespace-nowrap"
                     >
-                      <Globe className="size-4" />
-                      Publish {selectedCount}{' '}
-                      {selectedCount === 1 ? 'item' : 'items'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setBulkDeleteOpen(true)}
-                      disabled={saving}
-                    >
-                      <Trash2 className="size-4" />
-                      Delete {selectedCount}{' '}
-                      {selectedCount === 1 ? 'item' : 'items'}
-                    </Button>
+                      Category
+                    </Label>
+                    <CategoryFilterCombobox
+                      id="pack-category-filter"
+                      value={categoryFilter}
+                      onValueChange={setCategoryFilter}
+                      sections={scopedCategoryFilterSections}
+                      productCountByCategoryId={productCountByCategoryId}
+                      totalProductCount={scopedTotalProductCount}
+                    />
                   </div>
-                ) : null}
+                  <PublishedFilterSelect
+                    id="pack-published-filter"
+                    value={publishedFilter}
+                    onValueChange={setPublishedFilter}
+                  />
+                  {selectedCount > 0 ? (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setBulkPublishOpen(true)}
+                        disabled={saving}
+                      >
+                        <Globe className="size-4" />
+                        Publish {selectedCount}{' '}
+                        {selectedCount === 1 ? 'item' : 'items'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setBulkDeleteOpen(true)}
+                        disabled={saving}
+                      >
+                        <Trash2 className="size-4" />
+                        Delete {selectedCount}{' '}
+                        {selectedCount === 1 ? 'item' : 'items'}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
+
+              {categoryFilter !== 'all' ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                    Category:{' '}
+                    {categoryNameById.get(Number(categoryFilter)) ?? categoryFilter}
+                    <button
+                      type="button"
+                      className="rounded-full p-0.5 opacity-70 transition-opacity hover:opacity-100"
+                      aria-label="Clear category filter"
+                      onClick={() => setCategoryFilter('all')}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             {loading ? (

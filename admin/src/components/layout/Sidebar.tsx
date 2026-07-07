@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FilePen,
+  Menu,
   FileUser,
   FolderArchive,
   FolderOpen,
@@ -40,7 +41,7 @@ import {
   Utensils,
   type LucideIcon,
 } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 const SIDEBAR_COMPACT_KEY = "admin-sidebar-compact";
@@ -338,10 +339,12 @@ function NavItemLink({
   item,
   compact,
   testMode,
+  onNavigate,
 }: {
   item: NavItem;
   compact: boolean;
   testMode: boolean;
+  onNavigate?: () => void;
 }) {
   const title = getNavTitle(item, testMode);
 
@@ -350,6 +353,7 @@ function NavItemLink({
       to={item.href}
       className={navLinkClassName(compact)}
       title={compact ? title : undefined}
+      onClick={onNavigate}
     >
       <item.icon className="h-5 w-5 shrink-0" />
       {!compact && <span>{title}</span>}
@@ -357,17 +361,24 @@ function NavItemLink({
   );
 }
 
-export function Sidebar() {
+type SidebarProps = {
+  mobile?: boolean;
+  onNavigate?: () => void;
+};
+
+export function Sidebar({ mobile = false, onNavigate }: SidebarProps = {}) {
   const { mode } = useSalesOrderMode();
   const testMode = mode === 'test';
   const navRef = useRef<HTMLElement>(null);
   const [compact, setCompact] = useState(() => {
+    if (mobile) return false;
     try {
       return localStorage.getItem(SIDEBAR_COMPACT_KEY) === "true";
     } catch {
       return false;
     }
   });
+  const isCompact = mobile ? false : compact;
   const [dashboard, ...rest] = navItems;
   const sections = buildNavSections(rest);
 
@@ -400,11 +411,12 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        "flex h-full flex-col border-r bg-muted/10 transition-[width] duration-200",
-        compact ? "w-[4.5rem]" : "w-64",
+        "flex h-full flex-col border-r transition-[width] duration-200",
+        mobile ? "bg-background" : "bg-muted/10",
+        isCompact ? "w-[4.5rem]" : "w-64",
       )}
     >
-      {!compact && (
+      {!isCompact && (
         <div className="flex h-16 shrink-0 items-center border-b px-4">
           <img
             src="/images/logo.png"
@@ -419,22 +431,28 @@ export function Sidebar() {
         onScroll={handleNavScroll}
         className={cn(
           "flex-1 space-y-1 overflow-y-auto overflow-anchor-none",
-          compact ? "p-2 pt-3" : "p-4",
+          isCompact ? "p-2 pt-3" : "p-4",
         )}
       >
-        <NavItemLink item={dashboard} compact={compact} testMode={testMode} />
+        <NavItemLink
+          item={dashboard}
+          compact={isCompact}
+          testMode={testMode}
+          onNavigate={onNavigate}
+        />
 
         {sections.map((section) =>
           section.kind === "link" ? (
             <NavItemLink
               key={section.item.href}
               item={section.item}
-              compact={compact}
+              compact={isCompact}
               testMode={testMode}
+              onNavigate={onNavigate}
             />
           ) : (
             <div key={section.name} className="space-y-1">
-              {!compact && (
+              {!isCompact && (
                 <p className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {section.name}
                 </p>
@@ -443,8 +461,9 @@ export function Sidebar() {
                 <NavItemLink
                   key={item.href}
                   item={item}
-                  compact={compact}
+                  compact={isCompact}
                   testMode={testMode}
+                  onNavigate={onNavigate}
                 />
               ))}
             </div>
@@ -452,35 +471,91 @@ export function Sidebar() {
         )}
       </nav>
 
-      <div className={cn("shrink-0 border-t", compact ? "p-2" : "p-4", "w-full")}>        
+      <div className={cn("shrink-0 border-t", isCompact ? "p-2" : "p-4", "w-full")}>
         <div className="mb-2 flex justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(compact ? "h-9 px-0" : "justify-start")}
-            onClick={toggleCompact}
-            title={compact ? "Expand sidebar" : "Compact sidebar"}
-          >
-            {compact ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <>
-                <ChevronLeft className="h-4 w-4" />
-                <span>Compact</span>
-              </>
-            )}
-          </Button>
-          <div className="mb-2">
+          {!mobile && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(isCompact ? "h-9 px-0" : "justify-start")}
+              onClick={toggleCompact}
+              title={isCompact ? "Expand sidebar" : "Compact sidebar"}
+            >
+              {isCompact ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Compact</span>
+                </>
+              )}
+            </Button>
+          )}
+          <div className={cn("mb-2", mobile && "ml-auto")}>
             <SalesOrderModeSwitch />
           </div>
         </div>
-        {!compact && (
+        {!isCompact && (
           <p className="mt-3 text-xs text-muted-foreground">
             © 2026 CalyxGuru Admin
           </p>
-        )}        
+        )}
       </div>
     </div>
+  );
+}
+
+export function SidebarMobileMenu() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="lg:hidden"
+        aria-label="Open navigation menu"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+
+      {open ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            aria-label="Close navigation menu"
+            onClick={() => setOpen(false)}
+          />
+          <aside className="relative z-10 h-full w-64 max-w-[85vw] bg-background shadow-xl">
+            <Sidebar mobile onNavigate={() => setOpen(false)} />
+          </aside>
+        </div>
+      ) : null}
+    </>
   );
 }
