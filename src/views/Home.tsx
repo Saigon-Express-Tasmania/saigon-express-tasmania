@@ -1,6 +1,6 @@
 import AppImage from "@/components/AppImage";
 import HomeBestSellersSection from "@/components/home/HomeBestSellersSection";
-import HomeCateringCategoryPills from "@/components/home/HomeCateringCategoryPills";
+import HomeCateringSection from "@/components/home/HomeCateringSection";
 import HomeFeaturedReviewsSection from "@/components/home/HomeFeaturedReviewsSection";
 import HomeOurFoodCategoryPills from "@/components/home/HomeOurFoodCategoryPills";
 import HomeWholesaleCategoryPills from "@/components/home/HomeWholesaleCategoryPills";
@@ -154,16 +154,18 @@ export default async function Home() {
         </div>
       </div>
 
+      {/* ── CATERING ─────────────────────────────────── */}
+      <Suspense fallback={null}>
+        <HomeCateringSection />
+      </Suspense>
+
       {/* ── OUR FOOD ─────────────────────────────────── */}
       <section
         className="py-20 lg:py-28 relative overflow-hidden"
-        style={{
-          background:
-            "linear-gradient(135deg, #1a0a00 0%, #2d0f00 40%, #1a0a00 100%)",
-        }}
+        
       >
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
             backgroundImage:
               "radial-gradient(circle at 20% 50%, #c8102e 0%, transparent 50%), radial-gradient(circle at 80% 20%, #c8102e 0%, transparent 40%)",
@@ -174,7 +176,7 @@ export default async function Home() {
           <span className="inline-block text-xs font-bold tracking-[0.2em] uppercase text-brand-red/80 mb-3">
             {t("ourFood.label")}
           </span>
-          <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl text-white leading-tight">
+          <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl text-brand-dark leading-tight">
             {t("ourFood.titleLine1")}
             <br />
             <span className="text-brand-red italic">
@@ -208,7 +210,7 @@ export default async function Home() {
           </div>
 
           <div className="reveal" style={{ animationDelay: "0.15s" }}>
-            <p className="text-white/70 text-base leading-relaxed mb-6">
+            <p className="text-brand-dark/70 text-base leading-relaxed mb-6">
               {t("ourFood.description")}
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
@@ -245,58 +247,7 @@ export default async function Home() {
             </Link>
           ))}
         </div>
-      </section>
-
-      {/* ── CATERING ─────────────────────────────────── */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="max-w-[1280px] mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
-          <div className="relative reveal">
-            <div className="relative w-full h-[480px] rounded-sm overflow-hidden">
-              <AppImage
-                src={IMGS.catering}
-                alt={t("catering.imageAlt")}
-                fill
-                className="object-cover rounded-sm"
-              />
-            </div>
-            <div className="absolute bottom-6 right-6 bg-white rounded-sm shadow-xl p-4 max-w-[180px]">
-              <AppImage
-                src={IMGS.cateringBox}
-                alt={t("catering.boxImageAlt")}
-                width={320}
-                height={96}
-                className="w-full h-24 object-cover rounded-sm mb-2"
-              />
-              <p className="text-xs font-bold text-brand-dark">
-                {t("catering.boxTitle")}
-              </p>
-              <p className="text-xs text-brand-dark/60">
-                {t("catering.boxSubtitle")}
-              </p>
-            </div>
-          </div>
-
-          <div className="reveal" style={{ animationDelay: "0.15s" }}>
-            <span className="section-label">{t("catering.label")}</span>
-            <h2 className="font-serif text-4xl md:text-5xl text-brand-dark mt-3 mb-5">
-              {t("catering.titleLine1")}
-              <br />
-              <span className="text-brand-red italic">
-                {t("catering.titleLine2")}
-              </span>
-            </h2>
-            <p className="text-brand-dark/70 text-base leading-relaxed mb-6">
-              {t("catering.description")}
-            </p>
-            <Suspense fallback={null}>
-              <HomeCateringCategoryPills />
-            </Suspense>
-            <Link href="/catering" className="btn-red">
-              {t("catering.cta")} <ChevronRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
+      </section>      
 
       {/* ── SIGNATURE ─────────────────────────────────── */}
       <section className="relative min-h-[28rem] overflow-hidden py-28">
@@ -554,7 +505,7 @@ export default async function Home() {
             {t("partner.description")}
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/wholesale/landing-shop" className="btn-outline-white">
+            <Link href="/wholesale" className="btn-outline-white">
               {t("partner.wholesale")}
             </Link>
             <Link href="/franchise" className="btn-outline-white">

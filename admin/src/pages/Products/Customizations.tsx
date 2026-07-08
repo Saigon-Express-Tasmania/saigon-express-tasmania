@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -85,14 +86,12 @@ type CustomizationRecord = {
 
 type OptionInput = {
   id?: number;
-  key: string;
   title: string;
   price: string;
 };
 
 type CustomizationInput = {
   kind: CustomizationKind;
-  key: string;
   title: string;
   type: SelectionType;
   required: boolean;
@@ -105,7 +104,6 @@ type CustomizationInput = {
 
 const emptyCustomizationInput = (): CustomizationInput => ({
   kind: 'menu',
-  key: '',
   title: '',
   type: 'single',
   required: false,
@@ -118,6 +116,22 @@ const emptyCustomizationInput = (): CustomizationInput => ({
 
 function kindLabel(kind: CustomizationKind): string {
   return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+function keyFromTitle(text: string): string {
+  const normalized = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_');
+
+  if (!normalized) return '';
+  return normalized.replace(/^[^a-z]+/, '');
 }
 
 function formatAud(value: number): string {
@@ -158,7 +172,7 @@ function normalizeCustomizationRow(row: {
 }
 
 function emptyOptionInput(): OptionInput {
-  return { key: '', title: '', price: '0' };
+  return { title: '', price: '0' };
 }
 
 function validateKey(key: string, label: string): string | null {
@@ -269,6 +283,13 @@ export function Customizations() {
     });
   }, [customizations, search, kindFilter]);
 
+  const showKindColumn = kindFilter === 'all';
+
+  const generatedGroupKey = useMemo(
+    () => keyFromTitle(form.title),
+    [form.title],
+  );
+
   const openCreate = () => {
     setEditingId(null);
     setForm({
@@ -284,7 +305,6 @@ export function Customizations() {
     setEditingId(row.id);
     setForm({
       kind: row.kind,
-      key: row.key,
       title: row.title,
       type: row.type,
       required: row.required,
@@ -294,7 +314,6 @@ export function Customizations() {
       max_options: row.max_options,
       options: row.options.map((opt) => ({
         id: opt.id,
-        key: opt.key,
         title: opt.title,
         price: String(opt.price),
       })),
@@ -347,9 +366,14 @@ export function Customizations() {
       return false;
     }
 
-    const groupKeyError = validateKey(form.key, 'Group');
+    const groupKey = keyFromTitle(form.title.trim());
+    const groupKeyError = validateKey(groupKey, 'Group');
     if (groupKeyError) {
-      toast.error(groupKeyError);
+      toast.error(
+        groupKeyError === 'Group key is required.'
+          ? 'Title must produce a valid group key.'
+          : groupKeyError,
+      );
       return false;
     }
 
@@ -360,16 +384,21 @@ export function Customizations() {
         toast.error(`Option ${i + 1}: title is required.`);
         return false;
       }
-      const optionKeyError = validateKey(opt.key, `Option ${i + 1}`);
+      const optionKey = keyFromTitle(opt.title.trim());
+      const optionKeyError = validateKey(optionKey, `Option ${i + 1}`);
       if (optionKeyError) {
-        toast.error(optionKeyError);
+        toast.error(
+          optionKeyError === `Option ${i + 1} key is required.`
+            ? `Option ${i + 1}: title must produce a valid key.`
+            : optionKeyError,
+        );
         return false;
       }
-      if (optionKeys.has(opt.key.trim())) {
-        toast.error(`Duplicate option key "${opt.key.trim()}".`);
+      if (optionKeys.has(optionKey)) {
+        toast.error(`Duplicate option key "${optionKey}".`);
         return false;
       }
-      optionKeys.add(opt.key.trim());
+      optionKeys.add(optionKey);
 
       const price = Number(opt.price);
       if (!Number.isFinite(price) || price < 0) {
@@ -428,7 +457,7 @@ export function Customizations() {
       const opt = options[index];
       const payload = {
         customization_id: customizationId,
-        key: opt.key.trim(),
+        key: keyFromTitle(opt.title.trim()),
         title: opt.title.trim(),
         price: Number(opt.price),
         sort_order: (index + 1) * 10,
@@ -456,7 +485,7 @@ export function Customizations() {
     try {
       const groupPayload = {
         kind: form.kind,
-        key: form.key.trim(),
+        key: keyFromTitle(form.title.trim()),
         title: form.title.trim(),
         type: form.type,
         required: form.required,
@@ -589,34 +618,31 @@ export function Customizations() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search title, key, kind, or option labels…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-sm"
-              />
-              <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="customization-kind-filter" className="whitespace-nowrap">
-                    Channel
-                  </Label>
-                  <Select value={kindFilter} onValueChange={setKindFilter}>
-                    <SelectTrigger id="customization-kind-filter" className="w-40">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {CUSTOMIZATION_KINDS.map((kind) => (
-                        <SelectItem key={kind} value={kind}>
-                          {kindLabel(kind)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
+            <Input
+              placeholder="Search title, key, kind, or option labels…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-sm"
+            />
+
+            <Tabs
+              value={kindFilter}
+              onValueChange={setKindFilter}
+              className="gap-3"
+            >
+              <TabsList
+                id="customization-kind-filter"
+                aria-label="Filter by kind"
+                className="h-auto w-full flex-wrap justify-start sm:w-auto"
+              >
+                <TabsTrigger value="all">All</TabsTrigger>
+                {CUSTOMIZATION_KINDS.map((kind) => (
+                  <TabsTrigger key={kind} value={kind} className="capitalize">
+                    {kind}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -635,9 +661,11 @@ export function Customizations() {
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Group
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">
-                        Channel
-                      </th>
+                      {showKindColumn ? (
+                        <th className="px-4 py-3 text-left text-sm font-semibold">
+                          Channel
+                        </th>
+                      ) : null}
                       <th className="px-4 py-3 text-left text-sm font-semibold">
                         Type
                       </th>
@@ -657,6 +685,7 @@ export function Customizations() {
                           key={row.id}
                           row={row}
                           isExpanded={isExpanded}
+                          showKindColumn={showKindColumn}
                           onToggle={() =>
                             setExpandedId((current) =>
                               current === row.id ? null : row.id,
@@ -708,17 +737,16 @@ export function Customizations() {
 
                 <div className="grid min-w-0 gap-2">
                   <Label htmlFor="customization-key">Group key</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-generated from the title (diacritics removed).
+                  </p>
                   <Input
                     id="customization-key"
-                    value={form.key}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        key: e.target.value.toLowerCase().replace(/\s+/g, '_'),
-                      }))
-                    }
-                    placeholder="spice"
-                    className="w-full font-mono text-sm"
+                    value={generatedGroupKey}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50 w-full font-mono text-sm text-muted-foreground"
+                    placeholder="Generated from title"
                   />
                 </div>
 
@@ -940,16 +968,11 @@ export function Customizations() {
                             Key
                           </Label>
                           <Input
-                            value={opt.key}
-                            onChange={(e) =>
-                              updateOption(index, {
-                                key: e.target.value
-                                  .toLowerCase()
-                                  .replace(/\s+/g, '_'),
-                              })
-                            }
-                            placeholder="medium"
-                            className="h-9 w-full font-mono text-sm"
+                            value={keyFromTitle(opt.title)}
+                            readOnly
+                            tabIndex={-1}
+                            placeholder="Generated from title"
+                            className="h-9 w-full bg-muted/50 font-mono text-sm text-muted-foreground"
                           />
                         </div>
 
@@ -1084,16 +1107,19 @@ export function Customizations() {
 function GroupTableRows({
   row,
   isExpanded,
+  showKindColumn,
   onToggle,
   onEdit,
   onDelete,
 }: {
   row: CustomizationRecord;
   isExpanded: boolean;
+  showKindColumn: boolean;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const columnCount = showKindColumn ? 6 : 5;
   return (
     <>
       <tr className="border-b hover:bg-muted/30">
@@ -1124,9 +1150,11 @@ function GroupTableRows({
             </div>
           </div>
         </td>
-        <td className="px-4 py-3">
-          <Badge variant="outline">{kindLabel(row.kind)}</Badge>
-        </td>
+        {showKindColumn ? (
+          <td className="px-4 py-3">
+            <Badge variant="outline">{kindLabel(row.kind)}</Badge>
+          </td>
+        ) : null}
         <td className="px-4 py-3">
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant="secondary">
@@ -1180,7 +1208,7 @@ function GroupTableRows({
       </tr>
       {isExpanded && (
         <tr className="border-b bg-muted/15">
-          <td colSpan={6} className="px-4 py-4">
+          <td colSpan={columnCount} className="px-4 py-4">
             {row.options.length === 0 ? (
               <p className="text-sm text-muted-foreground">No options defined.</p>
             ) : (
