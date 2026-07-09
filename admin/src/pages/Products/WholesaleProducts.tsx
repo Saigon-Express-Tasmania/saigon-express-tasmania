@@ -415,6 +415,7 @@ export function WholesaleProducts() {
     productCountByCategoryId,
     productCountByGroupId,
     scopedCategoryFilterSections,
+    scopedCategoryIds,
     scopedTotalProductCount,
   } = useProductCategoryGroupFilter(products, categoryFilterSections);
 
@@ -469,6 +470,12 @@ export function WholesaleProducts() {
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = products.filter((p) => {
+      if (
+        scopedCategoryIds !== null &&
+        !p.categoryIds.some((categoryId) => scopedCategoryIds.has(categoryId))
+      ) {
+        return false;
+      }
       if (categoryFilter !== 'all') {
         const filterId = Number(categoryFilter);
         if (!Number.isFinite(filterId) || !p.categoryIds.includes(filterId)) {
@@ -503,11 +510,21 @@ export function WholesaleProducts() {
       }
       return (a.name ?? '').localeCompare(b.name ?? '') * direction;
     });
-  }, [products, search, categoryFilter, publishedFilter, sortColumn, sortDirection, categoryNameById]);
+  }, [
+    products,
+    search,
+    categoryFilter,
+    categoryGroupFilter,
+    publishedFilter,
+    sortColumn,
+    sortDirection,
+    categoryNameById,
+    scopedCategoryIds,
+  ]);
 
   const paginationFilterKey = useMemo(
-    () => `${search}|${categoryFilter}|${publishedFilter}`,
-    [search, categoryFilter, publishedFilter],
+    () => `${search}|${categoryGroupFilter}|${categoryFilter}|${publishedFilter}`,
+    [search, categoryGroupFilter, categoryFilter, publishedFilter],
   );
 
   const {

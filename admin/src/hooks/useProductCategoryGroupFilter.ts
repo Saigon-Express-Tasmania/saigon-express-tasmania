@@ -34,17 +34,21 @@ export function useProductCategoryGroupFilter(
     return sortSectionsByProductCount(scoped, productCountByCategoryId);
   }, [sections, categoryGroupFilter, productCountByCategoryId]);
 
-  const scopedTotalProductCount = useMemo(() => {
-    if (categoryGroupFilter === 'all') return products.length;
-    const categoryIds = new Set(
+  const scopedCategoryIds = useMemo(() => {
+    if (categoryGroupFilter === 'all') return null;
+    return new Set(
       flattenAdminCategoryFilterSections(scopedCategoryFilterSections).map(
         (category) => category.id,
       ),
     );
+  }, [categoryGroupFilter, scopedCategoryFilterSections]);
+
+  const scopedTotalProductCount = useMemo(() => {
+    if (scopedCategoryIds === null) return products.length;
     return products.filter((product) =>
-      product.categoryIds.some((categoryId) => categoryIds.has(categoryId)),
+      product.categoryIds.some((categoryId) => scopedCategoryIds.has(categoryId)),
     ).length;
-  }, [products, categoryGroupFilter, scopedCategoryFilterSections]);
+  }, [products, scopedCategoryIds]);
 
   const onCategoryGroupFilterChange = useCallback((value: string) => {
     setCategoryGroupFilter(value);
@@ -57,6 +61,7 @@ export function useProductCategoryGroupFilter(
     productCountByCategoryId,
     productCountByGroupId,
     scopedCategoryFilterSections,
+    scopedCategoryIds,
     scopedTotalProductCount,
   };
 }

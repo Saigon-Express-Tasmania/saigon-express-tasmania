@@ -553,6 +553,7 @@ export function CateringPacks() {
     productCountByCategoryId,
     productCountByGroupId,
     scopedCategoryFilterSections,
+    scopedCategoryIds,
     scopedTotalProductCount,
   } = useProductCategoryGroupFilter(packs, categoryFilterSections);
 
@@ -583,6 +584,12 @@ export function CateringPacks() {
   const filteredPacks = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = packs.filter((pack) => {
+      if (
+        scopedCategoryIds !== null &&
+        !pack.categoryIds.some((categoryId) => scopedCategoryIds.has(categoryId))
+      ) {
+        return false;
+      }
       if (categoryFilter !== 'all') {
         const filterId = Number(categoryFilter);
         if (!Number.isFinite(filterId) || !pack.categoryIds.includes(filterId)) {
@@ -627,11 +634,21 @@ export function CateringPacks() {
       }
       return a.name.localeCompare(b.name) * direction;
     });
-  }, [packs, search, categoryFilter, publishedFilter, sortColumn, sortDirection, categoryNameById]);
+  }, [
+    packs,
+    search,
+    categoryFilter,
+    categoryGroupFilter,
+    publishedFilter,
+    sortColumn,
+    sortDirection,
+    categoryNameById,
+    scopedCategoryIds,
+  ]);
 
   const paginationFilterKey = useMemo(
-    () => `${search}|${categoryFilter}|${publishedFilter}`,
-    [search, categoryFilter, publishedFilter],
+    () => `${search}|${categoryGroupFilter}|${categoryFilter}|${publishedFilter}`,
+    [search, categoryGroupFilter, categoryFilter, publishedFilter],
   );
 
   const {
