@@ -330,7 +330,7 @@ export default function MemberHeader({
         <div className="container flex items-center justify-between gap-4 h-16">
           <div className="flex items-center gap-6 min-w-0">
             <Link
-              href={isSignedIn ? DASHBOARD_LINK.href : HOME_LINK.href}
+              href={HOME_LINK.href}
               className="shrink-0"
             >
               <AppImage
@@ -344,6 +344,12 @@ export default function MemberHeader({
             <nav className="hidden md:flex items-center gap-1 min-w-0">
               {isSignedIn ? (
                 <>
+                  <Link
+                    href={HOME_LINK.href}
+                    className={navLinkClass(homeActive, theme)}
+                  >
+                    {HOME_LINK.label}
+                  </Link>
                   <Link
                     href={DASHBOARD_LINK.href}
                     className={navLinkClass(dashboardActive, theme)}
@@ -586,6 +592,13 @@ export default function MemberHeader({
               <nav className="space-y-1">
                 {isSignedIn ? (
                   <>
+                    <Link
+                      href={HOME_LINK.href}
+                      onClick={closeMobileMenu}
+                      className={mobileNavLinkClass(homeActive, theme)}
+                    >
+                      {HOME_LINK.label}
+                    </Link>
                     <Link
                       href={DASHBOARD_LINK.href}
                       onClick={closeMobileMenu}

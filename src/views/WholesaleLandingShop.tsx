@@ -282,11 +282,11 @@ export default function WholesaleLandingShop({
                   {t("notice.ctaRegister")}
                 </button>
               </Link>
-              <Link href="/member">
+              {/* <Link href="/member">
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg border border-border hover:border-primary/40 transition-colors">
                   {t("notice.ctaPin")}
                 </button>
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>
@@ -486,13 +486,13 @@ export default function WholesaleLandingShop({
                           <span>{t("productCard.priceDisclaimer")}</span>
                         </div>
                         <div className="flex gap-2">
-                          <Link href="/member" className="flex-1">
+                          {/* <Link href="/member" className="flex-1">
                             <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
                               {t("productCard.ctaPin")}
                             </button>
-                          </Link>
+                          </Link> */}
                           <Link href="/member#register" className="flex-1">
-                            <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors">
+                            <button className="w-full text-xs font-semibold px-2 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors">
                               {t("productCard.ctaRegister")}
                             </button>
                           </Link>

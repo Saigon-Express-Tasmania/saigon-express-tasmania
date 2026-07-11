@@ -261,14 +261,6 @@ function MemberPortalContent() {
   }, [mode]);
 
   useEffect(() => {
-    if (isLoading || !isSignedIn || isPasswordRecovery) return;
-
-    clearWholesaleRegistrationStatus();
-    setRegistrationStatus(null);
-    router.replace("/member/dashboard");
-  }, [isLoading, isPasswordRecovery, isSignedIn, router]);
-
-  useEffect(() => {
     if (isSignedIn) return;
 
     const stored = getWholesaleRegistrationStatus();
@@ -364,7 +356,10 @@ function MemberPortalContent() {
     setIsSigningIn(true);
     try {
       await signInWithPassword(loginEmail, loginPassword);
+      clearWholesaleRegistrationStatus();
+      setRegistrationStatus(null);
       toast.success("Welcome back! Redirecting to your account...");
+      router.replace("/member/dashboard");
     } catch (error) {
       restoreRegistrationStatus();
       toast.error(
@@ -433,6 +428,46 @@ function MemberPortalContent() {
     "h-11 border-gray-200 focus:border-red-400 focus:ring-red-400";
   const inputClassSm =
     "h-10 border-gray-200 focus:border-red-400 focus:ring-red-400 text-sm";
+
+  if (!isLoading && isSignedIn && !isPasswordRecovery) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f5] flex flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 px-8 py-10 text-center">
+          <div className="flex justify-center mb-6">
+            <AppImage
+              src={LOGO_URL}
+              alt="Saigon Express"
+              width={LOGO_INTRINSIC.width}
+              height={LOGO_INTRINSIC.height}
+              className={`h-10 sm:h-11 max-w-full ${LOGO_IMG_CLASS}`}
+            />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            You&apos;re already signed in
+          </h1>
+          <p className="text-sm text-gray-500 mb-8">
+            Continue to your member dashboard or return to the public website.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button asChild className="w-full">
+              <Link href="/member/dashboard">Go to dashboard</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/">Back to website</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-gray-500"
+              onClick={() => void signOut()}
+            >
+              Sign out
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] flex flex-col items-center justify-start pt-24 pb-12 px-4 relative">
