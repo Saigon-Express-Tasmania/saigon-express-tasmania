@@ -20,7 +20,6 @@ import {
 import { parseNumericCateringItemId } from "@/lib/catering-item-routes";
 import { getProductCategoryAssignments } from "@/lib/product-categories";
 import { getCategoriesByKind } from "./categories";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { loadProductCategoriesByProductIds } from "./product-categories";
 import {
   fetchCateringProductRowById,
@@ -161,7 +160,7 @@ async function loadCateringItemById(id: number): Promise<CateringPack | null> {
 
 export const getCateringPacks = unstable_cache(
   loadCateringPacks,
-  [CACHE_TAG, SERVER_CACHE_INSTANCE_ID],
+  [CACHE_TAG],
   {
     revalidate: SHORT_REVALIDATE_SECONDS,
     tags: [CACHE_TAG],
@@ -171,7 +170,7 @@ export const getCateringPacks = unstable_cache(
 export function getCateringItemById(id: number): Promise<CateringPack | null> {
   return unstable_cache(
     () => loadCateringItemById(id),
-    [CACHE_TAG, "catering-item", SERVER_CACHE_INSTANCE_ID, "id", String(id)],
+    [CACHE_TAG, "catering-item", "id", String(id)],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAG, `${CACHE_TAG}-item-${id}`],

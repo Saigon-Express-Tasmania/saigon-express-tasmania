@@ -3,7 +3,6 @@ import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapWholesaleProductRow, type WholesaleProduct } from "@/types";
 import { categoryMapById } from "@/lib/product-category";
 import { getProductCategoryAssignments } from "@/lib/product-categories";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { getCategoriesByKind } from "./categories";
 import { loadProductCategoriesByProductIds } from "./product-categories";
 import { fetchWholesaleProductRows } from "./products";
@@ -33,6 +32,6 @@ async function loadWholesaleProducts(): Promise<WholesaleProduct[]> {
  */
 export const getWholesaleProducts = unstable_cache(
   loadWholesaleProducts,
-  [CACHE_TAG, SERVER_CACHE_INSTANCE_ID],
+  [CACHE_TAG],
   { revalidate: SHORT_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 );

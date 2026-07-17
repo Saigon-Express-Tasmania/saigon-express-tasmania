@@ -3,7 +3,6 @@ import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { sortCategoriesByDisplayOrder } from "@/lib/category-sort";
 import type { SiteCategory, SiteCategoryGroup } from "@/types";
 import { getCategoryGroups } from "@/lib/supabase/category-groups";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { createServerSupabaseClient } from "./server";
 
 const CACHE_TAG = CACHE_TAGS.categories;
@@ -70,7 +69,7 @@ async function loadCategories(): Promise<SiteCategory[]> {
  */
 export const getCategories = unstable_cache(
   loadCategories,
-  [CACHE_TAG, SERVER_CACHE_INSTANCE_ID],
+  [CACHE_TAG],
   {
     revalidate: SHORT_REVALIDATE_SECONDS,
     tags: [CACHE_TAG],

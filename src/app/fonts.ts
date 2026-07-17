@@ -22,7 +22,7 @@ export const notoSerif = Noto_Serif({
 /** Sans fallback for Vietnamese body/UI when DM Sans has no glyph. */
 export const notoSans = Noto_Sans({
   subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans-fallback",
   display: "swap",
 });

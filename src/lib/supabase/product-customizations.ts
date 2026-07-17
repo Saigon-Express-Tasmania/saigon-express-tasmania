@@ -5,7 +5,6 @@ import type {
   ProductCustomizationOption,
   ProductCustomizationsCatalog,
 } from "@/lib/product-customizations";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { createServerSupabaseClient } from "./server";
 
 const CACHE_TAG = CACHE_TAGS.productCustomizations;
@@ -105,6 +104,6 @@ async function loadProductCustomizationsCatalog(): Promise<ProductCustomizations
  */
 export const getProductCustomizationsCatalog = unstable_cache(
   loadProductCustomizationsCatalog,
-  [CACHE_TAG, SERVER_CACHE_INSTANCE_ID],
+  [CACHE_TAG],
   { revalidate: SHORT_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 );

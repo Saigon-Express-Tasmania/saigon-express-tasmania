@@ -15,7 +15,6 @@ import {
   fetchBlogPostRows,
   fetchRelatedBlogPostRows,
 } from "./server";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 
 const CACHE_TAG = CACHE_TAGS.blogPosts;
 
@@ -51,7 +50,7 @@ export const getBlogPosts = unstable_cache(loadBlogPosts, [CACHE_TAG], {
  */
 export const getBlogPostBySlug = unstable_cache(
   loadBlogPostBySlug,
-  [CACHE_TAG, "detail", SERVER_CACHE_INSTANCE_ID],
+  [CACHE_TAG, "detail"],
   {
     revalidate: BLOG_POST_DETAIL_REVALIDATE_SECONDS,
     tags: [CACHE_TAG],

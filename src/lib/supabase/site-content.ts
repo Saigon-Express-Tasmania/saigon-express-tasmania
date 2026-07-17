@@ -6,7 +6,6 @@ import { unstable_cache } from "next/cache";
 import { createServerSupabaseClient } from "./server";
 
 const LOCALIZATION_FILE_PATH = "localization.json";
-const SERVER_BOOT_CACHE_BUSTER = `${process.pid}-${Date.now()}`;
 
 const EMPTY_SNAPSHOT: SiteContentSnapshot = {
   settings: {},
@@ -122,7 +121,7 @@ async function fetchSiteContentUncached(): Promise<SiteContentSnapshot> {
 
 const getCachedSiteContentSnapshot = unstable_cache(
   fetchSiteContentUncached,
-  ["site-content", SERVER_BOOT_CACHE_BUSTER],
+  ["site-content"],
   {
     revalidate: LONG_REVALIDATE_SECONDS,
     tags: [CACHE_TAGS.settings, CACHE_TAGS.localization],

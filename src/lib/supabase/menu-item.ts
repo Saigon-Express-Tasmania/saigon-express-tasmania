@@ -5,7 +5,6 @@ import { mapMenuItemRow } from "@/types";
 import type { MenuItem } from "@/contexts/CartContext";
 import { categoryMapById } from "@/lib/product-category";
 import { getProductCategoryAssignments } from "@/lib/product-categories";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { getCategoriesByKind } from "./categories";
 import { loadProductCategoriesByProductIds } from "./product-categories";
 import { fetchAlacarteProductRowById, fetchAlacarteProductRowBySlug } from "./products";
@@ -48,7 +47,7 @@ async function loadMenuItemBySlug(slug: string): Promise<MenuItem | null> {
 export function getMenuItemById(id: number): Promise<MenuItem | null> {
   return unstable_cache(
     () => loadMenuItemById(id),
-    [CACHE_TAG, "menu-item", SERVER_CACHE_INSTANCE_ID, "id", String(id)],
+    [CACHE_TAG, "menu-item", "id", String(id)],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAG, `${CACHE_TAG}-item-${id}`],
@@ -63,7 +62,7 @@ export function getMenuItemBySlug(slug: string): Promise<MenuItem | null> {
   const normalized = slug.trim();
   return unstable_cache(
     () => loadMenuItemBySlug(normalized),
-    [CACHE_TAG, "menu-item", SERVER_CACHE_INSTANCE_ID, "slug", normalized],
+    [CACHE_TAG, "menu-item", "slug", normalized],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAG, `${CACHE_TAG}-slug-${normalized}`],

@@ -4,7 +4,6 @@ import { mapMenuItemRow } from "@/types";
 import type { MenuItem } from "@/contexts/CartContext";
 import { categoryMapById } from "@/lib/product-category";
 import { getProductCategoryAssignments } from "@/lib/product-categories";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { getCategoriesByKind } from "./categories";
 import { loadProductCategoriesByProductIds } from "./product-categories";
 import { fetchAlacarteProductRows } from "./products";
@@ -34,6 +33,6 @@ async function loadMenuItems(): Promise<MenuItem[]> {
  */
 export const getMenuItems = unstable_cache(
   loadMenuItems,
-  [CACHE_TAG, SERVER_CACHE_INSTANCE_ID],
+  [CACHE_TAG],
   { revalidate: SHORT_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 );

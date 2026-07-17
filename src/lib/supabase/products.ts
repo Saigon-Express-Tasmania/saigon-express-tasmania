@@ -2,7 +2,6 @@ import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { ENV } from "@/config/env";
 import type { MenuItemRow, WholesaleProductRow } from "@/types";
 import { unstable_cache } from "next/cache";
-import { SERVER_CACHE_INSTANCE_ID } from "./cache-instance";
 import { createServerSupabaseClient } from "./server";
 
 export type ProductType = "alacarte" | "wholesale" | "catering";
@@ -77,7 +76,6 @@ function getCachedAvailableProductRows<T>(
       select,
       orderKey,
       publishedProductsCacheKey(),
-      SERVER_CACHE_INSTANCE_ID,
     ],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
@@ -143,7 +141,7 @@ export async function fetchAlacarteProductRowById(
 ): Promise<MenuItemRow | null> {
   return unstable_cache(
     () => queryAlacarteProductRowById(id),
-    ["products", "alacarte", "id", String(id), publishedProductsCacheKey(), SERVER_CACHE_INSTANCE_ID],
+    ["products", "alacarte", "id", String(id), publishedProductsCacheKey()],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAGS.menu, `${CACHE_TAGS.menu}-item-${id}`],
@@ -159,7 +157,7 @@ export async function fetchAlacarteProductRowBySlug(
 
   return unstable_cache(
     () => queryAlacarteProductRowBySlug(trimmed),
-    ["products", "alacarte", "slug", trimmed, publishedProductsCacheKey(), SERVER_CACHE_INSTANCE_ID],
+    ["products", "alacarte", "slug", trimmed, publishedProductsCacheKey()],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAGS.menu, `${CACHE_TAGS.menu}-slug-${trimmed}`],
@@ -224,7 +222,7 @@ export async function fetchCateringProductRowById(
 ): Promise<CateringProductRow | null> {
   return unstable_cache(
     () => queryCateringProductRowById(id),
-    ["products", "catering", "id", String(id), publishedProductsCacheKey(), SERVER_CACHE_INSTANCE_ID],
+    ["products", "catering", "id", String(id), publishedProductsCacheKey()],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [CACHE_TAGS.cateringPacks, `${CACHE_TAGS.cateringPacks}-item-${id}`],

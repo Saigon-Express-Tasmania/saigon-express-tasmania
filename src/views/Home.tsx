@@ -2,6 +2,7 @@ import AppImage from "@/components/AppImage";
 import HomeBestSellersSection from "@/components/home/HomeBestSellersSection";
 import HomeCateringSection from "@/components/home/HomeCateringSection";
 import HomeFeaturedReviewsSection from "@/components/home/HomeFeaturedReviewsSection";
+import HomeNewsSection from "@/components/home/HomeNewsSection";
 import HomeOurFoodCategoryPills from "@/components/home/HomeOurFoodCategoryPills";
 import HomeWholesaleCategoryPills from "@/components/home/HomeWholesaleCategoryPills";
 import HeroVideo from "@/components/home/HeroVideo";
@@ -9,11 +10,7 @@ import HomeMediaPreload from "@/components/HomeMediaPreload";
 import LazyImage from "@/components/LazyImage";
 import Link from "@/components/link";
 
-import dynamic from "next/dynamic";
-import { getBlogPosts } from "@/lib/supabase/blog-posts";
-import { resolvePublicAssetUrl } from "@/lib/resolve-site-url";
-import type { BlogPost } from "@/types";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { ChevronRight, MapPin, ShoppingCart } from "lucide-react";
 import { Suspense } from "react";
 
@@ -26,9 +23,9 @@ const IMGS = {
     "/manus-storage/saigo_express__Combination_beef_noodle_soup_pho_NativeLarge_30ae4434.png",
   ourFood2c: "/manus-storage/_Q7A0084addedcontrastandsat_4c8d6b63.jpg",
   ourFood2d:
-    "/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_d710816c.png",
+    "/manus-storage/saigo_express__Cuon_Vietnamese_prawn_rice_paper_rolls_NativeLarge_d710816c.webp",
   ourFood2e:
-    "/manus-storage/saigo_express__Vietnamese_rice_noodle_salad_bun_NativeLarge_724e0124.png",
+    "/manus-storage/saigo_express__Vietnamese_rice_noodle_salad_bun_NativeLarge_724e0124.webp",
   ourFood2f:
     "/manus-storage/saigo_express__Viet_rice_Grilled_pork_and_fried_egg_rice_Native_fc6d43db.jpg",
   catering: "/manus-storage/catering-hero-counter_71eb7271.jpg",
@@ -42,13 +39,9 @@ const IMGS = {
 
 const CATEGORY_IMAGES = [
   "/manus-storage/hero-stir-fried-noodles_84d4beca.jpg",
-  "/manus-storage/saigo_express__Hot_plate_chicken_lemongrass_and_chilli_NativeLarge_421583fc.png",
-  "/manus-storage/saigo_express__Roasted_pork_and_roasted_duck_NativeLarge_aff2e8e9.png",
+  "/manus-storage/saigo_express__Hot_plate_chicken_lemongrass_and_chilli_NativeLarge_421583fc.webp",
+  "/manus-storage/saigo_express__Roasted_pork_and_roasted_duck_NativeLarge_aff2e8e9.webp",
 ] as const;
-
-const HOME_NEWS_LIMIT = 3;
-const NEWS_FALLBACK_IMAGE =
-  "/manus-storage/news-story-began_47dbdf79.jpg";
 
 const FEATURED_IN_LOGOS: Array<{
   src: string;
@@ -74,30 +67,10 @@ const FEATURED_IN_LOGOS: Array<{
   },
 ];
 
-function formatPublishedDate(
-  iso: string | null,
-  locale: string,
-): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-const GetApp = dynamic(() => import("@/components/GetApp"));
-
 export default async function Home() {
   const t = await getTranslations("Home");
-  const locale = await getLocale();
-  const newsPosts = (await getBlogPosts()).slice(0, HOME_NEWS_LIMIT);
 
   const marqueeItems = t.raw("marquee.items") as string[];
-  const cateringTags = t.raw("catering.tags") as string[];
-  const wholesaleTags = t.raw("wholesale.tags") as string[];
   const categoryItems = t.raw("categories.items") as Array<{
     title: string;
     desc: string;
@@ -409,91 +382,9 @@ export default async function Home() {
       </section>
 
       {/* ── NEWS ────────────────────────────────────────────────────────── */}
-      <section className="py-8 bg-white">
-        <div className="max-w-[1280px] mx-auto px-4">
-          {/* <div className="flex items-end justify-between mb-10 reveal">
-            <div>
-              <span className="section-label">{t("news.label")}</span>
-              <h2 className="font-serif text-4xl text-brand-dark mt-2">
-                {t("news.title")}
-              </h2>
-            </div>
-            <Link
-              href="/news"
-              className="text-sm font-semibold text-brand-red hover:underline flex items-center gap-1"
-            >
-              {t("news.viewAll")} <ChevronRight size={14} />
-            </Link>
-          </div> */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {newsPosts.map((post: BlogPost, i) => {
-              const publishedLabel = formatPublishedDate(
-                post.publishedAt,
-                locale,
-              );
-              const newsLogoUrl = resolvePublicAssetUrl(post.newsLogoImageUrl);
-
-              return (
-                <article
-                  key={post.id}
-                  className="group reveal h-full overflow-hidden rounded-xl border border-[#eaeaea] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.08)] card-lift"
-                  style={{ animationDelay: `${i * 0.08}s` }}
-                >
-                  <Link
-                    href={`/news/${post.slug}`}
-                    className="flex h-full flex-col"
-                  >
-                    <div className="aspect-[65/32] overflow-hidden border-b border-[#f0f0f0] bg-[#e0e0e0]">
-                      <LazyImage
-                        src={post.featuredImageUrl ?? NEWS_FALLBACK_IMAGE}
-                        alt={post.title}
-                        wrapperClassName="w-full h-full"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="flex flex-1 flex-col px-5 py-4">
-                      <div className="flex items-start gap-4 sm:gap-6">
-                        <div className="flex w-[72px] shrink-0 flex-col gap-3 sm:w-[96px]">
-                          {newsLogoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={newsLogoUrl}
-                              alt={post.category}
-                              className="block max-h-12 w-full object-contain object-top sm:max-h-14"
-                            />
-                          ) : (
-                            <span className="news-badge text-[10px] leading-snug">
-                              {post.category}
-                            </span>
-                          )}
-                          {publishedLabel && (
-                            <p className="text-xs font-semibold uppercase leading-snug tracking-wide text-[#666666]">
-                              {publishedLabel}
-                            </p>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="m-0 line-clamp-3 text-lg font-bold leading-tight text-brand-red">
-                            {post.title}
-                          </h3>
-                          {post.excerpt && (
-                            <p className="mt-3 line-clamp-4 text-[15px] leading-relaxed text-[#444444]">
-                              {post.excerpt}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <span className="mt-auto pt-4 text-[13px] font-bold tracking-wide text-brand-red">
-                        {t("news.readMore")} →
-                      </span>
-                    </div>
-                  </Link>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <Suspense fallback={null}>
+        <HomeNewsSection />
+      </Suspense>
 
       {/* ── BECOME A PARTNER CTA ────────────────────────────────────────── */}
       <section className="py-16 bg-brand-red">
