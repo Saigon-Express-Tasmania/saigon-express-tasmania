@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
 import { toast } from 'sonner';
+import { ChangeCdnDialog } from './ChangeCdnDialog';
 import { FranchiseResourceEditorDialog } from './FranchiseResourceEditorDialog';
 import { FranchiseResourceFolderImportDialog } from './FranchiseResourceFolderImportDialog';
 import { FranchiseResourceFolderImportPreviewDialog } from './FranchiseResourceFolderImportPreviewDialog';
@@ -184,6 +185,9 @@ export function FranchiseResourceAdminPage({
   const [previewTarget, setPreviewTarget] = useState<FranchiseResourceRow | null>(
     null,
   );
+  const [changeCdnOpen, setChangeCdnOpen] = useState(false);
+  const showChangeCdn =
+    resourceType === 'document' || resourceType === 'menu_training';
 
   const loadResources = useCallback(async () => {
     try {
@@ -424,6 +428,15 @@ export function FranchiseResourceAdminPage({
                 onClick={() => void loadResources()}
                 disabled={listBusy}
               />
+              {showChangeCdn ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setChangeCdnOpen(true)}
+                  disabled={listBusy}
+                >
+                  Change CDN...
+                </Button>
+              ) : null}
               {config.enableFolderImport ? (
                 <>
                   <input
@@ -726,6 +739,14 @@ export function FranchiseResourceAdminPage({
       />
 
       <FranchiseResourceFolderImportDialog progress={folderImport.progress} />
+
+      {showChangeCdn ? (
+        <ChangeCdnDialog
+          open={changeCdnOpen}
+          onOpenChange={setChangeCdnOpen}
+          onComplete={() => void loadResources()}
+        />
+      ) : null}
 
       <FranchiseResourceEditorDialog
         config={config}
