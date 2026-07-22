@@ -487,7 +487,7 @@ export default function Menu({
               return (
                 <div
                   key={item.id}
-                  className={`flex flex-direction-column group overflow-hidden bg-white card-lift [contain-intrinsic-size:420px] [content-visibility:auto] ${!item.isAvailable ? "opacity-60" : ""}`}
+                  className={`flex flex-direction-column group overflow-hidden bg-white card-lift ${!item.isAvailable ? "opacity-60" : ""}`}
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                     <Link

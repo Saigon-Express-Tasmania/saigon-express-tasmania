@@ -466,7 +466,7 @@ export default function Catering({
                 featuredPacks.map((pack) => (
                   <div
                     key={pack.id}
-                    className="flex h-full flex-col overflow-hidden bg-white transition-shadow duration-300 hover:shadow-lg [contain-intrinsic-size:520px] [content-visibility:auto]"
+                    className="flex h-full flex-col overflow-hidden bg-white transition-shadow duration-300 hover:shadow-lg"
                   >
                     <div className="relative aspect-[16/7] overflow-hidden">
                       <LazyImage

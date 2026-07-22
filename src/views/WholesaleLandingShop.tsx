@@ -428,7 +428,7 @@ export default function WholesaleLandingShop({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: (i % 4) * 0.07 }}
-                  className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 [contain-intrinsic-size:420px] [content-visibility:auto]"
+                  className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
                 >
                   <div className="relative h-44 overflow-hidden bg-muted">
                     {img ? (

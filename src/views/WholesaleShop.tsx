@@ -435,7 +435,7 @@ export default function WholesaleShop({
             return (
               <div
                 key={product.id}
-                className={`group flex h-full flex-col [contain-intrinsic-size:420px] [content-visibility:auto] ${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
+                className={`group flex h-full flex-col ${MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS} ${outOfStock ? "opacity-60" : ""}`}
               >
                 <div className="relative h-44 overflow-hidden">
                   {product.imageUrl ? (
