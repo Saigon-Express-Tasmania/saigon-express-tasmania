@@ -56,7 +56,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { previewFromImageUrls, type ImageUrlsMap } from '@/lib/image-urls';
 import { resizeImageToSizes } from '@/lib/image-resize';
@@ -438,7 +438,7 @@ async function nextCateringPackId(): Promise<number> {
 
 export function CateringPacks() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia } = useSupabaseStorage();
+  const { uploadMedia } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [packs, setPacks] = useState<CateringPackRow[]>([]);

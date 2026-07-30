@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import supabase from '@/lib/supabase/client';
 import {
   emptyFeaturedReviewInput,
@@ -118,7 +118,7 @@ function ReviewerPictureCell({
 
 export function FeaturedReviewsPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia, isUploading: isPictureUploading } = useSupabaseStorage();
+  const { uploadMedia, isUploading: isPictureUploading } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [reviews, setReviews] = useState<FeaturedReview[]>([]);

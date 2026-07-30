@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { slugify } from './franchiseResourceShared';
@@ -306,7 +306,7 @@ function SortableHeader({
 
 export default function Taxonomies() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia, isUploading, getPublicUrl } = useSupabaseStorage();
+  const { uploadMedia, isUploading, getPublicUrl } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [rows, setRows] = useState<TaxonomyRow[]>([]);

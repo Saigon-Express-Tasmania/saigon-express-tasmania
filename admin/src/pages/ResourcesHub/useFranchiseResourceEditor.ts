@@ -1,4 +1,4 @@
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import supabase from '@/lib/supabase/client';
 import {
   appendUploadedAsset,
@@ -31,7 +31,7 @@ export function useFranchiseResourceEditor({
   config,
   onSaved,
 }: UseFranchiseResourceEditorOptions) {
-  const { uploadMedia, isUploading, getPublicUrl } = useSupabaseStorage();
+  const { uploadMedia, isUploading, getPublicUrl } = useStorage();
   const { resourceType, uploadFolder, labels } = config;
 
   const [dialogOpen, setDialogOpen] = useState(false);

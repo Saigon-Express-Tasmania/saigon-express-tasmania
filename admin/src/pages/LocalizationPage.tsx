@@ -13,7 +13,6 @@ import {
   LANGUAGE_LABELS,
   LOCALIZATION_FILE_NAME,
   SUPPORTED_LANGUAGES,
-  STORAGE_BUCKET,
 } from '@/constants';
 import type { LanguageKey } from '@/types';
 import { usePageState } from '@/hooks/usePageState';
@@ -21,7 +20,7 @@ import {
   mergeColumnWidths,
   textColumnsFromWidths,
 } from '@/lib/handsontableColumnWidths';
-import supabase from '@/lib/supabase/client';
+import { downloadR2Object, uploadR2Object } from '@/lib/r2-client';
 import type { LocalizationTranslationType } from '@/types/Localization';
 import Handsontable from 'handsontable';
 import {
@@ -102,17 +101,7 @@ export function LocalizationPage() {
       setLoading(true);
       setError(null);
 
-      const { data, error: downloadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .download(LOCALIZATION_FILE_PATH);
-
-      if (
-        downloadError &&
-        downloadError.message !== 'Not found' &&
-        downloadError.message !== '{}'
-      ) {
-        throw downloadError;
-      }
+      const data = await downloadR2Object(LOCALIZATION_FILE_PATH);
 
       if (data) {
         const text = await data.text();
@@ -151,18 +140,11 @@ export function LocalizationPage() {
 
       const currentTranslations = getTranslationsFromTable();
 
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(
-          LOCALIZATION_FILE_PATH,
-          JSON.stringify(currentTranslations, null, 2),
-          {
-          upsert: true,
-          contentType: 'application/json',
-          },
-        );
-
-      if (uploadError) throw uploadError;
+      await uploadR2Object(
+        LOCALIZATION_FILE_PATH,
+        JSON.stringify(currentTranslations, null, 2),
+        'application/json',
+      );
     } catch (err: any) {
       setError(`Failed to save translations: ${err.message}`);
     } finally {

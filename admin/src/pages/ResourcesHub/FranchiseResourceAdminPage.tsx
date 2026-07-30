@@ -24,7 +24,7 @@ import { TaxonomyFilterSelect } from '@/components/TaxonomyFilterSelect';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTablePagination } from '@/hooks/useTablePagination';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import {
@@ -158,7 +158,7 @@ export function FranchiseResourceAdminPage({
   const showTitleThumbnail = config.showTitleThumbnail ?? false;
   const enableContentPreview = config.enableContentPreview ?? false;
   const ListIcon = theme.icon;
-  const { getPublicUrl } = useSupabaseStorage();
+  const { getPublicUrl } = useStorage();
 
   const [resources, setResources] = useState<FranchiseResourceRow[]>([]);
   const { taxonomies, loadTaxonomies } = useFranchiseResourceTaxonomies(

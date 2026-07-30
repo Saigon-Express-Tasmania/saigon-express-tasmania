@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { cleanBlogPostContent } from '@/lib/blog-content-cleaner';
 import { generateExcerptFromBlogPost } from '@/lib/blog-excerpt';
 import {
@@ -342,7 +342,7 @@ function BlogPostFormSection({
 
 export function BlogPosts() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia } = useSupabaseStorage();
+  const { uploadMedia } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [posts, setPosts] = useState<BlogPost[]>([]);

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import {
   referenceKeyFromFileName,
   type EmailTemplateReference,
@@ -33,7 +33,7 @@ export function EmailTemplateReferencesDialog({
   onReferenceChange,
   templateName,
 }: EmailTemplateReferencesDialogProps) {
-  const { uploadMedia, isUploading } = useSupabaseStorage();
+  const { uploadMedia, isUploading } = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 

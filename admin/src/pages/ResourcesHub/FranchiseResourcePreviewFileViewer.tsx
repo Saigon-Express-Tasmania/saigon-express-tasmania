@@ -1,4 +1,4 @@
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import FranchiseResourceDocxViewer from '@/components/franchise-resources/FranchiseResourceDocxViewer';
 import FranchiseResourceImageViewer from '@/components/franchise-resources/FranchiseResourceImageViewer';
 import FranchiseResourceTextViewer from '@/components/franchise-resources/FranchiseResourceTextViewer';
@@ -90,7 +90,7 @@ export function FranchiseResourcePreviewFileViewer({
   title = 'Document',
   mimeType,
 }: FranchiseResourcePreviewFileViewerProps) {
-  const { getPublicUrl } = useSupabaseStorage();
+  const { getPublicUrl } = useStorage();
   const resolvedUrl = useMemo(
     () => resolveImagePreview(url, getPublicUrl) ?? '',
     [getPublicUrl, url],

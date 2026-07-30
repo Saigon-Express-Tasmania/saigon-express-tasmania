@@ -55,7 +55,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { nextProductId, PRODUCT_TABLE_PER_PAGE_OPTIONS } from '@/lib/products';
 import {
@@ -272,7 +272,7 @@ async function nextWholesaleProductId(): Promise<number> {
 
 export function WholesaleProducts() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia } = useSupabaseStorage();
+  const { uploadMedia } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [products, setProducts] = useState<WholesaleProductRow[]>([]);

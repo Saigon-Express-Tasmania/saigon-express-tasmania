@@ -93,7 +93,7 @@ import {
   type ProductShippingInput,
   type ProductShippingRow,
 } from '@/lib/product-shipping';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import {
@@ -238,7 +238,7 @@ async function nextMenuId(): Promise<number> {
 
 export function Menu() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia } = useSupabaseStorage();
+  const { uploadMedia } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [items, setItems] = useState<MenuItemRow[]>([]);

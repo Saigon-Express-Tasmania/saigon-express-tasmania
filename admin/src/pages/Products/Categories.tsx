@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { slugify } from '@/pages/ResourcesHub/franchiseResourceShared';
@@ -509,7 +509,7 @@ function SortableHeader({
 
 export function Categories() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia, isUploading } = useSupabaseStorage();
+  const { uploadMedia, isUploading } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);

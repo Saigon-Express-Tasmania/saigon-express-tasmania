@@ -1,17 +1,42 @@
+import { ENV } from '@/constants';
+
 /** Strip leading slashes from a storage object path. */
 export function normalizeStoragePath(path: string): string {
   return path.trim().replace(/^\/+/, '');
 }
 
+function pathAfterBaseUrl(publicUrl: string, baseUrl: string): string | null {
+  const base = baseUrl.trim().replace(/\/+$/, '');
+  if (!base) return null;
+
+  const trimmed = publicUrl.trim();
+  if (!trimmed.startsWith(base)) return null;
+
+  const rest = trimmed.slice(base.length).replace(/^\/+/, '');
+  if (!rest) return null;
+
+  try {
+    return normalizeStoragePath(decodeURIComponent(rest.split('?')[0] ?? rest));
+  } catch {
+    return normalizeStoragePath((rest.split('?')[0] ?? rest));
+  }
+}
+
 /**
- * Extract the object path inside a bucket from a Supabase public object URL.
+ * Extract the object path inside a bucket from a public object URL
+ * (R2 custom domain / public URL, or legacy Supabase storage URLs).
  */
 export function storagePathFromPublicUrl(
   publicUrl: string,
   bucket: string,
 ): string | null {
   const trimmed = publicUrl.trim();
-  if (!trimmed || !bucket) return null;
+  if (!trimmed) return null;
+
+  const fromR2 = pathAfterBaseUrl(trimmed, ENV.r2PublicUrl ?? '');
+  if (fromR2) return fromR2;
+
+  if (!bucket) return null;
 
   const encodedBucket = encodeURIComponent(bucket);
   const markers = [
@@ -26,10 +51,12 @@ export function storagePathFromPublicUrl(
     if (index === -1) continue;
     try {
       return normalizeStoragePath(
-        decodeURIComponent(trimmed.slice(index + marker.length)),
+        decodeURIComponent(trimmed.slice(index + marker.length).split('?')[0] ?? ''),
       );
     } catch {
-      return normalizeStoragePath(trimmed.slice(index + marker.length));
+      return normalizeStoragePath(
+        trimmed.slice(index + marker.length).split('?')[0] ?? '',
+      );
     }
   }
 

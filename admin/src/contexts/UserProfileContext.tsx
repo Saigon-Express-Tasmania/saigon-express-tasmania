@@ -1,7 +1,7 @@
 'use client';
 
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { isAuthFailureError, notifyAuthFailure } from '@/lib/auth-session';
 import { parsePrivileges } from '@/lib/privileges';
 import supabase from '@/lib/supabase/client';
@@ -64,7 +64,7 @@ function mergeAdminProfile(
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const { user, isSignedIn } = useSupabaseAuth();
-  const { getSignedUrl } = useSupabaseStorage();
+  const { getSignedUrl } = useStorage();
   const userId = user?.id;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);

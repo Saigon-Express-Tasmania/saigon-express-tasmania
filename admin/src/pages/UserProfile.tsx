@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type { UserProfileUpdate } from '@/types/UserProfile';
 import { KeyRound, Loader2 } from 'lucide-react';
@@ -108,7 +108,7 @@ export function UserProfile() {
     updateProfile,
     setAvatarPreviewUrl,
   } = useUserProfile();
-  const { uploadMedia, isUploading } = useSupabaseStorage();
+  const { uploadMedia, isUploading } = useStorage();
 
   const [form, setForm] = useState<ProfileFormState>(emptyForm);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);

@@ -1,4 +1,4 @@
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import supabase from '@/lib/supabase/client';
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -78,7 +78,7 @@ export function useFranchiseResourceFolderImport({
   config,
   onComplete,
 }: UseFranchiseResourceFolderImportOptions) {
-  const { uploadMedia } = useSupabaseStorage();
+  const { uploadMedia } = useStorage();
   const { uploadFolder, taxonomyPlace } = config;
 
   const folderInputRef = useRef<HTMLInputElement>(null);

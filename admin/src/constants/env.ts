@@ -10,9 +10,18 @@ if (!supabaseUrl || !supabasePublishableKey) {
 export const ENV = {
   supabaseUrl,
   supabasePublishableKey,
-  supabaseStorageBucket: import.meta.env.VITE_SUPABASE_STORAGE_BUCKET as string | undefined,
-  cacheRevalidateSecret: import.meta.env.VITE_CACHE_REVALIDATE_SECRET as string | undefined,
+  cacheRevalidateSecret: import.meta.env.VITE_CACHE_REVALIDATE_SECRET as
+    | string
+    | undefined,
   brevoApiKey: import.meta.env.VITE_BREVO_API_KEY as string | undefined,
+  r2AccountId: import.meta.env.VITE_R2_ACCOUNT_ID as string | undefined,
+  r2AccessKeyId: import.meta.env.VITE_R2_ACCESS_KEY_ID as string | undefined,
+  r2SecretAccessKey: import.meta.env.VITE_R2_SECRET_ACCESS_KEY as
+    | string
+    | undefined,
+  r2Bucket: import.meta.env.VITE_R2_BUCKET as string | undefined,
+  /** Public base URL / custom domain for R2 objects (no trailing slash). */
+  r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL as string | undefined,
 };
 
-export const STORAGE_BUCKET = ENV.supabaseStorageBucket || 'saigon-express-tasmania';
+export const STORAGE_BUCKET = ENV.r2Bucket || 'saigon-express-tasmania';

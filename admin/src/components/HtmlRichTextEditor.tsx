@@ -1,4 +1,4 @@
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { registerImageUploadingBlot } from '@/lib/quill-image-uploading-blot';
 import { generateStorageFileName } from '@/lib/storage-file-name';
 import { cn } from '@/lib/utils';
@@ -192,7 +192,7 @@ export function HtmlRichTextEditor({
   className,
 }: HtmlRichTextEditorProps) {
   const quillRef = useRef<ReactQuill>(null);
-  const { uploadMedia } = useSupabaseStorage();
+  const { uploadMedia } = useStorage();
 
   const insertUploadedImage = useCallback(
     async (

@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { STORAGE_BUCKET } from '@/constants';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { cn } from '@/lib/utils';
 import { resolveStorageObjectPath } from '@/lib/storage-path';
 import type { BlogPostReference } from '@/types/BlogPost';
@@ -21,7 +21,7 @@ export function BlogPostAssetReferencesPanel({
   onReferenceChange,
   className,
 }: BlogPostAssetReferencesPanelProps) {
-  const { deleteMedia } = useSupabaseStorage();
+  const { deleteMedia } = useStorage();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
 

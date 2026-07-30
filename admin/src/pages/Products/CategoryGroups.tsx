@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { useSupabaseStorage } from '@/hooks/useSupabaseStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import supabase from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -431,7 +431,7 @@ type CategoryGroupPayload = {
 
 export function CategoryGroups() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const { uploadMedia, isUploading } = useSupabaseStorage();
+  const { uploadMedia, isUploading } = useStorage();
   const isAdmin = profile?.user_role === 'admin';
 
   const [groups, setGroups] = useState<CategoryGroupRow[]>([]);
