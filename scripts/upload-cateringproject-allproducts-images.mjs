@@ -1,21 +1,23 @@
 #!/usr/bin/env node
 /**
- * Upload Catering Project local images to Supabase Storage.
+ * Upload Catering Project local images to Cloudflare R2.
  *
  * Reads the deduplicated catalog:
  *   refs/cateringproject/htmls/totalproducts.json
  *
- * Local image files are resolved from prefixed paths in totalproducts.json, e.g.:
- *   refs/cateringproject/htmls/<category-slug>/images/<product-slug>/*
+ * Local image files are resolved from:
+ *   - Prefixed local paths in totalproducts.json, e.g.
+ *       refs/cateringproject/htmls/<category-slug>/images/<product-slug>/*
+ *   - Legacy Supabase catering-packs public URLs (re-upload from local files)
  *
  * Uploads each local image once per product slug, then patches image_urls /
  * image_url in totalproducts.json only (category allproducts.json is not modified).
  *
  * Uploads run concurrently in batches of 10.
- *   catering-packs/<product-slug>/<filename>
+ *   products/catering-packs/<product-slug>/<filename>
  *
- * Patches totalproducts.json image_urls / image_url with Supabase public URLs.
- * Products with no remaining local image paths are skipped.
+ * Patches totalproducts.json image_urls / image_url with R2 public URLs.
+ * Products with no remaining local/migratable image refs are skipped.
  *
  * Requires totalproducts.json (run merge-cateringproject-allproducts.mjs first).
  *
@@ -31,29 +33,39 @@
  *   node scripts/upload-cateringproject-allproducts-images.mjs --skip-uploaded
  *
  * Dry run (--dry-run):
- *   - Does not upload to Supabase Storage or write totalproducts.json
+ *   - Does not upload to R2 or write totalproducts.json
  *   - Scans local images, counts sizes/bytes, and reports planned uploads + JSON patches
  *
- * Env (from .env / .env.local):
- *   SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Env (from .env / .env.local, and admin/.env / admin/.env.local):
+ *   R2_ACCOUNT_ID or VITE_R2_ACCOUNT_ID
+ *   R2_ACCESS_KEY_ID or VITE_R2_ACCESS_KEY_ID
+ *   R2_SECRET_ACCESS_KEY or VITE_R2_SECRET_ACCESS_KEY
+ *   R2_BUCKET or VITE_R2_BUCKET
+ *   R2_PUBLIC_URL or VITE_R2_PUBLIC_URL
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createClient } from "@supabase/supabase-js";
+import {
+  FOLDER,
+  buildPublicUrl,
+  isLegacySupabaseCateringUrl,
+  isR2PublicUrl,
+  parseCateringPackObjectPath,
+  parseR2ObjectPath,
+  prefixedLocalImagePath,
+} from "./lib/cateringproject-r2-images.mjs";
 import {
   inferProductSlug,
   isPrefixedLocalImagePath,
 } from "./lib/cateringproject-product-slug.mjs";
 import {
-  BUCKET,
-  FOLDER,
-  buildPublicUrl,
-  isSupabasePublicUrl,
-  parseSupabaseObjectPath,
-} from "./lib/cateringproject-supabase-images.mjs";
+  getR2Env,
+  requireR2Config,
+  r2ObjectExists,
+  uploadR2Object,
+} from "./lib/r2-client.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -73,24 +85,19 @@ main().catch((error) => {
 async function main() {
   loadEnvFile(path.join(root, ".env"));
   loadEnvFile(path.join(root, ".env.local"));
+  loadEnvFile(path.join(root, "admin/.env"));
+  loadEnvFile(path.join(root, "admin/.env.local"));
 
-  const supabaseUrl =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const reportSupabaseUrl = supabaseUrl ?? "https://<SUPABASE_URL>";
+  const r2Env = getR2Env();
+  const reportPublicUrl = r2Env.publicUrl || "https://<R2_PUBLIC_URL>";
 
-  if (!supabaseUrl && !dryRun) {
-    throw new Error("Missing SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
+  if (!dryRun) {
+    requireR2Config({ requirePublicUrl: true });
+  } else if (!r2Env.publicUrl) {
+    console.warn(
+      "Warning: R2_PUBLIC_URL / VITE_R2_PUBLIC_URL not set; dry-run URLs will use a placeholder.",
+    );
   }
-  if (!dryRun && !serviceKey) {
-    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY (or pass --dry-run)");
-  }
-
-  const supabase = serviceKey
-    ? createClient(supabaseUrl, serviceKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      })
-    : null;
 
   const totalProductsPath = path.join(htmlRoot, "totalproducts.json");
   if (!fs.existsSync(totalProductsPath)) {
@@ -105,7 +112,7 @@ async function main() {
   }
 
   const totalProducts = filterTotalProducts(allTotalProducts);
-  const registry = createUploadRegistry(totalProducts);
+  const registry = createUploadRegistry(totalProducts, reportPublicUrl);
 
   const batchSummary = {
     generated_at: new Date().toISOString(),
@@ -115,8 +122,9 @@ async function main() {
     products_selected: totalProducts.length,
     registry_seeded_urls: registry.size(),
     upload_batch_size: UPLOAD_BATCH_SIZE,
-    bucket: BUCKET,
+    bucket: r2Env.bucket,
     folder: FOLDER,
+    public_url: reportPublicUrl,
     dry_run: dryRun,
     skip_uploaded: options.skipUploaded,
     totals: emptyRunTotals(),
@@ -124,7 +132,7 @@ async function main() {
   };
 
   console.log(
-    `${dryRun ? "Dry run" : "Uploading"} images for ${totalProducts.length} products (${registry.size()} URLs in registry)...`,
+    `${dryRun ? "Dry run" : "Uploading"} images for ${totalProducts.length} products (${registry.size()} R2 URLs in registry)...`,
   );
 
   const totalProductsReport = {
@@ -138,8 +146,7 @@ async function main() {
     products: totalProducts,
     categoryFolder: htmlRoot,
     htmlRoot,
-    supabase,
-    supabaseUrl: reportSupabaseUrl,
+    r2PublicUrl: reportPublicUrl,
     registry,
     dryRun,
     stats: totalProductsReport.stats,
@@ -225,8 +232,7 @@ async function processProductFile({
   products,
   categoryFolder,
   htmlRoot,
-  supabase,
-  supabaseUrl,
+  r2PublicUrl,
   registry,
   dryRun,
   stats,
@@ -236,13 +242,13 @@ async function processProductFile({
 
   if (dryRun) {
     for (const product of products) {
-      if (!hasLocalImagePaths(product)) {
+      if (!hasUploadableImageRefs(product, r2PublicUrl)) {
         stats.products_skipped_remote += 1;
         if (productDetails) {
           productDetails.push({
             product_slug: getProductSlug(product),
             product_name: product.name ?? null,
-            status: "skipped_no_local_images",
+            status: "skipped_already_on_r2_or_no_source",
             image_url: product.image_url ?? null,
           });
         }
@@ -253,7 +259,7 @@ async function processProductFile({
         product,
         categoryFolder,
         htmlRoot,
-        supabaseUrl,
+        r2PublicUrl,
         registry,
       });
       mergeRunTotals(stats, plan.stats);
@@ -266,7 +272,7 @@ async function processProductFile({
   const uploadJobsByObjectPath = new Map();
 
   for (const product of products) {
-    if (!hasLocalImagePaths(product)) {
+    if (!hasUploadableImageRefs(product, r2PublicUrl)) {
       stats.products_skipped_remote += 1;
       continue;
     }
@@ -275,6 +281,7 @@ async function processProductFile({
       product,
       categoryFolder,
       htmlRoot,
+      r2PublicUrl,
       registry,
     });
     if (!prepared) continue;
@@ -293,9 +300,9 @@ async function processProductFile({
 
   if (options.skipUploaded) {
     for (const job of uploadJobs) {
-      const exists = await storageObjectExists(supabase, job.objectPath);
+      const exists = await r2ObjectExists(job.objectPath);
       if (exists) {
-        registry.remember(job.objectPath, buildPublicUrl(supabaseUrl, job.objectPath));
+        registry.remember(job.objectPath, buildPublicUrl(r2PublicUrl, job.objectPath));
         uploadJobsByObjectPath.delete(job.objectPath);
         stats.uploads_skipped_existing += 1;
       }
@@ -306,9 +313,8 @@ async function processProductFile({
   const uploadStats = await runUploadsInBatches({
     jobs: pendingUploads,
     batchSize: UPLOAD_BATCH_SIZE,
-    supabase,
-    supabaseUrl,
     htmlRoot,
+    r2PublicUrl,
     registry,
   });
   mergeRunTotals(stats, uploadStats);
@@ -319,12 +325,13 @@ async function processProductFile({
       slug: prepared.slug,
       categoryFolder: prepared.categoryFolder,
       htmlRoot: prepared.htmlRoot,
+      r2PublicUrl: prepared.r2PublicUrl,
       registry: prepared.registry,
     });
   }
 }
 
-function createUploadRegistry(totalProducts) {
+function createUploadRegistry(totalProducts, r2PublicUrl) {
   const objectPathToUrl = new Map();
 
   function store(objectPath, url) {
@@ -332,8 +339,7 @@ function createUploadRegistry(totalProducts) {
   }
 
   function seedFromValue(value) {
-    if (!isSupabasePublicUrl(value)) return;
-    const parsed = parseSupabaseObjectPath(value);
+    const parsed = parseR2ObjectPath(value, r2PublicUrl);
     if (parsed) store(parsed.objectPath, value);
   }
 
@@ -373,18 +379,23 @@ function getProductSlug(product) {
   return product.product_slug ?? inferProductSlug(product);
 }
 
-function hasLocalImagePaths(product) {
+function hasUploadableImageRefs(product, r2PublicUrl) {
   const urls = product.image_urls ?? {};
 
   for (const key of ["256", "512", "1024", "1920"]) {
-    if (isLocalImagePath(urls[key])) return true;
+    if (isUploadableImageRef(urls[key], r2PublicUrl)) return true;
   }
 
-  if (isLocalImagePath(product.image_url)) return true;
+  if (isUploadableImageRef(product.image_url, r2PublicUrl)) return true;
 
   if (Array.isArray(urls.more)) {
     for (const entry of urls.more) {
-      if (isLocalImagePath(entry.sm) || isLocalImagePath(entry.lg)) return true;
+      if (
+        isUploadableImageRef(entry.sm, r2PublicUrl) ||
+        isUploadableImageRef(entry.lg, r2PublicUrl)
+      ) {
+        return true;
+      }
     }
   }
 
@@ -398,12 +409,121 @@ function isLocalImagePath(value) {
   );
 }
 
+/** Local path or legacy Supabase catering-packs URL that can be re-uploaded to R2. */
+function isUploadableImageRef(value, r2PublicUrl) {
+  if (isLocalImagePath(value)) return true;
+  if (isLegacySupabaseCateringUrl(value)) return true;
+  if (isR2PublicUrl(value, r2PublicUrl)) return false;
+  return false;
+}
+
 function resolveLocalAbsolutePath(localRelativePath, categoryFolder, htmlRoot) {
   if (isPrefixedLocalImagePath(localRelativePath)) {
     return path.join(htmlRoot, localRelativePath);
   }
 
   return path.join(categoryFolder, localRelativePath);
+}
+
+function findLocalAbsolutePathForSlugFile({
+  product,
+  productSlug,
+  fileName,
+  htmlRoot,
+}) {
+  const candidates = [];
+  const imageCategory = product._source?.image_category_slug;
+  const categorySlugs = product._source?.category_slugs ?? [];
+
+  if (imageCategory) {
+    candidates.push(path.join(htmlRoot, imageCategory, "images", productSlug, fileName));
+  }
+  for (const slug of categorySlugs) {
+    candidates.push(path.join(htmlRoot, slug, "images", productSlug, fileName));
+  }
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  // Fallback: scan category folders under html root.
+  if (!fs.existsSync(htmlRoot)) return null;
+  for (const entry of fs.readdirSync(htmlRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const candidate = path.join(
+      htmlRoot,
+      entry.name,
+      "images",
+      productSlug,
+      fileName,
+    );
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return null;
+}
+
+function resolveUploadSource({
+  value,
+  product,
+  slug,
+  categoryFolder,
+  htmlRoot,
+  r2PublicUrl,
+}) {
+  if (!value || typeof value !== "string") return null;
+
+  if (isR2PublicUrl(value, r2PublicUrl)) {
+    const parsed = parseR2ObjectPath(value, r2PublicUrl);
+    return parsed
+      ? { kind: "already_remote", objectPath: parsed.objectPath, publicUrl: value }
+      : { kind: "unchanged", value };
+  }
+
+  if (isLocalImagePath(value)) {
+    const fileName = path.basename(value);
+    const objectPath = `${FOLDER}/${slug}/${fileName}`;
+    const absolutePath = resolveLocalAbsolutePath(value, categoryFolder, htmlRoot);
+    return {
+      kind: "upload",
+      objectPath,
+      absolutePath,
+      localRelativePath: value,
+      fileName,
+    };
+  }
+
+  if (isLegacySupabaseCateringUrl(value)) {
+    const parsed = parseCateringPackObjectPath(value, r2PublicUrl);
+    if (!parsed) return { kind: "unchanged", value };
+
+    const absolutePath = findLocalAbsolutePathForSlugFile({
+      product,
+      productSlug: parsed.productSlug,
+      fileName: parsed.fileName,
+      htmlRoot,
+    });
+
+    return {
+      kind: "upload",
+      objectPath: parsed.objectPath,
+      absolutePath,
+      localRelativePath:
+        absolutePath != null
+          ? relativize(absolutePath).replace(/^refs\/cateringproject\/htmls\//, "")
+          : prefixedLocalImagePath(
+              product._source?.image_category_slug ??
+                product._source?.category_slugs?.[0] ??
+                "unknown",
+              parsed.productSlug,
+              parsed.fileName,
+            ),
+      fileName: parsed.fileName,
+      legacyUrl: value,
+    };
+  }
+
+  return { kind: "unchanged", value };
 }
 
 function emptyRunTotals() {
@@ -453,12 +573,12 @@ function mergeRunTotals(target, source) {
   }
 }
 
-function planProductImages({ product, categoryFolder, htmlRoot, supabaseUrl, registry }) {
+function planProductImages({ product, categoryFolder, htmlRoot, r2PublicUrl, registry }) {
   const slug = getProductSlug(product);
   const stats = emptyRunTotals();
   const uploads = [];
   const jsonPatches = [];
-  const seenLocalPaths = new Set();
+  const seenObjectPaths = new Set();
 
   if (!slug) {
     return {
@@ -473,35 +593,42 @@ function planProductImages({ product, categoryFolder, htmlRoot, supabaseUrl, reg
 
   stats.products_to_patch = 1;
 
-  function planPath(field, localRelativePath) {
-    if (!localRelativePath) return localRelativePath;
+  function planPath(field, value) {
+    if (!value) return value;
 
-    if (isSupabasePublicUrl(localRelativePath)) {
-      stats.refs_already_remote += 1;
-      return localRelativePath;
-    }
-
-    if (!isLocalImagePath(localRelativePath)) {
-      stats.refs_unchanged += 1;
-      return localRelativePath;
-    }
-
-    const publicUrl = planLocalUpload({
-      localRelativePath,
+    const source = resolveUploadSource({
+      value,
+      product,
       slug,
       categoryFolder,
       htmlRoot,
-      supabaseUrl,
-      stats,
-      uploads,
-      seenLocalPaths,
-      registry,
+      r2PublicUrl,
     });
 
-    if (publicUrl !== localRelativePath) {
+    if (!source || source.kind === "unchanged") {
+      stats.refs_unchanged += 1;
+      return value;
+    }
+
+    if (source.kind === "already_remote") {
+      stats.refs_already_remote += 1;
+      registry.remember(source.objectPath, source.publicUrl);
+      return source.publicUrl;
+    }
+
+    const publicUrl = planLocalUpload({
+      source,
+      stats,
+      uploads,
+      seenObjectPaths,
+      registry,
+      r2PublicUrl,
+    });
+
+    if (publicUrl !== value) {
       jsonPatches.push({
         field,
-        from: localRelativePath,
+        from: value,
         to: publicUrl,
       });
     }
@@ -568,41 +695,34 @@ function planProductImages({ product, categoryFolder, htmlRoot, supabaseUrl, reg
 }
 
 function planLocalUpload({
-  localRelativePath,
-  slug,
-  categoryFolder,
-  htmlRoot,
-  supabaseUrl,
+  source,
   stats,
   uploads,
-  seenLocalPaths,
+  seenObjectPaths,
   registry,
+  r2PublicUrl,
 }) {
-  if (seenLocalPaths.has(localRelativePath)) {
-    const existing = uploads.find((item) => item.local_path === localRelativePath);
+  const { objectPath, absolutePath, localRelativePath, fileName } = source;
+
+  if (seenObjectPaths.has(objectPath)) {
+    const existing = uploads.find((item) => item.object_path === objectPath);
     return (
       existing?.public_url ??
-      buildPublicUrl(supabaseUrl, `${FOLDER}/${slug}/${path.basename(localRelativePath)}`)
+      registry.getUrl(objectPath) ??
+      buildPublicUrl(r2PublicUrl, objectPath)
     );
   }
-  seenLocalPaths.add(localRelativePath);
+  seenObjectPaths.add(objectPath);
 
-  const fileName = path.basename(localRelativePath);
-  const objectPath = `${FOLDER}/${slug}/${fileName}`;
   const cachedUrl = registry.getUrl(objectPath);
   if (cachedUrl) {
     stats.uploads_deduplicated += 1;
     return cachedUrl;
   }
 
-  const absolutePath = resolveLocalAbsolutePath(
-    localRelativePath,
-    categoryFolder,
-    htmlRoot,
-  );
-  const exists = fs.existsSync(absolutePath);
+  const exists = Boolean(absolutePath && fs.existsSync(absolutePath));
   const sizeBytes = exists ? fs.statSync(absolutePath).size : 0;
-  const contentType = mimeTypeForPath(absolutePath);
+  const contentType = mimeTypeForPath(absolutePath || fileName);
   const extension = path.extname(fileName).toLowerCase() || "(none)";
   const sizeVariant = inferSizeVariant(fileName, localRelativePath);
 
@@ -617,7 +737,7 @@ function planLocalUpload({
   stats.extension_counts[extension] =
     (stats.extension_counts[extension] ?? 0) + 1;
 
-  const publicUrl = buildPublicUrl(supabaseUrl, objectPath);
+  const publicUrl = buildPublicUrl(r2PublicUrl, objectPath);
   registry.remember(objectPath, publicUrl);
   uploads.push({
     local_path: localRelativePath,
@@ -628,6 +748,7 @@ function planLocalUpload({
     size_variant: sizeVariant,
     content_type: contentType,
     missing_local_file: !exists,
+    legacy_url: source.legacyUrl ?? null,
   });
 
   return publicUrl;
@@ -637,7 +758,9 @@ function inferSizeVariant(fileName, localRelativePath) {
   const fromName = fileName.match(/_(\d+)\.[^.]+$/);
   if (fromName) return fromName[1];
 
-  const parts = localRelativePath.split("/").filter(Boolean);
+  const parts = String(localRelativePath ?? "")
+    .split("/")
+    .filter(Boolean);
   if (parts.length >= 3) {
     const variantDir = parts[2];
     if (/^\d+$/.test(variantDir)) return variantDir;
@@ -649,34 +772,35 @@ function inferSizeVariant(fileName, localRelativePath) {
 function logProgress({ label, stats, dryRun }) {
   if (dryRun) {
     console.log(
-      `${label} plan: ${stats.products_to_patch} products to patch, ${stats.products_skipped_remote} already remote, ${stats.uploads_planned} uploads (${formatBytes(stats.bytes_to_upload)}), ${stats.uploads_deduplicated} deduplicated, ${stats.missing_local_files} missing files`,
+      `${label} plan: ${stats.products_to_patch} products to patch, ${stats.products_skipped_remote} already on R2 / no source, ${stats.uploads_planned} uploads (${formatBytes(stats.bytes_to_upload)}), ${stats.uploads_deduplicated} deduplicated, ${stats.missing_local_files} missing files`,
     );
     return;
   }
 
   console.log(
-    `${label} patched ${stats.products_to_patch} products (${stats.products_skipped_remote} already remote, ${stats.uploads_uploaded} uploaded, ${stats.uploads_deduplicated} deduplicated, ${stats.uploads_skipped_existing} skipped, ${stats.uploads_failed} failed)`,
+    `${label} patched ${stats.products_to_patch} products (${stats.products_skipped_remote} already on R2 / no source, ${stats.uploads_uploaded} uploaded, ${stats.uploads_deduplicated} deduplicated, ${stats.uploads_skipped_existing} skipped, ${stats.uploads_failed} failed)`,
   );
 }
 
 function printBatchSummary(batchSummary, summaryPath) {
-  const { totals, dry_run: dryRun } = batchSummary;
+  const { totals, dry_run: isDryRun } = batchSummary;
 
   console.log("");
-  console.log(dryRun ? "=== Dry run summary ===" : "=== Upload summary ===");
+  console.log(isDryRun ? "=== Dry run summary ===" : "=== Upload summary ===");
   console.log(`Products in totalproducts.json: ${batchSummary.products_in_file}`);
   if (batchSummary.products_selected !== batchSummary.products_in_file) {
     console.log(`Products selected: ${batchSummary.products_selected}`);
   }
+  console.log(`R2 folder: ${batchSummary.folder}`);
   console.log(`Products to patch: ${totals.products_to_patch}`);
-  console.log(`Products already on Supabase: ${totals.products_skipped_remote}`);
+  console.log(`Products already on R2 / no source: ${totals.products_skipped_remote}`);
 
-  if (dryRun) {
+  if (isDryRun) {
     console.log(`Uploads planned: ${totals.uploads_planned}`);
     console.log(`Uploads deduplicated (registry): ${totals.uploads_deduplicated}`);
     console.log(`Total upload size: ${formatBytes(totals.bytes_to_upload)}`);
     console.log(`Missing local files: ${totals.missing_local_files}`);
-    console.log(`Image refs already remote: ${totals.refs_already_remote}`);
+    console.log(`Image refs already on R2: ${totals.refs_already_remote}`);
     console.log(`Image refs unchanged: ${totals.refs_unchanged}`);
     console.log(
       `Size variants: ${formatCountMap(totals.size_variant_counts) || "(none)"}`,
@@ -690,7 +814,7 @@ function printBatchSummary(batchSummary, summaryPath) {
     console.log(`Uploads deduplicated (registry): ${totals.uploads_deduplicated}`);
     console.log(`Uploads skipped (already in bucket): ${totals.uploads_skipped_existing}`);
     console.log(`Upload failures: ${totals.uploads_failed}`);
-    console.log(`Image refs already remote: ${totals.refs_already_remote}`);
+    console.log(`Image refs already on R2: ${totals.refs_already_remote}`);
   }
 
   console.log(`Report written to: ${summaryPath}`);
@@ -736,9 +860,11 @@ function collectProductImagePaths(product) {
 }
 
 function createImagePathResolver({
+  product,
   slug,
   categoryFolder,
   htmlRoot,
+  r2PublicUrl,
   registry,
   stats,
   uploadJobs,
@@ -746,53 +872,65 @@ function createImagePathResolver({
 }) {
   const localToPublic = new Map();
 
-  function resolvePath(localRelativePath) {
-    if (!localRelativePath) return localRelativePath;
+  function resolvePath(value) {
+    if (!value) return value;
 
-    if (isSupabasePublicUrl(localRelativePath)) {
-      stats.refs_already_remote += 1;
-      return localRelativePath;
-    }
+    const source = resolveUploadSource({
+      value,
+      product,
+      slug,
+      categoryFolder,
+      htmlRoot,
+      r2PublicUrl,
+    });
 
-    if (!isLocalImagePath(localRelativePath)) {
+    if (!source || source.kind === "unchanged") {
       stats.refs_unchanged += 1;
-      return localRelativePath;
+      return value;
     }
 
-    if (localToPublic.has(localRelativePath)) {
-      return localToPublic.get(localRelativePath);
+    if (source.kind === "already_remote") {
+      stats.refs_already_remote += 1;
+      registry.remember(source.objectPath, source.publicUrl);
+      return source.publicUrl;
     }
 
-    const fileName = path.basename(localRelativePath);
-    const objectPath = `${FOLDER}/${slug}/${fileName}`;
+    if (localToPublic.has(source.objectPath)) {
+      return localToPublic.get(source.objectPath);
+    }
 
-    const cachedUrl = registry.getUrl(objectPath);
+    const cachedUrl = registry.getUrl(source.objectPath);
     if (cachedUrl) {
-      localToPublic.set(localRelativePath, cachedUrl);
+      localToPublic.set(source.objectPath, cachedUrl);
       stats.uploads_deduplicated += 1;
       return cachedUrl;
     }
 
     if (collectUploads) {
-      if (!localToPublic.has(localRelativePath)) {
-        uploadJobs.push({
-          localRelativePath,
-          objectPath,
-          categoryFolder,
-          slug,
-        });
-        localToPublic.set(localRelativePath, localRelativePath);
-      }
-      return localRelativePath;
+      uploadJobs.push({
+        localRelativePath: source.localRelativePath,
+        absolutePath: source.absolutePath,
+        objectPath: source.objectPath,
+        categoryFolder,
+        slug,
+      });
+      localToPublic.set(source.objectPath, value);
+      return value;
     }
 
-    return localRelativePath;
+    return value;
   }
 
   return resolvePath;
 }
 
-function prepareProductImagePatches({ product, categoryFolder, htmlRoot, registry }) {
+function prepareProductImagePatches({
+  product,
+  categoryFolder,
+  htmlRoot,
+  r2PublicUrl,
+  registry,
+}) {
   const stats = emptyRunTotals();
   const slug = getProductSlug(product);
   if (!slug) return null;
@@ -800,17 +938,19 @@ function prepareProductImagePatches({ product, categoryFolder, htmlRoot, registr
   stats.products_to_patch = 1;
   const uploadJobs = [];
   const resolvePath = createImagePathResolver({
+    product,
     slug,
     categoryFolder,
     htmlRoot,
+    r2PublicUrl,
     registry,
     stats,
     uploadJobs,
     collectUploads: true,
   });
 
-  for (const localPath of collectProductImagePaths(product)) {
-    resolvePath(localPath);
+  for (const imageRef of collectProductImagePaths(product)) {
+    resolvePath(imageRef);
   }
 
   return {
@@ -818,18 +958,28 @@ function prepareProductImagePatches({ product, categoryFolder, htmlRoot, registr
     slug,
     categoryFolder,
     htmlRoot,
+    r2PublicUrl,
     registry,
     stats,
     uploadJobs,
   };
 }
 
-function applyProductImagePatches({ product, slug, categoryFolder, htmlRoot, registry }) {
+function applyProductImagePatches({
+  product,
+  slug,
+  categoryFolder,
+  htmlRoot,
+  r2PublicUrl,
+  registry,
+}) {
   const stats = emptyRunTotals();
   const resolvePath = createImagePathResolver({
+    product,
     slug,
     categoryFolder,
     htmlRoot,
+    r2PublicUrl,
     registry,
     stats,
     uploadJobs: [],
@@ -873,9 +1023,8 @@ function applyProductImagePatches({ product, slug, categoryFolder, htmlRoot, reg
 async function runUploadsInBatches({
   jobs,
   batchSize,
-  supabase,
-  supabaseUrl,
   htmlRoot,
+  r2PublicUrl,
   registry,
 }) {
   const stats = emptyRunTotals();
@@ -885,12 +1034,12 @@ async function runUploadsInBatches({
     const results = await Promise.allSettled(
       batch.map((job) =>
         uploadLocalFile({
-          supabase,
-          supabaseUrl,
-          categoryFolder: job.categoryFolder,
-          htmlRoot,
+          r2PublicUrl,
+          absolutePath: job.absolutePath,
           localRelativePath: job.localRelativePath,
           objectPath: job.objectPath,
+          categoryFolder: job.categoryFolder,
+          htmlRoot,
         }),
       ),
     );
@@ -907,56 +1056,36 @@ async function runUploadsInBatches({
         );
       }
     }
+
+    process.stdout.write(
+      `uploaded ${Math.min(index + batchSize, jobs.length)}/${jobs.length}\n`,
+    );
   }
 
   return stats;
 }
 
 async function uploadLocalFile({
-  supabase,
-  supabaseUrl,
-  categoryFolder,
-  htmlRoot,
+  r2PublicUrl,
+  absolutePath,
   localRelativePath,
   objectPath,
+  categoryFolder,
+  htmlRoot: uploadHtmlRoot,
 }) {
-  const absolutePath = resolveLocalAbsolutePath(
-    localRelativePath,
-    categoryFolder,
-    htmlRoot,
-  );
-  if (!fs.existsSync(absolutePath)) {
+  const resolvedAbsolutePath =
+    absolutePath ||
+    resolveLocalAbsolutePath(localRelativePath, categoryFolder, uploadHtmlRoot);
+
+  if (!resolvedAbsolutePath || !fs.existsSync(resolvedAbsolutePath)) {
     throw new Error(`missing local file: ${localRelativePath}`);
   }
 
-  const buffer = fs.readFileSync(absolutePath);
-  const contentType = mimeTypeForPath(absolutePath);
+  const buffer = fs.readFileSync(resolvedAbsolutePath);
+  const contentType = mimeTypeForPath(resolvedAbsolutePath);
 
-  const { error } = await supabase.storage.from(BUCKET).upload(objectPath, buffer, {
-    upsert: true,
-    contentType,
-    cacheControl: "31536000",
-  });
-
-  if (error) {
-    throw new Error(`${objectPath}: ${error.message}`);
-  }
-
-  return buildPublicUrl(supabaseUrl, objectPath);
-}
-
-async function storageObjectExists(supabase, objectPath) {
-  if (!supabase) return false;
-
-  const folder = path.posix.dirname(objectPath);
-  const fileName = path.posix.basename(objectPath);
-  const { data, error } = await supabase.storage.from(BUCKET).list(folder, {
-    search: fileName,
-    limit: 1,
-  });
-
-  if (error) return false;
-  return (data ?? []).some((item) => item.name === fileName);
+  await uploadR2Object(objectPath, buffer, contentType);
+  return buildPublicUrl(r2PublicUrl, objectPath);
 }
 
 function mimeTypeForPath(filePath) {

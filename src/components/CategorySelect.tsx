@@ -41,6 +41,8 @@ export type CategorySelectProps = {
   getCategoryIconFallback: (categoryId: number | null) => "all" | "category";
   variant?: CategoryNavVariant;
   className?: string;
+  /** When false, hides the "All products" option. Default true. */
+  showAllOption?: boolean;
 };
 
 export default function CategorySelect({
@@ -57,6 +59,7 @@ export default function CategorySelect({
   getCategoryIconFallback,
   variant = "brand",
   className,
+  showAllOption = true,
 }: CategorySelectProps) {
   const styles = getCategoryNavVariantStyles(variant);
   const listboxId = useId();
@@ -164,21 +167,23 @@ export default function CategorySelect({
                 {emptyMessage}
               </CommandEmpty>
 
-              <CommandItem
-                value={allLabel}
-                onSelect={() => handleSelect(null)}
-                className={optionItemClass}
-              >
-                <Check
-                  className={cn(
-                    "size-4 shrink-0",
-                    styles.check,
-                    isAllActive ? "opacity-100" : "opacity-0",
-                  )}
-                />
-                {renderOptionIcon(null)}
-                <span className="truncate font-medium">{allLabel}</span>
-              </CommandItem>
+              {showAllOption ? (
+                <CommandItem
+                  value={allLabel}
+                  onSelect={() => handleSelect(null)}
+                  className={optionItemClass}
+                >
+                  <Check
+                    className={cn(
+                      "size-4 shrink-0",
+                      styles.check,
+                      isAllActive ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {renderOptionIcon(null)}
+                  <span className="truncate font-medium">{allLabel}</span>
+                </CommandItem>
+              ) : null}
 
               {barItems.map((item) => {
                 if (item.kind === "orphan") {

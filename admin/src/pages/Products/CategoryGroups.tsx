@@ -674,7 +674,7 @@ export function CategoryGroups() {
 
     try {
       const { publicUrl } = await uploadMedia(file, {
-        folder: 'category-groups',
+        folder: 'products/category-groups',
         fileName,
         upsert: true,
       });

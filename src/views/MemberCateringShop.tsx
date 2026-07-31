@@ -29,6 +29,13 @@ type MemberCateringShopProps = {
   packs: CateringPack[];
   categoriesContent: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
+  barCategories: SiteCategory[];
+  activeCategoryId: number | null;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  initialSearch: string;
 };
 
 function getContactName(profile: UserProfile): string {
@@ -42,6 +49,13 @@ export default function MemberCateringShop({
   packs,
   categoriesContent,
   categoryGroups,
+  barCategories,
+  activeCategoryId,
+  page,
+  pageSize,
+  totalCount,
+  totalPages,
+  initialSearch,
 }: MemberCateringShopProps) {
   const t = useTranslations("Catering");
   const locale = useLocale();
@@ -244,6 +258,13 @@ export default function MemberCateringShop({
           packs={packs}
           categoriesContent={categoriesContent}
           categoryGroups={categoryGroups}
+          barCategories={barCategories}
+          activeCategoryId={activeCategoryId}
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          initialSearch={initialSearch}
           onAddToOrder={handleAddPack}
           locale={locale}
         />

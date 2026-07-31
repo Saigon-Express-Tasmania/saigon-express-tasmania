@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import Link from "@/components/link";
 import {
   ShoppingCart,
@@ -18,13 +18,7 @@ import { menuItemDetailPath, MENU_CATEGORIES_ANCHOR } from "@/lib/menu-item-rout
 import {
   CATEGORY_LIST_ANCHOR,
   getCategorySectionId,
-  scrollToCategoryInList,
 } from "@/lib/category-list-scroll";
-import {
-  buildMenuCategoryQueryFromId,
-  resolveMenuCategoryFromUrlParam,
-} from "@/lib/menu-category-url";
-import { cn } from "@/lib/utils";
 import AddOnSuggestionModal, {
   type SuggestedItem,
 } from "@/components/AddOnSuggestionModal";
@@ -42,18 +36,13 @@ import CategorySidebar, {
   CategorySidebarAside,
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
-import {
-  filterCategoriesWithItems,
-  getActiveCategoryLabel,
-  getPopulatedCategoryIds,
-} from "@/lib/category-bar";
+import ProductCatalogPagination from "@/components/ProductCatalogPagination";
+import { getActiveCategoryLabel } from "@/lib/category-bar";
 import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
-import { productMatchesCategory } from "@/lib/product-categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { pickMenuImageUrl } from "@/types";
 import type { SiteCategory, SiteCategoryGroup, StoreLocation } from "@/types";
-// 1. Import Fuse
-import Fuse from "fuse.js";
+import { useProductCatalogNavigation } from "@/hooks/useProductCatalogNavigation";
 import Image from "next/image";
 
 const DEFAULT_IMG = "/manus-storage/banh-mi-1_9ba4dcf0.jpg";
@@ -83,6 +72,13 @@ type MenuProps = {
   storeLocations: StoreLocation[];
   categoriesContent: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
+  barCategories: SiteCategory[];
+  activeCategoryId: number | null;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  initialSearch: string;
 };
 
 export default function Menu({
@@ -90,13 +86,16 @@ export default function Menu({
   storeLocations,
   categoriesContent,
   categoryGroups,
+  barCategories,
+  activeCategoryId,
+  page,
+  totalPages,
+  initialSearch,
 }: MenuProps) {
   const t = useTranslations("Menu");
   const locale = useLocale();
 
-  // Initialize Next.js navigation hooks
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
 
   const allLabel = t("allCategory");
@@ -107,17 +106,23 @@ export default function Menu({
     [locale],
   );
 
-  const resolvedUrlCategory = useMemo(
-    () => resolveMenuCategoryFromUrlParam(urlCategory, categoriesContent),
-    [urlCategory, categoriesContent],
-  );
-  const activeCategoryId = resolvedUrlCategory?.id ?? null;
   const activeCategoryLabel = getActiveCategoryLabel(
     activeCategoryId,
     allLabel,
     categoriesContent,
   );
-  const [search, setSearch] = useState("");
+  const {
+    search,
+    setSearch,
+    handleCategorySelect,
+    handlePageChange,
+    clearSearch,
+  } = useProductCatalogNavigation({
+    categories: categoriesContent,
+    activeCategoryId,
+    initialSearch,
+    page,
+  });
   const [addonTrigger, setAddonTrigger] = useState<{
     item: SuggestedItem;
     suggestions: SuggestedItem[];
@@ -125,29 +130,6 @@ export default function Menu({
   const [customiseItem, setCustomiseItem] = useState<MenuItem | null>(null);
   const [pickLocationOpen, setPickLocationOpen] = useState(false);
   const [orderLocationsOpen, setOrderLocationsOpen] = useState(false);
-
-  const handleCategoryClick = useCallback(
-    (categoryId: number | null) => {
-      const query = buildMenuCategoryQueryFromId(categoryId, categoriesContent);
-      const nextUrl = query ? `${pathname}?${query}` : pathname;
-      router.replace(nextUrl, { scroll: false });
-      scrollToCategoryInList(categoryId);
-    },
-    [pathname, router, categoriesContent],
-  );
-
-  useEffect(() => {
-    if (urlCategory && resolvedUrlCategory && urlCategory !== resolvedUrlCategory.alias) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("category", resolvedUrlCategory.alias);
-      const query = params.toString();
-      const hash = window.location.hash;
-      router.replace(
-        query ? `${pathname}?${query}${hash}` : `${pathname}${hash}`,
-        { scroll: false },
-      );
-    }
-  }, [urlCategory, resolvedUrlCategory, searchParams, pathname, router]);
 
   useEffect(() => {
     const scrollToCategories = () => {
@@ -163,7 +145,7 @@ export default function Menu({
     scrollToCategories();
     window.addEventListener("hashchange", scrollToCategories);
     return () => window.removeEventListener("hashchange", scrollToCategories);
-  }, [urlCategory]);
+  }, [urlCategory, pathname]);
 
   // ─── Shared cart ─────────────────────────────────────────────────────────
   const {
@@ -217,57 +199,10 @@ export default function Menu({
       ? categoryDescriptionMap[activeCategoryId]
       : undefined;
 
-  const barCategories = useMemo(() => {
-    const populatedCategoryIds = getPopulatedCategoryIds(menuItems);
-    return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
-  }, [categoriesContent, menuItems]);
-
-  // 2. Initialize Fuse instance with configuration keys and thresholds
-  const fuse = useMemo(() => {
-    const options = {
-      keys: [
-        { name: "name", weight: 0.6 },
-        { name: "description", weight: 0.3 },
-        { name: "category", weight: 0.1 },
-      ],
-      threshold: 0.35, // Low numbers = strict match, high numbers = loose match. 0.35 is great for food items.
-      keysWidth: true,
-    };
-
-    return new Fuse(menuItems ?? [], options);
-  }, [menuItems]);
-
-  // 3. Compute filtered list utilizing Fuse if query is present
-  const filtered = useMemo(() => {
-    const q = search.trim();
-
-    // First, filter by category if a specific one is selected
-    let baseItems = menuItems ?? [];
-    if (activeCategoryId != null) {
-      baseItems = baseItems.filter((m) =>
-        productMatchesCategory(m, activeCategoryId),
-      );
-    }
-
-    if (!q) {
-      return moveZeroSortOrderToEnd(baseItems, (item) => item.sortOrder);
-    }
-
-    // If activeCategory is specific, we temporarily search within those specific items
-    // or instantiate fuse dynamically. For high performance, we query the precomputed global fuse instance
-    // and just filter the results against the category selection.
-    const searchResults = fuse.search(q).map((result) => result.item);
-
-    if (activeCategoryId != null) {
-      return moveZeroSortOrderToEnd(
-        searchResults.filter((m) => productMatchesCategory(m, activeCategoryId)),
-        (item) => item.sortOrder,
-      );
-    }
-
-    return moveZeroSortOrderToEnd(searchResults, (item) => item.sortOrder);
-  }, [search, activeCategoryId, menuItems, fuse]);
-
+  const filtered = useMemo(
+    () => moveZeroSortOrderToEnd(menuItems ?? [], (item) => item.sortOrder),
+    [menuItems],
+  );
   const handleOpenCustomise = useCallback((item: MenuItem) => {
     if (!item.isAvailable) return;
     setCustomiseItem(item);
@@ -369,7 +304,7 @@ export default function Menu({
           <CategorySelect
             allLabel={allLabel}
             activeCategoryId={activeCategoryId}
-            onCategorySelect={handleCategoryClick}
+            onCategorySelect={handleCategorySelect}
             categories={barCategories}
             categoryGroups={categoryGroups}
             label={t("categories.label")}
@@ -378,6 +313,7 @@ export default function Menu({
             emptyMessage={t("categories.empty")}
             getCategoryIcon={getCategoryIcon}
             getCategoryIconFallback={getCategoryIconFallback}
+            showAllOption={false}
           />
         </div>
       </div>
@@ -388,9 +324,10 @@ export default function Menu({
             <CategorySidebar
               allLabel={allLabel}
               activeCategoryId={activeCategoryId}
-              onCategorySelect={handleCategoryClick}
+              onCategorySelect={handleCategorySelect}
               categories={barCategories}
               categoryGroups={categoryGroups}
+              showAllOption={false}
               renderCategoryLeading={(category) => (
                 <CategoryIcon
                   icon={getCategoryIcon(category.id)}
@@ -430,7 +367,7 @@ export default function Menu({
           />
           {search && (
             <button
-              onClick={() => setSearch("")}
+              onClick={clearSearch}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-dark/40 hover:text-brand-dark transition-colors text-xs"
             >
               {t("search.clearLabel")}
@@ -468,7 +405,7 @@ export default function Menu({
             </p>
             {search && (
               <button
-                onClick={() => setSearch("")}
+                onClick={clearSearch}
                 className="mt-4 text-brand-red text-sm font-semibold hover:underline"
               >
                 {t("empty.clearSearch")}
@@ -614,6 +551,12 @@ export default function Menu({
             })}
           </div>
         )}
+
+        <ProductCatalogPagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
 
         {/* Find a store strip */}
         <Link href="/stores">

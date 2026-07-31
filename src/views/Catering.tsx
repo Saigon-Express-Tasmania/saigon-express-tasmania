@@ -43,6 +43,13 @@ type CateringProps = {
   packs: CateringPack[];
   categoriesContent: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
+  barCategories: SiteCategory[];
+  activeCategoryId: number | null;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  initialSearch: string;
 };
 
 interface WhyUsItem {
@@ -89,6 +96,13 @@ export default function Catering({
   packs,
   categoriesContent,
   categoryGroups,
+  barCategories,
+  activeCategoryId,
+  page,
+  pageSize,
+  totalCount,
+  totalPages,
+  initialSearch,
 }: CateringProps) {
   const t = useTranslations("Catering");
   const locale = useLocale();
@@ -574,6 +588,13 @@ export default function Catering({
           packs={packs}
           categoriesContent={categoriesContent}
           categoryGroups={categoryGroups}
+          barCategories={barCategories}
+          activeCategoryId={activeCategoryId}
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          initialSearch={initialSearch}
           onAddToOrder={handleAddPack}
           onEnquire={handleEnquireItem}
           locale={locale}

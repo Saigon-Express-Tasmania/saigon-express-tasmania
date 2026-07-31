@@ -3,9 +3,18 @@ import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { mapWholesaleProductRow, type WholesaleProduct } from "@/types";
 import { categoryMapById } from "@/lib/product-category";
 import { getProductCategoryAssignments } from "@/lib/product-categories";
+import {
+  buildProductCatalogPageResult,
+  type ProductCatalogPageParams,
+  type ProductCatalogPageResult,
+} from "@/lib/product-catalog-page";
+import type { SiteCategory } from "@/types";
 import { getCategoriesByKind } from "./categories";
 import { loadProductCategoriesByProductIds } from "./product-categories";
-import { fetchWholesaleProductRows } from "./products";
+import {
+  fetchWholesaleProductRows,
+  fetchWholesaleProductsPage,
+} from "./products";
 
 const CACHE_TAG = CACHE_TAGS.wholesaleProducts;
 
@@ -35,3 +44,30 @@ export const getWholesaleProducts = unstable_cache(
   [CACHE_TAG],
   { revalidate: SHORT_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 );
+
+/**
+ * Paginated wholesale catalog page (no live stock). Pass page categories from the RSC.
+ */
+export async function getWholesaleProductsPage(
+  params: ProductCatalogPageParams,
+  categories: SiteCategory[],
+): Promise<ProductCatalogPageResult<WholesaleProduct>> {
+  const { rows, totalCount } = await fetchWholesaleProductsPage(params);
+  const categoriesByProductId = await loadProductCategoriesByProductIds(
+    rows.map((row) => row.id),
+  );
+  const categoryById = categoryMapById(categories);
+  const items = rows.map((row) =>
+    mapWholesaleProductRow(
+      row,
+      getProductCategoryAssignments(categoriesByProductId, row.id),
+      categoryById,
+    ),
+  );
+  return buildProductCatalogPageResult(
+    items,
+    totalCount,
+    params.page,
+    params.pageSize,
+  );
+}

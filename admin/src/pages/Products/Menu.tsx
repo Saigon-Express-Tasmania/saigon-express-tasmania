@@ -554,7 +554,7 @@ export function Menu() {
         const fileName = `${slugPart}-${timestamp}_${size}.${ext}`;
 
         const { publicUrl } = await uploadMedia(file, {
-          folder: 'menu',
+          folder: 'products/menu',
           fileName,
           upsert: true,
         });
@@ -593,12 +593,12 @@ export function Menu() {
       const ext = smFile.name.split('.').pop()?.toLowerCase() || 'jpg';
 
       const { publicUrl: sm } = await uploadMedia(smFile, {
-        folder: 'menu',
+        folder: 'products/menu',
         fileName: `${slugPart}-more-${index}-${timestamp}-sm.${ext}`,
         upsert: true,
       });
       const { publicUrl: lg } = await uploadMedia(lgFile, {
-        folder: 'menu',
+        folder: 'products/menu',
         fileName: `${slugPart}-more-${index}-${timestamp}-lg.${ext}`,
         upsert: true,
       });

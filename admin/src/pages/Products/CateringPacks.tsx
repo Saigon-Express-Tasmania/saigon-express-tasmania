@@ -804,7 +804,7 @@ export function CateringPacks() {
         const fileName = `${baseSlug}-${timestamp}_${size}.${ext}`;
 
         const { publicUrl } = await uploadMedia(file, {
-          folder: 'catering-packs',
+          folder: 'products/catering-packs',
           fileName,
           upsert: true,
         });
@@ -843,12 +843,12 @@ export function CateringPacks() {
       const ext = smFile.name.split('.').pop()?.toLowerCase() || 'jpg';
 
       const { publicUrl: sm } = await uploadMedia(smFile, {
-        folder: 'catering-packs',
+        folder: 'products/catering-packs',
         fileName: `${baseSlug}-more-${index}-${timestamp}-sm.${ext}`,
         upsert: true,
       });
       const { publicUrl: lg } = await uploadMedia(lgFile, {
-        folder: 'catering-packs',
+        folder: 'products/catering-packs',
         fileName: `${baseSlug}-more-${index}-${timestamp}-lg.${ext}`,
         upsert: true,
       });

@@ -19,11 +19,18 @@ import {
 } from "@/types";
 import { parseNumericCateringItemId } from "@/lib/catering-item-routes";
 import { getProductCategoryAssignments } from "@/lib/product-categories";
+import {
+  buildProductCatalogPageResult,
+  type ProductCatalogPageParams,
+  type ProductCatalogPageResult,
+} from "@/lib/product-catalog-page";
+import type { SiteCategory } from "@/types";
 import { getCategoriesByKind } from "./categories";
 import { loadProductCategoriesByProductIds } from "./product-categories";
 import {
   fetchCateringProductRowById,
   fetchCateringProductRows,
+  fetchCateringProductsPage,
   type CateringProductRow,
 } from "./products";
 
@@ -141,6 +148,33 @@ async function loadCateringPacks(): Promise<CateringPack[]> {
       getProductCategoryAssignments(categoriesByProductId, row.id),
       categoryById,
     ),
+  );
+}
+
+/**
+ * Paginated catering packs for a single category. Pass page categories from the RSC.
+ */
+export async function getCateringPacksPage(
+  params: ProductCatalogPageParams,
+  categories: SiteCategory[],
+): Promise<ProductCatalogPageResult<CateringPack>> {
+  const { rows, totalCount } = await fetchCateringProductsPage(params);
+  const categoriesByProductId = await loadProductCategoriesByProductIds(
+    rows.map((row) => row.id),
+  );
+  const categoryById = categoryMapById(categories);
+  const items = rows.map((row) =>
+    mapCateringPackRow(
+      row,
+      getProductCategoryAssignments(categoriesByProductId, row.id),
+      categoryById,
+    ),
+  );
+  return buildProductCatalogPageResult(
+    items,
+    totalCount,
+    params.page,
+    params.pageSize,
   );
 }
 

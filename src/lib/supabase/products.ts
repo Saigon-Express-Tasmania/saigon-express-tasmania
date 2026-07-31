@@ -6,6 +6,18 @@ import { createServerSupabaseClient } from "./server";
 
 export type ProductType = "alacarte" | "wholesale" | "catering";
 
+export type AvailableProductsPageQuery = {
+  categoryId: number;
+  page: number;
+  pageSize: number;
+  search?: string;
+};
+
+export type AvailableProductsPageResult<T> = {
+  rows: T[];
+  totalCount: number;
+};
+
 const ALACARTE_SELECT =
   "id, name, slug, description, price, wholesale_price, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
 
@@ -84,6 +96,105 @@ function getCachedAvailableProductRows<T>(
   )();
 }
 
+function escapeIlikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function stripProductCategoryEmbed<T extends Record<string, unknown>>(
+  row: T,
+): Omit<T, "product_categories"> {
+  const { product_categories, ...rest } = row;
+  void product_categories;
+  return rest;
+}
+
+async function queryAvailableProductsPage<T extends Record<string, unknown>>(
+  productType: ProductType,
+  select: string,
+  order: { column: string; ascending: boolean }[],
+  pageQuery: AvailableProductsPageQuery,
+): Promise<AvailableProductsPageResult<T>> {
+  const page = Math.max(1, pageQuery.page);
+  const pageSize = Math.max(1, pageQuery.pageSize);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const supabase = createServerSupabaseClient();
+  const selectWithCategory =
+    `${select}, product_categories!inner(category_id)` as "*";
+  let query = supabase
+    .from("products")
+    .select(selectWithCategory, {
+      count: "exact",
+    })
+    .eq("product_type", productType)
+    .eq("is_available", true)
+    .eq("product_categories.category_id", pageQuery.categoryId);
+
+  query = applyPublishedProductFilter(query);
+
+  const search = pageQuery.search?.trim();
+  if (search) {
+    const pattern = `%${escapeIlikePattern(search)}%`;
+    query = query.or(
+      `name.ilike."${pattern.replace(/"/g, '\\"')}",description.ilike."${pattern.replace(/"/g, '\\"')}"`,
+    );
+  }
+
+  for (const { column, ascending } of order) {
+    query = query.order(column, { ascending });
+  }
+
+  const { data, error, count } = await query.range(from, to);
+  if (error) {
+    throw new Error(
+      `products page (${productType}, category ${pageQuery.categoryId}): ${error.message}`,
+    );
+  }
+
+  const rows = ((data ?? []) as unknown as T[]).map((row) =>
+    stripProductCategoryEmbed(row as T & Record<string, unknown>),
+  ) as T[];
+
+  return {
+    rows,
+    totalCount: count ?? rows.length,
+  };
+}
+
+function getCachedAvailableProductsPage<T extends Record<string, unknown>>(
+  productType: ProductType,
+  select: string,
+  order: { column: string; ascending: boolean }[],
+  pageQuery: AvailableProductsPageQuery,
+): Promise<AvailableProductsPageResult<T>> {
+  const orderKey = order
+    .map(({ column, ascending }) => `${column}:${ascending ? "asc" : "desc"}`)
+    .join(",");
+  const searchKey = pageQuery.search?.trim() ?? "";
+
+  return unstable_cache(
+    () =>
+      queryAvailableProductsPage<T>(productType, select, order, pageQuery),
+    [
+      "products",
+      "available-page",
+      productType,
+      select,
+      orderKey,
+      String(pageQuery.categoryId),
+      String(pageQuery.page),
+      String(pageQuery.pageSize),
+      searchKey,
+      publishedProductsCacheKey(),
+    ],
+    {
+      revalidate: SHORT_REVALIDATE_SECONDS,
+      tags: [PRODUCT_CACHE_TAGS[productType]],
+    },
+  )();
+}
+
 async function queryAlacarteProductRowById(
   id: number,
 ): Promise<MenuItemRow | null> {
@@ -136,6 +247,32 @@ export async function fetchAlacarteProductRows(): Promise<MenuItemRow[]> {
   ]);
 }
 
+const ALACARTE_ORDER = [
+  { column: "sort_order", ascending: true },
+  { column: "id", ascending: true },
+] as const;
+
+const WHOLESALE_ORDER = [
+  { column: "sort_order", ascending: true },
+  { column: "id", ascending: true },
+] as const;
+
+const CATERING_ORDER = [
+  { column: "sort_order", ascending: true },
+  { column: "id", ascending: true },
+] as const;
+
+export async function fetchAlacarteProductsPage(
+  pageQuery: AvailableProductsPageQuery,
+): Promise<AvailableProductsPageResult<MenuItemRow>> {
+  return getCachedAvailableProductsPage<MenuItemRow & Record<string, unknown>>(
+    "alacarte",
+    ALACARTE_SELECT,
+    [...ALACARTE_ORDER],
+    pageQuery,
+  ) as Promise<AvailableProductsPageResult<MenuItemRow>>;
+}
+
 export async function fetchAlacarteProductRowById(
   id: number,
 ): Promise<MenuItemRow | null> {
@@ -174,6 +311,16 @@ export async function fetchWholesaleProductRows(): Promise<WholesaleProductRow[]
       { column: "id", ascending: true },
     ],
   );
+}
+
+export async function fetchWholesaleProductsPage(
+  pageQuery: AvailableProductsPageQuery,
+): Promise<AvailableProductsPageResult<WholesaleProductRow>> {
+  return getCachedAvailableProductsPage<
+    WholesaleProductRow & Record<string, unknown>
+  >("wholesale", WHOLESALE_SELECT, [...WHOLESALE_ORDER], pageQuery) as Promise<
+    AvailableProductsPageResult<WholesaleProductRow>
+  >;
 }
 
 export type CateringProductRow = {
@@ -239,6 +386,16 @@ export async function fetchCateringProductRows(): Promise<CateringProductRow[]> 
       { column: "id", ascending: true },
     ],
   );
+}
+
+export async function fetchCateringProductsPage(
+  pageQuery: AvailableProductsPageQuery,
+): Promise<AvailableProductsPageResult<CateringProductRow>> {
+  return getCachedAvailableProductsPage<
+    CateringProductRow & Record<string, unknown>
+  >("catering", CATERING_SELECT, [...CATERING_ORDER], pageQuery) as Promise<
+    AvailableProductsPageResult<CateringProductRow>
+  >;
 }
 
 /** @deprecated Use fetchAlacarteProductRows */

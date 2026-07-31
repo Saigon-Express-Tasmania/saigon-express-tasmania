@@ -1,4 +1,5 @@
 import { getCategoryCatalogByKind } from "@/lib/supabase/categories";
+import { getPopulatedCategoryIdsByProductType } from "@/lib/supabase/product-categories";
 import { getWholesaleInventorySnapshot } from "@/lib/supabase/wholesale-inventory-snapshot";
 import {
   getGstTaxRate,
@@ -6,8 +7,12 @@ import {
   getMinimumWholesaleOrderValue,
   getSettings,
 } from "@/lib/supabase/settings";
-import { getWholesaleProducts } from "@/lib/supabase/wholesale-products";
+import {
+  getWholesaleProducts,
+  getWholesaleProductsPage,
+} from "@/lib/supabase/wholesale-products";
 import { getWholesaleTiers } from "@/lib/supabase/wholesale-tiers";
+import type { ProductCatalogPageParams } from "@/lib/product-catalog-page";
 import type {
   SiteCategory,
   SiteCategoryGroup,
@@ -26,6 +31,13 @@ export type WholesalePageData = {
   minimumWholesaleOrderValue: number;
   gstTaxRate: number;
   isGstInclusive: boolean;
+};
+
+export type WholesaleCatalogPageData = WholesalePageData & {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 export type WholesaleCartConfig = {
@@ -49,6 +61,32 @@ export async function loadWholesaleCartConfig(): Promise<WholesaleCartConfig> {
   };
 }
 
+function filterInventoryForProductIds(
+  inventory: WholesaleProductAvailabilityRow[],
+  productIds: ReadonlySet<number>,
+): WholesaleProductAvailabilityRow[] {
+  if (productIds.size === 0) return [];
+  return inventory.filter((row) => productIds.has(row.product_id));
+}
+
+function mergeProductsWithInventory(
+  products: WholesaleProduct[],
+  inventory: WholesaleProductAvailabilityRow[],
+): WholesaleProduct[] {
+  const availabilityByProductId = new Map(
+    inventory.map((row) => [row.product_id, row]),
+  );
+  return products.map((product) =>
+    applyWholesaleProductAvailability(
+      product,
+      availabilityByProductId.get(product.id),
+    ),
+  );
+}
+
+/**
+ * Full wholesale catalog + inventory for dashboard/orders (long-lived product cache).
+ */
 export async function loadWholesalePageData(): Promise<WholesalePageData> {
   const [products, inventory, categoryCatalog, cartConfig] = await Promise.all([
     getWholesaleProducts(),
@@ -58,20 +96,51 @@ export async function loadWholesalePageData(): Promise<WholesalePageData> {
   ]);
 
   const { categories: categoriesContent, categoryGroups } = categoryCatalog;
-  const availabilityByProductId = new Map(
-    inventory.map((row) => [row.product_id, row]),
-  );
 
   return {
-    products: products.map((product) =>
-      applyWholesaleProductAvailability(
-        product,
-        availabilityByProductId.get(product.id),
-      ),
-    ),
+    products: mergeProductsWithInventory(products, inventory),
     inventory,
     categoriesContent,
     categoryGroups,
     ...cartConfig,
   };
+}
+
+/**
+ * Paginated shop catalog. Product page is cached; stock is merged separately
+ * for current page IDs only.
+ */
+export async function loadWholesaleCatalogPageData(
+  pageParams: ProductCatalogPageParams,
+): Promise<WholesaleCatalogPageData> {
+  const [categoryCatalog, cartConfig] = await Promise.all([
+    getCategoryCatalogByKind("wholesale"),
+    loadWholesaleCartConfig(),
+  ]);
+  const { categories: categoriesContent, categoryGroups } = categoryCatalog;
+
+  const productPage = await getWholesaleProductsPage(
+    pageParams,
+    categoriesContent,
+  );
+  const productIds = new Set(productPage.items.map((product) => product.id));
+
+  const inventorySnapshot = await getWholesaleInventorySnapshot();
+  const inventory = filterInventoryForProductIds(inventorySnapshot, productIds);
+
+  return {
+    products: mergeProductsWithInventory(productPage.items, inventory),
+    inventory,
+    categoriesContent,
+    categoryGroups,
+    totalCount: productPage.totalCount,
+    page: productPage.page,
+    pageSize: productPage.pageSize,
+    totalPages: productPage.totalPages,
+    ...cartConfig,
+  };
+}
+
+export function loadWholesalePopulatedCategoryIds() {
+  return getPopulatedCategoryIdsByProductType("wholesale");
 }

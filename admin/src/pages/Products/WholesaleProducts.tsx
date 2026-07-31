@@ -668,7 +668,7 @@ export function WholesaleProducts() {
         const fileName = `${slugPart}-${timestamp}_${size}.${ext}`;
 
         const { publicUrl } = await uploadMedia(file, {
-          folder: 'wholesale-products',
+          folder: 'products/wholesale-products',
           fileName,
           upsert: true,
         });

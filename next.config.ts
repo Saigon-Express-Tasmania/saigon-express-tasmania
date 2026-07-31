@@ -38,6 +38,10 @@ const nextConfig: NextConfig = {
         hostname: "saigonexpress.com.au",
         pathname: "/manus-storage/**",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.saigonexpress.com.au",
+      },
     ],
   },
   webpack: (config, { dev }) => {

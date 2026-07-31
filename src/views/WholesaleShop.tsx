@@ -7,7 +7,6 @@ import LazyImage from "@/components/LazyImage";
 import MemberHeader from "@/components/MemberHeader";
 import MemberPortalBackground from "@/components/MemberPortalBackground";
 import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
-import { productMatchesCategory } from "@/lib/product-categories";
 import {
   MEMBER_PORTAL_LIGHT_BANNER_CLASS,
   MEMBER_PORTAL_LIGHT_CARD_HOVER_CLASS,
@@ -20,11 +19,9 @@ import {
   applyWholesaleProductAvailability,
   type WholesaleProductAvailabilityRow,
 } from "@/types";
-import { cn } from "@/lib/utils";
 import {
   CATEGORY_LIST_ANCHOR,
   getCategorySectionId,
-  scrollToCategoryInList,
 } from "@/lib/category-list-scroll";
 import { buildWholesaleProductsAvailabilityRpcArgs } from "@/lib/wholesale-availability-rpc";
 import { resolvePortalType } from "@/lib/privileges";
@@ -38,12 +35,10 @@ import CategorySidebar, {
   CategorySidebarAside,
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
+import ProductCatalogPagination from "@/components/ProductCatalogPagination";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import {
-  filterCategoriesWithItems,
-  getActiveCategoryLabel,
-  getPopulatedCategoryIds,
-} from "@/lib/category-bar";
+import { getActiveCategoryLabel } from "@/lib/category-bar";
+import { useProductCatalogNavigation } from "@/hooks/useProductCatalogNavigation";
 import type { SiteCategoryGroup } from "@/types";
 
 const ALL_CATEGORY = "All";
@@ -104,11 +99,23 @@ export default function WholesaleShop({
   inventory,
   categoriesContent,
   categoryGroups,
+  barCategories,
+  activeCategoryId,
+  page,
+  totalPages,
+  initialSearch,
 }: {
   products: WholesaleProduct[];
   inventory: WholesaleProductAvailabilityRow[];
   categoriesContent: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
+  barCategories: SiteCategory[];
+  activeCategoryId: number | null;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  initialSearch: string;
 }) {
   const t = useTranslations("WholesaleShop");
   const router = useRouter();
@@ -117,16 +124,19 @@ export default function WholesaleShop({
   const { profile, authMetadata, isLoading, signOut } = useSupabase();
   const { addToCart, getCartQty, clearCart } = useWholesaleCart();
   const { setInventory, validateQty, getMaxQty } = useWholesaleInventory();
-  const [search, setSearch] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null,
-  );
   const [shopProducts, setShopProducts] = useState(products);
 
-  const barCategories = useMemo(() => {
-    const populatedCategoryIds = getPopulatedCategoryIds(shopProducts);
-    return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
-  }, [categoriesContent, shopProducts]);
+  const {
+    search,
+    setSearch,
+    handleCategorySelect,
+    handlePageChange,
+  } = useProductCatalogNavigation({
+    categories: categoriesContent,
+    activeCategoryId,
+    initialSearch,
+    page,
+  });
 
   const categoryStyleMap = useMemo(
     () =>
@@ -215,8 +225,10 @@ export default function WholesaleShop({
       if (cancelled || error || !data) return;
 
       const rows = data as WholesaleProductAvailabilityRow[];
+      const pageProductIds = new Set(products.map((product) => product.id));
+      const pageRows = rows.filter((row) => pageProductIds.has(row.product_id));
       setInventory(rows);
-      setShopProducts(applyInventoryToProducts(rows, products));
+      setShopProducts(applyInventoryToProducts(pageRows, products));
     })();
 
     return () => {
@@ -246,40 +258,24 @@ export default function WholesaleShop({
     router.replace(pathname, { scroll: false });
   }, [searchParams, router, pathname, clearCart]);
 
-  const allProducts = useMemo(() => shopProducts.map(mapProduct), [shopProducts]);
+  const pageProducts = useMemo(
+    () =>
+      moveZeroSortOrderToEnd(
+        shopProducts.map(mapProduct),
+        (item) => item.sortOrder,
+      ),
+    [shopProducts],
+  );
 
   const selectedCategoryLabel = getActiveCategoryLabel(
-    selectedCategoryId,
+    activeCategoryId,
     ALL_CATEGORY,
     categoriesContent,
   );
   const selectedCategoryDescription =
-    selectedCategoryId != null
-      ? categoryDescriptionMap[selectedCategoryId]
+    activeCategoryId != null
+      ? categoryDescriptionMap[activeCategoryId]
       : undefined;
-
-  const filtered = useMemo(() => {
-    const normalizedSearch = search.toLowerCase();
-    return moveZeroSortOrderToEnd(
-      allProducts.filter((p) => {
-        const matchesCategory = productMatchesCategory(
-          p,
-          selectedCategoryId,
-        );
-        const matchesSearch =
-          !normalizedSearch ||
-          p.name.toLowerCase().includes(normalizedSearch) ||
-          p.description.toLowerCase().includes(normalizedSearch);
-        return matchesCategory && matchesSearch;
-      }),
-      (item) => item.sortOrder,
-    );
-  }, [allProducts, search, selectedCategoryId]);
-
-  const handleCategoryClick = useCallback((categoryId: number | null) => {
-    setSelectedCategoryId(categoryId);
-    scrollToCategoryInList(categoryId);
-  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -340,8 +336,8 @@ export default function WholesaleShop({
         <div className="max-w-[1280px] mx-auto px-6 py-3">
           <CategorySelect
             allLabel={ALL_CATEGORY}
-            activeCategoryId={selectedCategoryId}
-            onCategorySelect={handleCategoryClick}
+            activeCategoryId={activeCategoryId}
+            onCategorySelect={handleCategorySelect}
             categories={barCategories}
             categoryGroups={categoryGroups}
             label={t("categories.label")}
@@ -351,6 +347,7 @@ export default function WholesaleShop({
             getCategoryIcon={getCategoryIcon}
             getCategoryIconFallback={getCategoryIconFallback}
             variant="member"
+            showAllOption={false}
           />
         </div>
       </div>
@@ -363,11 +360,12 @@ export default function WholesaleShop({
           >
             <CategorySidebar
               allLabel={ALL_CATEGORY}
-              activeCategoryId={selectedCategoryId}
-              onCategorySelect={handleCategoryClick}
+              activeCategoryId={activeCategoryId}
+              onCategorySelect={handleCategorySelect}
               categories={barCategories}
               categoryGroups={categoryGroups}
               variant="member"
+              showAllOption={false}
               renderCategoryLeading={(category) => (
                 <CategoryIcon
                   icon={getCategoryIcon(category.id)}
@@ -396,9 +394,9 @@ export default function WholesaleShop({
 
         <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-        {selectedCategoryId != null ? (
+        {activeCategoryId != null ? (
           <div
-            id={getCategorySectionId(selectedCategoryId)}
+            id={getCategorySectionId(activeCategoryId)}
             className="scroll-mt-24 mb-6"
           >
             <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">
@@ -414,7 +412,7 @@ export default function WholesaleShop({
 
         {/* Product grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 lg:gap-5 xl:gap-6">
-          {filtered.map((product) => {
+          {pageProducts.map((product) => {
             const gradientClass =
               categoryStyleMap[product.category] ?? "from-gray-800 to-gray-600";
             const icon =
@@ -530,12 +528,18 @@ export default function WholesaleShop({
           })}
         </div>
 
-        {filtered.length === 0 ? (
+        {pageProducts.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p className="font-medium">No products found</p>
           </div>
         ) : null}
+
+        <ProductCatalogPagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
         </div>
       </div>
     </MemberPortalBackground>

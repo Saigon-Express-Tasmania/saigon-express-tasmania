@@ -54,6 +54,8 @@ export type CategorySidebarProps = {
   variant?: CategoryNavVariant;
   className?: string;
   renderCategoryLeading?: (category: SiteCategory) => ReactNode;
+  /** When false, hides the "All products" control. Default true. */
+  showAllOption?: boolean;
 };
 
 type CategorySidebarAsideProps = {
@@ -158,6 +160,7 @@ export default function CategorySidebar({
   variant = "brand",
   className,
   renderCategoryLeading,
+  showAllOption = true,
 }: CategorySidebarProps) {
   const styles = getCategoryNavVariantStyles(variant);
 
@@ -236,38 +239,40 @@ export default function CategorySidebar({
           className,
         )}
       >
-        <div className="rounded-xl border border-black/[0.04] bg-white/70 p-1.5 shadow-sm backdrop-blur-sm">
-          <TooltipPrimitive.Root>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onCategorySelect(null)}
-                className={cn(
-                  itemButtonClass(isAllActive),
-                  "gap-3 px-3.5 py-2.5 font-medium",
-                  isAllActive && "ring-1 ring-inset ring-black/[0.06]",
-                )}
-              >
-                <span
+        {showAllOption ? (
+          <div className="rounded-xl border border-black/[0.04] bg-white/70 p-1.5 shadow-sm backdrop-blur-sm">
+            <TooltipPrimitive.Root>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => onCategorySelect(null)}
                   className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-lg",
-                    allIconClass,
+                    itemButtonClass(isAllActive),
+                    "gap-3 px-3.5 py-2.5 font-medium",
+                    isAllActive && "ring-1 ring-inset ring-black/[0.06]",
                   )}
                 >
-                  <LayoutGrid className="size-4" />
-                </span>
-                <span className={CATEGORY_SIDEBAR_LABEL_CLASS}>{allLabel}</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              sideOffset={10}
-              className="max-w-72 px-3 py-2.5 text-left"
-            >
-              <p className="text-sm font-semibold leading-snug">{allLabel}</p>
-            </TooltipContent>
-          </TooltipPrimitive.Root>
-        </div>
+                  <span
+                    className={cn(
+                      "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                      allIconClass,
+                    )}
+                  >
+                    <LayoutGrid className="size-4" />
+                  </span>
+                  <span className={CATEGORY_SIDEBAR_LABEL_CLASS}>{allLabel}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="right"
+                sideOffset={10}
+                className="max-w-72 px-3 py-2.5 text-left"
+              >
+                <p className="text-sm font-semibold leading-snug">{allLabel}</p>
+              </TooltipContent>
+            </TooltipPrimitive.Root>
+          </div>
+        ) : null}
 
         {orphanItems.length > 0 ? (
           <div className="rounded-xl border border-black/[0.04] bg-white/60 p-1.5 shadow-sm">

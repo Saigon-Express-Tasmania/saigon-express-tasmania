@@ -7,8 +7,7 @@ const POSTER = "/images/intro-cover.jpg";
 const VIDEO_DELAY_MS = 1500;
 
 const SOURCES = [
-  { src: "/videos/intro.webm", type: "video/webm" },
-  { src: "/videos/intro-960.mp4", type: "video/mp4" },
+  { src: "https://cdn.saigonexpress.com.au/videos/intro-960.mp4", type: "video/mp4" },
 ] as const;
 
 export default function HeroVideo() {
@@ -47,12 +46,16 @@ export default function HeroVideo() {
 
     const tryPlay = () => {
       void video.play().catch(() => {
+        // Autoplay can still fail in some browsers; show the frame anyway.
         setVideoReady(true);
       });
     };
 
     video.addEventListener("playing", onPlaying);
     video.addEventListener("canplay", tryPlay);
+
+    // Remote CDN sources: ensure the element starts fetching after mount.
+    video.load();
 
     if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
       tryPlay();

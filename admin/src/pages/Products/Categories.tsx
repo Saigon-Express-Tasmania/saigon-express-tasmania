@@ -806,7 +806,7 @@ export function Categories() {
 
     try {
       const { path, signedUrl } = await uploadMedia(file, {
-        folder: 'categories',
+        folder: 'products/categories',
         fileName,
         upsert: true,
       });

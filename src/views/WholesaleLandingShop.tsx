@@ -1,22 +1,18 @@
 "use client";
 
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import LazyImage from "@/components/LazyImage";
 import { motion } from "framer-motion";
 import { ChevronRight, Search, Lock, Package, CheckCircle } from "lucide-react";
 import Link from "@/components/link";
 import { useSupabase } from "@/hooks/useSupabase";
 import { useRedirectWholesaleMembersToShop } from "@/hooks/useRedirectWholesaleMembersToShop";
-import { cn } from "@/lib/utils";
 import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
-import { productMatchesCategory } from "@/lib/product-categories";
 import {
   CATEGORY_LIST_ANCHOR,
   getCategorySectionId,
-  scrollToCategoryInList,
 } from "@/lib/category-list-scroll";
 import { hasPrivilege } from "@/lib/privileges";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type {
   SiteCategory,
@@ -28,23 +24,15 @@ import {
   formatTierMinValue,
   pickWholesaleImageUrl,
 } from "@/types";
-// 1. Import Fuse
-import Fuse from "fuse.js";
 import CategorySelect from "@/components/CategorySelect";
 import CategorySidebar, {
   CategorySidebarAside,
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
+import ProductCatalogPagination from "@/components/ProductCatalogPagination";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import {
-  buildMenuCategoryQueryFromId,
-  resolveMenuCategoryFromUrlParam,
-} from "@/lib/menu-category-url";
-import {
-  filterCategoriesWithItems,
-  getActiveCategoryLabel,
-  getPopulatedCategoryIds,
-} from "@/lib/category-bar";
+import { getActiveCategoryLabel } from "@/lib/category-bar";
+import { useProductCatalogNavigation } from "@/hooks/useProductCatalogNavigation";
 import type { SiteCategoryGroup } from "@/types";
 
 const ALL_CATEGORY = "All";
@@ -55,20 +43,27 @@ export default function WholesaleLandingShop({
   products,
   categoriesContent,
   categoryGroups,
+  barCategories,
+  activeCategoryId,
+  page,
+  totalCount,
+  totalPages,
+  initialSearch,
   pricingTiers,
 }: {
   products: WholesaleProduct[];
   categoriesContent: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
+  barCategories: SiteCategory[];
+  activeCategoryId: number | null;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  initialSearch: string;
   pricingTiers: WholesalePricingTier[];
 }) {
   const t = useTranslations("WholesaleShop");
-
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const urlCategory = searchParams.get("category");
 
   useRedirectWholesaleMembersToShop();
   const { isSignedIn, authMetadata } = useSupabase();
@@ -77,18 +72,21 @@ export default function WholesaleLandingShop({
 
   const bannerPerks = (t.raw("banner.perks") || []) as string[];
 
-  const barCategories = useMemo(() => {
-    const populatedCategoryIds = getPopulatedCategoryIds(products);
-    return filterCategoriesWithItems(categoriesContent, populatedCategoryIds);
-  }, [categoriesContent, products]);
+  const {
+    search,
+    setSearch,
+    handleCategorySelect,
+    handlePageChange,
+    clearSearch,
+  } = useProductCatalogNavigation({
+    categories: categoriesContent,
+    activeCategoryId,
+    initialSearch,
+    page,
+  });
 
-  const resolvedUrlCategory = useMemo(
-    () => resolveMenuCategoryFromUrlParam(urlCategory, categoriesContent),
-    [urlCategory, categoriesContent],
-  );
-  const selectedCategoryId = resolvedUrlCategory?.id ?? null;
   const selectedCategoryLabel = getActiveCategoryLabel(
-    selectedCategoryId,
+    activeCategoryId,
     ALL_CATEGORY,
     categoriesContent,
   );
@@ -133,82 +131,15 @@ export default function WholesaleLandingShop({
     [],
   );
 
-  const [search, setSearch] = useState("");
-
-  const handleCategoryClick = useCallback(
-    (categoryId: number | null) => {
-      const query = buildMenuCategoryQueryFromId(categoryId, categoriesContent);
-      const nextUrl = query ? `${pathname}?${query}` : pathname;
-      router.replace(nextUrl, { scroll: false });
-      scrollToCategoryInList(categoryId);
-    },
-    [pathname, router, categoriesContent],
-  );
-
-  useEffect(() => {
-    if (urlCategory && resolvedUrlCategory && urlCategory !== resolvedUrlCategory.alias) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("category", resolvedUrlCategory.alias);
-      const query = params.toString();
-      router.replace(
-        query ? `${pathname}?${query}` : pathname,
-        { scroll: false },
-      );
-    }
-  }, [urlCategory, resolvedUrlCategory, searchParams, pathname, router]);
-
-  // 2. Initialize Fuse instance with targeted keys and fine-tuned thresholds
-  const fuse = useMemo(() => {
-    const options = {
-      keys: [
-        { name: "name", weight: 0.6 },
-        { name: "description", weight: 0.3 },
-        { name: "category", weight: 0.1 },
-      ],
-      threshold: 0.35, // Balanced threshold: perfect for picking up technical/ingredient typos without returning junk matches.
-    };
-    return new Fuse(products ?? [], options);
-  }, [products]);
-
   const selectedCategoryDescription =
-    selectedCategoryId != null
-      ? categoryDescriptionMap[selectedCategoryId]
+    activeCategoryId != null
+      ? categoryDescriptionMap[activeCategoryId]
       : undefined;
 
-  // 3. Compute fuzzy matching coupled with category constraints using useMemo
-  const filtered = useMemo(() => {
-    const normalizedSearch = search.trim();
-
-    // If there is no search phrase, simply filter down raw data based on category mapping
-    if (!normalizedSearch) {
-      if (selectedCategoryId === null) {
-        return moveZeroSortOrderToEnd(products ?? [], (item) => item.sortOrder);
-      }
-      return moveZeroSortOrderToEnd(
-        (products ?? []).filter((p) =>
-          productMatchesCategory(p, selectedCategoryId),
-        ),
-        (item) => item.sortOrder,
-      );
-    }
-
-    // Query across the indexed global data subset
-    const searchResults = fuse
-      .search(normalizedSearch)
-      .map((result) => result.item);
-
-    // Apply category isolation on top of search hits
-    if (selectedCategoryId !== null) {
-      return moveZeroSortOrderToEnd(
-        searchResults.filter((p) =>
-          productMatchesCategory(p, selectedCategoryId),
-        ),
-        (item) => item.sortOrder,
-      );
-    }
-
-    return moveZeroSortOrderToEnd(searchResults, (item) => item.sortOrder);
-  }, [search, selectedCategoryId, products, fuse]);
+  const pageProducts = useMemo(
+    () => moveZeroSortOrderToEnd(products ?? [], (item) => item.sortOrder),
+    [products],
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -300,8 +231,8 @@ export default function WholesaleLandingShop({
           <div className="container py-3">
             <CategorySelect
               allLabel={ALL_CATEGORY}
-              activeCategoryId={selectedCategoryId}
-              onCategorySelect={handleCategoryClick}
+              activeCategoryId={activeCategoryId}
+              onCategorySelect={handleCategorySelect}
               categories={barCategories}
               categoryGroups={categoryGroups}
               label={t("categories.label")}
@@ -311,6 +242,7 @@ export default function WholesaleLandingShop({
               getCategoryIcon={getCategoryIcon}
               getCategoryIconFallback={getCategoryIconFallback}
               variant="wholesale"
+              showAllOption={false}
             />
           </div>
         </div>
@@ -323,11 +255,12 @@ export default function WholesaleLandingShop({
             >
               <CategorySidebar
                 allLabel={ALL_CATEGORY}
-                activeCategoryId={selectedCategoryId}
-                onCategorySelect={handleCategoryClick}
+                activeCategoryId={activeCategoryId}
+                onCategorySelect={handleCategorySelect}
                 categories={barCategories}
                 categoryGroups={categoryGroups}
                 variant="wholesale"
+                showAllOption={false}
                 renderCategoryLeading={(category) => (
                   <CategoryIcon
                     icon={getCategoryIcon(category.id)}
@@ -354,7 +287,7 @@ export default function WholesaleLandingShop({
             />
             {search && (
               <button
-                onClick={() => setSearch("")}
+                onClick={clearSearch}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 {t("search.clear")}
@@ -364,7 +297,7 @@ export default function WholesaleLandingShop({
 
           <div className="mb-2 flex justify-end">
             <span className="text-sm text-muted-foreground">
-              {t("search.itemsCount", { count: filtered.length })}
+              {t("search.itemsCount", { count: totalCount })}
             </span>
           </div>
         </div>
@@ -372,9 +305,9 @@ export default function WholesaleLandingShop({
         <div className="min-w-0 flex-1 w-full mx-auto px-6 py-8">
           <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-          {selectedCategoryId != null ? (
+          {activeCategoryId != null ? (
             <div
-              id={getCategorySectionId(selectedCategoryId)}
+              id={getCategorySectionId(activeCategoryId)}
               className="scroll-mt-24 mb-6"
             >
               <h2 className="font-serif text-foreground text-2xl mb-2">
@@ -390,7 +323,7 @@ export default function WholesaleLandingShop({
 
           {/* Product grid */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 lg:gap-5 xl:gap-6">
-            {filtered.map((p, i) => {
+            {pageProducts.map((p, i) => {
               const img = pickWholesaleImageUrl(
                 p.imageUrls,
                 [512, 1024, 1448],
@@ -505,13 +438,19 @@ export default function WholesaleLandingShop({
             })}
           </div>
 
-          {filtered.length === 0 && (
+          {pageProducts.length === 0 && (
             <div className="text-center py-20 text-muted-foreground">
               <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
               <p className="font-medium">{t("noProducts.title", { search })}</p>
               <p className="text-sm mt-1">{t("noProducts.desc")}</p>
             </div>
           )}
+
+          <ProductCatalogPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
           </div>
         </div>
