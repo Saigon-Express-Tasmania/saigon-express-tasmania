@@ -11,6 +11,7 @@ import CategorySidebar, {
 import { CategoryIcon } from "@/components/CategoryIcon";
 import LazyImage from "@/components/LazyImage";
 import ProductCatalogPagination from "@/components/ProductCatalogPagination";
+import ProductCatalogPendingState from "@/components/ProductCatalogPendingState";
 import { getActiveCategoryLabel } from "@/lib/category-bar";
 import {
   CATERING_CATEGORIES_ANCHOR,
@@ -82,18 +83,22 @@ export default function CateringMenuCatalog({
   const {
     search,
     setSearch,
+    isPending,
+    displayCategoryId,
     handleCategorySelect,
     handlePageChange,
+    prefetchCategory,
     clearSearch,
   } = useProductCatalogNavigation({
     categories: categoriesContent,
     activeCategoryId,
     initialSearch,
     page,
+    totalPages,
   });
 
-  const activeCategoryLabel = getActiveCategoryLabel(
-    activeCategoryId,
+  const displayCategoryLabel = getActiveCategoryLabel(
+    displayCategoryId,
     allLabel,
     categoriesContent,
   );
@@ -130,8 +135,8 @@ export default function CateringMenuCatalog({
   );
 
   const activeCategoryDescription =
-    activeCategoryId != null
-      ? categoryDescriptionMap[activeCategoryId]
+    displayCategoryId != null
+      ? categoryDescriptionMap[displayCategoryId]
       : undefined;
 
   if (barCategories.length === 0 && packs.length === 0 && !search.trim()) {
@@ -158,8 +163,9 @@ export default function CateringMenuCatalog({
         <div className="max-w-[1280px] mx-auto px-6 py-3">
           <CategorySelect
             allLabel={allLabel}
-            activeCategoryId={activeCategoryId}
+            activeCategoryId={displayCategoryId}
             onCategorySelect={handleCategorySelect}
+            onCategoryPrefetch={prefetchCategory}
             categories={barCategories}
             categoryGroups={categoryGroups}
             label={t("menu.categories.label")}
@@ -182,8 +188,9 @@ export default function CateringMenuCatalog({
           >
             <CategorySidebar
               allLabel={allLabel}
-              activeCategoryId={activeCategoryId}
+              activeCategoryId={displayCategoryId}
               onCategorySelect={handleCategorySelect}
+              onCategoryPrefetch={prefetchCategory}
               categories={barCategories}
               categoryGroups={categoryGroups}
               variant="brand"
@@ -233,13 +240,13 @@ export default function CateringMenuCatalog({
 
           <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-          {activeCategoryId != null ? (
+          {displayCategoryId != null ? (
             <div
-              id={getCategorySectionId(activeCategoryId)}
+              id={getCategorySectionId(displayCategoryId)}
               className="scroll-mt-24 mb-6"
             >
               <h3 className="font-serif text-brand-dark text-2xl mb-3 pb-2 border-b border-brand-cream">
-                {activeCategoryLabel}
+                {displayCategoryLabel}
               </h3>
               {activeCategoryDescription ? (
                 <p className="text-sm leading-relaxed text-brand-dark/55">
@@ -249,6 +256,12 @@ export default function CateringMenuCatalog({
             </div>
           ) : null}
 
+          <ProductCatalogPendingState
+            isPending={isPending}
+            skeletonCount={8}
+            imageAspectClass="aspect-square"
+            gridClassName="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3 xl:gap-6 2xl:grid-cols-4 mb-10"
+          >
           {packs.length === 0 ? (
             <div className="text-center py-12 text-brand-dark/55">
               <p className="font-serif text-2xl mb-2 text-brand-dark/70">
@@ -309,7 +322,7 @@ export default function CateringMenuCatalog({
                           />
                           {cardPriceLabel ? (
                             <div
-                              className={`absolute top-3 right-3 max-w-[calc(100%-1.5rem)] bg-brand-red px-2.5 py-1 text-right font-bold text-white ${
+                              className={`pointer-events-none absolute top-3 right-3 z-10 max-w-[calc(100%-1.5rem)] bg-brand-red px-2.5 py-1 text-right font-bold text-white shadow-sm ${
                                 item.prices.length > 1 ? "text-xs" : "text-sm"
                               }`}
                             >
@@ -336,7 +349,7 @@ export default function CateringMenuCatalog({
                           />
                           {cardPriceLabel ? (
                             <div
-                              className={`absolute top-3 right-3 max-w-[calc(100%-1.5rem)] bg-brand-red px-2.5 py-1 text-right font-bold text-white ${
+                              className={`pointer-events-none absolute top-3 right-3 z-10 max-w-[calc(100%-1.5rem)] bg-brand-red px-2.5 py-1 text-right font-bold text-white shadow-sm ${
                                 item.prices.length > 1 ? "text-xs" : "text-sm"
                               }`}
                             >
@@ -433,11 +446,13 @@ export default function CateringMenuCatalog({
               })}
             </div>
           )}
+          </ProductCatalogPendingState>
 
           <ProductCatalogPagination
             page={page}
             totalPages={totalPages}
             onPageChange={handlePageChange}
+            disabled={isPending}
           />
 
           {showProteinNote ? (

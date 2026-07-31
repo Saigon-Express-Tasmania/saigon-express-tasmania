@@ -43,6 +43,7 @@ export type CategorySelectProps = {
   className?: string;
   /** When false, hides the "All products" option. Default true. */
   showAllOption?: boolean;
+  onCategoryPrefetch?: (categoryId: number) => void;
 };
 
 export default function CategorySelect({
@@ -60,6 +61,7 @@ export default function CategorySelect({
   variant = "brand",
   className,
   showAllOption = true,
+  onCategoryPrefetch,
 }: CategorySelectProps) {
   const styles = getCategoryNavVariantStyles(variant);
   const listboxId = useId();
@@ -194,6 +196,11 @@ export default function CategorySelect({
                       key={`orphan-${category.id}`}
                       value={category.name}
                       onSelect={() => handleSelect(category.id)}
+                      onMouseEnter={
+                        onCategoryPrefetch
+                          ? () => onCategoryPrefetch(category.id)
+                          : undefined
+                      }
                       className={optionItemClass}
                     >
                       <Check
@@ -230,6 +237,11 @@ export default function CategorySelect({
                           key={category.id}
                           value={`${item.name} ${category.name}`}
                           onSelect={() => handleSelect(category.id)}
+                          onMouseEnter={
+                            onCategoryPrefetch
+                              ? () => onCategoryPrefetch(category.id)
+                              : undefined
+                          }
                           className={optionItemClass}
                         >
                           <Check

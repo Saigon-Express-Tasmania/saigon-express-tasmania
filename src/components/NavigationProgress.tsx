@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { CATALOG_NAVIGATION_START_EVENT } from "@/lib/catalog-navigation-progress";
 
 function isInternalNavigation(anchor: HTMLAnchorElement, pathname: string): boolean {
   if (!anchor.href || anchor.target === "_blank" || anchor.download) {
@@ -46,8 +47,22 @@ export default function NavigationProgress() {
       }
     }
 
+    function handleCatalogNavigationStart() {
+      setIsNavigating(true);
+    }
+
     document.addEventListener("click", handleClick, true);
-    return () => document.removeEventListener("click", handleClick, true);
+    window.addEventListener(
+      CATALOG_NAVIGATION_START_EVENT,
+      handleCatalogNavigationStart,
+    );
+    return () => {
+      document.removeEventListener("click", handleClick, true);
+      window.removeEventListener(
+        CATALOG_NAVIGATION_START_EVENT,
+        handleCatalogNavigationStart,
+      );
+    };
   }, [pathname]);
 
   if (!isNavigating) {

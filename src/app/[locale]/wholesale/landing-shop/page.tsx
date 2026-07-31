@@ -24,9 +24,8 @@ export default async function LocaleWholesaleLandingShopPage({
 }: PageProps) {
   const [{ locale }, sp] = await Promise.all([params, searchParams]);
 
-  const [categoryCatalog, pricingTiers, populatedIds] = await Promise.all([
+  const [categoryCatalog, populatedIds] = await Promise.all([
     getCategoryCatalogByKind("wholesale"),
-    getWholesaleTiers(),
     getPopulatedCategoryIdsByProductType("wholesale"),
   ]);
   const { categories: categoriesContent, categoryGroups } = categoryCatalog;
@@ -39,9 +38,14 @@ export default async function LocaleWholesaleLandingShopPage({
     populatedIds,
   });
 
-  const productPage = resolved.empty
-    ? buildProductCatalogPageResult([], 0, 1, PRODUCT_CATALOG_PAGE_SIZE)
-    : await getWholesaleProductsPage(resolved.pageParams, categoriesContent);
+  const [productPage, pricingTiers] = await Promise.all([
+    resolved.empty
+      ? Promise.resolve(
+          buildProductCatalogPageResult([], 0, 1, PRODUCT_CATALOG_PAGE_SIZE),
+        )
+      : getWholesaleProductsPage(resolved.pageParams, categoriesContent),
+    getWholesaleTiers(),
+  ]);
 
   return (
     <Suspense fallback={null}>

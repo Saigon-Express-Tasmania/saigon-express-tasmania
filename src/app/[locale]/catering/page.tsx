@@ -29,12 +29,10 @@ export default async function LocalizedCateringPage({
 }: PageProps) {
   const [{ locale }, sp] = await Promise.all([params, searchParams]);
 
-  const [categoryCatalog, customizationsCatalog, populatedIds] =
-    await Promise.all([
-      getCategoryCatalogByKind("catering"),
-      getProductCustomizationsCatalog(),
-      getPopulatedCategoryIdsByProductType("catering"),
-    ]);
+  const [categoryCatalog, populatedIds] = await Promise.all([
+    getCategoryCatalogByKind("catering"),
+    getPopulatedCategoryIdsByProductType("catering"),
+  ]);
 
   const { categories: categoriesContent, categoryGroups } = categoryCatalog;
   const resolved = resolveShopCatalogQueryOrRedirect({
@@ -46,9 +44,14 @@ export default async function LocalizedCateringPage({
     resolveCategory: resolveCateringCategoryFromUrlParam,
   });
 
-  const productPage = resolved.empty
-    ? buildProductCatalogPageResult([], 0, 1, PRODUCT_CATALOG_PAGE_SIZE)
-    : await getCateringPacksPage(resolved.pageParams, categoriesContent);
+  const [productPage, customizationsCatalog] = await Promise.all([
+    resolved.empty
+      ? Promise.resolve(
+          buildProductCatalogPageResult([], 0, 1, PRODUCT_CATALOG_PAGE_SIZE),
+        )
+      : getCateringPacksPage(resolved.pageParams, categoriesContent),
+    getProductCustomizationsCatalog(),
+  ]);
 
   return (
     <ProductCustomizationsProvider

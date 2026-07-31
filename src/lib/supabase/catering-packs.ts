@@ -153,15 +153,14 @@ async function loadCateringPacks(): Promise<CateringPack[]> {
 
 /**
  * Paginated catering packs for a single category. Pass page categories from the RSC.
+ * Category assignments come from the page query embed (no second round-trip).
  */
 export async function getCateringPacksPage(
   params: ProductCatalogPageParams,
   categories: SiteCategory[],
 ): Promise<ProductCatalogPageResult<CateringPack>> {
-  const { rows, totalCount } = await fetchCateringProductsPage(params);
-  const categoriesByProductId = await loadProductCategoriesByProductIds(
-    rows.map((row) => row.id),
-  );
+  const { rows, totalCount, categoriesByProductId } =
+    await fetchCateringProductsPage(params);
   const categoryById = categoryMapById(categories);
   const items = rows.map((row) =>
     mapCateringPackRow(

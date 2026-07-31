@@ -1,5 +1,3 @@
-import { getCategoryCatalogByKind } from "@/lib/supabase/categories";
-import { getPopulatedCategoryIdsByProductType } from "@/lib/supabase/product-categories";
 import { getWholesaleInventorySnapshot } from "@/lib/supabase/wholesale-inventory-snapshot";
 import {
   getGstTaxRate,
@@ -12,6 +10,8 @@ import {
   getWholesaleProductsPage,
 } from "@/lib/supabase/wholesale-products";
 import { getWholesaleTiers } from "@/lib/supabase/wholesale-tiers";
+import { getCategoryCatalogByKind } from "@/lib/supabase/categories";
+import { getPopulatedCategoryIdsByProductType } from "@/lib/supabase/product-categories";
 import type { ProductCatalogPageParams } from "@/lib/product-catalog-page";
 import type {
   SiteCategory,
@@ -108,24 +108,24 @@ export async function loadWholesalePageData(): Promise<WholesalePageData> {
 
 /**
  * Paginated shop catalog. Product page is cached; stock is merged separately
- * for current page IDs only.
+ * for current page IDs only. Catalog + stock fetch in parallel.
  */
 export async function loadWholesaleCatalogPageData(
   pageParams: ProductCatalogPageParams,
+  categoryCatalog: {
+    categories: SiteCategory[];
+    categoryGroups: SiteCategoryGroup[];
+  },
 ): Promise<WholesaleCatalogPageData> {
-  const [categoryCatalog, cartConfig] = await Promise.all([
-    getCategoryCatalogByKind("wholesale"),
-    loadWholesaleCartConfig(),
-  ]);
   const { categories: categoriesContent, categoryGroups } = categoryCatalog;
 
-  const productPage = await getWholesaleProductsPage(
-    pageParams,
-    categoriesContent,
-  );
-  const productIds = new Set(productPage.items.map((product) => product.id));
+  const [cartConfig, productPage, inventorySnapshot] = await Promise.all([
+    loadWholesaleCartConfig(),
+    getWholesaleProductsPage(pageParams, categoriesContent),
+    getWholesaleInventorySnapshot(),
+  ]);
 
-  const inventorySnapshot = await getWholesaleInventorySnapshot();
+  const productIds = new Set(productPage.items.map((product) => product.id));
   const inventory = filterInventoryForProductIds(inventorySnapshot, productIds);
 
   return {

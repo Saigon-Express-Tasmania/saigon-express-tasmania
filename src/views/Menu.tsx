@@ -37,6 +37,7 @@ import CategorySidebar, {
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
 import ProductCatalogPagination from "@/components/ProductCatalogPagination";
+import ProductCatalogPendingState from "@/components/ProductCatalogPendingState";
 import { getActiveCategoryLabel } from "@/lib/category-bar";
 import { moveZeroSortOrderToEnd } from "@/lib/sort-order";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -106,22 +107,21 @@ export default function Menu({
     [locale],
   );
 
-  const activeCategoryLabel = getActiveCategoryLabel(
-    activeCategoryId,
-    allLabel,
-    categoriesContent,
-  );
   const {
     search,
     setSearch,
+    isPending,
+    displayCategoryId,
     handleCategorySelect,
     handlePageChange,
+    prefetchCategory,
     clearSearch,
   } = useProductCatalogNavigation({
     categories: categoriesContent,
     activeCategoryId,
     initialSearch,
     page,
+    totalPages,
   });
   const [addonTrigger, setAddonTrigger] = useState<{
     item: SuggestedItem;
@@ -195,9 +195,15 @@ export default function Menu({
   );
 
   const activeCategoryDescription =
-    activeCategoryId != null
-      ? categoryDescriptionMap[activeCategoryId]
+    displayCategoryId != null
+      ? categoryDescriptionMap[displayCategoryId]
       : undefined;
+
+  const displayCategoryLabel = getActiveCategoryLabel(
+    displayCategoryId,
+    allLabel,
+    categoriesContent,
+  );
 
   const filtered = useMemo(
     () => moveZeroSortOrderToEnd(menuItems ?? [], (item) => item.sortOrder),
@@ -303,8 +309,9 @@ export default function Menu({
         <div className="max-w-[1280px] mx-auto px-6 py-3">
           <CategorySelect
             allLabel={allLabel}
-            activeCategoryId={activeCategoryId}
+            activeCategoryId={displayCategoryId}
             onCategorySelect={handleCategorySelect}
+            onCategoryPrefetch={prefetchCategory}
             categories={barCategories}
             categoryGroups={categoryGroups}
             label={t("categories.label")}
@@ -323,8 +330,9 @@ export default function Menu({
           <CategorySidebarAside aria-label={t("categories.label")}>
             <CategorySidebar
               allLabel={allLabel}
-              activeCategoryId={activeCategoryId}
+              activeCategoryId={displayCategoryId}
               onCategorySelect={handleCategorySelect}
+              onCategoryPrefetch={prefetchCategory}
               categories={barCategories}
               categoryGroups={categoryGroups}
               showAllOption={false}
@@ -377,13 +385,13 @@ export default function Menu({
 
         <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-        {activeCategoryId != null ? (
+        {displayCategoryId != null ? (
           <div
-            id={getCategorySectionId(activeCategoryId)}
+            id={getCategorySectionId(displayCategoryId)}
             className="scroll-mt-24 mb-6"
           >
             <h2 className="font-serif text-brand-dark text-2xl mb-3 pb-2 border-b border-brand-cream">
-              {activeCategoryLabel}
+              {displayCategoryLabel}
             </h2>
             {activeCategoryDescription ? (
               <p className="text-sm leading-relaxed text-brand-dark/55">
@@ -393,6 +401,7 @@ export default function Menu({
           </div>
         ) : null}
 
+        <ProductCatalogPendingState isPending={isPending}>
         {filtered.length === 0 ? (
           <div className="text-center py-24 text-brand-dark/40">
             <p className="font-serif text-2xl mb-2">
@@ -551,11 +560,13 @@ export default function Menu({
             })}
           </div>
         )}
+        </ProductCatalogPendingState>
 
         <ProductCatalogPagination
           page={page}
           totalPages={totalPages}
           onPageChange={handlePageChange}
+          disabled={isPending}
         />
 
         {/* Find a store strip */}

@@ -6,6 +6,7 @@ type ProductCatalogPaginationProps = {
   totalPages: number;
   onPageChange: (page: number) => void;
   className?: string;
+  disabled?: boolean;
 };
 
 export default function ProductCatalogPagination({
@@ -13,6 +14,7 @@ export default function ProductCatalogPagination({
   totalPages,
   onPageChange,
   className,
+  disabled = false,
 }: ProductCatalogPaginationProps) {
   if (totalPages <= 1) return null;
 
@@ -35,7 +37,7 @@ export default function ProductCatalogPagination({
       <button
         type="button"
         onClick={() => onPageChange(page - 1)}
-        disabled={page <= 1}
+        disabled={disabled || page <= 1}
         className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Previous page"
       >
@@ -54,8 +56,9 @@ export default function ProductCatalogPagination({
             key={item}
             type="button"
             onClick={() => onPageChange(item)}
+            disabled={disabled}
             className={cn(
-              "flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-sm transition-colors",
+              "flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40",
               item === page
                 ? "border-brand-red bg-brand-red text-white"
                 : "border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400 hover:text-gray-900",
@@ -68,7 +71,7 @@ export default function ProductCatalogPagination({
       <button
         type="button"
         onClick={() => onPageChange(page + 1)}
-        disabled={page >= totalPages}
+        disabled={disabled || page >= totalPages}
         className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next page"
       >

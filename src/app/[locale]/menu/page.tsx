@@ -29,13 +29,10 @@ export default async function LocaleMenuPage({
 }: PageProps) {
   const [{ locale }, sp] = await Promise.all([params, searchParams]);
 
-  const [storeLocations, categoryCatalog, customizationsCatalog, populatedIds] =
-    await Promise.all([
-      getActiveStoreLocations(),
-      getCategoryCatalogByKind("menu"),
-      getProductCustomizationsCatalog(),
-      getPopulatedCategoryIdsByProductType("alacarte"),
-    ]);
+  const [categoryCatalog, populatedIds] = await Promise.all([
+    getCategoryCatalogByKind("menu"),
+    getPopulatedCategoryIdsByProductType("alacarte"),
+  ]);
 
   const { categories: categoriesContent, categoryGroups } = categoryCatalog;
   const resolved = resolveShopCatalogQueryOrRedirect({
@@ -46,14 +43,16 @@ export default async function LocaleMenuPage({
     populatedIds,
   });
 
-  const productPage = resolved.empty
-    ? buildProductCatalogPageResult(
-        [],
-        0,
-        1,
-        PRODUCT_CATALOG_PAGE_SIZE,
-      )
-    : await getMenuItemsPage(resolved.pageParams, categoriesContent);
+  const [productPage, storeLocations, customizationsCatalog] =
+    await Promise.all([
+      resolved.empty
+        ? Promise.resolve(
+            buildProductCatalogPageResult([], 0, 1, PRODUCT_CATALOG_PAGE_SIZE),
+          )
+        : getMenuItemsPage(resolved.pageParams, categoriesContent),
+      getActiveStoreLocations(),
+      getProductCustomizationsCatalog(),
+    ]);
 
   return (
     <ProductCustomizationsProvider

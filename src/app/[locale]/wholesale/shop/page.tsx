@@ -1,9 +1,7 @@
 import { Suspense } from "react";
 import WholesaleShop from "@/views/WholesaleShop";
 import { getPopulatedCategoryIdsByProductType } from "@/lib/supabase/product-categories";
-import {
-  loadWholesaleCatalogPageData,
-} from "@/lib/wholesale-page";
+import { loadWholesaleCatalogPageData } from "@/lib/wholesale-page";
 import {
   PRODUCT_CATALOG_PAGE_SIZE,
   buildProductCatalogPageResult,
@@ -65,7 +63,10 @@ export default async function LocaleWholesaleShopPage({
     );
   }
 
-  const data = await loadWholesaleCatalogPageData(resolved.pageParams);
+  const data = await loadWholesaleCatalogPageData(resolved.pageParams, {
+    categories: categoriesContent,
+    categoryGroups,
+  });
 
   return (
     <Suspense fallback={null}>

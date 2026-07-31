@@ -36,6 +36,7 @@ import CategorySidebar, {
   CATEGORY_SIDEBAR_COLUMN_CLASS,
 } from "@/components/CategorySidebar";
 import ProductCatalogPagination from "@/components/ProductCatalogPagination";
+import ProductCatalogPendingState from "@/components/ProductCatalogPendingState";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { getActiveCategoryLabel } from "@/lib/category-bar";
 import { useProductCatalogNavigation } from "@/hooks/useProductCatalogNavigation";
@@ -129,13 +130,17 @@ export default function WholesaleShop({
   const {
     search,
     setSearch,
+    isPending,
+    displayCategoryId,
     handleCategorySelect,
     handlePageChange,
+    prefetchCategory,
   } = useProductCatalogNavigation({
     categories: categoriesContent,
     activeCategoryId,
     initialSearch,
     page,
+    totalPages,
   });
 
   const categoryStyleMap = useMemo(
@@ -268,13 +273,13 @@ export default function WholesaleShop({
   );
 
   const selectedCategoryLabel = getActiveCategoryLabel(
-    activeCategoryId,
+    displayCategoryId,
     ALL_CATEGORY,
     categoriesContent,
   );
   const selectedCategoryDescription =
-    activeCategoryId != null
-      ? categoryDescriptionMap[activeCategoryId]
+    displayCategoryId != null
+      ? categoryDescriptionMap[displayCategoryId]
       : undefined;
 
   const handleLogout = async () => {
@@ -336,8 +341,9 @@ export default function WholesaleShop({
         <div className="max-w-[1280px] mx-auto px-6 py-3">
           <CategorySelect
             allLabel={ALL_CATEGORY}
-            activeCategoryId={activeCategoryId}
+            activeCategoryId={displayCategoryId}
             onCategorySelect={handleCategorySelect}
+            onCategoryPrefetch={prefetchCategory}
             categories={barCategories}
             categoryGroups={categoryGroups}
             label={t("categories.label")}
@@ -360,8 +366,9 @@ export default function WholesaleShop({
           >
             <CategorySidebar
               allLabel={ALL_CATEGORY}
-              activeCategoryId={activeCategoryId}
+              activeCategoryId={displayCategoryId}
               onCategorySelect={handleCategorySelect}
+              onCategoryPrefetch={prefetchCategory}
               categories={barCategories}
               categoryGroups={categoryGroups}
               variant="member"
@@ -394,9 +401,9 @@ export default function WholesaleShop({
 
         <div id={CATEGORY_LIST_ANCHOR} className="scroll-mt-24" aria-hidden />
 
-        {activeCategoryId != null ? (
+        {displayCategoryId != null ? (
           <div
-            id={getCategorySectionId(activeCategoryId)}
+            id={getCategorySectionId(displayCategoryId)}
             className="scroll-mt-24 mb-6"
           >
             <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">
@@ -410,6 +417,7 @@ export default function WholesaleShop({
           </div>
         ) : null}
 
+        <ProductCatalogPendingState isPending={isPending}>
         {/* Product grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 lg:gap-5 xl:gap-6">
           {pageProducts.map((product) => {
@@ -534,11 +542,13 @@ export default function WholesaleShop({
             <p className="font-medium">No products found</p>
           </div>
         ) : null}
+        </ProductCatalogPendingState>
 
         <ProductCatalogPagination
           page={page}
           totalPages={totalPages}
           onPageChange={handlePageChange}
+          disabled={isPending}
         />
         </div>
       </div>

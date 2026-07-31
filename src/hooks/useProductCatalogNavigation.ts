@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { buildProductCatalogQuery } from "@/lib/product-catalog-page";
+import { dispatchCatalogNavigationStart } from "@/lib/catalog-navigation-progress";
 import { scrollToCategoryInList } from "@/lib/category-list-scroll";
 import type { SiteCategory } from "@/types";
 
@@ -12,18 +13,24 @@ type UseProductCatalogNavigationArgs = {
   initialSearch: string;
   /** Current server page — used to scroll after pagination navigation settles. */
   page?: number;
+  totalPages?: number;
 };
 
 export function useProductCatalogNavigation({
   categories,
   activeCategoryId,
   initialSearch,
-  page,
+  page = 1,
+  totalPages = 1,
 }: UseProductCatalogNavigationArgs) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState(initialSearch);
   const [searchFromUrl, setSearchFromUrl] = useState(initialSearch);
+  const [pendingCategoryId, setPendingCategoryId] = useState<number | null>(
+    null,
+  );
   const shouldScrollToListRef = useRef(false);
 
   if (initialSearch !== searchFromUrl) {
@@ -31,29 +38,55 @@ export function useProductCatalogNavigation({
     setSearch(initialSearch);
   }
 
+  useEffect(() => {
+    setPendingCategoryId(null);
+  }, [activeCategoryId, page, initialSearch]);
+
   const resolveAlias = useCallback(
     (categoryId: number) =>
       categories.find((category) => category.id === categoryId)?.alias ?? null,
     [categories],
   );
 
-  const replaceCatalogUrl = useCallback(
+  const buildHref = useCallback(
     (opts: { categoryId: number; page?: number; q?: string }) => {
       const alias = resolveAlias(opts.categoryId);
-      if (!alias) return;
+      if (!alias) return null;
       const query = buildProductCatalogQuery({
         categoryAlias: alias,
         page: opts.page,
         q: opts.q || undefined,
       });
-      router.replace(`${pathname}?${query}`, { scroll: false });
+      return `${pathname}?${query}`;
     },
-    [pathname, resolveAlias, router],
+    [pathname, resolveAlias],
+  );
+
+  const replaceCatalogUrl = useCallback(
+    (opts: { categoryId: number; page?: number; q?: string }) => {
+      const href = buildHref(opts);
+      if (!href) return;
+      dispatchCatalogNavigationStart();
+      startTransition(() => {
+        router.replace(href, { scroll: false });
+      });
+    },
+    [buildHref, router],
+  );
+
+  const prefetchCatalogUrl = useCallback(
+    (opts: { categoryId: number; page?: number; q?: string }) => {
+      const href = buildHref(opts);
+      if (!href) return;
+      router.prefetch(href);
+    },
+    [buildHref, router],
   );
 
   const handleCategorySelect = useCallback(
     (categoryId: number | null) => {
       if (categoryId == null) return;
+      setPendingCategoryId(categoryId);
       replaceCatalogUrl({
         categoryId,
         page: 1,
@@ -77,6 +110,18 @@ export function useProductCatalogNavigation({
     [activeCategoryId, replaceCatalogUrl, search],
   );
 
+  const prefetchCategory = useCallback(
+    (categoryId: number | null) => {
+      if (categoryId == null) return;
+      prefetchCatalogUrl({
+        categoryId,
+        page: 1,
+        q: search.trim(),
+      });
+    },
+    [prefetchCatalogUrl, search],
+  );
+
   useEffect(() => {
     if (!shouldScrollToListRef.current) return;
     shouldScrollToListRef.current = false;
@@ -98,11 +143,43 @@ export function useProductCatalogNavigation({
     return () => window.clearTimeout(handle);
   }, [search, initialSearch, activeCategoryId, replaceCatalogUrl]);
 
+  // Prefetch adjacent pages for warmer soft navigations.
+  useEffect(() => {
+    if (activeCategoryId == null) return;
+    const q = initialSearch.trim();
+    if (page < totalPages) {
+      prefetchCatalogUrl({
+        categoryId: activeCategoryId,
+        page: page + 1,
+        q,
+      });
+    }
+    if (page > 1) {
+      prefetchCatalogUrl({
+        categoryId: activeCategoryId,
+        page: page - 1,
+        q,
+      });
+    }
+  }, [
+    activeCategoryId,
+    initialSearch,
+    page,
+    prefetchCatalogUrl,
+    totalPages,
+  ]);
+
+  const displayCategoryId = pendingCategoryId ?? activeCategoryId;
+
   return {
     search,
     setSearch,
+    isPending,
+    pendingCategoryId,
+    displayCategoryId,
     handleCategorySelect,
     handlePageChange,
+    prefetchCategory,
     clearSearch: () => {
       setSearch("");
       if (activeCategoryId == null) return;

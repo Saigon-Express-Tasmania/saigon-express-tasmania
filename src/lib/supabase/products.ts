@@ -1,5 +1,9 @@
 import { CACHE_TAGS, SHORT_REVALIDATE_SECONDS } from "@/config";
 import { ENV } from "@/config/env";
+import type {
+  ProductCategoriesByProductId,
+  ProductCategoryAssignment,
+} from "@/lib/product-categories";
 import type { MenuItemRow, WholesaleProductRow } from "@/types";
 import { unstable_cache } from "next/cache";
 import { createServerSupabaseClient } from "./server";
@@ -13,10 +17,37 @@ export type AvailableProductsPageQuery = {
   search?: string;
 };
 
+export type ProductCategoryAssignmentEntry = {
+  productId: number;
+  assignments: ProductCategoryAssignment[];
+};
+
+/** Serializable shape stored in Next.js data cache. */
+type CachedAvailableProductsPageResult<T> = {
+  rows: T[];
+  totalCount: number;
+  categoryAssignments: ProductCategoryAssignmentEntry[];
+};
+
 export type AvailableProductsPageResult<T> = {
   rows: T[];
   totalCount: number;
+  categoriesByProductId: ProductCategoriesByProductId;
 };
+
+function hydrateAvailableProductsPageResult<T>(
+  cached: CachedAvailableProductsPageResult<T>,
+): AvailableProductsPageResult<T> {
+  const categoriesByProductId: ProductCategoriesByProductId = new Map();
+  for (const entry of cached.categoryAssignments) {
+    categoriesByProductId.set(entry.productId, entry.assignments);
+  }
+  return {
+    rows: cached.rows,
+    totalCount: cached.totalCount,
+    categoriesByProductId,
+  };
+}
 
 const ALACARTE_SELECT =
   "id, name, slug, description, price, wholesale_price, image_urls, is_available, is_popular, sort_order, ingredients, energy, food_content, customization_ids, customizations_disabled";
@@ -100,12 +131,40 @@ function escapeIlikePattern(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
-function stripProductCategoryEmbed<T extends Record<string, unknown>>(
-  row: T,
-): Omit<T, "product_categories"> {
-  const { product_categories, ...rest } = row;
-  void product_categories;
-  return rest;
+function extractPageRowsWithCategories<T>(
+  data: unknown[],
+): CachedAvailableProductsPageResult<T> {
+  const categoryAssignments: ProductCategoryAssignmentEntry[] = [];
+  const rows: T[] = [];
+
+  for (const raw of data) {
+    const row = raw as Record<string, unknown>;
+    const productId = Number(row.id);
+    const embeds = row.product_categories;
+    const assignments: ProductCategoryAssignment[] = [];
+
+    if (Array.isArray(embeds)) {
+      for (const embed of embeds) {
+        const entry = embed as {
+          category_id?: number | string;
+          is_primary?: boolean;
+          sort_order?: number | string | null;
+        };
+        assignments.push({
+          categoryId: Number(entry.category_id),
+          isPrimary: Boolean(entry.is_primary),
+          sortOrder: Number(entry.sort_order ?? 0),
+        });
+      }
+    }
+
+    categoryAssignments.push({ productId, assignments });
+    const { product_categories, ...rest } = row;
+    void product_categories;
+    rows.push(rest as T);
+  }
+
+  return { rows, totalCount: rows.length, categoryAssignments };
 }
 
 async function queryAvailableProductsPage<T extends Record<string, unknown>>(
@@ -113,7 +172,7 @@ async function queryAvailableProductsPage<T extends Record<string, unknown>>(
   select: string,
   order: { column: string; ascending: boolean }[],
   pageQuery: AvailableProductsPageQuery,
-): Promise<AvailableProductsPageResult<T>> {
+): Promise<CachedAvailableProductsPageResult<T>> {
   const page = Math.max(1, pageQuery.page);
   const pageSize = Math.max(1, pageQuery.pageSize);
   const from = (page - 1) * pageSize;
@@ -121,7 +180,7 @@ async function queryAvailableProductsPage<T extends Record<string, unknown>>(
 
   const supabase = createServerSupabaseClient();
   const selectWithCategory =
-    `${select}, product_categories!inner(category_id)` as "*";
+    `${select}, product_categories!inner(category_id, is_primary, sort_order)` as "*";
   let query = supabase
     .from("products")
     .select(selectWithCategory, {
@@ -152,13 +211,13 @@ async function queryAvailableProductsPage<T extends Record<string, unknown>>(
     );
   }
 
-  const rows = ((data ?? []) as unknown as T[]).map((row) =>
-    stripProductCategoryEmbed(row as T & Record<string, unknown>),
-  ) as T[];
+  const extracted = extractPageRowsWithCategories<T>(
+    (data ?? []) as unknown[],
+  );
 
   return {
-    rows,
-    totalCount: count ?? rows.length,
+    ...extracted,
+    totalCount: count ?? extracted.rows.length,
   };
 }
 
@@ -187,12 +246,13 @@ function getCachedAvailableProductsPage<T extends Record<string, unknown>>(
       String(pageQuery.pageSize),
       searchKey,
       publishedProductsCacheKey(),
+      "with-category-embed-v2",
     ],
     {
       revalidate: SHORT_REVALIDATE_SECONDS,
       tags: [PRODUCT_CACHE_TAGS[productType]],
     },
-  )();
+  )().then(hydrateAvailableProductsPageResult);
 }
 
 async function queryAlacarteProductRowById(

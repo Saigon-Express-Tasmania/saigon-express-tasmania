@@ -47,15 +47,14 @@ export const getWholesaleProducts = unstable_cache(
 
 /**
  * Paginated wholesale catalog page (no live stock). Pass page categories from the RSC.
+ * Category assignments come from the page query embed (no second round-trip).
  */
 export async function getWholesaleProductsPage(
   params: ProductCatalogPageParams,
   categories: SiteCategory[],
 ): Promise<ProductCatalogPageResult<WholesaleProduct>> {
-  const { rows, totalCount } = await fetchWholesaleProductsPage(params);
-  const categoriesByProductId = await loadProductCategoriesByProductIds(
-    rows.map((row) => row.id),
-  );
+  const { rows, totalCount, categoriesByProductId } =
+    await fetchWholesaleProductsPage(params);
   const categoryById = categoryMapById(categories);
   const items = rows.map((row) =>
     mapWholesaleProductRow(

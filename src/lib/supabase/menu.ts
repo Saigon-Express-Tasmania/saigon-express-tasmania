@@ -48,16 +48,14 @@ export const getMenuItems = unstable_cache(
 
 /**
  * Paginated alacarte items for a single category. Catalog fields only.
- * Pass `categories` from the page catalog to avoid a second category fetch.
+ * Category assignments come from the page query embed (no second round-trip).
  */
 export async function getMenuItemsPage(
   params: ProductCatalogPageParams,
   categories: SiteCategory[],
 ): Promise<ProductCatalogPageResult<MenuItem>> {
-  const { rows, totalCount } = await fetchAlacarteProductsPage(params);
-  const categoriesByProductId = await loadProductCategoriesByProductIds(
-    rows.map((row) => row.id),
-  );
+  const { rows, totalCount, categoriesByProductId } =
+    await fetchAlacarteProductsPage(params);
   const categoryById = categoryMapById(categories);
   const items = rows.map((row) =>
     mapMenuItemRow(

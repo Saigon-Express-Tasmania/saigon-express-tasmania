@@ -56,6 +56,8 @@ export type CategorySidebarProps = {
   renderCategoryLeading?: (category: SiteCategory) => ReactNode;
   /** When false, hides the "All products" control. Default true. */
   showAllOption?: boolean;
+  /** Prefetch catalog for a category (e.g. on hover/focus). */
+  onCategoryPrefetch?: (categoryId: number) => void;
 };
 
 type CategorySidebarAsideProps = {
@@ -89,6 +91,7 @@ type SidebarCategoryButtonProps = {
   category: SiteCategory;
   selected: boolean;
   onSelect: () => void;
+  onPrefetch?: () => void;
   itemButtonClass: (selected: boolean) => string;
   itemHoverClass?: string;
   renderCategoryLeading?: (category: SiteCategory) => ReactNode;
@@ -98,6 +101,7 @@ function SidebarCategoryButton({
   category,
   selected,
   onSelect,
+  onPrefetch,
   itemButtonClass,
   itemHoverClass,
   renderCategoryLeading,
@@ -110,6 +114,8 @@ function SidebarCategoryButton({
         <button
           type="button"
           onClick={onSelect}
+          onMouseEnter={onPrefetch}
+          onFocus={onPrefetch}
           className={cn(itemButtonClass(selected), !selected && itemHoverClass)}
         >
           {renderCategoryLeading?.(category)}
@@ -161,6 +167,7 @@ export default function CategorySidebar({
   className,
   renderCategoryLeading,
   showAllOption = true,
+  onCategoryPrefetch,
 }: CategorySidebarProps) {
   const styles = getCategoryNavVariantStyles(variant);
 
@@ -285,6 +292,11 @@ export default function CategorySidebar({
                     category={item.category}
                     selected={selected}
                     onSelect={() => onCategorySelect(item.category.id)}
+                    onPrefetch={
+                      onCategoryPrefetch
+                        ? () => onCategoryPrefetch(item.category.id)
+                        : undefined
+                    }
                     itemButtonClass={itemButtonClass}
                     renderCategoryLeading={renderCategoryLeading}
                   />
@@ -356,6 +368,11 @@ export default function CategorySidebar({
                               category={category}
                               selected={selected}
                               onSelect={() => onCategorySelect(category.id)}
+                              onPrefetch={
+                                onCategoryPrefetch
+                                  ? () => onCategoryPrefetch(category.id)
+                                  : undefined
+                              }
                               itemButtonClass={itemButtonClass}
                               itemHoverClass={accent.itemHover}
                               renderCategoryLeading={renderCategoryLeading}
