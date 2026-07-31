@@ -42,6 +42,7 @@ export const roseberry = localFont({
   ],
   variable: "--font-roseberry",
   display: "swap",
+  preload: false,
 });
 
 export const fontAwesome = localFont({

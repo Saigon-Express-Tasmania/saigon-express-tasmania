@@ -87,7 +87,7 @@ export default function HeroVideo() {
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           aria-hidden
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
             videoReady ? "opacity-100" : "opacity-0"

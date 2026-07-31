@@ -309,6 +309,7 @@ export default async function Home() {
                 src={IMGS.wholesale}
                 alt={t("wholesale.imageAlt")}
                 fill
+                sizes="(max-width: 1024px) 100vw, 640px"
                 className="object-cover rounded-sm"
               />
             </div>
@@ -373,6 +374,8 @@ export default async function Home() {
                 <img
                   src={logo.src}
                   alt={logo.alt}
+                  loading="lazy"
+                  decoding="async"
                   className={`w-auto object-contain ${logo.className}`}
                 />
               </div>
