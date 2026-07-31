@@ -28,9 +28,10 @@ export function useProductCatalogNavigation({
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState(initialSearch);
   const [searchFromUrl, setSearchFromUrl] = useState(initialSearch);
-  const [pendingCategoryId, setPendingCategoryId] = useState<number | null>(
-    null,
-  );
+  /** `undefined` = no optimistic category; `null` = pending "All". */
+  const [pendingCategoryId, setPendingCategoryId] = useState<
+    number | null | undefined
+  >(undefined);
   const shouldScrollToListRef = useRef(false);
 
   if (initialSearch !== searchFromUrl) {
@@ -39,7 +40,7 @@ export function useProductCatalogNavigation({
   }
 
   useEffect(() => {
-    setPendingCategoryId(null);
+    setPendingCategoryId(undefined);
   }, [activeCategoryId, page, initialSearch]);
 
   const resolveAlias = useCallback(
@@ -49,7 +50,15 @@ export function useProductCatalogNavigation({
   );
 
   const buildHref = useCallback(
-    (opts: { categoryId: number; page?: number; q?: string }) => {
+    (opts: { categoryId: number | null; page?: number; q?: string }) => {
+      if (opts.categoryId == null) {
+        const query = buildProductCatalogQuery({
+          page: opts.page,
+          q: opts.q || undefined,
+        });
+        return query ? `${pathname}?${query}` : pathname;
+      }
+
       const alias = resolveAlias(opts.categoryId);
       if (!alias) return null;
       const query = buildProductCatalogQuery({
@@ -63,7 +72,7 @@ export function useProductCatalogNavigation({
   );
 
   const replaceCatalogUrl = useCallback(
-    (opts: { categoryId: number; page?: number; q?: string }) => {
+    (opts: { categoryId: number | null; page?: number; q?: string }) => {
       const href = buildHref(opts);
       if (!href) return;
       dispatchCatalogNavigationStart();
@@ -75,7 +84,7 @@ export function useProductCatalogNavigation({
   );
 
   const prefetchCatalogUrl = useCallback(
-    (opts: { categoryId: number; page?: number; q?: string }) => {
+    (opts: { categoryId: number | null; page?: number; q?: string }) => {
       const href = buildHref(opts);
       if (!href) return;
       router.prefetch(href);
@@ -85,7 +94,6 @@ export function useProductCatalogNavigation({
 
   const handleCategorySelect = useCallback(
     (categoryId: number | null) => {
-      if (categoryId == null) return;
       setPendingCategoryId(categoryId);
       replaceCatalogUrl({
         categoryId,
@@ -99,7 +107,6 @@ export function useProductCatalogNavigation({
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
-      if (activeCategoryId == null) return;
       shouldScrollToListRef.current = true;
       replaceCatalogUrl({
         categoryId: activeCategoryId,
@@ -112,7 +119,6 @@ export function useProductCatalogNavigation({
 
   const prefetchCategory = useCallback(
     (categoryId: number | null) => {
-      if (categoryId == null) return;
       prefetchCatalogUrl({
         categoryId,
         page: 1,
@@ -129,7 +135,6 @@ export function useProductCatalogNavigation({
   }, [page, activeCategoryId]);
 
   useEffect(() => {
-    if (activeCategoryId == null) return;
     const trimmed = search.trim();
     if (trimmed === initialSearch.trim()) return;
 
@@ -145,7 +150,6 @@ export function useProductCatalogNavigation({
 
   // Prefetch adjacent pages for warmer soft navigations.
   useEffect(() => {
-    if (activeCategoryId == null) return;
     const q = initialSearch.trim();
     if (page < totalPages) {
       prefetchCatalogUrl({
@@ -169,20 +173,21 @@ export function useProductCatalogNavigation({
     totalPages,
   ]);
 
-  const displayCategoryId = pendingCategoryId ?? activeCategoryId;
+  const displayCategoryId =
+    pendingCategoryId !== undefined ? pendingCategoryId : activeCategoryId;
 
   return {
     search,
     setSearch,
     isPending,
-    pendingCategoryId,
+    pendingCategoryId:
+      pendingCategoryId === undefined ? null : pendingCategoryId,
     displayCategoryId,
     handleCategorySelect,
     handlePageChange,
     prefetchCategory,
     clearSearch: () => {
       setSearch("");
-      if (activeCategoryId == null) return;
       replaceCatalogUrl({ categoryId: activeCategoryId, page: 1, q: "" });
     },
   };

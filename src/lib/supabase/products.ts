@@ -11,7 +11,8 @@ import { createServerSupabaseClient } from "./server";
 export type ProductType = "alacarte" | "wholesale" | "catering";
 
 export type AvailableProductsPageQuery = {
-  categoryId: number;
+  /** `null` = all categories. */
+  categoryId: number | null;
   page: number;
   pageSize: number;
   search?: string;
@@ -179,16 +180,23 @@ async function queryAvailableProductsPage<T extends Record<string, unknown>>(
   const to = from + pageSize - 1;
 
   const supabase = createServerSupabaseClient();
+  const categoryId = pageQuery.categoryId;
   const selectWithCategory =
-    `${select}, product_categories!inner(category_id, is_primary, sort_order)` as "*";
+    categoryId != null
+      ? (`${select}, product_categories!inner(category_id, is_primary, sort_order)` as "*")
+      : (`${select}, product_categories(category_id, is_primary, sort_order)` as "*");
+
   let query = supabase
     .from("products")
     .select(selectWithCategory, {
       count: "exact",
     })
     .eq("product_type", productType)
-    .eq("is_available", true)
-    .eq("product_categories.category_id", pageQuery.categoryId);
+    .eq("is_available", true);
+
+  if (categoryId != null) {
+    query = query.eq("product_categories.category_id", categoryId);
+  }
 
   query = applyPublishedProductFilter(query);
 
@@ -207,7 +215,7 @@ async function queryAvailableProductsPage<T extends Record<string, unknown>>(
   const { data, error, count } = await query.range(from, to);
   if (error) {
     throw new Error(
-      `products page (${productType}, category ${pageQuery.categoryId}): ${error.message}`,
+      `products page (${productType}, category ${categoryId ?? "all"}): ${error.message}`,
     );
   }
 
@@ -241,7 +249,7 @@ function getCachedAvailableProductsPage<T extends Record<string, unknown>>(
       productType,
       select,
       orderKey,
-      String(pageQuery.categoryId),
+      String(pageQuery.categoryId ?? "all"),
       String(pageQuery.page),
       String(pageQuery.pageSize),
       searchKey,

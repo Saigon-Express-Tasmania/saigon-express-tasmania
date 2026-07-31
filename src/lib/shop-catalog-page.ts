@@ -1,7 +1,6 @@
 import { redirect } from "@/i18n/navigation";
 import {
   buildProductCatalogQuery,
-  firstPopulatedCategory,
   parseCatalogCategoryParam,
   parseCatalogPageParam,
   parseCatalogSearchParam,
@@ -27,14 +26,15 @@ export type ResolvedShopCatalogQuery =
   | {
       empty: false;
       barCategories: SiteCategory[];
-      category: SiteCategory;
+      /** `null` when browsing all categories. */
+      category: SiteCategory | null;
       pageParams: ProductCatalogPageParams;
       search: string;
     };
 
 /**
- * Resolve category/page/q for a shop catalog. Redirects when category is missing
- * or invalid so the sidebar always has a concrete selection.
+ * Resolve category/page/q for a shop catalog.
+ * Missing category means "All". Invalid category aliases redirect to All.
  */
 export function resolveShopCatalogQueryOrRedirect(opts: {
   searchParams: ShopCatalogSearchParams;
@@ -60,15 +60,30 @@ export function resolveShopCatalogQueryOrRedirect(opts: {
   const barCategories = resolveShopBarCategories(categories, populatedIds);
   const search = parseCatalogSearchParam(searchParams.q);
   const page = parseCatalogPageParam(searchParams.page);
-  const defaultCategory = firstPopulatedCategory(categories, populatedIds);
 
-  if (!defaultCategory) {
+  if (barCategories.length === 0 && categories.length === 0) {
     return { empty: true, barCategories, search };
   }
 
   const categoryParam = parseCatalogCategoryParam(searchParams.category);
-  const resolved = resolveCategory(categoryParam, barCategories);
 
+  // No category in URL → All products (paginated).
+  if (!categoryParam) {
+    return {
+      empty: false,
+      barCategories,
+      category: null,
+      pageParams: {
+        categoryId: null,
+        page,
+        pageSize: PRODUCT_CATALOG_PAGE_SIZE,
+        search: search || undefined,
+      },
+      search,
+    };
+  }
+
+  const resolved = resolveCategory(categoryParam, barCategories);
   const category =
     resolved != null
       ? (barCategories.find((item) => item.id === resolved.id) ??
@@ -76,17 +91,20 @@ export function resolveShopCatalogQueryOrRedirect(opts: {
         null)
       : null;
 
+  // Invalid category → clean URL back to All.
   if (!category) {
     const query = buildProductCatalogQuery({
-      categoryAlias: defaultCategory.alias,
       page: page > 1 ? page : undefined,
       q: search || undefined,
     });
-    redirect({ href: `${pathname}?${query}`, locale });
-    throw new Error("unreachable: redirect to default category");
+    redirect({
+      href: query ? `${pathname}?${query}` : pathname,
+      locale,
+    });
+    throw new Error("unreachable: redirect to all categories");
   }
 
-  if (categoryParam && category.alias !== categoryParam) {
+  if (category.alias !== categoryParam) {
     const query = buildProductCatalogQuery({
       categoryAlias: category.alias,
       page: page > 1 ? page : undefined,
@@ -114,7 +132,7 @@ export type ShopCatalogPageProps = {
   categoriesContent: SiteCategory[];
   categoryGroups: SiteCategoryGroup[];
   barCategories: SiteCategory[];
-  activeCategoryId: number;
+  activeCategoryId: number | null;
   page: number;
   pageSize: number;
   totalCount: number;

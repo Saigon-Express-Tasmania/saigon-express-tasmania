@@ -353,7 +353,6 @@ export default function WholesaleShop({
             getCategoryIcon={getCategoryIcon}
             getCategoryIconFallback={getCategoryIconFallback}
             variant="member"
-            showAllOption={false}
           />
         </div>
       </div>
@@ -372,7 +371,6 @@ export default function WholesaleShop({
               categories={barCategories}
               categoryGroups={categoryGroups}
               variant="member"
-              showAllOption={false}
               renderCategoryLeading={(category) => (
                 <CategoryIcon
                   icon={getCategoryIcon(category.id)}

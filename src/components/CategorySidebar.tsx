@@ -56,8 +56,8 @@ export type CategorySidebarProps = {
   renderCategoryLeading?: (category: SiteCategory) => ReactNode;
   /** When false, hides the "All products" control. Default true. */
   showAllOption?: boolean;
-  /** Prefetch catalog for a category (e.g. on hover/focus). */
-  onCategoryPrefetch?: (categoryId: number) => void;
+  /** Prefetch catalog for a category (e.g. on hover/focus). Pass `null` for All. */
+  onCategoryPrefetch?: (categoryId: number | null) => void;
 };
 
 type CategorySidebarAsideProps = {
@@ -253,6 +253,16 @@ export default function CategorySidebar({
                 <button
                   type="button"
                   onClick={() => onCategorySelect(null)}
+                  onMouseEnter={
+                    onCategoryPrefetch
+                      ? () => onCategoryPrefetch(null)
+                      : undefined
+                  }
+                  onFocus={
+                    onCategoryPrefetch
+                      ? () => onCategoryPrefetch(null)
+                      : undefined
+                  }
                   className={cn(
                     itemButtonClass(isAllActive),
                     "gap-3 px-3.5 py-2.5 font-medium",

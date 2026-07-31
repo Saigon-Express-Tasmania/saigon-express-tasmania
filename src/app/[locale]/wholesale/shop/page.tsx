@@ -76,7 +76,7 @@ export default async function LocaleWholesaleShopPage({
         categoriesContent={data.categoriesContent}
         categoryGroups={data.categoryGroups}
         barCategories={resolved.barCategories}
-        activeCategoryId={resolved.category.id}
+        activeCategoryId={resolved.category?.id ?? null}
         page={data.page}
         pageSize={data.pageSize}
         totalCount={data.totalCount}

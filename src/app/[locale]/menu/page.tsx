@@ -67,7 +67,7 @@ export default async function LocaleMenuPage({
           categoryGroups={categoryGroups}
           barCategories={resolved.barCategories}
           activeCategoryId={
-            resolved.empty ? null : resolved.category.id
+            resolved.empty ? null : (resolved.category?.id ?? null)
           }
           page={productPage.page}
           pageSize={productPage.pageSize}

@@ -50,7 +50,7 @@ export default async function LocaleMemberCateringShopPage({
         categoriesContent={categoriesContent}
         categoryGroups={categoryGroups}
         barCategories={resolved.barCategories}
-        activeCategoryId={resolved.empty ? null : resolved.category.id}
+        activeCategoryId={resolved.empty ? null : (resolved.category?.id ?? null)}
         page={productPage.page}
         pageSize={productPage.pageSize}
         totalCount={productPage.totalCount}

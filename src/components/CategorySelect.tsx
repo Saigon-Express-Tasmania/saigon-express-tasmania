@@ -43,7 +43,7 @@ export type CategorySelectProps = {
   className?: string;
   /** When false, hides the "All products" option. Default true. */
   showAllOption?: boolean;
-  onCategoryPrefetch?: (categoryId: number) => void;
+  onCategoryPrefetch?: (categoryId: number | null) => void;
 };
 
 export default function CategorySelect({
@@ -173,6 +173,11 @@ export default function CategorySelect({
                 <CommandItem
                   value={allLabel}
                   onSelect={() => handleSelect(null)}
+                  onMouseEnter={
+                    onCategoryPrefetch
+                      ? () => onCategoryPrefetch(null)
+                      : undefined
+                  }
                   className={optionItemClass}
                 >
                   <Check

@@ -320,7 +320,6 @@ export default function Menu({
             emptyMessage={t("categories.empty")}
             getCategoryIcon={getCategoryIcon}
             getCategoryIconFallback={getCategoryIconFallback}
-            showAllOption={false}
           />
         </div>
       </div>
@@ -335,7 +334,6 @@ export default function Menu({
               onCategoryPrefetch={prefetchCategory}
               categories={barCategories}
               categoryGroups={categoryGroups}
-              showAllOption={false}
               renderCategoryLeading={(category) => (
                 <CategoryIcon
                   icon={getCategoryIcon(category.id)}

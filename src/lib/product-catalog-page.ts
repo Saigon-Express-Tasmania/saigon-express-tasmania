@@ -13,7 +13,8 @@ export type ProductCatalogPageResult<T> = {
 };
 
 export type ProductCatalogPageParams = {
-  categoryId: number;
+  /** `null` = all categories. */
+  categoryId: number | null;
   page: number;
   pageSize: number;
   search?: string;
@@ -60,12 +61,13 @@ export function parseCatalogCategoryParam(
 }
 
 export function buildProductCatalogQuery(opts: {
-  categoryAlias: string;
+  categoryAlias?: string | null;
   page?: number;
   q?: string;
 }): string {
   const params = new URLSearchParams();
-  params.set("category", opts.categoryAlias);
+  const alias = opts.categoryAlias?.trim();
+  if (alias) params.set("category", alias);
   if (opts.page != null && opts.page > 1) {
     params.set("page", String(opts.page));
   }

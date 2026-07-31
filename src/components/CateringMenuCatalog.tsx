@@ -175,7 +175,6 @@ export default function CateringMenuCatalog({
             getCategoryIcon={getCategoryIcon}
             getCategoryIconFallback={getCategoryIconFallback}
             variant="brand"
-            showAllOption={false}
           />
         </div>
       </div>
@@ -194,7 +193,6 @@ export default function CateringMenuCatalog({
               categories={barCategories}
               categoryGroups={categoryGroups}
               variant="brand"
-              showAllOption={false}
               renderCategoryLeading={(category) => (
                 <CategoryIcon
                   icon={getCategoryIcon(category.id)}

@@ -248,7 +248,6 @@ export default function WholesaleLandingShop({
               getCategoryIcon={getCategoryIcon}
               getCategoryIconFallback={getCategoryIconFallback}
               variant="wholesale"
-              showAllOption={false}
             />
           </div>
         </div>
@@ -267,7 +266,6 @@ export default function WholesaleLandingShop({
                 categories={barCategories}
                 categoryGroups={categoryGroups}
                 variant="wholesale"
-                showAllOption={false}
                 renderCategoryLeading={(category) => (
                   <CategoryIcon
                     icon={getCategoryIcon(category.id)}
